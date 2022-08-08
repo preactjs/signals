@@ -1,0 +1,40 @@
+{
+	"name": "@preact/signals",
+	"version": "0.0.1",
+	"license": "MIT",
+	"description": "",
+	"keywords": [],
+	"authors": [
+		"The Preact Authors (https://github.com/preactjs/preact/contributors)"
+	],
+	"repository": "preactjs/preact",
+	"bugs": "https://github.com/preactjs/preact/issues",
+	"homepage": "https://preactjs.com",
+	"funding": {
+		"type": "opencollective",
+		"url": "https://opencollective.com/preact"
+	},
+	"amdName": "preactSignals",
+	"main": "dist/signals.js",
+	"module": "dist/signals.module.js",
+	"unpkg": "dist/preact.min.js",
+	"types": "dist/index.d.ts",
+	"source": "src/index.ts",
+	"exports": {
+		".": {
+			"browser": "./dist/signals.module.js",
+			"umd": "./dist/signals.umd.js",
+			"import": "./dist/signals.mjs",
+			"require": "./dist/signals.js"
+		}
+	},
+	"dependencies": {
+		"@preact/signals-core": "workspace:../core"
+	},
+	"peerDependencies": {
+		"preact": "10.x"
+	},
+	"devDependencies": {
+		"preact": "^10.10.1"
+	}
+}

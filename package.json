@@ -1,0 +1,70 @@
+{
+	"name": "preact-signals",
+	"version": "1.0.0",
+	"description": "",
+	"main": "index.js",
+	"private": true,
+	"scripts": {
+		"prebuild": "rimraf packages/core/dist/",
+		"build": "pnpm build:core && pnpm build:preact",
+		"build:core": "microbundle --raw --cwd packages/core",
+		"build:preact": "microbundle --raw --cwd packages/preact",
+		"postbuild": "node ./scripts/node-13-exports.js",
+		"lint": "eslint 'packages/**/*.{ts,tsx,js,jsx}'",
+		"test": "cross-env COVERAGE=true karma start karma.conf.js --single-run",
+		"test:watch": "karma start karma.conf.js --no-single-run"
+	},
+	"keywords": [],
+	"author": "",
+	"license": "MIT",
+	"devDependencies": {
+		"@babel/core": "^7.18.10",
+		"@babel/preset-env": "^7.18.10",
+		"@babel/preset-react": "^7.18.6",
+		"@changesets/cli": "^2.24.2",
+		"@types/chai": "^4.3.3",
+		"@types/mocha": "^9.1.1",
+		"@types/node": "^18.6.5",
+		"@typescript-eslint/eslint-plugin": "^5.33.0",
+		"@typescript-eslint/parser": "^5.33.0",
+		"babel-plugin-istanbul": "^6.1.1",
+		"chai": "^4.3.6",
+		"cross-env": "^7.0.3",
+		"errorstacks": "^2.4.0",
+		"esbuild": "^0.14.54",
+		"eslint": "^8.21.0",
+		"eslint-config-prettier": "^8.5.0",
+		"husky": "^8.0.1",
+		"karma": "6.3.16",
+		"karma-chai-sinon": "^0.1.5",
+		"karma-chrome-launcher": "^3.1.1",
+		"karma-coverage": "^2.2.0",
+		"karma-esbuild": "^2.2.4",
+		"karma-mocha": "^2.0.1",
+		"karma-mocha-reporter": "^2.2.5",
+		"karma-sinon": "^1.0.5",
+		"kolorist": "^1.5.1",
+		"lint-staged": "^13.0.3",
+		"microbundle": "^0.15.0",
+		"mocha": "^10.0.0",
+		"prettier": "^2.7.1",
+		"rimraf": "^3.0.2",
+		"sinon": "^14.0.0",
+		"sinon-chai": "^3.7.0",
+		"typescript": "^4.7.4"
+	},
+	"lint-staged": {
+		"**/*.{js,jsx,ts,tsx,yml}": [
+			"prettier --write"
+		]
+	},
+	"husky": {
+		"hooks": {
+			"pre-commit": "lint-staged"
+		}
+	},
+	"prettier": {
+		"useTabs": true,
+		"arrowParens": "avoid"
+	}
+}
