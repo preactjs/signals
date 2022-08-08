@@ -1,6 +1,7 @@
 // eslint-disable-next-line
 module.exports = {
 	env: {
+		node: true,
 		browser: true,
 		es2021: true,
 	},
@@ -14,5 +15,7 @@ module.exports = {
 	ignorePatterns: ["**/dist/**"],
 	rules: {
 		"no-console": "warn",
+		"@typescript-eslint/no-var-requires": "off",
+		"no-mixed-spaces-and-tabs": "off",
 	},
 };
