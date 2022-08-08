@@ -53,14 +53,14 @@ var localLaunchers = {
 			"--disable-gpu",
 			"--no-gpu",
 			// Without a remote debugging port, Google Chrome exits immediately.
-			"--remote-debugging-port=9333"
-		]
-	}
+			"--remote-debugging-port=9333",
+		],
+	},
 };
 
 const subPkgPath = pkgName => {
 	if (!minify) {
-		return path.join(__dirname, pkgName, "src", "index.js");
+		return path.join(__dirname, pkgName, "src", "index.ts");
 	}
 
 	// Resolve from package.exports field
@@ -88,58 +88,19 @@ function createEsbuildPlugin() {
 	}
 
 	const alias = {
-		"preact/debug": subPkgPath("./debug/"),
-		"preact/devtools": subPkgPath("./devtools/"),
-		"preact/compat": subPkgPath("./compat/"),
-		"preact/hooks": subPkgPath("./hooks/"),
-		"preact/test-utils": subPkgPath("./test-utils/"),
-		"preact/jsx-runtime": subPkgPath("./jsx-runtime/"),
-		"preact/jsx-dev-runtime": subPkgPath("./jsx-runtime/"),
-		preact: subPkgPath("")
+		"@preact/signals-core": subPkgPath("./packages/core"),
+		"@preact/signals": subPkgPath("./packages/preact"),
 	};
+
 	return {
 		name: "custom",
 		setup(build) {
 			// Aliasing: If "MINIFY" is set to "true" we use the dist/
 			// files instead of those from src/
-			build.onResolve({ filter: /^preact.*/ }, args => {
+			build.onResolve({ filter: /^@preact\/.*/ }, args => {
 				const pkg = alias[args.path];
 				return {
-					path: pkg
-				};
-			});
-
-			build.onResolve({ filter: /^(react|react-dom)$/ }, args => {
-				const pkg = alias["preact/compat"];
-				return {
-					path: pkg
-				};
-			});
-
-			// Transpile node_modules that are es2015+ to es5 for IE11
-			build.onLoad({ filter: /kolorist/ }, async args => {
-				const contents = await fs.readFile(args.path, "utf-8");
-
-				const tmp = await babel.transformAsync(contents, {
-					filename: args.path,
-					presets: [
-						[
-							"@babel/preset-env",
-							{
-								loose: true,
-								modules: false,
-								targets: {
-									browsers: ["last 2 versions", "IE >= 11"]
-								}
-							}
-						]
-					]
-				});
-
-				return {
-					contents: tmp.code,
-					resolveDir: path.dirname(args.path),
-					loader: "js"
+					path: pkg,
 				};
 			});
 
@@ -153,7 +114,7 @@ function createEsbuildPlugin() {
 					return {
 						contents: cached.result,
 						resolveDir: path.dirname(args.path),
-						loader: "js"
+						loader: "js",
 					};
 				}
 
@@ -176,20 +137,20 @@ function createEsbuildPlugin() {
 											loose: true,
 											modules: false,
 											targets: {
-												browsers: ["last 2 versions", "IE >= 11"]
-											}
-										}
-									]
+												browsers: ["last 2 versions", "IE >= 11"],
+											},
+										},
+									],
 							  ]
 							: [],
 						plugins: [
 							coverage && [
 								"istanbul",
 								{
-									include: minify ? "**/dist/**/*.js" : "**/src/**/*.js"
-								}
-							]
-						].filter(Boolean)
+									include: minify ? "**/dist/**/*.js" : "**/src/**/*.js",
+								},
+							],
+						].filter(Boolean),
 					});
 					result = tmp.code || result;
 					cache.set(args.path, { input: contents, result });
@@ -210,14 +171,14 @@ function createEsbuildPlugin() {
 				return {
 					contents: result,
 					resolveDir: path.dirname(args.path),
-					loader: "js"
+					loader: "js",
 				};
 			});
-		}
+		},
 	};
 }
 
-module.exports = function(config) {
+module.exports = function (config) {
 	config.set({
 		browsers: Object.keys(localLaunchers),
 
@@ -245,12 +206,12 @@ module.exports = function(config) {
 			reporters: [
 				{ type: "text-summary" },
 				{ type: "html" },
-				{ type: "lcovonly", subdir: ".", file: "lcov.info" }
-			]
+				{ type: "lcovonly", subdir: ".", file: "lcov.info" },
+			],
 		},
 
 		mochaReporter: {
-			showDiff: true
+			showDiff: true,
 		},
 
 		browserLogOptions: { terminal: true },
@@ -269,16 +230,16 @@ module.exports = function(config) {
 			{
 				pattern: "packages/{core,preact}/test/**/*.test.ts",
 				watched: false,
-				type: "js"
-			}
+				type: "js",
+			},
 		],
 
 		mime: {
-			"text/javascript": ["js", "jsx"]
+			"text/javascript": ["js", "jsx"],
 		},
 
 		preprocessors: {
-			"packages/*/test/**/*": ["esbuild"]
+			"packages/*/test/**/*": ["esbuild"],
 		},
 
 		plugins: [
@@ -287,7 +248,7 @@ module.exports = function(config) {
 			"karma-mocha",
 			"karma-mocha-reporter",
 			"karma-chai-sinon",
-			"karma-coverage"
+			"karma-coverage",
 		],
 
 		esbuild: {
@@ -298,9 +259,9 @@ module.exports = function(config) {
 			target: downlevel ? "es5" : "es2015",
 			define: {
 				COVERAGE: coverage,
-				"process.env.NODE_ENV": JSON.stringify(process.env.NODE_ENV || "")
+				"process.env.NODE_ENV": JSON.stringify(process.env.NODE_ENV || ""),
 			},
-			plugins: [createEsbuildPlugin()]
-		}
+			plugins: [createEsbuildPlugin()],
+		},
 	});
 };
