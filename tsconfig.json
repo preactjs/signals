@@ -6,6 +6,10 @@
 		"strict": true,
 		"jsx": "react",
 		"jsxFactory": "createElement",
-		"jsxFragmentFactory": "Fragment"
+		"jsxFragmentFactory": "Fragment",
+		"paths": {
+			"@preact/signals-core": ["./packages/core/src/index.ts"],
+			"@preact/signals": ["./packages/preact/src/index.ts"]
+		}
 	}
 }

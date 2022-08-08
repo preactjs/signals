@@ -1,1 +1,3 @@
-export const foo = 42;
+import { foo } from "@preact/signals-core";
+
+export const bar = foo;

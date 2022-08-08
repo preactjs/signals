@@ -5,7 +5,7 @@
 	"main": "index.js",
 	"private": true,
 	"scripts": {
-		"prebuild": "rimraf packages/core/dist/",
+		"prebuild": "rimraf packages/core/dist/ packages/preact/dist",
 		"build": "pnpm build:core && pnpm build:preact",
 		"build:core": "microbundle --raw --cwd packages/core",
 		"build:preact": "microbundle --raw --cwd packages/preact",
