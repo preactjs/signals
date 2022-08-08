@@ -1,5 +1,7 @@
+import { bar } from "@preact/signals";
+
 describe("Example2", () => {
 	it("should work", () => {
-		expect(1).equal(1);
+		expect(bar).equal(123);
 	});
 });
