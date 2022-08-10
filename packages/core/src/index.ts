@@ -10,6 +10,8 @@ let currentSignal: Signal<any>;
 
 const pending = new Set<Signal<any>>();
 
+let oldDeps = new Set<Signal<any>>();
+
 class Signal<T> {
 	[SUBS] = new Set<Signal<any>>();
 	[DEPS] = new Set<Signal<any>>();
@@ -27,6 +29,7 @@ class Signal<T> {
 	get value() {
 		currentSignal[DEPS].add(this);
 		this[SUBS].add(currentSignal);
+		oldDeps.delete(currentSignal);
 		return this[VALUE];
 	}
 
@@ -34,11 +37,10 @@ class Signal<T> {
 		if (this[VALUE] !== value) {
 			this[VALUE] = value;
 			let isFirst = pending.size === 0;
+
+			pending.add(this);
 			mark(this);
 			if (isFirst) sweep();
-			// for (const sub of this[SUBS]) {
-			// 	sub.updater(this);
-			// }
 		}
 	}
 
@@ -50,17 +52,32 @@ class Signal<T> {
 
 function mark(signal: Signal<any>) {
 	if (signal[PENDING]++ === 0) {
-		pending.add(signal);
+		signal[SUBS].forEach(mark);
 	}
-	signal[SUBS].forEach(mark);
 }
 
 function sweep() {
-	pending.forEach(signal => {
-		signal[PENDING] = 0;
-		signal.updater();
-	});
+	const stack = Array.from(pending);
+	let signal;
+	while ((signal = stack.pop()) !== undefined) {
+		if (--signal[PENDING] === 0) {
+			signal.updater();
+			stack.push(...signal[SUBS]);
+		}
+	}
 	pending.clear();
+}
+
+function unsubscribe(signal: Signal<any>, from: Signal<any>) {
+	signal[DEPS].delete(from);
+	from[SUBS].delete(signal);
+
+	// If nobody listens to the signal we depended on, we can traverse
+	// upwards and destroy all subscriptions until we encounter a writable
+	// signal or a signal that others listen to as well.
+	if (from[SUBS].size === 0) {
+		from[DEPS].forEach(dep => unsubscribe(from, dep));
+	}
 }
 
 ROOT = currentSignal = new Signal(undefined);
@@ -71,22 +88,29 @@ export function signal<T>(value: T): Signal<T> {
 
 export function computed<T>(compute: () => T): Signal<T> {
 	const signal = new Signal<T>(undefined as any);
-	let isFirst = true;
 
 	function updater() {
 		let tmp = currentSignal;
 		currentSignal = signal;
+
+		// Computed might conditionally access signals. This means that we need
+		// to ensure that we unsubscribe from any old depedencies that aren't
+		// used anymore.
+		oldDeps = signal[DEPS];
+		signal[DEPS] = new Set();
+
 		let ret = compute();
 		currentSignal = tmp;
 
-		// the first run of this signal should not fire subscribers
-		if (isFirst) signal[VALUE] = ret;
-		else signal.value = ret;
+		// Any leftover dependencies here are not needed anymore
+		oldDeps.forEach(sub => unsubscribe(signal, sub));
+		oldDeps.clear();
+
+		signal[VALUE] = ret;
 	}
 
 	signal.updater = updater;
 	updater();
-	isFirst = false;
 
 	return signal;
 }
