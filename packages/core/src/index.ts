@@ -1,21 +1,23 @@
 const SUBS = Symbol.for("subs");
 const DEPS = Symbol.for("deps");
 const VALUE = Symbol.for("value");
+const PENDING = Symbol.for("pending");
 
 let ROOT: Signal<undefined>;
 
 /** This tracks subscriptions of signals read inside a computed */
 let currentSignal: Signal<any>;
 
+const pending = new Set<Signal<any>>();
+
 class Signal<T> {
-	[SUBS]: Set<Signal<any>>;
-	[DEPS]: Set<Signal<any>>;
+	[SUBS] = new Set<Signal<any>>();
+	[DEPS] = new Set<Signal<any>>();
+	[PENDING] = 0;
 	[VALUE]: T;
 
 	constructor(value: T) {
 		this[VALUE] = value;
-		this[SUBS] = new Set();
-		this[DEPS] = new Set();
 	}
 
 	toString() {
@@ -31,15 +33,34 @@ class Signal<T> {
 	set value(value) {
 		if (this[VALUE] !== value) {
 			this[VALUE] = value;
-			for (const sub of this[SUBS]) {
-				sub.updater(this);
-			}
+			let isFirst = pending.size === 0;
+			mark(this);
+			if (isFirst) sweep();
+			// for (const sub of this[SUBS]) {
+			// 	sub.updater(this);
+			// }
 		}
 	}
 
-	updater(sender: Signal<any>) {
+	// updater(sender: Signal<any>) {
+	updater() {
 		// override me to handle updates
 	}
+}
+
+function mark(signal: Signal<any>) {
+	if (signal[PENDING]++ === 0) {
+		pending.add(signal);
+	}
+	signal[SUBS].forEach(mark);
+}
+
+function sweep() {
+	pending.forEach(signal => {
+		signal[PENDING] = 0;
+		signal.updater();
+	});
+	pending.clear();
 }
 
 ROOT = currentSignal = new Signal(undefined);
@@ -50,6 +71,7 @@ export function signal<T>(value: T): Signal<T> {
 
 export function computed<T>(compute: () => T): Signal<T> {
 	const signal = new Signal<T>(undefined as any);
+	let isFirst = true;
 
 	function updater() {
 		let tmp = currentSignal;
@@ -57,11 +79,14 @@ export function computed<T>(compute: () => T): Signal<T> {
 		let ret = compute();
 		currentSignal = tmp;
 
-		signal.value = ret;
+		// the first run of this signal should not fire subscribers
+		if (isFirst) signal[VALUE] = ret;
+		else signal.value = ret;
 	}
 
 	signal.updater = updater;
 	updater();
+	isFirst = false;
 
 	return signal;
 }
