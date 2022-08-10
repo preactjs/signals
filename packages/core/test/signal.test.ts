@@ -45,6 +45,34 @@ describe("computed()", () => {
 		expect(c.value).to.equal("aab");
 	});
 
+	it("should conditionally unsubscribe from signals", () => {
+		const a = signal("a");
+		const b = signal("b");
+		const cond = signal(true);
+
+		const spy = sinon.spy(() => {
+			return cond.value ? a.value : b.value;
+		});
+
+		const c = computed(spy);
+		expect(c.value).to.equal("a");
+		expect(spy).to.be.calledOnce;
+
+		b.value = "bb";
+		expect(c.value).to.equal("a");
+		expect(spy).to.be.calledOnce;
+
+		cond.value = false;
+		expect(c.value).to.equal("bb");
+		expect(spy).to.be.calledTwice;
+
+		spy.resetHistory();
+
+		a.value = "aaa";
+		expect(c.value).to.equal("bb");
+		expect(spy).not.to.be.called;
+	});
+
 	describe("graph updates", () => {
 		it("should run computeds once for multiple dep changes", async () => {
 			const a = signal("a");
