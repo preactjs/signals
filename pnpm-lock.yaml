@@ -11,6 +11,8 @@ importers:
       '@types/chai': ^4.3.3
       '@types/mocha': ^9.1.1
       '@types/node': ^18.6.5
+      '@types/sinon': ^10.0.13
+      '@types/sinon-chai': ^3.2.8
       '@typescript-eslint/eslint-plugin': ^5.33.0
       '@typescript-eslint/parser': ^5.33.0
       babel-plugin-istanbul: ^6.1.1
@@ -46,6 +48,8 @@ importers:
       '@types/chai': 4.3.3
       '@types/mocha': 9.1.1
       '@types/node': 18.6.5
+      '@types/sinon': 10.0.13
+      '@types/sinon-chai': 3.2.8
       '@typescript-eslint/eslint-plugin': 5.33.0_njno5y7ry2l2lcmiu4tywxkwnq
       '@typescript-eslint/parser': 5.33.0_qugx7qdu5zevzvxaiqyxfiwquq
       babel-plugin-istanbul: 6.1.1
@@ -1872,6 +1876,23 @@ packages:
 
   /@types/semver/6.2.3:
     resolution: {integrity: sha512-KQf+QAMWKMrtBMsB8/24w53tEsxllMj6TuA80TT/5igJalLI/zm0L3oXRbIAl4Ohfc85gyHX/jhMwsVkmhLU4A==}
+    dev: true
+
+  /@types/sinon-chai/3.2.8:
+    resolution: {integrity: sha512-d4ImIQbT/rKMG8+AXpmcan5T2/PNeSjrYhvkwet6z0p8kzYtfgA32xzOBlbU0yqJfq+/0Ml805iFoODO0LP5/g==}
+    dependencies:
+      '@types/chai': 4.3.3
+      '@types/sinon': 10.0.13
+    dev: true
+
+  /@types/sinon/10.0.13:
+    resolution: {integrity: sha512-UVjDqJblVNQYvVNUsj0PuYYw0ELRmgt1Nt5Vk0pT5f16ROGfcKJY8o1HVuMOJOpD727RrGB9EGvoaTQE5tgxZQ==}
+    dependencies:
+      '@types/sinonjs__fake-timers': 8.1.2
+    dev: true
+
+  /@types/sinonjs__fake-timers/8.1.2:
+    resolution: {integrity: sha512-9GcLXF0/v3t80caGs5p2rRfkB+a8VBGLJZVih6CNFkx8IZ994wiKKLSRs9nuFwk1HevWs/1mnUmkApGrSGsShA==}
     dev: true
 
   /@typescript-eslint/eslint-plugin/5.33.0_njno5y7ry2l2lcmiu4tywxkwnq:

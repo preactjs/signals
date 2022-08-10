@@ -17,5 +17,7 @@ module.exports = {
 		"no-console": "warn",
 		"@typescript-eslint/no-var-requires": "off",
 		"no-mixed-spaces-and-tabs": "off",
+		"prefer-const": "off",
+		"@typescript-eslint/no-explicit-any": "off",
 	},
 };
