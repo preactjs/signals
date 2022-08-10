@@ -44,4 +44,43 @@ describe("computed()", () => {
 		a.value = "aa";
 		expect(c.value).to.equal("aab");
 	});
+
+	describe("graph updates", () => {
+		it("should run computeds once for multiple dep changes", async () => {
+			const a = signal("a");
+			const b = signal("b");
+
+			const compute = sinon.spy(() => {
+				// debugger;
+				return a.value + b.value;
+			});
+			const c = computed(compute);
+
+			expect(c.value).to.equal("ab");
+			expect(compute).to.have.been.calledOnce;
+			compute.resetHistory();
+
+			a.value = "aa";
+			expect(compute).to.have.been.calledOnce;
+		});
+
+		it("should drop A->B->A updates", async () => {
+			const a = signal(2);
+
+			const b = computed(() => a.value - 1);
+			const c = computed(() => a.value + 1);
+
+			const d = computed(() => a.value + b.value);
+
+			const compute = sinon.spy(() => "d: " + d.value);
+			const e = computed(compute);
+
+			expect(compute).to.have.been.calledOnce;
+			compute.resetHistory();
+
+			a.value = 4;
+
+			expect(compute).to.have.been.calledOnce;
+		});
+	});
 });
