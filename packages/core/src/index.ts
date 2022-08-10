@@ -1,51 +1,48 @@
-const ATOM = Symbol.for("atom");
+const SUBS = Symbol.for("subs");
+const DEPS = Symbol.for("deps");
+const VALUE = Symbol.for("value");
 
-class Atom<T = any> {
-	subs = new Set<Atom>();
-	deps = new Set<Atom>();
-	updater?: () => void;
-	constructor(public value: T) {}
-}
-
-const ROOT = new Atom(undefined);
+let ROOT: Signal<undefined>;
 
 /** This tracks subscriptions of signals read inside a computed */
-let currentAtom: Atom = ROOT;
-
-function subscribe(atom: Atom) {
-	currentAtom.deps.add(atom);
-	atom.subs.add(currentAtom);
-}
-
-function processUpdate(atom: Atom) {
-	for (const sub of atom.subs) {
-		sub.updater?.();
-	}
-}
+let currentSignal: Signal<any>;
 
 class Signal<T> {
-	[ATOM]: Atom<T>;
+	[SUBS]: Set<Signal<any>>;
+	[DEPS]: Set<Signal<any>>;
+	[VALUE]: T;
 
 	constructor(value: T) {
-		this[ATOM] = new Atom(value);
+		this[VALUE] = value;
+		this[SUBS] = new Set();
+		this[DEPS] = new Set();
 	}
 
 	toString() {
-		return this[ATOM].value;
+		return "" + this.value;
 	}
 
 	get value() {
-		subscribe(this[ATOM]);
-		return this[ATOM].value;
+		currentSignal[DEPS].add(this);
+		this[SUBS].add(currentSignal);
+		return this[VALUE];
 	}
 
 	set value(value) {
-		if (this[ATOM].value !== value) {
-			this[ATOM].value = value;
-			processUpdate(this[ATOM]);
+		if (this[VALUE] !== value) {
+			this[VALUE] = value;
+			for (const sub of this[SUBS]) {
+				sub.updater(this);
+			}
 		}
 	}
+
+	updater(sender: Signal<any>) {
+		// override me to handle updates
+	}
 }
+
+ROOT = currentSignal = new Signal(undefined);
 
 export function signal<T>(value: T): Signal<T> {
 	return new Signal(value);
@@ -55,15 +52,15 @@ export function computed<T>(compute: () => T): Signal<T> {
 	const signal = new Signal<T>(undefined as any);
 
 	function updater() {
-		let tmp = currentAtom;
-		currentAtom = signal[ATOM];
+		let tmp = currentSignal;
+		currentSignal = signal;
 		let ret = compute();
-		currentAtom = tmp;
+		currentSignal = tmp;
 
 		signal.value = ret;
 	}
 
-	signal[ATOM].updater = updater;
+	signal.updater = updater;
 	updater();
 
 	return signal;
