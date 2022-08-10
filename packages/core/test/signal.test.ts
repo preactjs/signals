@@ -9,7 +9,7 @@ describe("signal", () => {
 
 	it("should support .toString()", () => {
 		const s = signal(123);
-		expect(s.toString()).equal(123);
+		expect(s.toString()).equal("123");
 	});
 });
 
