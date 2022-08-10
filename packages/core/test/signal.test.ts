@@ -110,5 +110,54 @@ describe("computed()", () => {
 
 			expect(compute).to.have.been.calledOnce;
 		});
+
+		it("should only update every signal once (diamond graph)", () => {
+			// In this scenario "D" should only update once when "A" receives
+			// an update. This is sometimes referred to as the "diamond" scenario.
+			//     A
+			//   /   \
+			//  B     C
+			//   \   /
+			//     D
+			const a = signal("a");
+			const b = computed(() => a.value);
+			const c = computed(() => a.value);
+
+			const spy = sinon.spy(() => b.value + " " + c.value);
+			const d = computed(spy);
+
+			expect(d.value).to.equal("a a");
+			expect(spy).to.be.calledOnce;
+
+			a.value = "aa";
+			expect(d.value).to.equal("aa aa");
+			expect(spy).to.be.calledTwice;
+		});
+
+		it("should only update every signal once (diamond graph + tail)", () => {
+			// "E" will be likely updated twice if our mark+sweep logic is buggy.
+			//     A
+			//   /   \
+			//  B     C
+			//   \   /
+			//     D
+			//     |
+			//     E
+			const a = signal("a");
+			const b = computed(() => a.value);
+			const c = computed(() => a.value);
+
+			const d = computed(() => b.value + " " + c.value);
+
+			const spy = sinon.spy(() => d.value);
+			const e = computed(spy);
+
+			expect(e.value).to.equal("a a");
+			expect(spy).to.be.calledOnce;
+
+			a.value = "aa";
+			expect(e.value).to.equal("aa aa");
+			expect(spy).to.be.calledTwice;
+		});
 	});
 });
