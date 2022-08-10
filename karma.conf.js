@@ -6,41 +6,12 @@ var coverage = String(process.env.COVERAGE) === "true",
 	sauceLabs = ci && String(process.env.RUN_SAUCE_LABS) === "true",
 	// always downlevel to ES5 for saucelabs:
 	downlevel = sauceLabs || String(process.env.DOWNLEVEL) === "true",
-	performance = !coverage && String(process.env.PERFORMANCE) !== "false",
 	path = require("path"),
 	errorstacks = require("errorstacks"),
 	kl = require("kolorist");
 
 const babel = require("@babel/core");
 const fs = require("fs").promises;
-
-// This strips Karma's annoying `LOG: '...'` string from logs
-const orgStdoutWrite = process.stdout.write;
-process.stdout.write = msg => {
-	let out = "";
-	const match = msg.match(
-		/(^|.*\s)(LOG|WARN|ERROR):\s'__LOG_CUSTOM:([\S\s]*)'/
-	);
-	if (match && match.length >= 4) {
-		// Sometimes the UA of the browser will be included in the message
-		if (match[1].length) {
-			out += kl.yellow(kl.italic(match[1]));
-			out += match[3]
-				.split("\n")
-				.map(line => "  " + line)
-				.join("\n");
-		} else {
-			out += match[3];
-		}
-		out += "\n";
-	} else if (/(^|.*\s)(LOG|WARN|ERROR):\s([\S\s]*)/.test(msg)) {
-		// Nothing
-	} else {
-		out = msg;
-	}
-
-	return orgStdoutWrite.call(process.stdout, out);
-};
 
 var localLaunchers = {
 	ChromeNoSandboxHeadless: {
