@@ -12,7 +12,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      
+
       - name: Install Node.js
         uses: actions/setup-node@v3
         with:
@@ -20,9 +20,9 @@ jobs:
 
       - name: Install pnpm
         uses: pnpm/action-setup@v2.2.2
-          with:
-            version: 7
-            run_install: false
+        with:
+          version: 7
+          run_install: false
 
       - name: Get pnpm store directory
         id: pnpm-cache
