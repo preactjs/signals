@@ -10,7 +10,7 @@ let currentSignal: Signal;
 
 const pending = new Set<Signal>();
 
-class Signal<T = any> {
+export class Signal<T = any> {
 	[SUBS] = new Set<Signal>();
 	[DEPS] = new Set<Signal>();
 	[PENDING] = 0;

@@ -19,5 +19,6 @@ module.exports = {
 		"no-mixed-spaces-and-tabs": "off",
 		"prefer-const": "off",
 		"@typescript-eslint/no-explicit-any": "off",
+		"@typescript-eslint/ban-ts-comment": "off",
 	},
 };
