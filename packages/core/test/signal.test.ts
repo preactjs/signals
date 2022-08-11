@@ -1,4 +1,4 @@
-import { signal, computed, observe } from "@preact/signals-core";
+import { signal, computed, observe, _dumpTree } from "@preact/signals-core";
 
 describe("signal", () => {
 	it("should return value", () => {
@@ -138,7 +138,7 @@ describe("computed()", () => {
 			expect(spy).to.be.calledTwice;
 		});
 
-		it("should only update every signal once (diamond graph + tail)", () => {
+		it.only("should only update every signal once (diamond graph + tail)", () => {
 			// "E" will be likely updated twice if our mark+sweep logic is buggy.
 			//     A
 			//   /   \
@@ -162,6 +162,7 @@ describe("computed()", () => {
 			e.displayName = "E";
 
 			observe(e, () => {});
+			_dumpTree(e);
 
 			expect(e.value).to.equal("a a");
 			expect(spy).to.be.calledOnce;

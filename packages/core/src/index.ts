@@ -157,3 +157,36 @@ export function observe<T>(signal: Signal<T>, callback: (value: T) => void) {
 	sweep();
 	return () => unsubscribe(s, signal);
 }
+
+export function _dumpTree(signal: Signal<any>) {
+	const seen = new Set<Signal<any>>();
+	const roots = new Set<Signal<any>>();
+
+	let stack = [signal];
+	let item: Signal<any> | undefined;
+	while ((item = stack.pop()) !== undefined) {
+		if (seen.has(item)) continue;
+		seen.add(item);
+
+		stack.push(...item[SUBS]);
+		stack.push(...item[DEPS]);
+
+		if (item[DEPS].size === 0) {
+			roots.add(item);
+		}
+	}
+
+	console.log([...roots].map(x => x.displayName));
+
+	const out: string[] = [];
+	stack = [...roots];
+	while ((item = stack.pop()) !== undefined) {
+		const deps = Array.from(item[DEPS])
+			.map(s => s.displayName)
+			.join(", ");
+		const subs = Array.from(item[SUBS])
+			.map(s => s.displayName)
+			.join(", ");
+		out.push(`${item.displayName}: SUBS [${subs}] DEPS [${deps}]`);
+	}
+}
