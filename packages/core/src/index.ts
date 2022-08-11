@@ -56,6 +56,12 @@ function mark(signal: Signal) {
 	}
 }
 
+function unmark(signal: Signal<any>) {
+	if (--signal[PENDING] === 0) {
+		signal[SUBS].forEach(unmark);
+	}
+}
+
 function sweep() {
 	const stack = Array.from(pending);
 	let signal;
@@ -106,7 +112,11 @@ export function computed<T>(compute: () => T): Signal<T> {
 		oldDeps.forEach(sub => unsubscribe(signal, sub));
 		oldDeps.clear();
 
-		signal[VALUE] = ret;
+		if (signal[VALUE] === ret) {
+			signal[SUBS].forEach(unmark);
+		} else {
+			signal[VALUE] = ret;
+		}
 	}
 
 	signal.updater = updater;

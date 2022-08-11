@@ -159,5 +159,25 @@ describe("computed()", () => {
 			expect(e.value).to.equal("aa aa");
 			expect(spy).to.be.calledTwice;
 		});
+
+		it("should bail out if result is the same", () => {
+			// Bail out if value of "B" never changes
+			// A->B->C
+			const a = signal("a");
+			const b = computed(() => {
+				a.value;
+				return "foo";
+			});
+
+			const spy = sinon.spy(() => b.value);
+			const c = computed(spy);
+
+			expect(c.value).to.equal("foo");
+			expect(spy).to.be.calledOnce;
+
+			a.value = "aa";
+			expect(c.value).to.equal("foo");
+			expect(spy).to.be.calledOnce;
+		});
 	});
 });
