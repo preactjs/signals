@@ -31,16 +31,19 @@ class Signal<T> {
 	}
 
 	get value() {
-		console.log(
-			"READ",
-			this.displayName,
-			this.updater === NOOP,
-			this[DEPS].size
-		);
-		// if (activationMode) return this[VALUE];
+		if (activationMode) {
+			currentSignal[DEPS].add(this);
+			this[SUBS].add(currentSignal);
 
-		if (this.updater !== NOOP && this[DEPS].size === 0) {
-			activate(this);
+			const tmp = currentSignal;
+			currentSignal = this;
+			if (this.updater !== NOOP && this[DEPS].size === 0) {
+				this.updater();
+			} else {
+				pending.add(this);
+			}
+
+			currentSignal = tmp;
 		} else {
 			currentSignal[DEPS].add(this);
 			this[SUBS].add(currentSignal);
@@ -65,7 +68,10 @@ class Signal<T> {
 
 function mark(signal: Signal<any>) {
 	if (signal[PENDING]++ === 0) {
+		console.log("  mark", signal.displayName, signal[PENDING]);
 		signal[SUBS].forEach(mark);
+	} else {
+		console.log("  mark", signal.displayName, signal[PENDING]);
 	}
 }
 
@@ -79,6 +85,7 @@ function sweep() {
 	const stack = Array.from(pending);
 	let signal;
 	while ((signal = stack.pop()) !== undefined) {
+		console.log("  sweep", signal.displayName, signal[PENDING]);
 		if (--signal[PENDING] === 0) {
 			signal.updater();
 			stack.push(...signal[SUBS]);
@@ -99,14 +106,8 @@ function unsubscribe(signal: Signal<any>, from: Signal<any>) {
 	}
 }
 
-function activate(signal: Signal<any>) {
-	if (signal[DEPS].size === 0) {
-		console.log("  activate", signal.displayName, signal[DEPS].size);
-		signal.updater();
-	}
-}
-
 ROOT = currentSignal = new Signal(undefined);
+ROOT.displayName = "ROOT";
 
 export function signal<T>(value: T): Signal<T> {
 	return new Signal(value);
@@ -147,6 +148,12 @@ export function computed<T>(compute: () => T): Signal<T> {
 
 export function observe<T>(signal: Signal<T>, callback: (value: T) => void) {
 	const s = computed(() => callback(signal.value));
-	activate(s);
+	activationMode = true;
+	console.log("  activate", signal.displayName, signal[DEPS].size);
+	currentSignal = s;
+	s.updater();
+	activationMode = false;
+	pending.forEach(mark);
+	sweep();
 	return () => unsubscribe(s, signal);
 }

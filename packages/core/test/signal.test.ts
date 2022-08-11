@@ -39,6 +39,7 @@ describe("computed()", () => {
 		const b = signal("b");
 
 		const c = computed(() => a.value + b.value);
+		observe(c, () => {});
 		expect(c.value).to.equal("ab");
 
 		a.value = "aa";
@@ -55,6 +56,7 @@ describe("computed()", () => {
 		});
 
 		const c = computed(spy);
+		observe(c, () => {});
 		expect(c.value).to.equal("a");
 		expect(spy).to.be.calledOnce;
 
@@ -84,6 +86,7 @@ describe("computed()", () => {
 			});
 			const c = computed(compute);
 
+			observe(c, () => {});
 			expect(c.value).to.equal("ab");
 			expect(compute).to.have.been.calledOnce;
 			compute.resetHistory();
@@ -126,6 +129,7 @@ describe("computed()", () => {
 			const spy = sinon.spy(() => b.value + " " + c.value);
 			const d = computed(spy);
 
+			observe(d, () => {});
 			expect(d.value).to.equal("a a");
 			expect(spy).to.be.calledOnce;
 
@@ -144,23 +148,31 @@ describe("computed()", () => {
 			//     |
 			//     E
 			const a = signal("a");
+			a.displayName = "A";
 			const b = computed(() => a.value);
+			b.displayName = "B";
 			const c = computed(() => a.value);
+			c.displayName = "C";
 
 			const d = computed(() => b.value + " " + c.value);
+			d.displayName = "D";
 
 			const spy = sinon.spy(() => d.value);
 			const e = computed(spy);
+			e.displayName = "E";
+
+			observe(e, () => {});
 
 			expect(e.value).to.equal("a a");
 			expect(spy).to.be.calledOnce;
 
+			console.log("================================");
 			a.value = "aa";
 			expect(e.value).to.equal("aa aa");
 			expect(spy).to.be.calledTwice;
 		});
 
-		it.only("should bail out if result is the same", () => {
+		it("should bail out if result is the same", () => {
 			// Bail out if value of "B" never changes
 			// A->B->C
 			const a = signal("a");
@@ -175,11 +187,13 @@ describe("computed()", () => {
 			const c = computed(spy);
 			c.displayName = "C";
 
+			observe(c, () => {});
 			console.log("================================");
 			expect(c.value).to.equal("foo");
 			expect(spy).to.be.calledOnce;
 
 			a.value = "aa";
+			console.log("================================");
 			expect(c.value).to.equal("foo");
 			expect(spy).to.be.calledOnce;
 		});
@@ -202,7 +216,7 @@ describe("computed()", () => {
 			const d = computed(spy);
 			d.displayName = "D";
 
-			// observe(c, () => null);
+			observe(c, () => {});
 			expect(c.value).to.equal("a");
 			expect(spy).not.to.be.called;
 
