@@ -198,8 +198,14 @@ module.exports = function (config) {
 		customLaunchers: localLaunchers,
 
 		files: [
+			// For some reason karma errors when I try to combine both patterns
 			{
 				pattern: "packages/{core,preact}/test/**/*.test.ts",
+				watched: false,
+				type: "js",
+			},
+			{
+				pattern: "packages/{core,preact}/test/**/*.test.tsx",
 				watched: false,
 				type: "js",
 			},

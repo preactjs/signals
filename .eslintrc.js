@@ -14,6 +14,10 @@ module.exports = {
 	plugins: ["@typescript-eslint"],
 	ignorePatterns: ["**/dist/**"],
 	rules: {
+		"@typescript-eslint/no-unused-vars": [
+			"error",
+			{ varsIgnorePattern: "createElement" },
+		],
 		"no-console": "warn",
 		"@typescript-eslint/no-var-requires": "off",
 		"no-mixed-spaces-and-tabs": "off",

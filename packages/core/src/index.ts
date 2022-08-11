@@ -6,9 +6,14 @@ const PENDING = Symbol.for("pending");
 let ROOT: Signal;
 
 /** This tracks subscriptions of signals read inside a computed */
-let currentSignal: Signal;
+export let currentSignal: Signal;
+export function setTrackingSignal(signal: Signal) {
+	currentSignal = signal;
+}
 
 const pending = new Set<Signal>();
+
+export type GetSignalValue<T> = Signal<T>[typeof VALUE];
 
 export class Signal<T = any> {
 	[SUBS] = new Set<Signal>();
@@ -46,6 +51,10 @@ export class Signal<T = any> {
 	updater() {
 		// override me to handle updates
 	}
+}
+
+export function peekValue<T>(signal: Signal<T>): T {
+	return signal[VALUE];
 }
 
 function mark(signal: Signal) {

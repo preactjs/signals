@@ -6,10 +6,19 @@ import {
 	VNode,
 } from "preact";
 import { useMemo, useRef } from "preact/hooks";
-import { computed, signal, Signal } from "@preact/signals-core";
+import {
+	computed,
+	GetSignalValue,
+	peekValue,
+	signal,
+	Signal,
+	currentSignal,
+	setTrackingSignal,
+} from "@preact/signals-core";
 
 interface PreactVNode extends VNode {
 	__c?: Component;
+	__e: HTMLElement | Text;
 }
 
 interface PreactOptions extends Options {
@@ -20,17 +29,36 @@ interface PreactOptions extends Options {
 
 // FIXME: We should get rid of this
 const SUBS = Symbol.for("subs");
-const DEPS = Symbol.for("deps");
-const VALUE = Symbol.for("value");
-const PENDING = Symbol.for("pending");
 
 const options = preactOpts as PreactOptions;
 
 let currentComponent: Component | undefined;
-let currentUpdater: Updater | undefined;
-const updaterForComponent = new WeakMap<Component, Updater>();
-const signalsForUpdater = new WeakMap<Updater, Set<Signal<any>>>();
-const unusedSignalsForUpdater = new WeakMap<Updater, Set<Signal<any>>>();
+let currentComponentSignal: Signal | undefined;
+const componentSignals = new WeakMap<Component | PreactVNode, Signal>();
+const signalsForUpdater = new WeakMap<Updater, Set<Signal>>();
+const unusedSignalsForUpdater = new WeakMap<Updater, Set<Signal>>();
+
+function setCurrentSignal(signal: Signal) {
+	currentComponentSignal = signal;
+
+	// keep track of the previous signals accessed by this component.
+	// When previously-accessed symbols are not accessed in a render, unsubscribe.
+	let signals = signalsForUpdater.get(signal);
+	if (!signals) {
+		signalsForUpdater.set(signal, (signals = new Set()));
+	}
+	unusedSignalsForUpdater.set(signal, new Set(signals));
+}
+
+function finishCurrentUpdater(updater: Updater) {
+	let signals = signalsForUpdater.get(updater)!;
+	let unused = unusedSignalsForUpdater.get(updater)!;
+	for (const signal of unused) {
+		signal[SUBS].delete(updater);
+		signals.delete(signal);
+	}
+	if (currentComponentSignal === updater) currentComponentSignal = undefined;
+}
 
 // Track various types of state usage to determine auto-memoization status
 const hasHookState = new WeakSet<Component>();
@@ -48,7 +76,7 @@ options.__h = (component, index, type) => {
 // Auto-memoize components that use Signals but not hook/class state
 Component.prototype.shouldComponentUpdate = function (props, state) {
 	// if this component doesn't have any Signals, don't optimize:
-	const updater = updaterForComponent.get(this);
+	const updater = componentSignals.get(this);
 	const hasSignals = updater && signalsForUpdater.get(updater)?.size !== 0;
 	// Note: this bailout is too broad.
 	// Right now, fully text-optimized components are considered
@@ -69,12 +97,12 @@ Component.prototype.shouldComponentUpdate = function (props, state) {
 
 // Eager removal of unmounted components/vnodes from mappings
 function free(thing: VNode | Component) {
-	const updater = updaterForComponent.get(thing);
+	const updater = componentSignals.get(thing);
 	const signals = updater && signalsForUpdater.get(updater);
 	if (signals) {
 		for (const signal of signals) signal[SUBS].delete(updater);
 		signalsForUpdater.delete(updater);
-		updaterForComponent.delete(thing);
+		componentSignals.delete(thing);
 	}
 }
 const oldUnmount = options.unmount;
@@ -84,21 +112,25 @@ options.unmount = (vnode: PreactVNode) => {
 	if (oldUnmount) oldUnmount(vnode);
 };
 
+function peekOrGetValue<T>(_: T): T extends Signal ? GetSignalValue<T> : T {
+	return _ instanceof Signal ? peekValue(_) : _;
+}
+
 // Inject low-level property/attribute bindings for Signals into Preact's diff
 const oldDiff = options.__b;
 options.__b = vnode => {
 	if (typeof vnode.type === "string") {
 		// let orig = vnode.__o || vnode;
-		let updater = updaterForComponent.get(vnode);
-		if (!updater) {
-			updater = function treeUpdater() {
-				let dom = vnode.__e;
+		let signal = componentSignals.get(vnode);
+		if (!signal) {
+			signal = new Signal(undefined);
+			signal.updater = function treeUpdater() {
+				let dom = vnode.__e as HTMLElement;
 				for (let i in vnode.props) {
 					if (i === "children") continue;
-					const rawValue = vnode.props[i];
-					let value = rawValue instanceof Signal ? rawValue[VALUE] : rawValue;
+					let value = peekOrGetValue((vnode.props as any)[i]);
 					if (i in dom) {
-						dom[i] = value;
+						(dom as any)[i] = value;
 					} else if (value) {
 						dom.setAttribute(i, value);
 					} else {
@@ -107,8 +139,8 @@ options.__b = vnode => {
 				}
 			};
 			// updater.target = vnode;
-			setCurrentUpdater(updater);
-			updaterForComponent.set(vnode, updater);
+			setCurrentSignal(signal);
+			componentSignals.set(vnode, signal);
 		}
 	}
 
@@ -128,7 +160,8 @@ let oldRender = options.__r;
 options.__r = vnode => {
 	let component = vnode.__c;
 	currentComponent = component;
-	let updater = updaterForComponent.get(component!);
+	let updater = componentSignals.get(component!);
+	console.log("render", updater);
 	if (updater === undefined) {
 		// updater = component.setState.bind(component, {});
 		updater = function componentUpdater() {
@@ -136,11 +169,11 @@ options.__r = vnode => {
 			component!.setState({});
 		};
 		// updater.target = component;
-		updaterForComponent.set(component!, updater);
+		componentSignals.set(component!, updater);
 	}
 
 	// if (updater !== currentUpdater) isRendering++;
-	setCurrentUpdater(updater);
+	setCurrentSignal(updater);
 	if (oldRender) oldRender(vnode);
 };
 
@@ -150,7 +183,7 @@ options.diffed = (vnode: PreactVNode) => {
 	if (component) {
 		if (component === currentComponent) currentComponent = undefined;
 		// isRendering--;
-		finishCurrentUpdater(updaterForComponent.get(component)!);
+		finishCurrentUpdater(componentSignals.get(component)!);
 	}
 	if (oldDiffed) oldDiffed(vnode);
 	// if (queue.size) flushValues();
@@ -158,7 +191,7 @@ options.diffed = (vnode: PreactVNode) => {
 
 // A wrapper component that renders a Signal as Text
 // Todo: in Preact 11, just decorate Signal with `type:null`.
-function Text(this: any, { data }: { data: Signal<any> }) {
+function Text(this: any, { data }: { data: Signal }) {
 	// mark the parent component as having computeds so it gets optimized
 	let v = this.__v;
 	while ((v = v.__)) {
