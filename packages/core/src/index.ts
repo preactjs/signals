@@ -3,16 +3,16 @@ const DEPS = Symbol.for("deps");
 const VALUE = Symbol.for("value");
 const PENDING = Symbol.for("pending");
 
-let ROOT: Signal<undefined>;
+let ROOT: Signal;
 
 /** This tracks subscriptions of signals read inside a computed */
-let currentSignal: Signal<any>;
+let currentSignal: Signal;
 
-const pending = new Set<Signal<any>>();
+const pending = new Set<Signal>();
 
-class Signal<T> {
-	[SUBS] = new Set<Signal<any>>();
-	[DEPS] = new Set<Signal<any>>();
+class Signal<T = any> {
+	[SUBS] = new Set<Signal>();
+	[DEPS] = new Set<Signal>();
 	[PENDING] = 0;
 	[VALUE]: T;
 
@@ -42,13 +42,13 @@ class Signal<T> {
 		}
 	}
 
-	// updater(sender: Signal<any>) {
+	// updater(sender: Signal) {
 	updater() {
 		// override me to handle updates
 	}
 }
 
-function mark(signal: Signal<any>) {
+function mark(signal: Signal) {
 	if (signal[PENDING]++ === 0) {
 		pending.add(signal);
 	}
