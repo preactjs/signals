@@ -14,7 +14,8 @@ interface PreactVNode extends VNode {
 
 interface PreactOptions extends Options {
 	__h: (component: Component, index: number, type: number) => void;
-	__b: (vnode: VNode) => void;
+	__b: (vnode: PreactVNode) => void;
+	__r: (vnode: PreactVNode) => void;
 }
 
 // FIXME: We should get rid of this
@@ -24,6 +25,12 @@ const VALUE = Symbol.for("value");
 const PENDING = Symbol.for("pending");
 
 const options = preactOpts as PreactOptions;
+
+let currentComponent: Component | undefined;
+let currentUpdater: Updater | undefined;
+const updaterForComponent = new WeakMap<Component, Updater>();
+const signalsForUpdater = new WeakMap<Updater, Set<Signal<any>>>();
+const unusedSignalsForUpdater = new WeakMap<Updater, Set<Signal<any>>>();
 
 // Track various types of state usage to determine auto-memoization status
 const hasHookState = new WeakSet<Component>();
@@ -79,7 +86,7 @@ options.unmount = (vnode: PreactVNode) => {
 
 // Inject low-level property/attribute bindings for Signals into Preact's diff
 const oldDiff = options.__b;
-options.__b = (vnode: VNode) => {
+options.__b = vnode => {
 	if (typeof vnode.type === "string") {
 		// let orig = vnode.__o || vnode;
 		let updater = updaterForComponent.get(vnode);
@@ -88,7 +95,8 @@ options.__b = (vnode: VNode) => {
 				let dom = vnode.__e;
 				for (let i in vnode.props) {
 					if (i === "children") continue;
-					let value = peekValue(vnode.props[i]);
+					const rawValue = vnode.props[i];
+					let value = rawValue instanceof Signal ? rawValue[VALUE] : rawValue;
 					if (i in dom) {
 						dom[i] = value;
 					} else if (value) {
@@ -116,24 +124,19 @@ options.__b = (vnode: VNode) => {
 	if (oldDiff) oldDiff(vnode);
 };
 
-let currentComponent: Component | undefined;
-let currentUpdater: Updater | undefined;
-
-// @ts-expect-error
 let oldRender = options.__r;
-// @ts-expect-error
-options.__r = (vnode: PreactVNode) => {
+options.__r = vnode => {
 	let component = vnode.__c;
 	currentComponent = component;
-	let updater = updaterForComponent.get(component);
+	let updater = updaterForComponent.get(component!);
 	if (updater === undefined) {
 		// updater = component.setState.bind(component, {});
 		updater = function componentUpdater() {
-			hasPendingUpdate.add(component);
-			component.setState({});
+			hasPendingUpdate.add(component!);
+			component!.setState({});
 		};
 		// updater.target = component;
-		updaterForComponent.set(component, updater);
+		updaterForComponent.set(component!, updater);
 	}
 
 	// if (updater !== currentUpdater) isRendering++;
@@ -153,13 +156,6 @@ options.diffed = (vnode: PreactVNode) => {
 	// if (queue.size) flushValues();
 };
 
-function childToSignal(child, i, arr) {
-	if (Array.isArray(child)) child.forEach(childToSignal);
-	else if (child instanceof Signal) {
-		arr[i] = createElement(Text, { data: child });
-	}
-}
-
 // A wrapper component that renders a Signal as Text
 // Todo: in Preact 11, just decorate Signal with `type:null`.
 function Text(this: any, { data }: { data: Signal<any> }) {
@@ -174,18 +170,24 @@ function Text(this: any, { data }: { data: Signal<any> }) {
 	return data.value + "";
 }
 
+function childToSignal<T, R = T extends Signal ? Record<string, unknown> : T[]>(
+	child: T,
+	i: number | string,
+	arr: R
+) {
+	if (Array.isArray(child)) child.forEach(childToSignal);
+	else if (child instanceof Signal) {
+		(arr as any)[i] = createElement(Text as any, { data: child });
+	}
+}
+
 export function useSignal<T>(value: T) {
 	return useMemo(() => signal<T>(value), []);
 }
 
-export function useReactive<T extends Record<string, unknown>>(
-	value: T
-): Reactive<T> {
-	return useMemo(() => reactive<T>(value), []);
-}
 export function useComputed<T>(compute: () => T) {
 	const $compute = useRef(compute);
 	$compute.current = compute;
-	hasComputeds.add(currentComponent);
+	hasComputeds.add(currentComponent!);
 	return useMemo(() => computed<T>(() => $compute.current()), []);
 }
