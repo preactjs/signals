@@ -160,24 +160,54 @@ describe("computed()", () => {
 			expect(spy).to.be.calledTwice;
 		});
 
-		it("should bail out if result is the same", () => {
+		it.only("should bail out if result is the same", () => {
 			// Bail out if value of "B" never changes
 			// A->B->C
 			const a = signal("a");
+			a.displayName = "A";
 			const b = computed(() => {
 				a.value;
 				return "foo";
 			});
+			b.displayName = "B";
 
 			const spy = sinon.spy(() => b.value);
 			const c = computed(spy);
+			c.displayName = "C";
 
+			console.log("================================");
 			expect(c.value).to.equal("foo");
 			expect(spy).to.be.calledOnce;
 
 			a.value = "aa";
 			expect(c.value).to.equal("foo");
 			expect(spy).to.be.calledOnce;
+		});
+
+		it("should not create subscriptions when nobody subscribed", () => {
+			// We only listen to "C", so "D" should never be updated
+			//     A
+			//   /   \
+			//  B     D
+			//  |
+			//  C*
+			const a = signal("a");
+			a.displayName = "A";
+			const b = computed(() => a.value);
+			b.displayName = "B";
+			const c = computed(() => b.value);
+			c.displayName = "C";
+
+			const spy = sinon.spy(() => a.value);
+			const d = computed(spy);
+			d.displayName = "D";
+
+			// observe(c, () => null);
+			expect(c.value).to.equal("a");
+			expect(spy).not.to.be.called;
+
+			a.value = "aa";
+			expect(spy).not.to.be.called;
 		});
 	});
 });

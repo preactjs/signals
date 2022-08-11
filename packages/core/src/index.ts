@@ -3,6 +3,8 @@ const DEPS = Symbol.for("deps");
 const VALUE = Symbol.for("value");
 const PENDING = Symbol.for("pending");
 
+const NOOP = () => {};
+
 let ROOT: Signal<undefined>;
 
 /** This tracks subscriptions of signals read inside a computed */
@@ -11,12 +13,14 @@ let currentSignal: Signal<any>;
 const pending = new Set<Signal<any>>();
 
 let oldDeps = new Set<Signal<any>>();
+let activationMode = false;
 
 class Signal<T> {
 	[SUBS] = new Set<Signal<any>>();
 	[DEPS] = new Set<Signal<any>>();
 	[PENDING] = 0;
 	[VALUE]: T;
+	displayName?: string;
 
 	constructor(value: T) {
 		this[VALUE] = value;
@@ -27,9 +31,21 @@ class Signal<T> {
 	}
 
 	get value() {
-		currentSignal[DEPS].add(this);
-		this[SUBS].add(currentSignal);
-		oldDeps.delete(currentSignal);
+		console.log(
+			"READ",
+			this.displayName,
+			this.updater === NOOP,
+			this[DEPS].size
+		);
+		// if (activationMode) return this[VALUE];
+
+		if (this.updater !== NOOP && this[DEPS].size === 0) {
+			activate(this);
+		} else {
+			currentSignal[DEPS].add(this);
+			this[SUBS].add(currentSignal);
+			oldDeps.delete(currentSignal);
+		}
 		return this[VALUE];
 	}
 
@@ -44,10 +60,7 @@ class Signal<T> {
 		}
 	}
 
-	// updater(sender: Signal<any>) {
-	updater() {
-		// override me to handle updates
-	}
+	updater = NOOP;
 }
 
 function mark(signal: Signal<any>) {
@@ -86,6 +99,13 @@ function unsubscribe(signal: Signal<any>, from: Signal<any>) {
 	}
 }
 
+function activate(signal: Signal<any>) {
+	if (signal[DEPS].size === 0) {
+		console.log("  activate", signal.displayName, signal[DEPS].size);
+		signal.updater();
+	}
+}
+
 ROOT = currentSignal = new Signal(undefined);
 
 export function signal<T>(value: T): Signal<T> {
@@ -120,11 +140,13 @@ export function computed<T>(compute: () => T): Signal<T> {
 	}
 
 	signal.updater = updater;
-	updater();
+	// updater();
 
 	return signal;
 }
 
 export function observe<T>(signal: Signal<T>, callback: (value: T) => void) {
-	computed(() => callback(signal.value));
+	const s = computed(() => callback(signal.value));
+	activate(s);
+	return () => unsubscribe(s, signal);
 }
