@@ -1,4 +1,4 @@
-import { signal, computed, observe } from "@preact/signals-core";
+import { signal, computed, observe, reactive } from "@preact/signals-core";
 
 describe("signal", () => {
 	it("should return value", () => {
@@ -19,6 +19,59 @@ describe("observe()", () => {
 		const spy = sinon.spy();
 		observe(s, spy);
 		expect(spy).to.have.been.calledWith(123);
+	});
+});
+
+describe("reactive()", () => {
+	it("should track property access", () => {
+		const s = reactive({ foo: 1, bar: 2 });
+		const r = computed(() => s.foo);
+		expect(r.value).to.equal(1);
+
+		s.foo++;
+		expect(r.value).to.equal(2);
+	});
+
+	it("should track nested property access", () => {
+		const s = reactive({ foo: { bar: 1 } });
+		const r = computed(() => s.foo.bar);
+		expect(r.value).to.equal(1);
+
+		s.foo.bar++;
+		expect(r.value).to.equal(2);
+	});
+
+	it("should dynamically create reactives", () => {
+		const s = reactive({ foo: { bar: 1 } });
+		const r = computed(() => s.foo.bar);
+		expect(r.value).to.equal(1);
+
+		s.foo = { bar: 2 };
+		expect(r.value).to.equal(2);
+
+		// Check if it's really reactive
+		s.foo.bar++;
+		expect(r.value).to.equal(3);
+	});
+
+	describe("Array", () => {
+		it("should track item mutation", () => {
+			const s = reactive([1]);
+			const r = computed(() => s[0]);
+			expect(r.value).to.equal(1);
+
+			s[0] = 2;
+			expect(r.value).to.equal(2);
+		});
+
+		it("should track .length", () => {
+			const s = reactive([1]);
+			const r = computed(() => s.length);
+			expect(r.value).to.equal(1);
+
+			s.push(2);
+			expect(r.value).to.equal(2);
+		});
 	});
 });
 
