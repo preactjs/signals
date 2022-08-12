@@ -27,9 +27,11 @@ class Signal<T = any> {
 	}
 
 	get value() {
-		currentSignal[DEPS].add(this);
+		// subscribe the current computed to this signal:
 		this[SUBS].add(currentSignal);
-		oldDeps.delete(currentSignal);
+		// update the current computed's dependencies:
+		currentSignal[DEPS].add(this);
+		oldDeps.delete(this);
 		return this[VALUE];
 	}
 
@@ -40,11 +42,15 @@ class Signal<T = any> {
 
 			pending.add(this);
 			mark(this);
-			if (isFirst) sweep();
+
+			// this is the first change, not a computed:
+			if (isFirst) {
+				sweep(pending);
+				pending.clear();
+			}
 		}
 	}
 
-	// updater(sender: Signal) {
 	updater() {
 		// override me to handle updates
 	}
@@ -62,16 +68,13 @@ function unmark(signal: Signal<any>) {
 	}
 }
 
-function sweep() {
-	const stack = Array.from(pending);
-	let signal;
-	while ((signal = stack.pop()) !== undefined) {
+function sweep(subs: Set<Signal<any>>) {
+	subs.forEach(signal => {
 		if (--signal[PENDING] === 0) {
 			signal.updater();
-			stack.push(...signal[SUBS]);
+			sweep(signal[SUBS]);
 		}
-	}
-	pending.clear();
+	});
 }
 
 function unsubscribe(signal: Signal<any>, from: Signal<any>) {
