@@ -286,3 +286,50 @@ export function batch<T>(cb: () => T): T {
 		}
 	}
 }
+
+function getBackingSignal<T, K>(
+	backing: Map<K, Signal>,
+	key: K,
+	value: T
+): Signal<T> {
+	let signal = backing.get(key);
+	if (!signal) {
+		signal = new Signal(value);
+		backing.set(key, signal);
+	}
+
+	return signal;
+}
+
+const REACTIVE = Symbol.for("reactive");
+function proxify<T>(value: T): T {
+	if (value !== null && typeof value === "object" && !(REACTIVE in value)) {
+		return reactive(value as any);
+	}
+
+	return value;
+}
+
+export function reactive<T extends Record<string, unknown> | Array<any>>(
+	original: T
+): T {
+	const backing = new Map<string | symbol, Signal>();
+	const proxy = new Proxy(original, {
+		get(target, key) {
+			if (key === REACTIVE) return true;
+			if (!(key in target)) return;
+
+			const value = proxify((target as any)[key]);
+			const signal = getBackingSignal(backing, key, value);
+
+			return signal.value;
+		},
+		set(target, key, value) {
+			const signal = getBackingSignal(backing, key, value);
+			signal.value = proxify(value);
+			return true;
+		},
+	});
+
+	return proxy;
+}
