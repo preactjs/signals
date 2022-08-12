@@ -179,5 +179,73 @@ describe("computed()", () => {
 			expect(c.value).to.equal("foo");
 			expect(spy).to.be.calledOnce;
 		});
+
+		it("should only update every signal once (jagged diamond graph + tails)", () => {
+			// "F" and "G" will be likely updated twice if our mark+sweep logic is buggy.
+			//     A
+			//   /   \
+			//  B     C
+			//  |     |
+			//  |     D
+			//   \   /
+			//     E
+			//   /   \
+			//  F     G
+			const a = signal("a");
+
+			const b = computed(() => a.value);
+			const c = computed(() => a.value);
+
+			const d = computed(() => c.value);
+
+			const eSpy = sinon.spy(() => b.value + " " + d.value);
+			const e = computed(eSpy);
+
+			const fSpy = sinon.spy(() => e.value);
+			const f = computed(fSpy);
+			const gSpy = sinon.spy(() => e.value);
+			const g = computed(gSpy);
+
+			expect(f.value).to.equal("a a");
+			expect(fSpy).to.be.calledOnce;
+
+			expect(g.value).to.equal("a a");
+			expect(gSpy).to.be.calledOnce;
+
+			eSpy.resetHistory();
+			fSpy.resetHistory();
+			gSpy.resetHistory();
+
+			a.value = "b";
+
+			expect(e.value).to.equal("b b");
+			expect(eSpy).to.be.calledOnce;
+
+			expect(f.value).to.equal("b b");
+			expect(fSpy).to.be.calledOnce;
+
+			expect(g.value).to.equal("b b");
+			expect(gSpy).to.be.calledOnce;
+
+			eSpy.resetHistory();
+			fSpy.resetHistory();
+			gSpy.resetHistory();
+
+			a.value = "c";
+
+			expect(e.value).to.equal("c c");
+			expect(eSpy).to.be.calledOnce;
+
+			expect(f.value).to.equal("c c");
+			expect(fSpy).to.be.calledOnce;
+
+			expect(g.value).to.equal("c c");
+			expect(gSpy).to.be.calledOnce;
+
+			// top to bottom
+			expect(eSpy).to.have.been.calledBefore(fSpy);
+			// right to left
+			expect(fSpy).to.have.been.calledBefore(gSpy);
+		});
 	});
 });
