@@ -10,6 +10,8 @@ let currentSignal: Signal;
 
 const pending = new Set<Signal>();
 
+let oldDeps = new Set<Signal>();
+
 class Signal<T = any> {
 	[SUBS] = new Set<Signal>();
 	[DEPS] = new Set<Signal>();
@@ -25,8 +27,11 @@ class Signal<T = any> {
 	}
 
 	get value() {
-		currentSignal[DEPS].add(this);
+		// subscribe the current computed to this signal:
 		this[SUBS].add(currentSignal);
+		// update the current computed's dependencies:
+		currentSignal[DEPS].add(this);
+		oldDeps.delete(this);
 		return this[VALUE];
 	}
 
@@ -34,15 +39,18 @@ class Signal<T = any> {
 		if (this[VALUE] !== value) {
 			this[VALUE] = value;
 			let isFirst = pending.size === 0;
+
+			pending.add(this);
 			mark(this);
-			if (isFirst) sweep();
-			// for (const sub of this[SUBS]) {
-			// 	sub.updater(this);
-			// }
+
+			// this is the first change, not a computed:
+			if (isFirst) {
+				sweep(pending);
+				pending.clear();
+			}
 		}
 	}
 
-	// updater(sender: Signal) {
 	updater() {
 		// override me to handle updates
 	}
@@ -50,17 +58,35 @@ class Signal<T = any> {
 
 function mark(signal: Signal) {
 	if (signal[PENDING]++ === 0) {
-		pending.add(signal);
+		signal[SUBS].forEach(mark);
 	}
-	signal[SUBS].forEach(mark);
 }
 
-function sweep() {
-	pending.forEach(signal => {
-		signal[PENDING] = 0;
-		signal.updater();
+function unmark(signal: Signal<any>) {
+	if (--signal[PENDING] === 0) {
+		signal[SUBS].forEach(unmark);
+	}
+}
+
+function sweep(subs: Set<Signal<any>>) {
+	subs.forEach(signal => {
+		if (--signal[PENDING] === 0) {
+			signal.updater();
+			sweep(signal[SUBS]);
+		}
 	});
-	pending.clear();
+}
+
+function unsubscribe(signal: Signal<any>, from: Signal<any>) {
+	signal[DEPS].delete(from);
+	from[SUBS].delete(signal);
+
+	// If nobody listens to the signal we depended on, we can traverse
+	// upwards and destroy all subscriptions until we encounter a writable
+	// signal or a signal that others listen to as well.
+	if (from[SUBS].size === 0) {
+		from[DEPS].forEach(dep => unsubscribe(from, dep));
+	}
 }
 
 ROOT = currentSignal = new Signal(undefined);
@@ -71,22 +97,33 @@ export function signal<T>(value: T): Signal<T> {
 
 export function computed<T>(compute: () => T): Signal<T> {
 	const signal = new Signal<T>(undefined as any);
-	let isFirst = true;
 
 	function updater() {
 		let tmp = currentSignal;
 		currentSignal = signal;
+
+		// Computed might conditionally access signals. This means that we need
+		// to ensure that we unsubscribe from any old depedencies that aren't
+		// used anymore.
+		oldDeps = signal[DEPS];
+		signal[DEPS] = new Set();
+
 		let ret = compute();
 		currentSignal = tmp;
 
-		// the first run of this signal should not fire subscribers
-		if (isFirst) signal[VALUE] = ret;
-		else signal.value = ret;
+		// Any leftover dependencies here are not needed anymore
+		oldDeps.forEach(sub => unsubscribe(signal, sub));
+		oldDeps.clear();
+
+		if (signal[VALUE] === ret) {
+			signal[SUBS].forEach(unmark);
+		} else {
+			signal[VALUE] = ret;
+		}
 	}
 
 	signal.updater = updater;
 	updater();
-	isFirst = false;
 
 	return signal;
 }

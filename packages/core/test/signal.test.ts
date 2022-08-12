@@ -110,5 +110,142 @@ describe("computed()", () => {
 
 			expect(compute).to.have.been.calledOnce;
 		});
+
+		it("should only update every signal once (diamond graph)", () => {
+			// In this scenario "D" should only update once when "A" receives
+			// an update. This is sometimes referred to as the "diamond" scenario.
+			//     A
+			//   /   \
+			//  B     C
+			//   \   /
+			//     D
+			const a = signal("a");
+			const b = computed(() => a.value);
+			const c = computed(() => a.value);
+
+			const spy = sinon.spy(() => b.value + " " + c.value);
+			const d = computed(spy);
+
+			expect(d.value).to.equal("a a");
+			expect(spy).to.be.calledOnce;
+
+			a.value = "aa";
+			expect(d.value).to.equal("aa aa");
+			expect(spy).to.be.calledTwice;
+		});
+
+		it("should only update every signal once (diamond graph + tail)", () => {
+			// "E" will be likely updated twice if our mark+sweep logic is buggy.
+			//     A
+			//   /   \
+			//  B     C
+			//   \   /
+			//     D
+			//     |
+			//     E
+			const a = signal("a");
+			const b = computed(() => a.value);
+			const c = computed(() => a.value);
+
+			const d = computed(() => b.value + " " + c.value);
+
+			const spy = sinon.spy(() => d.value);
+			const e = computed(spy);
+
+			expect(e.value).to.equal("a a");
+			expect(spy).to.be.calledOnce;
+
+			a.value = "aa";
+			expect(e.value).to.equal("aa aa");
+			expect(spy).to.be.calledTwice;
+		});
+
+		it("should bail out if result is the same", () => {
+			// Bail out if value of "B" never changes
+			// A->B->C
+			const a = signal("a");
+			const b = computed(() => {
+				a.value;
+				return "foo";
+			});
+
+			const spy = sinon.spy(() => b.value);
+			const c = computed(spy);
+
+			expect(c.value).to.equal("foo");
+			expect(spy).to.be.calledOnce;
+
+			a.value = "aa";
+			expect(c.value).to.equal("foo");
+			expect(spy).to.be.calledOnce;
+		});
+
+		it("should only update every signal once (jagged diamond graph + tails)", () => {
+			// "F" and "G" will be likely updated twice if our mark+sweep logic is buggy.
+			//     A
+			//   /   \
+			//  B     C
+			//  |     |
+			//  |     D
+			//   \   /
+			//     E
+			//   /   \
+			//  F     G
+			const a = signal("a");
+
+			const b = computed(() => a.value);
+			const c = computed(() => a.value);
+
+			const d = computed(() => c.value);
+
+			const eSpy = sinon.spy(() => b.value + " " + d.value);
+			const e = computed(eSpy);
+
+			const fSpy = sinon.spy(() => e.value);
+			const f = computed(fSpy);
+			const gSpy = sinon.spy(() => e.value);
+			const g = computed(gSpy);
+
+			expect(f.value).to.equal("a a");
+			expect(fSpy).to.be.calledOnce;
+
+			expect(g.value).to.equal("a a");
+			expect(gSpy).to.be.calledOnce;
+
+			eSpy.resetHistory();
+			fSpy.resetHistory();
+			gSpy.resetHistory();
+
+			a.value = "b";
+
+			expect(e.value).to.equal("b b");
+			expect(eSpy).to.be.calledOnce;
+
+			expect(f.value).to.equal("b b");
+			expect(fSpy).to.be.calledOnce;
+
+			expect(g.value).to.equal("b b");
+			expect(gSpy).to.be.calledOnce;
+
+			eSpy.resetHistory();
+			fSpy.resetHistory();
+			gSpy.resetHistory();
+
+			a.value = "c";
+
+			expect(e.value).to.equal("c c");
+			expect(eSpy).to.be.calledOnce;
+
+			expect(f.value).to.equal("c c");
+			expect(fSpy).to.be.calledOnce;
+
+			expect(g.value).to.equal("c c");
+			expect(gSpy).to.be.calledOnce;
+
+			// top to bottom
+			expect(eSpy).to.have.been.calledBefore(fSpy);
+			// right to left
+			expect(fSpy).to.have.been.calledBefore(gSpy);
+		});
 	});
 });
