@@ -27,9 +27,11 @@ class Signal<T = any> {
 	}
 
 	get value() {
-		currentSignal[DEPS].add(this);
+		// subscribe the current computed to this signal:
 		this[SUBS].add(currentSignal);
-		oldDeps.delete(currentSignal);
+		// update the current computed's dependencies:
+		currentSignal[DEPS].add(this);
+		oldDeps.delete(this);
 		return this[VALUE];
 	}
 
