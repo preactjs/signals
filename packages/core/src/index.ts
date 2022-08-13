@@ -327,7 +327,7 @@ export function reactive<T extends Record<string, unknown> | Array<any>>(
 		set(target, key, value) {
 			const signal = getBackingSignal(backing, key, value);
 			signal.value = proxify(value);
-			return true;
+			return Reflect.set(target, key, value);
 		},
 	});
 
