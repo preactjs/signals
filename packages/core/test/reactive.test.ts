@@ -106,6 +106,15 @@ describe("reactive()", () => {
 			expect(r.value).to.deep.equal([1, 2, 3, 4]);
 		});
 
+		it("should track nested arrays", () => {
+			const arr = reactive([1, [2, 3], 4]);
+			const r = computed(() => [...arr]);
+			expect(r.value).to.deep.equal([1, [2, 3], 4]);
+
+			(arr[1] as number[]).push(99);
+			expect(r.value).to.deep.equal([1, [2, 3, 99], 4]);
+		});
+
 		describe("methods", () => {
 			it("should track .at()", () => {
 				const arr = reactive([1, 2]);
