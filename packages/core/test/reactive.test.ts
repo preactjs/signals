@@ -80,29 +80,29 @@ describe("reactive()", () => {
 		});
 
 		it("should track item mutation", () => {
-			const s = reactive([1]);
-			const r = computed(() => s[0]);
+			const arr = reactive([1]);
+			const r = computed(() => arr[0]);
 			expect(r.value).to.equal(1);
 
-			s[0] = 2;
+			arr[0] = 2;
 			expect(r.value).to.equal(2);
 		});
 
 		it("should track .length", () => {
-			const s = reactive([1]);
-			const r = computed(() => s.length);
+			const arr = reactive([1]);
+			const r = computed(() => arr.length);
 			expect(r.value).to.equal(1);
 
-			s.push(2);
+			arr.push(2);
 			expect(r.value).to.equal(2);
 		});
 
 		it("should track destructuring", () => {
-			const s = reactive([1, 2, 3]);
-			const r = computed(() => [...s]);
+			const arr = reactive([1, 2, 3]);
+			const r = computed(() => [...arr]);
 			expect(r.value).to.deep.equal([1, 2, 3]);
 
-			s.push(4);
+			arr.push(4);
 			expect(r.value).to.deep.equal([1, 2, 3, 4]);
 		});
 
@@ -197,20 +197,20 @@ describe("reactive()", () => {
 			});
 
 			it("should track .filter()", () => {
-				const s = reactive([1, 2, 3]);
-				const r = computed(() => s.filter(x => x > 2));
+				const arr = reactive([1, 2, 3]);
+				const r = computed(() => arr.filter(x => x > 2));
 				expect(r.value).to.deep.equal([3]);
 
-				s.push(4);
+				arr.push(4);
 				expect(r.value).to.deep.equal([3, 4]);
 			});
 
 			it("should track .filter() on mutation", () => {
-				const s = reactive([1, 2, 3]);
-				const r = computed(() => s.filter(x => x > 2));
+				const arr = reactive([1, 2, 3]);
+				const r = computed(() => arr.filter(x => x > 2));
 				expect(r.value).to.deep.equal([3]);
 
-				s[0] = 42;
+				arr[0] = 42;
 				expect(r.value).to.deep.equal([42, 3]);
 			});
 
