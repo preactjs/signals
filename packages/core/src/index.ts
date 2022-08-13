@@ -319,7 +319,13 @@ export function reactive<T extends Record<string, unknown> | Array<any>>(
 			if (key === REACTIVE) return true;
 			if (!(key in target)) return;
 
-			const value = proxify((target as any)[key]);
+			const targetValue = (target as any)[key];
+			// Don't track methods
+			if (!original.hasOwnProperty(key)) {
+				return targetValue;
+			}
+
+			const value = proxify(targetValue);
 			const signal = getBackingSignal(backing, key, value);
 
 			return signal.value;
