@@ -32,7 +32,53 @@ describe("reactive()", () => {
 		expect(r.value).to.equal(3);
 	});
 
+	describe("Object", () => {
+		it("should track property additions", () => {
+			const obj = reactive({ foo: 1 } as any);
+
+			const spy = sinon.spy(() => obj.foo);
+			const a = computed(spy);
+			expect(a.value).to.equal(1);
+
+			const b = computed(() => obj.bar);
+			expect(b.value).to.equal(undefined);
+
+			spy.resetHistory();
+
+			(obj as any).bar = 2;
+			expect(b.value).to.equal(2);
+		});
+
+		it("should track property deletions", () => {
+			const obj = reactive({ foo: 1 } as any);
+			const a = computed(() => obj.foo);
+			expect(a.value).to.equal(1);
+
+			delete obj.foo;
+			expect(a.value).to.equal(undefined);
+			expect("foo" in obj).to.equal(false);
+
+			// Add property back again
+			obj.foo = 1;
+			expect(a.value).to.equal(1);
+		});
+
+		it("should forbid __proto__", () => {
+			const obj = reactive({ foo: 1 } as any);
+			const a = computed(() => obj.__proto__);
+			expect(a.value).to.equal(undefined);
+
+			obj.__proto__ = "foobar";
+			expect(a.value).to.equal(undefined);
+		});
+	});
+
 	describe("Array", () => {
+		it("should have correct prototype", () => {
+			const arr = reactive([1, 2]);
+			expect(Array.isArray(arr)).to.equal(true);
+		});
+
 		it("should track item mutation", () => {
 			const s = reactive([1]);
 			const r = computed(() => s[0]);

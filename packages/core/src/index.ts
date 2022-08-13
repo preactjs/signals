@@ -313,11 +313,22 @@ function proxify<T>(value: T): T {
 export function reactive<T extends Record<string, unknown> | Array<any>>(
 	original: T
 ): T {
+	const isObject = !Array.isArray(original);
 	const backing = new Map<string | symbol, Signal>();
 	const proxy = new Proxy(original, {
 		get(target, key) {
 			if (key === REACTIVE) return true;
-			if (!(key in target)) return;
+			if (key === "__proto__") return;
+			if (key === "toString") return original.toString();
+
+			// Special case: Computeds that access object properties before
+			// they are set aren't updated if we don't create a signal eagerly.
+			// We should definitely discourage this pattern and nudge devs to
+			// always initialize all properties upfront.
+			if (isObject && !(key in target)) {
+				const signal = getBackingSignal(backing, key, undefined);
+				return signal.value;
+			} else if (!(key in target)) return;
 
 			const targetValue = (target as any)[key];
 			// Don't track methods
@@ -331,9 +342,19 @@ export function reactive<T extends Record<string, unknown> | Array<any>>(
 			return signal.value;
 		},
 		set(target, key, value) {
+			if (key === "__proto__") return true;
+
 			const signal = getBackingSignal(backing, key, value);
 			signal.value = proxify(value);
 			return Reflect.set(target, key, value);
+		},
+		deleteProperty(target, key) {
+			delete (target as any)[key];
+			const signal = backing.get(key);
+			if (signal) {
+				signal.value = undefined;
+			}
+			return true;
 		},
 	});
 
