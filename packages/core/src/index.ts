@@ -288,17 +288,11 @@ export function batch<T>(cb: () => T): T {
 }
 
 function getBackingSignal<T, K>(
-	backing: Map<K, Signal>,
+	backing: Record<string, Signal> | Signal[],
 	key: K,
 	value: T
 ): Signal<T> {
-	let signal = backing.get(key);
-	if (!signal) {
-		signal = new Signal(value);
-		backing.set(key, signal);
-	}
-
-	return signal;
+	return (backing as any)[key] || ((backing as any)[key] = new Signal(value));
 }
 
 const REACTIVE = Symbol.for("reactive");
@@ -314,7 +308,8 @@ export function reactive<T extends Record<string, unknown> | Array<any>>(
 	original: T
 ): T {
 	const isObject = !Array.isArray(original);
-	const backing = new Map<string | symbol, Signal>();
+	const backing: Record<string | symbol, Signal> = {};
+
 	const proxy = new Proxy(original, {
 		get(target, key) {
 			if (key === REACTIVE) return true;
@@ -352,7 +347,7 @@ export function reactive<T extends Record<string, unknown> | Array<any>>(
 		deleteProperty: isObject
 			? (target, key) => {
 					delete (target as any)[key];
-					const signal = backing.get(key);
+					const signal = backing[key];
 					if (signal) {
 						signal.value = undefined;
 					}
