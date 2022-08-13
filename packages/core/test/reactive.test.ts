@@ -262,6 +262,14 @@ describe("reactive()", () => {
 				expect(r.value).to.deep.equal([2]);
 			});
 
+			it("should track .toLocaleString()", () => {
+				expect(reactive([]).toLocaleString()).to.equal([].toLocaleString());
+			});
+
+			it("should track .toString()", () => {
+				expect(reactive([]).toString()).to.equal([].toString());
+			});
+
 			it("should track .unshift()", () => {
 				const arr = reactive([1, 2]);
 				const r = computed(() => arr);

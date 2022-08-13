@@ -159,7 +159,7 @@ export function reactive<T extends Record<string, unknown> | Array<any>>(
 		get(target, key) {
 			if (key === REACTIVE) return true;
 			if (key === "__proto__") return;
-			if (key === "toString") return original.toString();
+			if (key === "toString") return original.toString;
 
 			// Special case: Computeds that access object properties before
 			// they are set aren't updated if we don't create a signal eagerly.
