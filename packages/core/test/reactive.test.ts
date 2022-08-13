@@ -532,4 +532,185 @@ describe("reactive()", () => {
 			});
 		});
 	});
+
+	describe("Set", () => {
+		it("should have correct prototype", () => {
+			const set = reactive(new Set([1, 2]));
+			expect(set).to.be.instanceOf(Set);
+		});
+
+		it("should track <Iterator>", () => {
+			const set = reactive(new Set([1, 2]));
+			const r = computed(() => Array.from(set));
+
+			expect(r.value).to.deep.equal([1, 2]);
+
+			set.add(3);
+			expect(r.value).to.deep.equal([1, 2, 3]);
+		});
+
+		it("should track for-of loop", () => {
+			const set = reactive(new Set([1, 2, 3]));
+			const spy = sinon.spy(() => {
+				const out: any[] = [];
+				for (const value of set) {
+					out.push(value);
+				}
+				return out;
+			});
+			const r = computed(spy);
+			expect(r.value).to.deep.equal([1, 2, 3]);
+			spy.resetHistory();
+
+			set.delete(2);
+			expect(r.value).to.deep.equal([1, 3]);
+		});
+
+		it("should track .size", () => {
+			const set = reactive(new Set([1, 2]));
+			const r = computed(() => set.size);
+
+			set.add(3);
+			expect(set.size).to.equal(3);
+			expect(r.value).to.equal(3);
+
+			set.delete(2);
+			expect(set.size).to.equal(2);
+			expect(r.value).to.equal(2);
+		});
+
+		it("should track .add()", () => {
+			const set = reactive(new Set([1, 2]));
+			const r = computed(() => Array.from(set.values()));
+
+			set.add(3);
+			expect(Array.from(set.values())).to.deep.equal([1, 2, 3]);
+			expect(r.value).to.deep.equal([1, 2, 3]);
+		});
+
+		it("should track .add()", () => {
+			const set = reactive(new Set([1, 2]));
+			const r = computed(() => Array.from(set.values()));
+
+			set.clear();
+			expect(Array.from(set.values())).to.deep.equal([]);
+			expect(r.value).to.deep.equal([]);
+		});
+
+		it("should track .delete()", () => {
+			const set = reactive(new Set([1, 2, 3]));
+			const r = computed(() => Array.from(set.values()));
+
+			expect(r.value).to.deep.equal([1, 2, 3]);
+
+			set.delete(2);
+			expect(r.value).to.deep.equal([1, 3]);
+		});
+
+		it("should track .entries()", () => {
+			const set = reactive(new Set([1, 2]));
+			const r = computed(() => Array.from(set.entries()));
+			expect(Array.from(set.entries())).to.deep.equal([
+				[1, 1],
+				[2, 2],
+			]);
+
+			set.add(3);
+			expect(r.value).to.deep.equal([
+				[1, 1],
+				[2, 2],
+				[3, 3],
+			]);
+		});
+
+		it("should track .values()", () => {
+			const set = reactive(new Set([1, 2]));
+			const r = computed(() => Array.from(set.values()));
+
+			expect(r.value).to.deep.equal([1, 2]);
+
+			set.add(3);
+			expect(r.value).to.deep.equal([1, 2, 3]);
+		});
+
+		it("should track .has()", () => {
+			const set = reactive(new Set([1, 2]));
+			const r = computed(() => set.has(2));
+			expect(r.value).to.equal(true);
+
+			set.delete(2);
+			expect(r.value).to.equal(false);
+		});
+
+		it("should track .keys()", () => {
+			const set = reactive(new Set([1, 2]));
+			const r = computed(() => Array.from(set.keys()));
+			expect(Array.from(set.keys())).to.deep.equal([1, 2]);
+
+			set.add(3);
+			expect(r.value).to.deep.equal([1, 2, 3]);
+		});
+
+		it("should track .forEach()", () => {
+			const set = reactive(new Set([1, 2]));
+			const r = computed(() => {
+				const out: any[] = [];
+				set.forEach((v, v2, s) => {
+					expect(s).to.be.instanceOf(Set);
+					out.push([v, v2]);
+				});
+				return out;
+			});
+			expect(r.value).to.deep.equal([
+				[1, 1],
+				[2, 2],
+			]);
+
+			set.add(3);
+			expect(r.value).to.deep.equal([
+				[1, 1],
+				[2, 2],
+				[3, 3],
+			]);
+		});
+	});
+
+	describe("Map", () => {
+		it("should have correct prototype", () => {
+			const map = reactive(new Map([[1, 2]]));
+			expect(map).to.be.instanceOf(Map);
+		});
+
+		it.skip("should track .add()", () => {
+			// TODO
+		});
+
+		it.skip("should track .delete()", () => {
+			// TODO
+		});
+
+		it.skip("should track .entries()", () => {
+			// TODO
+		});
+
+		it.skip("should track .values()", () => {
+			// TODO
+		});
+
+		it.skip("should track .has()", () => {
+			// TODO
+		});
+
+		it.skip("should track .keys()", () => {
+			// TODO
+		});
+
+		it.skip("should track .forEach()", () => {
+			// TODO
+		});
+
+		it.skip("should track iterator", () => {
+			// TODO
+		});
+	});
 });
