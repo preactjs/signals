@@ -309,6 +309,7 @@ export function reactive<T extends Record<string, unknown> | Array<any>>(
 ): T {
 	const isObject = !Array.isArray(original);
 	const backing: Record<string | symbol, Signal> = {};
+	const ownSignal = new Signal(NaN);
 
 	const proxy = new Proxy(original, {
 		get(target, key) {
@@ -342,7 +343,16 @@ export function reactive<T extends Record<string, unknown> | Array<any>>(
 			const signal = getBackingSignal(backing, key, value);
 			signal.value = proxify(value);
 			(target as any)[key] = value;
+
+			// Update subscriptions that depend on the whole object
+			ownSignal.value = NaN;
 			return true;
+		},
+		ownKeys(target) {
+			// Record dependency on whole object shape. Happens in
+			// for, for-in or for-of loops.
+			ownSignal.value;
+			return Reflect.ownKeys(target);
 		},
 		deleteProperty: isObject
 			? (target, key) => {
@@ -351,6 +361,8 @@ export function reactive<T extends Record<string, unknown> | Array<any>>(
 					if (signal) {
 						signal.value = undefined;
 					}
+					// Update subscriptions that depend on the whole object
+					ownSignal.value = NaN;
 					return true;
 			  }
 			: undefined,

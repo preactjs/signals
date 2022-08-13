@@ -73,8 +73,7 @@ describe("reactive()", () => {
 		});
 
 		describe("Methods", () => {
-			// FIXME: Doesn't re-run when new property is added
-			it.skip("should track Object.keys()", () => {
+			it("should track Object.keys()", () => {
 				const obj = reactive({ foo: 1, bar: 2 });
 				const r = computed(() => Object.keys(obj));
 				expect(r.value).to.deep.equal(["foo", "bar"]);
@@ -92,12 +91,11 @@ describe("reactive()", () => {
 				expect(r.value).to.deep.equal([42, 2]);
 			});
 
-			// FIXME: Doesn't re-run property is changed
-			it.skip("should track Object.entries()", () => {
+			it("should track Object.entries()", () => {
 				const obj = reactive({ foo: 1, bar: 2 });
 				const r = computed(() => Object.entries(obj));
 				expect(r.value).to.deep.equal([
-					["foo", 2],
+					["foo", 1],
 					["bar", 2],
 				]);
 
@@ -167,13 +165,38 @@ describe("reactive()", () => {
 			expect(r.value).to.deep.equal([1, 2, 3, 99]);
 		});
 
-		// FIXME: Newly added key is not tracked
-		it.skip("should track for-in", () => {
+		it("should track for-in", () => {
+			const arr = reactive([1, 2, 3]);
+			const r = computed(() => {
+				const out: any[] = [];
+				for (const key in arr) {
+					out.push([key, arr[key]]);
+				}
+				return out;
+			});
+			expect(r.value).to.deep.equal([
+				["0", 1],
+				["1", 2],
+				["2", 3],
+			]);
+
+			arr[0] = 10;
+
+			arr.push(99);
+			expect(r.value).to.deep.equal([
+				["0", 10],
+				["1", 2],
+				["2", 3],
+				["3", 99],
+			]);
+		});
+
+		it("should track for-of", () => {
 			const arr = reactive([1, 2, 3]);
 			const spy = sinon.spy(() => {
 				const out: any[] = [];
-				for (const k in arr) {
-					out.push(k);
+				for (const value of arr) {
+					out.push(value);
 				}
 				return out;
 			});
@@ -182,31 +205,9 @@ describe("reactive()", () => {
 			spy.resetHistory();
 
 			arr[0] = 10;
-			expect(spy).not.to.be.called;
 
 			arr.push(99);
-			expect(r.value).to.deep.equal([1, 2, 3, 4]);
-		});
-
-		// FIXME: Newly added key is not tracked
-		it.skip("should track for-of", () => {
-			const arr = reactive([1, 2, 3]);
-			const spy = sinon.spy(() => {
-				const out: any[] = [];
-				for (const k of arr) {
-					out.push(k);
-				}
-				return out;
-			});
-			const r = computed(spy);
-			expect(r.value).to.deep.equal(["0", "1", "2"]);
-			spy.resetHistory();
-
-			arr[0] = 10;
-			expect(spy).not.to.be.called;
-
-			arr.push(99);
-			expect(r.value).to.deep.equal(["0", "1", "2", "3"]);
+			expect(r.value).to.deep.equal([10, 2, 3, 99]);
 		});
 
 		describe("methods", () => {
