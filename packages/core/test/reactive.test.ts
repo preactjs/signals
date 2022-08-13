@@ -2,33 +2,33 @@ import { computed, reactive } from "@preact/signals-core";
 
 describe("reactive()", () => {
 	it("should track property access", () => {
-		const s = reactive({ foo: 1, bar: 2 });
-		const r = computed(() => s.foo);
+		const obj = reactive({ foo: 1, bar: 2 });
+		const r = computed(() => obj.foo);
 		expect(r.value).to.equal(1);
 
-		s.foo++;
+		obj.foo++;
 		expect(r.value).to.equal(2);
 	});
 
 	it("should track nested property access", () => {
-		const s = reactive({ foo: { bar: 1 } });
-		const r = computed(() => s.foo.bar);
+		const obj = reactive({ foo: { bar: 1 } });
+		const r = computed(() => obj.foo.bar);
 		expect(r.value).to.equal(1);
 
-		s.foo.bar++;
+		obj.foo.bar++;
 		expect(r.value).to.equal(2);
 	});
 
 	it("should dynamically create reactives", () => {
-		const s = reactive({ foo: { bar: 1 } });
-		const r = computed(() => s.foo.bar);
+		const obj = reactive({ foo: { bar: 1 } });
+		const r = computed(() => obj.foo.bar);
 		expect(r.value).to.equal(1);
 
-		s.foo = { bar: 2 };
+		obj.foo = { bar: 2 };
 		expect(r.value).to.equal(2);
 
 		// Check if it's really reactive
-		s.foo.bar++;
+		obj.foo.bar++;
 		expect(r.value).to.equal(3);
 	});
 
@@ -70,6 +70,43 @@ describe("reactive()", () => {
 
 			obj.__proto__ = "foobar";
 			expect(a.value).to.equal(undefined);
+		});
+
+		describe("Methods", () => {
+			// FIXME: Doesn't re-run when new property is added
+			it.skip("should track Object.keys()", () => {
+				const obj = reactive({ foo: 1, bar: 2 });
+				const r = computed(() => Object.keys(obj));
+				expect(r.value).to.deep.equal(["foo", "bar"]);
+
+				(obj as any).baz = 3;
+				expect(r.value).to.deep.equal(["foo", "bar", "baz"]);
+			});
+
+			it("should track Object.values()", () => {
+				const obj = reactive({ foo: 1, bar: 2 });
+				const r = computed(() => Object.values(obj));
+				expect(r.value).to.deep.equal([1, 2]);
+
+				obj.foo = 42;
+				expect(r.value).to.deep.equal([42, 2]);
+			});
+
+			// FIXME: Doesn't re-run property is changed
+			it.skip("should track Object.entries()", () => {
+				const obj = reactive({ foo: 1, bar: 2 });
+				const r = computed(() => Object.entries(obj));
+				expect(r.value).to.deep.equal([
+					["foo", 2],
+					["bar", 2],
+				]);
+
+				obj.foo = 42;
+				expect(r.value).to.deep.equal([
+					["foo", 42],
+					["bar", 2],
+				]);
+			});
 		});
 	});
 
