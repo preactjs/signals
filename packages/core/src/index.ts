@@ -193,14 +193,16 @@ export function reactive<T extends Record<string, unknown> | Array<any>>(
 			signal.value = proxify(value);
 			return Reflect.set(target, key, value);
 		},
-		deleteProperty(target, key) {
-			delete (target as any)[key];
-			const signal = backing.get(key);
-			if (signal) {
-				signal.value = undefined;
-			}
-			return true;
-		},
+		deleteProperty: isObject
+			? (target, key) => {
+					delete (target as any)[key];
+					const signal = backing.get(key);
+					if (signal) {
+						signal.value = undefined;
+					}
+					return true;
+			  }
+			: undefined,
 	});
 
 	return proxy;
