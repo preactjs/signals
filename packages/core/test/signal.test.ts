@@ -72,6 +72,15 @@ describe("reactive()", () => {
 			s.push(2);
 			expect(r.value).to.equal(2);
 		});
+
+		it("should track destructuring", () => {
+			const s = reactive([1, 2, 3]);
+			const r = computed(() => [...s]);
+			expect(r.value).to.deep.equal([1, 2, 3]);
+
+			s.push(4);
+			expect(r.value).to.deep.equal([1, 2, 3, 4]);
+		});
 	});
 });
 
