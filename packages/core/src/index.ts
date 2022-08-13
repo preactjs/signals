@@ -304,15 +304,114 @@ function proxify<T>(value: T): T {
 	return value;
 }
 
-export function reactive<T extends Record<string, unknown> | Array<any>>(
-	original: T
+export function proxySet<T extends Set<any>>(
+	original: T,
+	ownSignal: Signal
 ): T {
+	const backing = new Map<any, Signal>(
+		Array.from(original.entries()).map(entry => {
+			entry[1] = new Signal(entry[0]);
+			return entry;
+		})
+	);
+	const sizeSignal = new Signal(original.size);
+
+	const methodCache: Record<string | symbol, any> = {};
+
+	const handler = {
+		[Symbol.iterator]: () => {
+			let i = 0;
+			ownSignal.value;
+			const items = Array.from(backing.values());
+			return {
+				next() {
+					const done = i >= items.length;
+					const value = !done ? items[i][VALUE] : undefined;
+					i++;
+					return { value, done };
+				},
+			};
+		},
+		get size() {
+			return sizeSignal.value;
+		},
+		values() {
+			ownSignal.value;
+			return original.values();
+		},
+		entries() {
+			ownSignal.value;
+			return original.entries();
+		},
+		keys() {
+			ownSignal.value;
+			return original.keys();
+		},
+		has(value: T) {
+			ownSignal.value;
+			return original.has(value);
+		},
+		clear() {
+			original.clear();
+			sizeSignal.value = 0;
+			ownSignal.value = NaN;
+			return handler;
+		},
+		forEach(fn: any) {
+			ownSignal.value;
+			return original.forEach(fn);
+		},
+		add(value: T) {
+			if (!original.has(value)) {
+				original.add(value);
+				backing.set(value, new Signal(value));
+				sizeSignal.value++;
+				ownSignal.value = NaN;
+			}
+		},
+		delete(value: T) {
+			const signal = backing.get(value);
+			if (signal) {
+				// FIXME: Unsubscribe
+				signal[DEPS].forEach(dep => unsubscribe(signal, dep));
+				original.delete(value);
+				backing.delete(value);
+				sizeSignal.value--;
+				ownSignal.value = NaN;
+			}
+		},
+	};
+
+	return new Proxy(original, {
+		get(target, key) {
+			return (
+				handler[key] ||
+				methodCache[key] ||
+				(methodCache[key] = (target as any)[key].bind(target))
+			);
+		},
+		ownKeys(target) {
+			// Record dependency on whole object shape. Happens in
+			// for, for-in or for-of loops.
+			ownSignal.value;
+			return Reflect.ownKeys(target);
+		},
+	});
+}
+
+export function reactive<
+	T extends Record<string, unknown> | Array<any> | Set<any> | Map<any, any>
+>(original: T): T {
+	const ownSignal = new Signal(NaN);
+	if (original instanceof Set) {
+		return proxySet(original, ownSignal);
+	}
 	const isObject = !Array.isArray(original);
 	const backing: Record<string | symbol, Signal> = {};
-	const ownSignal = new Signal(NaN);
 
 	const proxy = new Proxy(original, {
 		get(target, key) {
+			// console.log("get", key, target, receiver);
 			if (key === REACTIVE) return true;
 			if (key === "__proto__") return;
 			if (key === "toString") return original.toString;
