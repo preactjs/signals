@@ -322,12 +322,20 @@ describe("reactive()", () => {
 				expect(r.value).to.equal(0);
 			});
 
-			it.skip("should track .flat()", () => {
-				// TODO
+			it("should track .flat()", () => {
+				const s = reactive([[1], [2], [3]]);
+				const r = computed(() => s.flat());
+				expect(r.value).to.deep.equal([1, 2, 3]);
+				s[0][0] = 42;
+				expect(r.value).to.deep.equal([42, 2, 3]);
 			});
 
-			it.skip("should track .flatMap()", () => {
-				// TODO
+			it("should track .flatMap()", () => {
+				const s = reactive([[1], [2], [3]]);
+				const r = computed(() => s.flatMap(x => [x[0] + 1]));
+				expect(r.value).to.deep.equal([2, 3, 4]);
+				s[0][0] = 42;
+				expect(r.value).to.deep.equal([43, 3, 4]);
 			});
 
 			it("should track .forEach()", () => {
@@ -414,16 +422,37 @@ describe("reactive()", () => {
 				expect(r.value).to.deep.equal([1, 2, 3]);
 			});
 
-			it.skip("should track .reduce()", () => {
-				// TODO
+			it("should track .reduce()", () => {
+				const arr = reactive([1, 2]);
+				const r = computed(() =>
+					arr.reduce((acc, x) => acc.concat(x + 1), [] as number[])
+				);
+				expect(r.value).to.deep.equal([2, 3]);
+
+				arr.push(3);
+				expect(r.value).to.deep.equal([2, 3, 4]);
 			});
 
-			it.skip("should track .reduceRight()", () => {
-				// TODO
+			it("should track .reduceRight()", () => {
+				const arr = reactive([1, 2]);
+				const r = computed(() =>
+					arr.reduceRight((acc, x) => acc.concat(x + 1), [] as number[])
+				);
+				expect(r.value).to.deep.equal([3, 2]);
+
+				arr.push(3);
+				expect(r.value).to.deep.equal([4, 3, 2]);
+				expect(arr).to.deep.equal([1, 2, 3]);
 			});
 
-			it.skip("should track .reverse()", () => {
-				// TODO
+			it("should track .reverse()", () => {
+				const arr = reactive([1, 2, 3]);
+				const r = computed(() => arr);
+
+				arr.reverse();
+
+				expect(arr).to.deep.equal([3, 2, 1]);
+				expect(r.value).to.deep.equal([3, 2, 1]);
 			});
 
 			it("should track .shift()", () => {
@@ -435,16 +464,32 @@ describe("reactive()", () => {
 				expect(r.value).to.deep.equal([2]);
 			});
 
-			it.skip("should track .slice()", () => {
-				// TODO
+			it("should track .slice()", () => {
+				const arr = reactive([1, 2]);
+				const r = computed(() => arr.slice());
+
+				r.value[0] = 10;
+
+				expect(arr).to.deep.equal([1, 2]);
+				expect(r.value).to.deep.equal([10, 2]);
 			});
 
-			it.skip("should track .some()", () => {
-				// TODO
+			it("should track .some()", () => {
+				const arr = reactive([1, 2]);
+				const r = computed(() => arr.some(x => x > 2));
+				expect(r.value).to.equal(false);
+
+				arr[0] = 10;
+				expect(r.value).to.equal(true);
 			});
 
-			it.skip("should track .sort()", () => {
-				// TODO
+			it("should track .sort()", () => {
+				const arr = reactive([4, 2, 1, 3]);
+				const r = computed(() => arr);
+				arr.sort();
+				expect(arr).to.deep.equal([1, 2, 3, 4]);
+
+				expect(r.value).to.deep.equal([1, 2, 3, 4]);
 			});
 
 			it("should track .splice()", () => {
@@ -476,8 +521,13 @@ describe("reactive()", () => {
 				expect(r.value).to.deep.equal([10, 1, 2]);
 			});
 
-			it.skip("should track .values()", () => {
-				// TODO
+			it("should track .values()", () => {
+				const arr = reactive([1, 2]);
+				const r = computed(() => Array.from(arr.values()));
+				expect(r.value).to.deep.equal([1, 2]);
+
+				arr[0] = 10;
+				expect(r.value).to.deep.equal([10, 2]);
 			});
 		});
 	});
