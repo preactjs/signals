@@ -152,6 +152,63 @@ describe("reactive()", () => {
 			expect(r.value).to.deep.equal([1, [2, 3, 99], 4]);
 		});
 
+		it("should track for-loop", () => {
+			const arr = reactive([1, 2, 3]);
+			const r = computed(() => {
+				const out: number[] = [];
+				for (let i = 0; i < arr.length; i++) {
+					out.push(arr[i]);
+				}
+				return out;
+			});
+			expect(r.value).to.deep.equal([1, 2, 3]);
+
+			arr.push(99);
+			expect(r.value).to.deep.equal([1, 2, 3, 99]);
+		});
+
+		// FIXME: Newly added key is not tracked
+		it.skip("should track for-in", () => {
+			const arr = reactive([1, 2, 3]);
+			const spy = sinon.spy(() => {
+				const out: any[] = [];
+				for (const k in arr) {
+					out.push(k);
+				}
+				return out;
+			});
+			const r = computed(spy);
+			expect(r.value).to.deep.equal([1, 2, 3]);
+			spy.resetHistory();
+
+			arr[0] = 10;
+			expect(spy).not.to.be.called;
+
+			arr.push(99);
+			expect(r.value).to.deep.equal([1, 2, 3, 4]);
+		});
+
+		// FIXME: Newly added key is not tracked
+		it.skip("should track for-of", () => {
+			const arr = reactive([1, 2, 3]);
+			const spy = sinon.spy(() => {
+				const out: any[] = [];
+				for (const k of arr) {
+					out.push(k);
+				}
+				return out;
+			});
+			const r = computed(spy);
+			expect(r.value).to.deep.equal(["0", "1", "2"]);
+			spy.resetHistory();
+
+			arr[0] = 10;
+			expect(spy).not.to.be.called;
+
+			arr.push(99);
+			expect(r.value).to.deep.equal(["0", "1", "2", "3"]);
+		});
+
 		describe("methods", () => {
 			it("should track .at()", () => {
 				const arr = reactive([1, 2]);
@@ -391,16 +448,15 @@ describe("reactive()", () => {
 			});
 
 			it("should track .splice()", () => {
-				const arr = reactive([1, 2, 3, 4, 5, 6]);
-				const r = computed(() => arr);
-				expect(r.value).to.deep.equal([1, 2, 3, 4, 5, 6]);
+				const arr = reactive([1, 2, 3, 4]);
+				const r = computed(() => arr[1]);
+				expect(r.value).to.equal(2);
 
-				arr.splice(2, 2);
-				expect(r.value).to.deep.equal([1, 2, 5, 6]);
-				expect(r.value[0]).to.equal(1);
-				expect(r.value[1]).to.equal(2);
-				expect(r.value[2]).to.equal(5);
-				expect(r.value[3]).to.equal(6);
+				arr.splice(1, 1);
+				expect(r.value).to.equal(3);
+
+				arr[1] = 99;
+				expect(r.value).to.equal(99);
 			});
 
 			it("should track .toLocaleString()", () => {
