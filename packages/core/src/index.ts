@@ -346,7 +346,8 @@ export function reactive<T extends Record<string, unknown> | Array<any>>(
 
 			const signal = getBackingSignal(backing, key, value);
 			signal.value = proxify(value);
-			return Reflect.set(target, key, value);
+			(target as any)[key] = value;
+			return true;
 		},
 		deleteProperty: isObject
 			? (target, key) => {
