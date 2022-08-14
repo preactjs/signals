@@ -47,7 +47,7 @@
 		"karma-sinon": "^1.0.5",
 		"kolorist": "^1.5.1",
 		"lint-staged": "^13.0.3",
-		"microbundle": "^0.15.0",
+		"microbundle": "^0.15.1",
 		"mocha": "^10.0.0",
 		"prettier": "^2.7.1",
 		"rimraf": "^3.0.2",
