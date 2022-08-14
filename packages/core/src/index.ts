@@ -10,6 +10,8 @@ let currentSignal: Signal;
 let commitError: Error | null = null;
 
 const pending = new Set<Signal>();
+/** Batch calls can be nested. 0 means that there is no batching */
+let batchPending = 0;
 
 let oldDeps = new Set<Signal>();
 
@@ -33,6 +35,12 @@ class Signal<T = any> {
 		// update the current computed's dependencies:
 		currentSignal[DEPS].add(this);
 		oldDeps.delete(this);
+
+		// refresh stale value when this signal is read from withing
+		// batching and when it has been marked already
+		if (batchPending > 0 && this[PENDING] > 0) {
+			refreshStale(this);
+		}
 		return this[VALUE];
 	}
 
@@ -42,10 +50,14 @@ class Signal<T = any> {
 			let isFirst = pending.size === 0;
 
 			pending.add(this);
-			mark(this);
+			// in batch mode this signal may be marked already
+			if (this[PENDING] === 0) {
+				mark(this);
+			}
 
-			// this is the first change, not a computed:
-			if (isFirst) {
+			// this is the first change, not a computed and we are not
+			// in batch mode:
+			if (isFirst && batchPending === 0) {
 				sweep(pending);
 				pending.clear();
 				if (commitError) {
@@ -96,6 +108,30 @@ function unsubscribe(signal: Signal<any>, from: Signal<any>) {
 	if (from[SUBS].size === 0) {
 		from[DEPS].forEach(dep => unsubscribe(from, dep));
 	}
+}
+
+const tmpPending: Signal[] = [];
+/**
+ * Refresh _just_ this signal and its dependencies recursively.
+ * All other signals will be left untouched and added to the
+ * global queue to flush later. Since we're traversing "upwards",
+ * we don't have to car about topological sorting.
+ */
+function refreshStale(signal: Signal) {
+	pending.delete(signal);
+	signal[PENDING] = 0;
+	signal.updater();
+
+	signal[SUBS].forEach(sub => {
+		if (sub[PENDING] > 0) {
+			// If PENDING > 1 then we can safely reduce the counter because
+			// the final sweep will take care of the rest. But if it's
+			// exactly 1 we can't do that otherwise the sweeping logic
+			// assumes that this signal was already updated.
+			if (sub[PENDING] > 1) sub[PENDING]--;
+			tmpPending.push(sub);
+		}
+	});
 }
 
 ROOT = currentSignal = new Signal(undefined);
@@ -150,4 +186,22 @@ export function computed<T>(compute: () => T): Signal<T> {
 
 export function observe<T>(signal: Signal<T>, callback: (value: T) => void) {
 	computed(() => callback(signal.value));
+}
+
+export function batch<T>(cb: () => T): T {
+	batchPending++;
+	try {
+		return cb();
+	} finally {
+		// Since stale signals are refreshed upwards, we need to
+		// add pending signals in reverse
+		let item: Signal | undefined;
+		while ((item = tmpPending.pop()) !== undefined) {
+			pending.add(item);
+		}
+
+		if (--batchPending === 0) {
+			sweep(pending);
+		}
+	}
 }

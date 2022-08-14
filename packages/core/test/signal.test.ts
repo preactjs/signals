@@ -1,4 +1,4 @@
-import { signal, computed, observe } from "@preact/signals-core";
+import { signal, computed, observe, batch } from "@preact/signals-core";
 
 describe("signal", () => {
 	it("should return value", () => {
@@ -275,5 +275,93 @@ describe("computed()", () => {
 			a.value = 2;
 			expect(c.value).to.equal(2);
 		});
+	});
+});
+
+describe("batch/transaction", () => {
+	it("should delay writes", () => {
+		const a = signal("a");
+		const b = signal("b");
+		const spy = sinon.spy(() => a.value + " " + b.value);
+		const c = computed(spy);
+		spy.resetHistory();
+
+		batch(() => {
+			a.value = "aa";
+			b.value = "bb";
+		});
+
+		expect(c.value).to.equal("aa bb");
+		expect(spy).to.be.calledOnce;
+	});
+
+	it("should delay writes until outermost batch is complete", () => {
+		const a = signal("a");
+		const b = signal("b");
+		const spy = sinon.spy(() => a.value + ", " + b.value);
+		const c = computed(spy);
+		spy.resetHistory();
+
+		batch(() => {
+			batch(() => {
+				a.value += " inner";
+				b.value += " inner";
+			});
+			a.value += " outer";
+			b.value += " outer";
+		});
+
+		expect(c.value).to.equal("a inner outer, b inner outer");
+		// If the inner batch() would have flushed the update
+		// this spy would've been called twice.
+		expect(spy).to.be.calledOnce;
+	});
+
+	it("should read signals written to", () => {
+		const a = signal("a");
+
+		let result = "";
+		batch(() => {
+			a.value = "aa";
+			result = a.value;
+		});
+
+		expect(result).to.equal("aa");
+	});
+
+	it("should read computed signals with updated source signals", () => {
+		// A->B->C->D->E
+		const a = signal("a");
+		const b = computed(() => a.value);
+
+		const spyC = sinon.spy(() => b.value);
+		const c = computed(spyC);
+
+		const spyD = sinon.spy(() => c.value);
+		const d = computed(spyD);
+
+		const spyE = sinon.spy(() => b.value);
+		const e = computed(spyE);
+
+		spyC.resetHistory();
+		spyD.resetHistory();
+		spyE.resetHistory();
+
+		let result = "";
+		batch(() => {
+			a.value = "aa";
+			result = c.value;
+
+			// Since "D" isn't accessed during batching, we should not
+			// update it, only after batching has completed
+			expect(spyD).not.to.be.called;
+		});
+
+		expect(result).to.equal("aa");
+		expect(d.value).to.equal("aa");
+		expect(e.value).to.equal("aa");
+		expect(spyC).to.be.calledOnce;
+		expect(spyD).to.be.calledOnce;
+		expect(spyE).to.be.calledOnce;
 	});
 });
