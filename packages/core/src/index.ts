@@ -28,6 +28,10 @@ class Signal<T = any> {
 	}
 
 	get value() {
+		if (currentSignal === this) {
+			throw new Error("Cycle detected in computed");
+		}
+
 		// subscribe the current computed to this signal:
 		this[SUBS].add(currentSignal);
 		// update the current computed's dependencies:

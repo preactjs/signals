@@ -275,5 +275,24 @@ describe("computed()", () => {
 			a.value = 2;
 			expect(c.value).to.equal(2);
 		});
+
+		it("should throw an error if a cycle is detected", () => {
+			const a = signal(0);
+			// @ts-ignore
+			const b = computed(() => {
+				if (a.value === 1) {
+					return a.value + b.value;
+				}
+
+				return a.value;
+			});
+			const c = computed(() => b.value);
+
+			expect(() => (a.value = 1)).to.throw(/Cycle detected/);
+
+			// Should continue to work
+			a.value = 2;
+			expect(c.value).to.equal(2);
+		});
 	});
 });
