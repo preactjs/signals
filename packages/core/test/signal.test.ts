@@ -248,4 +248,32 @@ describe("computed()", () => {
 			expect(fSpy).to.have.been.calledBefore(gSpy);
 		});
 	});
+
+	describe("error handling", () => {
+		it("should keep graph consistent on errors in computeds", () => {
+			const a = signal(0);
+			let shouldThrow = false;
+			const b = computed(() => {
+				if (shouldThrow) throw new Error("fail");
+				return a.value;
+			});
+			const c = computed(() => b.value);
+			expect(c.value).to.equal(0);
+
+			shouldThrow = true;
+			let error: Error | null = null;
+			try {
+				a.value = 1;
+			} catch (err: any) {
+				error = err;
+			}
+			expect(error?.message).to.equal("fail");
+
+			// Now update signal again without throwing an error. If we didn't
+			// reset the subtree's PENDING counter C's value wouldn't update.
+			shouldThrow = false;
+			a.value = 2;
+			expect(c.value).to.equal(2);
+		});
+	});
 });

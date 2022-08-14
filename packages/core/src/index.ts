@@ -7,6 +7,7 @@ let ROOT: Signal;
 
 /** This tracks subscriptions of signals read inside a computed */
 let currentSignal: Signal;
+let commitError: Error | null = null;
 
 const pending = new Set<Signal>();
 
@@ -47,6 +48,12 @@ class Signal<T = any> {
 			if (isFirst) {
 				sweep(pending);
 				pending.clear();
+				if (commitError) {
+					const err = commitError;
+					// Clear global error flag for next commit
+					commitError = null;
+					throw err;
+				}
 			}
 		}
 	}
@@ -70,7 +77,9 @@ function unmark(signal: Signal<any>) {
 
 function sweep(subs: Set<Signal<any>>) {
 	subs.forEach(signal => {
-		if (--signal[PENDING] === 0) {
+		// If a computed errored during sweep, we'll discard that subtree
+		// for this sweep cycle by setting PENDING to 0;
+		if (signal[PENDING] > 0 && --signal[PENDING] === 0) {
 			signal.updater();
 			sweep(signal[SUBS]);
 		}
@@ -108,17 +117,28 @@ export function computed<T>(compute: () => T): Signal<T> {
 		oldDeps = signal[DEPS];
 		signal[DEPS] = new Set();
 
-		let ret = compute();
-		currentSignal = tmp;
+		try {
+			let ret = compute();
 
-		// Any leftover dependencies here are not needed anymore
-		oldDeps.forEach(sub => unsubscribe(signal, sub));
-		oldDeps.clear();
+			// Any leftover dependencies here are not needed anymore
+			oldDeps.forEach(sub => unsubscribe(signal, sub));
+			oldDeps.clear();
 
-		if (signal[VALUE] === ret) {
-			signal[SUBS].forEach(unmark);
-		} else {
-			signal[VALUE] = ret;
+			if (signal[VALUE] === ret) {
+				signal[SUBS].forEach(unmark);
+			} else {
+				signal[VALUE] = ret;
+			}
+		} catch (err: any) {
+			// This is used by other computed's too, so we need to cleanup
+			// after ourselves.
+			oldDeps.clear();
+			signal[SUBS].forEach(sub => unmark(sub));
+
+			// Ensure that we log the first error not the last
+			if (!commitError) commitError = err;
+		} finally {
+			currentSignal = tmp;
 		}
 	}
 
