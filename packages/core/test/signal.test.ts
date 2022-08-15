@@ -1,4 +1,4 @@
-import { signal, computed, observe, batch, effect } from "@preact/signals-core";
+import { signal, computed, effect, batch } from "@preact/signals-core";
 
 describe("signal", () => {
 	it("should return value", () => {
@@ -60,6 +60,17 @@ describe("effect()", () => {
 		b.value = "bb";
 		expect(spy).not.to.be.called;
 	});
+
+	it("should unsubscribe from signal", () => {
+		const s = signal(123);
+		const spy = sinon.spy(() => s.value);
+		const unsub = effect(spy);
+		spy.resetHistory();
+
+		unsub();
+		s.value = 42;
+		expect(spy).not.to.be.called;
+	});
 });
 
 describe("computed()", () => {
@@ -71,7 +82,7 @@ describe("computed()", () => {
 		expect(c.value).to.equal("ab");
 	});
 
-	it("should return updated value", async () => {
+	it("should return updated value", () => {
 		const a = signal("a");
 		const b = signal("b");
 
@@ -140,6 +151,8 @@ describe("computed()", () => {
 			const compute = sinon.spy(() => "d: " + d.value);
 			const e = computed(compute);
 
+			// Trigger read
+			e.value;
 			expect(compute).to.have.been.calledOnce;
 			compute.resetHistory();
 
@@ -284,6 +297,59 @@ describe("computed()", () => {
 			// right to left
 			expect(fSpy).to.have.been.calledBefore(gSpy);
 		});
+
+		it("should only subscribe to signals listened to", () => {
+			//    *A
+			//   /   \
+			// *B     C <- we don't listen to C
+			const a = signal("a");
+
+			const b = computed(() => a.value);
+			const spy = sinon.spy(() => a.value);
+			computed(spy);
+
+			expect(b.value).to.equal("a");
+			expect(spy).not.to.be.called;
+
+			a.value = "aa";
+			expect(b.value).to.equal("aa");
+			expect(spy).not.to.be.called;
+		});
+
+		it("should only subscribe to signals listened to", () => {
+			// Here both "B" and "C" are active in the beginnning, but
+			// "B" becomes inactive later. At that point it should
+			// not receive any updates anymore.
+			//    *A
+			//   /   \
+			// *B     D <- we don't listen to C
+			//  |
+			// *C
+			const a = signal("a");
+			const spyB = sinon.spy(() => a.value);
+			const b = computed(spyB);
+
+			const spyC = sinon.spy(() => b.value);
+			const c = computed(spyC);
+
+			const d = computed(() => a.value);
+
+			let result = "";
+			const unsub = effect(() => (result = c.value));
+
+			expect(result).to.equal("a");
+			expect(d.value).to.equal("a");
+
+			spyB.resetHistory();
+			spyC.resetHistory();
+			unsub();
+
+			a.value = "aa";
+
+			expect(spyB).not.to.be.called;
+			expect(spyC).not.to.be.called;
+			expect(d.value).to.equal("aa");
+		});
 	});
 
 	describe("error handling", () => {
@@ -292,6 +358,18 @@ describe("computed()", () => {
 			const b = computed(() => a.value);
 			const fn = () => (b.value = "aa");
 			expect(fn).to.throw(/readonly/);
+		});
+
+		it("should keep graph consistent on errors during activation", () => {
+			const a = signal(0);
+			const b = computed(() => {
+				throw new Error("fail");
+			});
+			const c = computed(() => a.value);
+			expect(() => b.value).to.throw("fail");
+
+			a.value = 1;
+			expect(c.value).to.equal(1);
 		});
 
 		it("should keep graph consistent on errors in computeds", () => {
