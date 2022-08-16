@@ -1,0 +1,28 @@
+{
+	"name": "demo",
+	"private": true,
+	"scripts": {
+		"start": "vite",
+		"build": "vite build"
+	},
+	"postcss": {
+		"plugins": {
+			"postcss-nesting": {}
+		}
+	},
+	"dependencies": {
+		"preact": "10.9.0",
+		"preact-iso": "^2.3.0",
+		"preact-render-to-string": "^5.2.1",
+		"@preact/signals-core": "workspace:../packages/core",
+		"@preact/signals": "workspace:../packages/preact"
+	},
+	"devDependencies": {
+		"@babel/core": "^7.18.10",
+		"@preact/preset-vite": "^2.3.0",
+		"postcss": "^8.4.16",
+		"postcss-nesting": "^10.1.10",
+		"tiny-glob": "^0.2.9",
+		"vite": "^3.0.7"
+	}
+}

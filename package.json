@@ -12,7 +12,8 @@
 		"postbuild": "node ./scripts/node-13-exports.js",
 		"lint": "eslint 'packages/**/*.{ts,tsx,js,jsx}'",
 		"test": "cross-env COVERAGE=true karma start karma.conf.js --single-run",
-		"test:watch": "karma start karma.conf.js --no-single-run"
+		"test:watch": "karma start karma.conf.js --no-single-run",
+		"docs:start": "cd docs && pnpm start"
 	},
 	"keywords": [],
 	"author": "",
