@@ -4,6 +4,7 @@ import preact from "@preact/preset-vite";
 export default defineConfig({
 	plugins: [preact(), multiSpa(["index.html", "demos/*.html"])],
 	resolve: {
+		extensions: [".ts", ".tsx", ".js", ".jsx", ".d.ts"],
 		alias: {
 			"@preact/signals": __dirname + "/../packages/preact/src/index.ts",
 			"@preact/signals-core": __dirname + "/../packages/core/src/index.ts",

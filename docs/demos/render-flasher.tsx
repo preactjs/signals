@@ -1,4 +1,4 @@
-import { options } from "preact";
+import { cloneElement, options } from "preact";
 
 const didRender = new WeakSet();
 
@@ -9,14 +9,21 @@ interface VNode<P = any> extends preact.VNode<P> {
 	__: VNode;
 }
 
-let enabled = !/flash=(false|0|off)/.test(location + "");
-export function setEnabled(newEnabled: boolean) {
-	enabled = newEnabled;
+let globalEnabled = !/flash=(false|0|off)/.test(location + "");
+let enabled = globalEnabled;
+export function setFlashingEnabled(newEnabled: boolean) {
+	enabled = globalEnabled && newEnabled;
 }
 
 let constrainedRoot: preact.Component;
-export function constrainTo(root: preact.Component) {
+export function constrainFlashingTo(root: preact.Component) {
 	constrainedRoot = root;
+}
+
+export function constrainFlashToChildren<T extends any[]>(...children: T) {
+	return children.flat(9).map(child => {
+		return cloneElement(child, { ref: constrainFlashingTo });
+	});
 }
 
 // @ts-ignore-next-line

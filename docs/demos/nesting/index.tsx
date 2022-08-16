@@ -10,6 +10,8 @@ type DemoObj = Reactive<{
 
 type Count = Signal<number>;
 
+// We may land a more comprehensive "Deep" Reactive in core,
+// since "Shallow" Reactive is trivial to implement atop Signal:
 type Reactive<T> = { [K in keyof T]: Signal<T[K]> };
 function reactive<T extends object>(obj: T) {
 	let reactive = {} as Reactive<T>;
@@ -111,7 +113,7 @@ function ObjectEditor({ obj }: { obj: DemoObj }) {
 						<td>
 							<input
 								type="number"
-								onChange={e =>
+								onInput={e =>
 									(obj.numberKey.value = e.currentTarget.valueAsNumber)
 								}
 								value={obj.numberKey}
@@ -124,7 +126,7 @@ function ObjectEditor({ obj }: { obj: DemoObj }) {
 						<td>
 							<input
 								type="checkbox"
-								onChange={e => (obj.boolKey.value = e.currentTarget.checked)}
+								onInput={e => (obj.boolKey.value = e.currentTarget.checked)}
 								checked={obj.boolKey}
 							/>
 						</td>

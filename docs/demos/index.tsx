@@ -1,9 +1,11 @@
 import { render } from "preact";
 import { LocationProvider, Router, useLocation, lazy } from "preact-iso";
 import { signal, useSignal } from "@preact/signals";
-import { setEnabled, constrainTo } from "./render-flasher";
+import { setFlashingEnabled, constrainFlashToChildren } from "./render-flasher";
 
-setEnabled(false);
+// disable flashing during initial render:
+setFlashingEnabled(false);
+setTimeout(setFlashingEnabled, 100, true);
 
 const demos = {
 	Counter,
@@ -11,11 +13,6 @@ const demos = {
 	TwoGlobalCounters,
 	Nesting: lazy(() => import("./nesting")),
 };
-
-function constrainRef(c: preact.Component) {
-	setEnabled(true);
-	constrainTo(c);
-}
 
 function Demos() {
 	const demo = useLocation().path.replace(/^\/demos\/?/, "");
@@ -37,11 +34,13 @@ function Demos() {
 			<main>
 				<h3>{displayName(demo)}</h3>
 				<Router>
-					{Object.keys(demos).map(demo => {
-						const Demo = demos[demo];
-						return <Demo path={`/demos/${demo}`} ref={constrainRef} />;
-					})}
-					<NotFound default ref={constrainRef} />
+					{constrainFlashToChildren(
+						Object.keys(demos).map(demo => {
+							const Demo = demos[demo as keyof typeof demos];
+							return <Demo path={`/demos/${demo}`} />;
+						}),
+						<NotFound default />
+					)}
 				</Router>
 			</main>
 		</div>
