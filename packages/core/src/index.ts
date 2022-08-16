@@ -21,6 +21,8 @@ export class Signal<T = any> {
 	_pending = 0;
 	/** @internal Internal, do not use. */
 	_value: T;
+	/** Determine if a computed is allowed to write or not */
+	_readonly = false;
 
 	constructor(value: T) {
 		this._value = value;
@@ -46,6 +48,10 @@ export class Signal<T = any> {
 	}
 
 	set value(value) {
+		if (this._readonly) {
+			throw new Error("Computed signals are readonly");
+		}
+
 		if (this._value !== value) {
 			this._value = value;
 			let isFirst = pending.size === 0;
@@ -182,6 +188,7 @@ export function signal<T>(value: T): Signal<T> {
 
 export function computed<T>(compute: () => T): Signal<T> {
 	const signal = new Signal<T>(undefined as any);
+	signal._readonly = true;
 
 	function updater() {
 		let finish = signal._setCurrent();
@@ -205,7 +212,8 @@ export function computed<T>(compute: () => T): Signal<T> {
 }
 
 export function observe<T>(signal: Signal<T>, callback: (value: T) => void) {
-	computed(() => callback(signal.value));
+	const s = computed(() => callback(signal.value));
+	s._readonly = true;
 }
 
 export function batch<T>(cb: () => T): T {
