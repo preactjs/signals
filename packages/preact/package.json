@@ -17,8 +17,8 @@
 	"amdName": "preactSignals",
 	"main": "dist/signals.js",
 	"module": "dist/signals.module.js",
-	"unpkg": "dist/preact.min.js",
-	"types": "dist/index.d.ts",
+	"unpkg": "dist/signals.min.js",
+	"types": "dist/signals.d.ts",
 	"source": "src/index.ts",
 	"mangle": "../../mangle.json",
 	"exports": {
@@ -26,7 +26,8 @@
 			"browser": "./dist/signals.module.js",
 			"umd": "./dist/signals.umd.js",
 			"import": "./dist/signals.mjs",
-			"require": "./dist/signals.js"
+			"require": "./dist/signals.js",
+			"types": "./dist/signals.d.ts"
 		}
 	},
 	"dependencies": {
@@ -36,6 +37,6 @@
 		"preact": "10.x"
 	},
 	"devDependencies": {
-		"preact": "^10.10.1"
+		"preact": "10.9.0"
 	}
 }
