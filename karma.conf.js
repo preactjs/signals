@@ -66,6 +66,20 @@ function createEsbuildPlugin() {
 	return {
 		name: "custom",
 		setup(build) {
+			// .d.ts resolution
+			build.onResolve({ filter: /\/[^.]+$/ }, async args => {
+				// only intercept static imports from .ts files:
+				if (args.kind !== "import-statement") return;
+				if (!/\.tsx?/.test(args.importer)) return;
+				const abs = path.resolve(args.resolveDir, args.path + ".d.ts");
+				try {
+					await fs.access(abs);
+					return { path: abs };
+				} catch (e) {
+					// not a .d.ts import
+				}
+			});
+
 			// Aliasing: If "MINIFY" is set to "true" we use the dist/
 			// files instead of those from src/
 			build.onResolve({ filter: /^@preact\/.*/ }, args => {

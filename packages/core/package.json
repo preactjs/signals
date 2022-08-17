@@ -7,6 +7,7 @@
 	"authors": [
 		"The Preact Authors (https://github.com/preactjs/preact/contributors)"
 	],
+	"mangle": "../../mangle.json",
 	"repository": "preactjs/preact",
 	"bugs": "https://github.com/preactjs/preact/issues",
 	"homepage": "https://preactjs.com",

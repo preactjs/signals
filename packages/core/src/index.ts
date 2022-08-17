@@ -1,8 +1,3 @@
-const SUBS = Symbol.for("subs");
-const DEPS = Symbol.for("deps");
-const VALUE = Symbol.for("value");
-const PENDING = Symbol.for("pending");
-
 let ROOT: Signal;
 
 /** This tracks subscriptions of signals read inside a computed */
@@ -15,14 +10,20 @@ let batchPending = 0;
 
 let oldDeps = new Set<Signal>();
 
-class Signal<T = any> {
-	[SUBS] = new Set<Signal>();
-	[DEPS] = new Set<Signal>();
-	[PENDING] = 0;
-	[VALUE]: T;
+export class Signal<T = any> {
+	// These property names get minified - see /mangle.json
+
+	/** @internal Internal, do not use. */
+	_subs = new Set<Signal>();
+	/** @internal Internal, do not use. */
+	_deps = new Set<Signal>();
+	/** @internal Internal, do not use. */
+	_pending = 0;
+	/** @internal Internal, do not use. */
+	_value: T;
 
 	constructor(value: T) {
-		this[VALUE] = value;
+		this._value = value;
 	}
 
 	toString() {
@@ -31,27 +32,27 @@ class Signal<T = any> {
 
 	get value() {
 		// subscribe the current computed to this signal:
-		this[SUBS].add(currentSignal);
+		this._subs.add(currentSignal);
 		// update the current computed's dependencies:
-		currentSignal[DEPS].add(this);
+		currentSignal._deps.add(this);
 		oldDeps.delete(this);
 
 		// refresh stale value when this signal is read from withing
 		// batching and when it has been marked already
-		if (batchPending > 0 && this[PENDING] > 0) {
+		if (batchPending > 0 && this._pending > 0) {
 			refreshStale(this);
 		}
-		return this[VALUE];
+		return this._value;
 	}
 
 	set value(value) {
-		if (this[VALUE] !== value) {
-			this[VALUE] = value;
+		if (this._value !== value) {
+			this._value = value;
 			let isFirst = pending.size === 0;
 
 			pending.add(this);
 			// in batch mode this signal may be marked already
-			if (this[PENDING] === 0) {
+			if (this._pending === 0) {
 				mark(this);
 			}
 
@@ -70,20 +71,54 @@ class Signal<T = any> {
 		}
 	}
 
-	updater() {
+	/**
+	 * Start a read operation where this signal is the "current signal" context.
+	 * Returns a function that must be called to end the read context.
+	 * @internal
+	 */
+	_setCurrent() {
+		let prevSignal = currentSignal;
+		let prevOldDeps = oldDeps;
+		currentSignal = this;
+		oldDeps = this._deps;
+		this._deps = new Set();
+
+		return (shouldUnmark: boolean, shouldCleanup: boolean) => {
+			if (shouldUnmark) this._subs.forEach(unmark);
+
+			// Any leftover dependencies here are not needed anymore
+			if (shouldCleanup) {
+				// Unsubscribe from dependencies that were not accessed:
+				oldDeps.forEach(sub => unsubscribe(this, sub));
+			} else {
+				// Re-subscribe to dependencies that not accessed:
+				oldDeps.forEach(sub => subscribe(this, sub));
+			}
+
+			oldDeps.clear();
+			oldDeps = prevOldDeps;
+			currentSignal = prevSignal;
+		};
+	}
+
+	/**
+	 * A custom update routine to run when this Signal's value changes.
+	 * @internal
+	 */
+	_updater() {
 		// override me to handle updates
 	}
 }
 
 function mark(signal: Signal) {
-	if (signal[PENDING]++ === 0) {
-		signal[SUBS].forEach(mark);
+	if (signal._pending++ === 0) {
+		signal._subs.forEach(mark);
 	}
 }
 
 function unmark(signal: Signal<any>) {
-	if (--signal[PENDING] === 0) {
-		signal[SUBS].forEach(unmark);
+	if (--signal._pending === 0) {
+		signal._subs.forEach(unmark);
 	}
 }
 
@@ -91,22 +126,27 @@ function sweep(subs: Set<Signal<any>>) {
 	subs.forEach(signal => {
 		// If a computed errored during sweep, we'll discard that subtree
 		// for this sweep cycle by setting PENDING to 0;
-		if (signal[PENDING] > 0 && --signal[PENDING] === 0) {
-			signal.updater();
-			sweep(signal[SUBS]);
+		if (signal._pending > 0 && --signal._pending === 0) {
+			signal._updater();
+			sweep(signal._subs);
 		}
 	});
 }
 
+function subscribe(signal: Signal<any>, to: Signal<any>) {
+	signal._deps.add(to);
+	to._subs.add(signal);
+}
+
 function unsubscribe(signal: Signal<any>, from: Signal<any>) {
-	signal[DEPS].delete(from);
-	from[SUBS].delete(signal);
+	signal._deps.delete(from);
+	from._subs.delete(signal);
 
 	// If nobody listens to the signal we depended on, we can traverse
 	// upwards and destroy all subscriptions until we encounter a writable
 	// signal or a signal that others listen to as well.
-	if (from[SUBS].size === 0) {
-		from[DEPS].forEach(dep => unsubscribe(from, dep));
+	if (from._subs.size === 0) {
+		from._deps.forEach(dep => unsubscribe(from, dep));
 	}
 }
 
@@ -119,16 +159,16 @@ const tmpPending: Signal[] = [];
  */
 function refreshStale(signal: Signal) {
 	pending.delete(signal);
-	signal[PENDING] = 0;
-	signal.updater();
+	signal._pending = 0;
+	signal._updater();
 
-	signal[SUBS].forEach(sub => {
-		if (sub[PENDING] > 0) {
+	signal._subs.forEach(sub => {
+		if (sub._pending > 0) {
 			// If PENDING > 1 then we can safely reduce the counter because
 			// the final sweep will take care of the rest. But if it's
 			// exactly 1 we can't do that otherwise the sweeping logic
 			// assumes that this signal was already updated.
-			if (sub[PENDING] > 1) sub[PENDING]--;
+			if (sub._pending > 1) sub._pending--;
 			tmpPending.push(sub);
 		}
 	});
@@ -144,41 +184,21 @@ export function computed<T>(compute: () => T): Signal<T> {
 	const signal = new Signal<T>(undefined as any);
 
 	function updater() {
-		let tmp = currentSignal;
-		currentSignal = signal;
-
-		// Computed might conditionally access signals. This means that we need
-		// to ensure that we unsubscribe from any old depedencies that aren't
-		// used anymore.
-		oldDeps = signal[DEPS];
-		signal[DEPS] = new Set();
+		let finish = signal._setCurrent();
 
 		try {
 			let ret = compute();
 
-			// Any leftover dependencies here are not needed anymore
-			oldDeps.forEach(sub => unsubscribe(signal, sub));
-			oldDeps.clear();
-
-			if (signal[VALUE] === ret) {
-				signal[SUBS].forEach(unmark);
-			} else {
-				signal[VALUE] = ret;
-			}
+			finish(signal._value === ret, true);
+			signal._value = ret;
 		} catch (err: any) {
-			// This is used by other computed's too, so we need to cleanup
-			// after ourselves.
-			oldDeps.clear();
-			signal[SUBS].forEach(sub => unmark(sub));
-
 			// Ensure that we log the first error not the last
 			if (!commitError) commitError = err;
-		} finally {
-			currentSignal = tmp;
+			finish(true, false);
 		}
 	}
 
-	signal.updater = updater;
+	signal._updater = updater;
 	updater();
 
 	return signal;
