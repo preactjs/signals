@@ -10,7 +10,7 @@ setTimeout(setFlashingEnabled, 100, true);
 const demos = {
 	Counter,
 	GlobalCounter,
-	TwoGlobalCounters,
+	DuelingCounters,
 	Nesting: lazy(() => import("./nesting")),
 };
 
@@ -68,21 +68,33 @@ function Counter() {
 }
 
 const globalCount = signal(0);
-function GlobalCounter() {
+function GlobalCounter({ explain = true }) {
 	return (
-		<div class="card">
-			<button onClick={() => globalCount.value--}>-1</button>
-			<output>{globalCount}</output>
-			<button onClick={() => globalCount.value++}>+1</button>
-		</div>
+		<>
+			{explain && (
+				<p class="info">
+					This component references a global <code>signal()</code>. Try changing
+					the count, navigating to a different example, then back here.
+				</p>
+			)}
+			<div class="card">
+				<button onClick={() => globalCount.value--}>-1</button>
+				<output>{globalCount}</output>
+				<button onClick={() => globalCount.value++}>+1</button>
+			</div>
+		</>
 	);
 }
 
-function TwoGlobalCounters() {
+function DuelingCounters() {
 	return (
 		<>
-			<GlobalCounter />
-			<GlobalCounter />
+			<p class="info">
+				Two instances of a counter component that both interact with a global
+				Signal - changing one updates the other.
+			</p>
+			<GlobalCounter explain={false} />
+			<GlobalCounter explain={false} />
 		</>
 	);
 }

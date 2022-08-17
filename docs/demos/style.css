@@ -7,13 +7,12 @@ body {
 
 header {
 	display: flex;
-	align-items: center;
 	padding: 10px;
 	background: #ddd;
 }
 header h1 {
 	margin: 0;
-	padding-right: 1em;
+	padding-right: 0.5em;
 	font-size: 1.5em;
 	font-weight: 300;
 }
@@ -27,21 +26,22 @@ header h1 a:hover {
 }
 nav {
 	display: flex;
-	gap: 0.5em;
+	flex-wrap: wrap;
+	align-items: flex-start;
+	gap: 1px;
 }
 nav a {
-	padding: 0.3em 1em;
+	padding: 0.3em 0.8em;
 	border-radius: 1em;
-	background: #f4f4f4;
 	color: #673ab8;
 	text-decoration: none;
 	white-space: nowrap;
-	transition: all 300ms ease;
 }
 nav a:hover {
-	background: #fff;
-	color: #673ab8;
-	box-shadow: 0 0 0 1px #aaa;
+	background-color: rgba(255, 255, 255, 0.5);
+	color: #56319c;
+	box-shadow: inset 0 0 0 1px #673ab8;
+	z-index: 1;
 }
 nav a.current {
 	background: #673ab8;
@@ -59,11 +59,42 @@ output {
 	text-align: center;
 }
 
+.info {
+	position: relative;
+	padding: 0.5em 0.5em 0.5em 2em;
+	max-width: 600px;
+	background: #e6ebfc;
+	border-radius: 5px;
+	box-shadow: inset 0 0 0 0.5px #b0bee2;
+	color: #3955a1;
+
+	&::before {
+		content: "\2139";
+		position: absolute;
+		display: inline-block;
+		text-align: center;
+		line-height: 1em;
+		width: 1.2em;
+		height: 1.2em;
+		left: 0.4em;
+		top: 50%;
+		margin-top: -0.6em;
+		background: #3955a1;
+		border-radius: 0.6em;
+		color: #fff;
+	}
+}
+
 .card {
 	display: inline-block;
 	padding: 0.5em 1em;
-	margin: 0.5em;
 	background: #eee;
+	box-shadow: inset 0 0 0 0.5px #ccc;
+	border-radius: 5px;
+}
+
+.card + .card {
+	margin-left: 10px;
 }
 
 button {
