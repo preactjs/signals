@@ -275,6 +275,46 @@ describe("computed()", () => {
 			a.value = 2;
 			expect(c.value).to.equal(2);
 		});
+
+		it("should revert subscriptions on errors in computeds", () => {
+			const a = signal(1);
+			const b = signal(1);
+			const c = signal(1);
+			let shouldThrow = false;
+			const compute = sinon.spy(() => {
+				if (shouldThrow) {
+					throw new Error("fail: " + c.value);
+				}
+				return a.value + b.value;
+			});
+			const d = computed(compute);
+			expect(d.value).to.equal(2);
+
+			shouldThrow = true;
+			expect(() => {
+				a.value = 2;
+			}).to.throw();
+			expect(d.value).to.equal(2);
+
+			// when errors occur, we intentionally over-subscribe.
+			// This includes retaining subscriptions after the error:
+			compute.resetHistory();
+			try {
+				b.value = 2;
+			} catch (e) {
+				// may error, but not in a way we can assert over
+			}
+			expect(compute).to.have.been.called;
+
+			compute.resetHistory();
+			shouldThrow = false;
+			// Note: b.value=2 should probably also update the subgraph.
+			// ...but its value is already 2 from the errored computation.
+			// b.value = 2;
+			c.value = 2;
+			expect(compute).to.have.been.called;
+			expect(d.value).to.equal(4);
+		});
 	});
 });
 
