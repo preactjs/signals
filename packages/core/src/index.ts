@@ -72,6 +72,36 @@ export class Signal<T = any> {
 	}
 
 	/**
+	 * Start a read operation where this signal is the "current signal" context.
+	 * Returns a function that must be called to end the read context.
+	 * @internal
+	 */
+	_setCurrent() {
+		let prevSignal = currentSignal;
+		let prevOldDeps = oldDeps;
+		currentSignal = this;
+		oldDeps = this._deps;
+		this._deps = new Set();
+
+		return (shouldUnmark: boolean, shouldCleanup: boolean) => {
+			if (shouldUnmark) this._subs.forEach(unmark);
+
+			// Any leftover dependencies here are not needed anymore
+			if (shouldCleanup) {
+				// Unsubscribe from dependencies that were not accessed:
+				oldDeps.forEach(sub => unsubscribe(this, sub));
+			} else {
+				// Re-subscribe to dependencies that not accessed:
+				oldDeps.forEach(sub => subscribe(this, sub));
+			}
+
+			oldDeps.clear();
+			oldDeps = prevOldDeps;
+			currentSignal = prevSignal;
+		};
+	}
+
+	/**
 	 * A custom update routine to run when this Signal's value changes.
 	 * @internal
 	 */
@@ -101,6 +131,11 @@ function sweep(subs: Set<Signal<any>>) {
 			sweep(signal._subs);
 		}
 	});
+}
+
+function subscribe(signal: Signal<any>, to: Signal<any>) {
+	signal._deps.add(to);
+	to._subs.add(signal);
 }
 
 function unsubscribe(signal: Signal<any>, from: Signal<any>) {
@@ -149,37 +184,17 @@ export function computed<T>(compute: () => T): Signal<T> {
 	const signal = new Signal<T>(undefined as any);
 
 	function updater() {
-		let tmp = currentSignal;
-		currentSignal = signal;
-
-		// Computed might conditionally access signals. This means that we need
-		// to ensure that we unsubscribe from any old depedencies that aren't
-		// used anymore.
-		oldDeps = signal[DEPS];
-		signal[DEPS] = new Set();
+		let finish = signal._setCurrent();
 
 		try {
 			let ret = compute();
 
-			// Any leftover dependencies here are not needed anymore
-			oldDeps.forEach(sub => unsubscribe(signal, sub));
-			oldDeps.clear();
-
-			if (signal[VALUE] === ret) {
-				signal[SUBS].forEach(unmark);
-			} else {
-				signal[VALUE] = ret;
-			}
+			finish(signal._value === ret, true);
+			signal._value = ret;
 		} catch (err: any) {
-			// This is used by other computed's too, so we need to cleanup
-			// after ourselves.
-			oldDeps.clear();
-			signal[SUBS].forEach(sub => unmark(sub));
-
 			// Ensure that we log the first error not the last
 			if (!commitError) commitError = err;
-		} finally {
-			currentSignal = tmp;
+			finish(true, false);
 		}
 	}
 
