@@ -3,7 +3,8 @@
 	"private": true,
 	"scripts": {
 		"start": "vite",
-		"build": "vite build"
+		"build": "vite build",
+		"preview": "vite preview"
 	},
 	"postcss": {
 		"plugins": {
