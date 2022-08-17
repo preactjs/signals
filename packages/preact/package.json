@@ -20,6 +20,7 @@
 	"unpkg": "dist/preact.min.js",
 	"types": "dist/index.d.ts",
 	"source": "src/index.ts",
+	"mangle": "../../mangle.json",
 	"exports": {
 		".": {
 			"browser": "./dist/signals.module.js",
