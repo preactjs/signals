@@ -17,7 +17,8 @@
 		"docs:start": "cd docs && pnpm start",
 		"docs:build": "cd docs && pnpm build",
 		"docs:preview": "cd docs && pnpm preview",
-		"ci": "pnpm lint && pnpm test && pnpm build && pnpm docs:build"
+		"ci:build": "pnpm build && pnpm docs:build",
+		"ci:test": "pnpm lint && pnpm test"
 	},
 	"keywords": [],
 	"author": "",
