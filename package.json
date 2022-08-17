@@ -16,7 +16,8 @@
 		"test:watch": "karma start karma.conf.js --no-single-run",
 		"docs:start": "cd docs && pnpm start",
 		"docs:build": "cd docs && pnpm build",
-		"docs:preview": "cd docs && pnpm preview"
+		"docs:preview": "cd docs && pnpm preview",
+		"ci": "pnpm lint && pnpm test && pnpm build && pnpm docs:build"
 	},
 	"keywords": [],
 	"author": "",
