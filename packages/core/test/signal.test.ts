@@ -250,6 +250,13 @@ describe("computed()", () => {
 	});
 
 	describe("error handling", () => {
+		it("should throw when writing to computeds", () => {
+			const a = signal("a");
+			const b = computed(() => a.value);
+			const fn = () => (b.value = "aa");
+			expect(fn).to.throw(/readonly/);
+		});
+
 		it("should keep graph consistent on errors in computeds", () => {
 			const a = signal(0);
 			let shouldThrow = false;
