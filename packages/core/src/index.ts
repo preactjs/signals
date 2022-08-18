@@ -211,9 +211,9 @@ export function computed<T>(compute: () => T): Signal<T> {
 	return signal;
 }
 
-export function observe<T>(signal: Signal<T>, callback: (value: T) => void) {
-	const s = computed(() => callback(signal.value));
-	s._readonly = true;
+export function effect(callback: () => void) {
+	const s = computed(callback);
+	return () => s._setCurrent()(true, true);
 }
 
 export function batch<T>(cb: () => T): T {

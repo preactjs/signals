@@ -1,4 +1,4 @@
-import { signal, computed, observe, batch } from "@preact/signals-core";
+import { signal, computed, observe, batch, effect } from "@preact/signals-core";
 
 describe("signal", () => {
 	it("should return value", () => {
@@ -13,12 +13,52 @@ describe("signal", () => {
 	});
 });
 
-describe("observe()", () => {
-	it("should update on signal change", () => {
+describe("effect()", () => {
+	it("should init with value", () => {
 		const s = signal(123);
-		const spy = sinon.spy();
-		observe(s, spy);
-		expect(spy).to.have.been.calledWith(123);
+		const spy = sinon.spy(() => s.value);
+		effect(spy);
+
+		expect(spy).to.be.called;
+		expect(spy).to.returned(123);
+	});
+
+	it("should subscribe to signals", () => {
+		const s = signal(123);
+		const spy = sinon.spy(() => s.value);
+		effect(spy);
+		spy.resetHistory();
+
+		s.value = 42;
+		expect(spy).to.be.called;
+		expect(spy).to.returned(42);
+	});
+
+	it("should subscribe to multiple signals", () => {
+		const a = signal("a");
+		const b = signal("b");
+		const spy = sinon.spy(() => a.value + " " + b.value);
+		effect(spy);
+		spy.resetHistory();
+
+		a.value = "aa";
+		b.value = "bb";
+		expect(spy).to.returned("aa bb");
+	});
+
+	it("should dispose of subscriptions", () => {
+		const a = signal("a");
+		const b = signal("b");
+		const spy = sinon.spy(() => a.value + " " + b.value);
+		const dispose = effect(spy);
+		spy.resetHistory();
+
+		dispose();
+		expect(spy).not.to.be.called;
+
+		a.value = "aa";
+		b.value = "bb";
+		expect(spy).not.to.be.called;
 	});
 });
 
@@ -28,10 +68,7 @@ describe("computed()", () => {
 		const b = signal("b");
 
 		const c = computed(() => a.value + b.value);
-
-		const spy = sinon.spy();
-		observe(c, spy);
-		expect(spy).to.have.been.calledWith("ab");
+		expect(c.value).to.equal("ab");
 	});
 
 	it("should return updated value", async () => {
