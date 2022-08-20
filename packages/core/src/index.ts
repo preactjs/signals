@@ -7,6 +7,12 @@ let commitError: Error | null = null;
 const pending = new Set<Signal>();
 /** Batch calls can be nested. 0 means that there is no batching */
 let batchPending = 0;
+/**
+ * Subscriptions are set up lazily when a "reactor" is set up.
+ * During this activation phase we traverse the graph upwards
+ * and refresh all signals that are stale on signal read.
+ */
+let activating = false;
 
 let oldDeps = new Set<Signal>();
 
@@ -33,6 +39,14 @@ export class Signal<T = any> {
 	}
 
 	get value() {
+		// If we read a signal outside of a computed we have no way
+		// to unsubscribe from that. So we assume that the user wants
+		// to get the value immediately like for testing.
+		if (currentSignal === ROOT && this._deps.size === 0) {
+			activate(this);
+			return this._value;
+		}
+
 		// subscribe the current computed to this signal:
 		this._subs.add(currentSignal);
 		// update the current computed's dependencies:
@@ -41,7 +55,11 @@ export class Signal<T = any> {
 
 		// refresh stale value when this signal is read from withing
 		// batching and when it has been marked already
-		if (batchPending > 0 && this._pending > 0) {
+		if (
+			(batchPending > 0 && this._pending > 0) ||
+			// Set up subscriptions during activation phase
+			(activating && this._deps.size === 0)
+		) {
 			refreshStale(this);
 		}
 		return this._value;
@@ -167,6 +185,11 @@ function refreshStale(signal: Signal) {
 	pending.delete(signal);
 	signal._pending = 0;
 	signal._updater();
+	if (commitError) {
+		const err = commitError;
+		commitError = null;
+		throw err;
+	}
 
 	signal._subs.forEach(sub => {
 		if (sub._pending > 0) {
@@ -178,6 +201,15 @@ function refreshStale(signal: Signal) {
 			tmpPending.push(sub);
 		}
 	});
+}
+
+function activate(signal: Signal) {
+	activating = true;
+	try {
+		refreshStale(signal);
+	} finally {
+		activating = false;
+	}
 }
 
 ROOT = currentSignal = new Signal(undefined);
@@ -206,13 +238,14 @@ export function computed<T>(compute: () => T): Signal<T> {
 	}
 
 	signal._updater = updater;
-	updater();
 
 	return signal;
 }
 
 export function effect(callback: () => void) {
 	const s = computed(callback);
+	// Set up subscriptions since this is a "reactor" signal
+	activate(s);
 	return () => s._setCurrent()(true, true);
 }
 
