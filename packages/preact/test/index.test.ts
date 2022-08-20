@@ -1,11 +1,14 @@
-import { signal } from "@preact/signals";
+import { signal, useComputed } from "@preact/signals";
 import { h, render } from "preact";
+import { setupRerender } from "preact/test-utils";
 
 describe("@preact/signals", () => {
 	let scratch: HTMLDivElement;
+	let rerender: () => void;
 
 	beforeEach(() => {
 		scratch = document.createElement("div");
+		rerender = setupRerender();
 	});
 
 	afterEach(() => {
@@ -60,6 +63,65 @@ describe("@preact/signals", () => {
 			expect(scratch.firstChild!.firstChild!).to.equal(text);
 			// should update the text in-place
 			expect(text).to.have.property("data", "changed");
+		});
+	});
+
+	describe("Component bindings", () => {
+		it("should subscribe to signals", () => {
+			const sig = signal("foo");
+
+			function App() {
+				const value = sig.value;
+				return h("p", null, value);
+			}
+
+			render(h(App, {}), scratch);
+			expect(scratch.textContent).to.equal("foo");
+
+			sig.value = "bar";
+			rerender();
+			expect(scratch.textContent).to.equal("bar");
+		});
+
+		it("should activate signal accessed in render", () => {
+			const sig = signal(null);
+
+			function App() {
+				const arr = useComputed(() => {
+					// trigger read
+					sig.value;
+
+					return [];
+				});
+
+				const str = arr.value.join(", ");
+				return h("p", null, str);
+			}
+
+			const fn = () => render(h(App, {}), scratch);
+			expect(fn).not.to.throw;
+		});
+
+		it("should not subscribe to child signals", () => {
+			const sig = signal("foo");
+
+			function Child() {
+				const value = sig.value;
+				return h("p", null, value);
+			}
+
+			const spy = sinon.spy();
+			function App() {
+				spy();
+				return h(Child, null);
+			}
+
+			render(h(App, {}), scratch);
+			expect(scratch.textContent).to.equal("foo");
+
+			sig.value = "bar";
+			rerender();
+			expect(spy).to.be.calledOnce;
 		});
 	});
 });
