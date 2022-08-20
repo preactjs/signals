@@ -1,5 +1,6 @@
 import { signal, useComputed } from "@preact/signals";
 import { h, render } from "preact";
+import { useMemo } from "preact/hooks";
 import { setupRerender } from "preact/test-utils";
 
 describe("@preact/signals", () => {
@@ -122,6 +123,27 @@ describe("@preact/signals", () => {
 			sig.value = "bar";
 			rerender();
 			expect(spy).to.be.calledOnce;
+		});
+
+		it("should update memo'ed component via signals", async () => {
+			const sig = signal("foo");
+
+			function Inner() {
+				const value = sig.value;
+				return h("p", null, value);
+			}
+
+			function App() {
+				sig.value;
+				return useMemo(() => h(Inner, { foo: 1 }), []);
+			}
+
+			render(h(App, {}), scratch);
+			expect(scratch.textContent).to.equal("foo");
+
+			sig.value = "bar";
+			rerender();
+			expect(scratch.textContent).to.equal("bar");
 		});
 	});
 });

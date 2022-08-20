@@ -156,6 +156,8 @@ hook(OptionsTypes.RENDER, (old, vnode) => {
 
 	let component = vnode.__c;
 	if (component) {
+		hasPendingUpdate.delete(component);
+
 		updater = updaterForComponent.get(component);
 		if (updater === undefined) {
 			updater = createUpdater(() => {
@@ -242,7 +244,7 @@ Component.prototype.shouldComponentUpdate = function (props, state) {
 	if (!hasSignals && !hasComputeds.has(this)) return true;
 
 	// if there is a pending re-render triggered from Signals, update:
-	if (hasPendingUpdate.delete(this)) return true;
+	if (hasPendingUpdate.has(this)) return true;
 
 	// if there is hook or class state, update:
 	if (hasHookState.has(this)) return true;
