@@ -448,4 +448,24 @@ describe("batch/transaction", () => {
 		expect(spyD).to.be.calledOnce;
 		expect(spyE).to.be.calledOnce;
 	});
+
+	it("should not block writes after batching completed", () => {
+		// If no further writes after batch() are possible, than we
+		// didn't restore state properly. Most likely "pending" still
+		// holds elements that are already processed.
+		const a = signal("a");
+		const b = signal("b");
+		const c = signal("c");
+		const d = computed(() => a.value + " " + b.value + " " + c.value);
+
+		let result;
+		effect(() => (result = d.value));
+
+		batch(() => {
+			a.value = "aa";
+			b.value = "bb";
+		});
+		c.value = "cc";
+		expect(result).to.equal("aa bb cc");
+	});
 });

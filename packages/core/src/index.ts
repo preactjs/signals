@@ -230,6 +230,7 @@ export function batch<T>(cb: () => T): T {
 
 		if (--batchPending === 0) {
 			sweep(pending);
+			pending.clear();
 		}
 	}
 }
