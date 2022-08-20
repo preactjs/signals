@@ -29,6 +29,8 @@ export class Signal<T = any> {
 	_value: T;
 	/** Determine if a computed is allowed to write or not */
 	_readonly = false;
+	/** @internal Marks the signal as requiring an update */
+	_requiresUpdate = false;
 
 	constructor(value: T) {
 		this._value = value;
@@ -141,7 +143,11 @@ function mark(signal: Signal) {
 }
 
 function unmark(signal: Signal<any>) {
-	if (--signal._pending === 0) {
+	// We can only unmark this node as not needing an update if it
+	// wasn't flagged as needing an update by someone else. This is
+	// done to make the sweeping logic independent of the order
+	// in which a dependency tries to unmark a subtree.
+	if (!signal._requiresUpdate && --signal._pending === 0) {
 		signal._subs.forEach(unmark);
 	}
 }
@@ -150,9 +156,14 @@ function sweep(subs: Set<Signal<any>>) {
 	subs.forEach(signal => {
 		// If a computed errored during sweep, we'll discard that subtree
 		// for this sweep cycle by setting PENDING to 0;
-		if (signal._pending > 0 && --signal._pending === 0) {
-			signal._updater();
-			sweep(signal._subs);
+		if (signal._pending > 0) {
+			signal._requiresUpdate = true;
+
+			if (--signal._pending === 0) {
+				signal._requiresUpdate = false;
+				signal._updater();
+				sweep(signal._subs);
+			}
 		}
 	});
 }
