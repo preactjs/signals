@@ -350,6 +350,59 @@ describe("computed()", () => {
 			expect(spyC).not.to.be.called;
 			expect(d.value).to.equal("aa");
 		});
+
+		it("should ensure subs update even if one dep unmarks it", () => {
+			// In this scenario "C" always returns the same value. When "A"
+			// changes, "B" will update, then "C" at which point its update
+			// to "D" will be unmarked. But "D" must still update because
+			// "B" marked it. If "D" isn't updated, then we have a bug.
+			//     A
+			//   /   \
+			//  B     *C <- returns same value every time
+			//   \   /
+			//     D
+			const a = signal("a");
+			const b = computed(() => a.value);
+			const c = computed(() => {
+				a.value;
+				return "c";
+			});
+			const spy = sinon.spy(() => b.value + " " + c.value);
+			const d = computed(spy);
+			expect(d.value).to.equal("a c");
+			spy.resetHistory();
+
+			a.value = "aa";
+			expect(spy).to.returned("aa c");
+		});
+
+		it("should ensure subs update even if two deps unmark it", () => {
+			// In this scenario both "C" and "D" always return the same
+			// value. But "E" must still update because "A"  marked it.
+			// If "E" isn't updated, then we have a bug.
+			//     A
+			//   / | \
+			//  B *C *D
+			//   \ | /
+			//     E
+			const a = signal("a");
+			const b = computed(() => a.value);
+			const c = computed(() => {
+				a.value;
+				return "c";
+			});
+			const d = computed(() => {
+				a.value;
+				return "d";
+			});
+			const spy = sinon.spy(() => b.value + " " + c.value + " " + d.value);
+			const e = computed(spy);
+			expect(e.value).to.equal("a c d");
+			spy.resetHistory();
+
+			a.value = "aa";
+			expect(spy).to.returned("aa c d");
+		});
 	});
 
 	describe("error handling", () => {
