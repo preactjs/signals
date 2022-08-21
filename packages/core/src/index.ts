@@ -27,10 +27,12 @@ export class Signal<T = any> {
 	_pending = 0;
 	/** @internal Internal, do not use. */
 	_value: T;
-	/** Determine if a computed is allowed to write or not */
+	/** @internal Determine if a computed is allowed to write or not */
 	_readonly = false;
 	/** @internal Marks the signal as requiring an update */
 	_requiresUpdate = false;
+	/** @internal Determine if reads should eagerly activate value */
+	_canActivate = false;
 
 	constructor(value: T) {
 		this._value = value;
@@ -44,9 +46,14 @@ export class Signal<T = any> {
 		// If we read a signal outside of a computed we have no way
 		// to unsubscribe from that. So we assume that the user wants
 		// to get the value immediately like for testing.
-		if (currentSignal === ROOT && this._deps.size === 0) {
+		if (currentSignal._canActivate && this._deps.size === 0) {
 			activate(this);
-			return this._value;
+
+			// The ROOT signal cannot track dependencies as it's never
+			// subscribed to
+			if (currentSignal === ROOT) {
+				return this._value;
+			}
 		}
 
 		// subscribe the current computed to this signal:
@@ -224,6 +231,7 @@ function activate(signal: Signal) {
 }
 
 ROOT = currentSignal = new Signal(undefined);
+ROOT._canActivate = true;
 
 export function signal<T>(value: T): Signal<T> {
 	return new Signal(value);
