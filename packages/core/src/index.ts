@@ -254,7 +254,7 @@ export function computed<T>(compute: () => T): Signal<T> {
 }
 
 export function effect(callback: () => void) {
-	const s = computed(callback);
+	const s = computed(() => batch(callback));
 	// Set up subscriptions since this is a "reactor" signal
 	activate(s);
 	return () => s._setCurrent()(true, true);

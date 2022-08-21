@@ -71,6 +71,20 @@ describe("effect()", () => {
 		s.value = 42;
 		expect(spy).not.to.be.called;
 	});
+
+	it("should batch writes", () => {
+		const a = signal("a");
+		const spy = sinon.spy(() => a.value);
+		effect(spy);
+		spy.resetHistory();
+
+		effect(() => {
+			a.value = "aa";
+			a.value = "aaa";
+		});
+
+		expect(spy).to.be.calledOnce;
+	});
 });
 
 describe("computed()", () => {
