@@ -34,7 +34,7 @@
 		"prepublishOnly": "cd ../.. && pnpm build:preact"
 	},
 	"dependencies": {
-		"@preact/signals-core": "workspace:*"
+		"@preact/signals-core": "workspace:^0.0.3"
 	},
 	"peerDependencies": {
 		"preact": "10.x"
