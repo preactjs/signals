@@ -5,11 +5,11 @@
 	"description": "",
 	"keywords": [],
 	"authors": [
-		"The Preact Authors (https://github.com/preactjs/preact/contributors)"
+		"The Preact Authors (https://github.com/preactjs/signals/contributors)"
 	],
 	"mangle": "../../mangle.json",
-	"repository": "preactjs/preact",
-	"bugs": "https://github.com/preactjs/preact/issues",
+	"repository": "preactjs/signals",
+	"bugs": "https://github.com/preactjs/signals/issues",
 	"homepage": "https://preactjs.com",
 	"funding": {
 		"type": "opencollective",
