@@ -1,4 +1,4 @@
-import { defineConfig, Plugin } from "vite";
+import { defineConfig, Plugin, Connect } from "vite";
 import preact from "@preact/preset-vite";
 import { resolve } from "path";
 import fs from "fs";
@@ -26,7 +26,7 @@ export default defineConfig(env => ({
 	},
 	resolve: {
 		extensions: [".ts", ".tsx", ".js", ".jsx", ".d.ts"],
-		alias: packages(env.mode === "production"),
+		alias: env.mode === "production" ? {} : packages(false),
 	},
 }));
 
@@ -35,7 +35,8 @@ import glob from "tiny-glob";
 function multiSpa(entries: string | string[]): Plugin {
 	let htmlEntries: string[];
 	let htmlUrls: string[];
-	function middleware(req, res, next) {
+
+	const middleware: Connect.NextHandleFunction = (req, res, next) => {
 		const url = req.url!;
 		// ignore /@x and file extension URLs:
 		if (/(^\/@|\.[a-z]+(?:\?.*)?$)/i.test(url)) return next();
@@ -49,7 +50,8 @@ function multiSpa(entries: string | string[]): Plugin {
 			}
 		}
 		next();
-	}
+	};
+
 	return {
 		name: "multi-spa",
 		async config() {
