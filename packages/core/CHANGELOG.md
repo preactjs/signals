@@ -1,5 +1,11 @@
 # @preact/signals-core
 
+## 0.0.4
+
+### Patch Changes
+
+- 4123d60: Fix TypeScript definitions not found in core
+
 ## 0.0.3
 
 ### Patch Changes
