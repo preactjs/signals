@@ -30,6 +30,9 @@
 			"types": "./dist/index.d.ts"
 		}
 	},
+	"scripts": {
+		"prepublishOnly": "cd ../.. && pnpm build:preact"
+	},
 	"dependencies": {
 		"@preact/signals-core": "workspace:../core"
 	},
