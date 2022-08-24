@@ -18,15 +18,16 @@
 	"amdName": "preactSignalsCore",
 	"main": "dist/signals-core.js",
 	"module": "dist/signals-core.module.js",
-	"unpkg": "dist/preact.min.js",
-	"types": "dist/index.d.ts",
+	"unpkg": "dist/signals-core.min.js",
+	"types": "dist/signals-core.d.ts",
 	"source": "src/index.ts",
 	"exports": {
 		".": {
 			"browser": "./dist/signals-core.module.js",
 			"umd": "./dist/signals-core.umd.js",
 			"import": "./dist/signals-core.mjs",
-			"require": "./dist/signals-core.js"
+			"require": "./dist/signals-core.js",
+			"types": "./dist/signals-core.d.ts"
 		}
 	},
 	"scripts": {
