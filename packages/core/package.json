@@ -28,5 +28,8 @@
 			"import": "./dist/signals-core.mjs",
 			"require": "./dist/signals-core.js"
 		}
+	},
+	"scripts": {
+		"prepublishOnly": "cd ../.. && pnpm build:core"
 	}
 }
