@@ -7,8 +7,9 @@
 	"scripts": {
 		"prebuild": "rimraf packages/core/dist/ packages/preact/dist",
 		"build": "pnpm build:core && pnpm build:preact",
-		"build:core": "microbundle --raw --cwd packages/core",
+		"build:core": "microbundle --raw --cwd packages/core && pnpm postbuild:core",
 		"build:preact": "microbundle --raw --cwd packages/preact && pnpm postbuild:preact",
+		"postbuild:core": "cd packages/core/dist && mv -f index.d.ts signals-core.d.ts",
 		"postbuild:preact": "cd packages/preact/dist && mv -f preact/src/index.d.ts signals.d.ts && rm -dr preact",
 		"postbuild": "node ./scripts/node-13-exports.js",
 		"lint": "eslint 'packages/**/*.{ts,tsx,js,jsx}'",
