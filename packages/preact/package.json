@@ -18,7 +18,7 @@
 	"main": "dist/signals.js",
 	"module": "dist/signals.module.js",
 	"unpkg": "dist/signals.min.js",
-	"types": "dist/index.d.ts",
+	"types": "dist/signals.d.ts",
 	"source": "src/index.ts",
 	"mangle": "../../mangle.json",
 	"exports": {
@@ -27,7 +27,7 @@
 			"umd": "./dist/signals.umd.js",
 			"import": "./dist/signals.mjs",
 			"require": "./dist/signals.js",
-			"types": "./dist/index.d.ts"
+			"types": "./dist/signals.d.ts"
 		}
 	},
 	"scripts": {
