@@ -1,6 +1,6 @@
 import { options, Component, createElement } from "preact";
 import { useRef, useMemo } from "preact/hooks";
-import { signal, computed, effect, Signal } from "@preact/signals-core";
+import { signal, computed, Signal } from "@preact/signals-core";
 import {
 	VNode,
 	ComponentType,
@@ -11,7 +11,7 @@ import {
 } from "./internal";
 
 // @todo: export Signal only as a type?
-export { signal, computed, effect, Signal };
+export * from "@preact/signals-core";
 
 // Components that have a pending Signal update: (used to bypass default sCU:false)
 const hasPendingUpdate = new WeakSet<Component>();
