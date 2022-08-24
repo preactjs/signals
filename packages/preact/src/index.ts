@@ -106,7 +106,7 @@ function childToSignal<T>(child: any, i: keyof T, arr: T) {
 function Text(this: ComponentType, { data }: { data: Signal }) {
 	// hasComputeds.add(this);
 
-	useMemo(() => {
+	const s = useMemo(() => {
 		// mark the parent component as having computeds so it gets optimized
 		let v = this.__v;
 		while ((v = v.__!)) {
@@ -118,11 +118,16 @@ function Text(this: ComponentType, { data }: { data: Signal }) {
 
 		// Replace this component's vdom updater with a direct text one:
 		currentUpdater!._updater = () => {
-			(this.base as Text).data = data._value;
+			(this.base as Text).data = s._value;
 		};
+
+		return computed(() => {
+			let s = data.value;
+			return s === 0 ? 0 : s === true ? "" : s || "";
+		});
 	}, []);
 
-	return data.value;
+	return s.value;
 }
 
 /** Inject low-level property/attribute bindings for Signals into Preact's diff */
