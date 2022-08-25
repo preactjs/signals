@@ -110,7 +110,7 @@ importers:
 
   packages/preact:
     specifiers:
-      '@preact/signals-core': workspace:^0.0.3
+      '@preact/signals-core': workspace:^0.0.4
       preact: 10.9.0
     dependencies:
       '@preact/signals-core': link:../core
