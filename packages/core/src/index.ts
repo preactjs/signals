@@ -326,7 +326,7 @@ export function proxySet<T extends Set<any>>(
 			return {
 				next() {
 					const done = i >= items.length;
-					const value = !done ? items[i][VALUE] : undefined;
+					const value = !done ? items[i]._value : undefined;
 					i++;
 					return { value, done };
 				},
@@ -373,7 +373,7 @@ export function proxySet<T extends Set<any>>(
 			const signal = backing.get(value);
 			if (signal) {
 				// FIXME: Unsubscribe
-				signal[DEPS].forEach(dep => unsubscribe(signal, dep));
+				signal._deps.forEach(dep => unsubscribe(signal, dep));
 				original.delete(value);
 				backing.delete(value);
 				sizeSignal.value--;
