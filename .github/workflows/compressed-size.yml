@@ -1,0 +1,19 @@
+name: compressed-size
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: compressed-size-action
+        uses: preactjs/compressed-size-action@v2
+        with:
+          pattern: '{packages/*/dist/!(*.module|*.min).{js,mjs},docs/dist/**/*.{js,css}}'
+          build-script: 'ci:build'
+          strip-hash: "\\.(\\w{8})\\.(?:js|css)$"
+
