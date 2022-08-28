@@ -1,0 +1,16 @@
+diff --git a/dist/cli.js b/dist/cli.js
+index eb2879e54b235bf1a15d37294c9d54bafa9bd44d..73176c39cd81ecb5f19e188efd8bd9f3e0a6ef3b 100644
+--- a/dist/cli.js
++++ b/dist/cli.js
+@@ -1155,7 +1155,10 @@ function createConfig(options, entry, format, writeMeta) {
+       freeze: false,
+       esModule: false,
+       sourcemap: options.sourcemap,
+-
++			compact: true,
++			generatedCode: modern ? 'es2015' : 'es5',
++			// turn off live bindings support (exports.* getters for re-exports)
++			externalLiveBindings: false,
+       get banner() {
+         return shebang[options.name];
+       },

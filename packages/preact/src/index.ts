@@ -1,12 +1,6 @@
 import { options, Component, createElement } from "preact";
 import { useRef, useMemo } from "preact/hooks";
-import {
-	signal,
-	computed,
-	batch as _batch,
-	effect as _effect,
-	Signal,
-} from "@preact/signals-core";
+import { signal, computed, batch, effect, Signal } from "@preact/signals-core";
 import {
 	VNode,
 	ComponentType,
@@ -16,11 +10,7 @@ import {
 	ElementUpdater,
 } from "./internal";
 
-// Note: intentionally derefernced to prevent exports getter generation in CJS/UMD.
-// @todo remove this workaround when fixed in microbundle.
-const batch = _batch;
-const effect = _effect;
-export { batch, effect };
+export { signal, computed, batch, effect, Signal };
 
 // Components that have a pending Signal update: (used to bypass default sCU:false)
 const hasPendingUpdate = new WeakSet<Component>();
