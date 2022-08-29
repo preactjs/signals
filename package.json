@@ -75,5 +75,10 @@
 	"prettier": {
 		"useTabs": true,
 		"arrowParens": "avoid"
+	},
+	"pnpm": {
+		"patchedDependencies": {
+			"microbundle@0.15.1": "patches/microbundle@0.15.1.patch"
+		}
 	}
 }
