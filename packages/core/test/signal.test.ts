@@ -423,7 +423,7 @@ describe("computed()", () => {
 		it("should throw when writing to computeds", () => {
 			const a = signal("a");
 			const b = computed(() => a.value);
-			const fn = () => (b.value = "aa");
+			const fn = () => ((b as any).value = "aa");
 			expect(fn).to.throw(/readonly/);
 		});
 

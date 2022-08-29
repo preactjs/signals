@@ -1,6 +1,13 @@
 import { options, Component, createElement } from "preact";
 import { useRef, useMemo } from "preact/hooks";
-import { signal, computed, batch, effect, Signal } from "@preact/signals-core";
+import {
+	signal,
+	computed,
+	batch,
+	effect,
+	Signal,
+	ReadonlySignal,
+} from "@preact/signals-core";
 import {
 	VNode,
 	ComponentType,
@@ -10,7 +17,7 @@ import {
 	ElementUpdater,
 } from "./internal";
 
-export { signal, computed, batch, effect, Signal };
+export { signal, computed, batch, effect, Signal, ReadonlySignal };
 
 // Components that have a pending Signal update: (used to bypass default sCU:false)
 const hasPendingUpdate = new WeakSet<Component>();
