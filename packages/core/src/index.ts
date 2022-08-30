@@ -237,7 +237,10 @@ export function signal<T>(value: T): Signal<T> {
 	return new Signal(value);
 }
 
-export function computed<T>(compute: () => T): Signal<T> {
+export type ReadonlySignal<T = any> = Omit<Signal<T>, "value"> & {
+	readonly value: T;
+};
+export function computed<T>(compute: () => T): ReadonlySignal<T> {
 	const signal = new Signal<T>(undefined as any);
 	signal._readonly = true;
 
