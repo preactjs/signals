@@ -1,7 +1,6 @@
 import {
 	useRef,
 	useMemo,
-	createElement,
 	// @ts-ignore-next-line
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED as internals,
@@ -23,6 +22,7 @@ export { signal, computed, batch, effect, Signal, type ReadonlySignal };
  * Install a middleware into React.createElement to replace any Signals in props with their value.
  * @todo this likely needs to be duplicated for jsx()...
  */
+const createElement = React.createElement;
 // @ts-ignore-next-line
 React.createElement = function (type, props) {
 	if (typeof type === "string" && props) {
