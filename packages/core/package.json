@@ -7,7 +7,6 @@
 	"authors": [
 		"The Preact Authors (https://github.com/preactjs/signals/contributors)"
 	],
-	"mangle": "../../mangle.json",
 	"repository": "preactjs/signals",
 	"bugs": "https://github.com/preactjs/signals/issues",
 	"homepage": "https://preactjs.com",
@@ -30,6 +29,7 @@
 			"types": "./dist/signals-core.d.ts"
 		}
 	},
+	"mangle": "../../mangle.json",
 	"scripts": {
 		"prepublishOnly": "cd ../.. && pnpm build:core"
 	}

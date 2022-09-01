@@ -7,7 +7,7 @@
 	"authors": [
 		"The Preact Authors (https://github.com/preactjs/signals/contributors)"
 	],
-	"repository": "preactjs/preact",
+	"repository": "preactjs/signals",
 	"bugs": "https://github.com/preactjs/signals/issues",
 	"homepage": "https://preactjs.com",
 	"funding": {
@@ -20,7 +20,6 @@
 	"unpkg": "dist/signals.min.js",
 	"types": "dist/signals.d.ts",
 	"source": "src/index.ts",
-	"mangle": "../../mangle.json",
 	"exports": {
 		".": {
 			"browser": "./dist/signals.module.js",
@@ -30,6 +29,7 @@
 			"types": "./dist/signals.d.ts"
 		}
 	},
+	"mangle": "../../mangle.json",
 	"scripts": {
 		"prepublishOnly": "cd ../.. && pnpm build:preact"
 	},
