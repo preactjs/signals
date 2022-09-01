@@ -173,18 +173,32 @@ module.exports = function (config) {
 		reporters: ["mocha"].concat(coverage ? "coverage" : []),
 
 		formatError(msg) {
-			const frames = errorstacks.parseStackTrace(msg);
+			let stack = msg;
+			// Karma prints error twice if it's an infinite loop
+			if (/^\s*Uncaught/.test(msg)) {
+				const lines = msg.split(/\n/g);
+				const emptyIdx = lines.findIndex(line => /^\s*$/.test(line));
+				stack = lines.slice(emptyIdx).join("\n");
+			}
+
+			const frames = errorstacks.parseStackTrace(stack);
 			if (!frames.length || frames[0].column === -1) return "\n" + msg + "\n";
 
-			const frame = frames[0];
-			const filePath = kl.lightCyan(
-				frame.fileName.replace(__dirname + "/", "")
-			);
+			let out = "";
+			for (let i = 0; i < frames.length; i++) {
+				const frame = frames[i];
+				const filePath = kl.lightCyan(
+					frame.fileName.replace(__dirname + "/", "")
+				);
 
-			const indentMatch = msg.match(/^(\s*)/);
-			const indent = indentMatch ? indentMatch[1] : "  ";
-			const location = kl.yellow(`:${frame.line}:${frame.column}`);
-			return `${indent}at ${frame.name} (${filePath}${location})\n`;
+				const indentMatch = msg.match(/^(\s*)/);
+				const indent = indentMatch ? indentMatch[1] : "  ";
+				const location = kl.yellow(`:${frame.line}:${frame.column}`);
+
+				out += `${indent}at ${frame.name} (${filePath}${location})\n`;
+			}
+
+			return out;
 		},
 
 		coverageReporter: {
