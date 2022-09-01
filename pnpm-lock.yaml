@@ -1,10 +1,5 @@
 lockfileVersion: 5.4
 
-patchedDependencies:
-  microbundle@0.15.1:
-    hash: yvstdq4ikeml4yz3a6bi3bgrvu
-    path: patches/microbundle@0.15.1.patch
-
 importers:
 
   .:
@@ -75,7 +70,7 @@ importers:
       karma-sinon: 1.0.5_karma@6.3.16+sinon@14.0.0
       kolorist: 1.5.1
       lint-staged: 13.0.3
-      microbundle: 0.15.1_yvstdq4ikeml4yz3a6bi3bgrvu
+      microbundle: 0.15.1
       mocha: 10.0.0
       prettier: 2.7.1
       rimraf: 3.0.2
@@ -89,22 +84,32 @@ importers:
       '@preact/preset-vite': ^2.3.0
       '@preact/signals': workspace:../packages/preact
       '@preact/signals-core': workspace:../packages/core
+      '@preact/signals-react': workspace:../packages/react
+      '@types/react': ^18.0.18
+      '@types/react-dom': ^18.0.6
       postcss: ^8.4.16
       postcss-nesting: ^10.1.10
       preact: 10.9.0
       preact-iso: ^2.3.0
       preact-render-to-string: ^5.2.1
+      react: ^18.2.0
+      react-dom: ^18.2.0
       tiny-glob: ^0.2.9
       vite: ^3.0.7
     dependencies:
       '@preact/signals': link:../packages/preact
       '@preact/signals-core': link:../packages/core
+      '@preact/signals-react': link:../packages/react
       preact: 10.9.0
       preact-iso: 2.3.0_dkizwoknu7367agjmxo3vnbsyu
       preact-render-to-string: 5.2.1_preact@10.9.0
+      react: 18.2.0
+      react-dom: 18.2.0_react@18.2.0
     devDependencies:
       '@babel/core': 7.18.10
       '@preact/preset-vite': 2.3.0_4qfpjbe42saxwpubo3ox67nfdq
+      '@types/react': 18.0.18
+      '@types/react-dom': 18.0.6
       postcss: 8.4.16
       postcss-nesting: 10.1.10_postcss@8.4.16
       tiny-glob: 0.2.9
@@ -121,6 +126,21 @@ importers:
       '@preact/signals-core': link:../core
     devDependencies:
       preact: 10.9.0
+
+  packages/react:
+    specifiers:
+      '@preact/signals-core': workspace:^0.0.4
+      '@types/react': ^18.0.18
+      '@types/react-dom': ^18.0.6
+      react: ^18.2.0
+      react-dom: ^18.2.0
+    dependencies:
+      '@preact/signals-core': link:../core
+    devDependencies:
+      '@types/react': 18.0.18
+      '@types/react-dom': 18.0.6
+      react: 18.2.0
+      react-dom: 18.2.0_react@18.2.0
 
 packages:
 
@@ -1973,10 +1993,32 @@ packages:
     resolution: {integrity: sha512-//oorEZjL6sbPcKUaCdIGlIUeH26mgzimjBB77G6XRgnDl/L5wOnpyBGRe/Mmf5CVW3PwEBE1NjiMZ/ssFh4wA==}
     dev: true
 
+  /@types/prop-types/15.7.5:
+    resolution: {integrity: sha512-JCB8C6SnDoQf0cNycqd/35A7MjcnK+ZTqE7judS6o7utxUCg6imJg3QK2qzHKszlTjcj2cn+NwMB2i96ubpj7w==}
+    dev: true
+
+  /@types/react-dom/18.0.6:
+    resolution: {integrity: sha512-/5OFZgfIPSwy+YuIBP/FgJnQnsxhZhjjrnxudMddeblOouIodEQ75X14Rr4wGSG/bknL+Omy9iWlLo1u/9GzAA==}
+    dependencies:
+      '@types/react': 18.0.18
+    dev: true
+
+  /@types/react/18.0.18:
+    resolution: {integrity: sha512-6hI08umYs6NaiHFEEGioXnxJ+oEhY3eRz8VCUaudZmGdtvPviCJB8mgaMxaDWAdPSYd4eFavrPk2QIolwbLYrg==}
+    dependencies:
+      '@types/prop-types': 15.7.5
+      '@types/scheduler': 0.16.2
+      csstype: 3.1.0
+    dev: true
+
   /@types/resolve/1.17.1:
     resolution: {integrity: sha512-yy7HuzQhj0dhGpD8RLXSZWEkLsV9ibvxvi6EiJ3bkqLAO1RGo0WbkWQiwpRlSFymTJRz0d3k5LM3kkx8ArDbLw==}
     dependencies:
       '@types/node': 18.6.5
+    dev: true
+
+  /@types/scheduler/0.16.2:
+    resolution: {integrity: sha512-hppQEBDmlwhFAXKJX2KnWLYu5yMfi91yazPb2l+lbJiwW+wdo1gNeRA+3RgNSO39WYX2euey41KEwnqesU2Jew==}
     dev: true
 
   /@types/semver/6.2.3:
@@ -2901,6 +2943,10 @@ packages:
     engines: {node: '>=8.0.0'}
     dependencies:
       css-tree: 1.1.3
+    dev: true
+
+  /csstype/3.1.0:
+    resolution: {integrity: sha512-uX1KG+x9h5hIJsaKR9xHUeUraxf8IODOwq9JLNPq6BwB04a/xgpq3rcx47l5BZu5zBPlgD342tdke3Hom/nJRA==}
     dev: true
 
   /csv-generate/3.4.3:
@@ -4424,7 +4470,6 @@ packages:
 
   /js-tokens/4.0.0:
     resolution: {integrity: sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ==}
-    dev: true
 
   /js-yaml/3.14.1:
     resolution: {integrity: sha512-okMH7OXXJ7YrN9Ok3/SXrnu4iX9yOk+25nqX4imS2npuvTYDmo/QEZoqwZkYaIDk3jVvBOTOIEgEhaLOynBS9g==}
@@ -4769,6 +4814,12 @@ packages:
       - supports-color
     dev: true
 
+  /loose-envify/1.4.0:
+    resolution: {integrity: sha512-lyuxPGr/Wfhrlem2CL/UcnUc1zcqKAImBDzukY7Y5F/yQiNdko6+fRLevlw1HgMySw7f611UIY408EtxRSoK3Q==}
+    hasBin: true
+    dependencies:
+      js-tokens: 4.0.0
+
   /loupe/2.3.4:
     resolution: {integrity: sha512-OvKfgCC2Ndby6aSTREl5aCCPTNIzlDfQZvZxNUrBrihDhL3xcrYegTblhmEiCrg2kKQz4XsFIaemE5BF4ybSaQ==}
     dependencies:
@@ -4857,7 +4908,7 @@ packages:
     engines: {node: '>= 8'}
     dev: true
 
-  /microbundle/0.15.1_yvstdq4ikeml4yz3a6bi3bgrvu:
+  /microbundle/0.15.1:
     resolution: {integrity: sha512-aAF+nwFbkSIJGfrJk+HyzmJOq3KFaimH6OIFBU6J2DPjQeg1jXIYlIyEv81Gyisb9moUkudn+wj7zLNYMOv75Q==}
     hasBin: true
     dependencies:
@@ -4908,7 +4959,6 @@ packages:
       - supports-color
       - ts-node
     dev: true
-    patched: true
 
   /micromatch/4.0.5:
     resolution: {integrity: sha512-DMy+ERcEW2q8Z2Po+WNXuw3c5YaUSFjAO5GsJqfEl7UjvtIuFKO6ZrKvcItdy98dwFI2N1tg3zNIdKaQT+aNdA==}
@@ -5881,6 +5931,21 @@ packages:
       unpipe: 1.0.0
     dev: true
 
+  /react-dom/18.2.0_react@18.2.0:
+    resolution: {integrity: sha512-6IMTriUmvsjHUjNtEDudZfuDQUoWXVxKHhlEGSk81n4YFS+r/Kl99wXiwlVXtPBtJenozv2P+hxDsw9eA7Xo6g==}
+    peerDependencies:
+      react: ^18.2.0
+    dependencies:
+      loose-envify: 1.4.0
+      react: 18.2.0
+      scheduler: 0.23.0
+
+  /react/18.2.0:
+    resolution: {integrity: sha512-/3IjMdb2L9QbBdWiW5e3P2/npwMBaU9mHCSCUzNln0ZCYbcfTsGbTJrU/kGemdH2IWmB2ioZ+zkxtmq6g09fGQ==}
+    engines: {node: '>=0.10.0'}
+    dependencies:
+      loose-envify: 1.4.0
+
   /read-pkg-up/7.0.1:
     resolution: {integrity: sha512-zK0TB7Xd6JpCLmlLmufqykGE+/TlOePD6qKClNW7hHDKFh/J7/7gCWGR7joEQEW1bKq3a3yUZSObOoWLFQ4ohg==}
     engines: {node: '>=8'}
@@ -6159,6 +6224,11 @@ packages:
   /safer-buffer/2.1.2:
     resolution: {integrity: sha512-YZo3K82SD7Riyi0E1EQPojLz7kpepnSQI9IyPbHHg1XXXevb5dJI7tpyN2ADxGcQbHG7vcyRHk0cbwqcQriUtg==}
     dev: true
+
+  /scheduler/0.23.0:
+    resolution: {integrity: sha512-CtuThmgHNg7zIZWAXi3AsyIzA3n4xx7aNyjwC2VJldO2LMVDhFK+63xGqq6CsJH4rTAt6/M+N4GhZiDYPx9eUw==}
+    dependencies:
+      loose-envify: 1.4.0
 
   /semver/5.7.1:
     resolution: {integrity: sha512-sauaDf/PZdVgrLTNYHRtpXa1iRiKcaebiKQ1BJdpQlWH2lCvexQdX55snPFyK7QzpudqbCI0qXFfOasHdyNDGQ==}
@@ -7070,3 +7140,8 @@ packages:
     resolution: {integrity: sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==}
     engines: {node: '>=10'}
     dev: true
+
+patchedDependencies:
+  microbundle@0.15.1:
+    hash: yvstdq4ikeml4yz3a6bi3bgrvu
+    path: patches/microbundle@0.15.1.patch
