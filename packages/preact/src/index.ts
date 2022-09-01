@@ -6,7 +6,7 @@ import {
 	batch,
 	effect,
 	Signal,
-	ReadonlySignal,
+	type ReadonlySignal,
 } from "@preact/signals-core";
 import {
 	VNode,
@@ -17,7 +17,7 @@ import {
 	ElementUpdater,
 } from "./internal";
 
-export { signal, computed, batch, effect, Signal, ReadonlySignal };
+export { signal, computed, batch, effect, Signal, type ReadonlySignal };
 
 // Components that have a pending Signal update: (used to bypass default sCU:false)
 const hasPendingUpdate = new WeakSet<Component>();
