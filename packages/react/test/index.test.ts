@@ -6,7 +6,7 @@ import { createElement as h, useMemo } from "react";
 import { createRoot, Root } from "react-dom/client";
 import { act } from "react-dom/test-utils";
 
-describe.only("@preact/signals-react", () => {
+describe("@preact/signals-react", () => {
 	let scratch: HTMLDivElement;
 	let root: Root;
 	function render(element: Parameters<Root["render"]>[0]) {
