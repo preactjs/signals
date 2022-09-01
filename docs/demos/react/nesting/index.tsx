@@ -1,6 +1,7 @@
-import { useRef, useMemo, useLayoutEffect } from "preact/hooks";
-import { signal, useSignal, useComputed, Signal } from "@preact/signals";
-import "./style.css";
+import { useSignal, useComputed, signal, Signal } from "@preact/signals-react";
+import { createElement, useRef, useLayoutEffect, useMemo, memo } from "react";
+import { createRoot } from "react-dom/client";
+import "../../nesting/style.css";
 
 type DemoObj = Reactive<{
 	stringKey: string;
@@ -22,7 +23,7 @@ function useReactive<T extends object>(obj: T) {
 	return useMemo(() => reactive(obj), []);
 }
 
-export default function Nesting() {
+function Nesting() {
 	const count: Count = useSignal(0);
 	const add = () => count.value++;
 
@@ -37,7 +38,7 @@ export default function Nesting() {
 	});
 
 	return (
-		<div class="nesting">
+		<div className="nesting">
 			<p>
 				<strong>count: </strong>
 				<button onClick={() => count.value--}>–</button>
@@ -68,7 +69,7 @@ export default function Nesting() {
 	);
 }
 
-function ComputedDemo({ count }: { count: Count }) {
+const ComputedDemo = memo(({ count }: { count: Count }) => {
 	const doubleCount = useComputed(() => {
 		const double = count.value * 2;
 		const constrained = Math.max(0, Math.min(double, 10));
@@ -82,9 +83,9 @@ function ComputedDemo({ count }: { count: Count }) {
 			<strong>Double Count:</strong> {doubleCount}
 		</div>
 	);
-}
+});
 
-function ObjectEditor({ obj }: { obj: DemoObj }) {
+const ObjectEditor = memo(({ obj }: { obj: DemoObj }) => {
 	return (
 		<div className="object-editor">
 			<table>
@@ -101,7 +102,7 @@ function ObjectEditor({ obj }: { obj: DemoObj }) {
 						<td>{obj.stringKey}</td>
 						<td>
 							<input
-								onInput={e => (obj.stringKey.value = e.currentTarget.value)}
+								onChange={e => (obj.stringKey.value = e.currentTarget.value)}
 								value={obj.stringKey}
 							/>
 						</td>
@@ -112,7 +113,7 @@ function ObjectEditor({ obj }: { obj: DemoObj }) {
 						<td>
 							<input
 								type="number"
-								onInput={e =>
+								onChange={e =>
 									(obj.numberKey.value = e.currentTarget.valueAsNumber)
 								}
 								value={obj.numberKey}
@@ -125,7 +126,7 @@ function ObjectEditor({ obj }: { obj: DemoObj }) {
 						<td>
 							<input
 								type="checkbox"
-								onInput={e => (obj.boolKey.value = e.currentTarget.checked)}
+								onChange={e => (obj.boolKey.value = e.currentTarget.checked)}
 								checked={obj.boolKey}
 							/>
 						</td>
@@ -135,9 +136,9 @@ function ObjectEditor({ obj }: { obj: DemoObj }) {
 			<RenderCount />
 		</div>
 	);
-}
+});
 
-function Clock() {
+const Clock = memo(function () {
 	const time = useSignal(Date.now());
 
 	useLayoutEffect(() => {
@@ -157,7 +158,7 @@ function Clock() {
 			<RenderCount />
 		</div>
 	);
-}
+});
 
 /** Show render count (for demo purposes) */
 function useRenderCount() {
@@ -176,3 +177,5 @@ function RenderCount() {
 		</div>
 	);
 }
+
+createRoot(self.root).render(<Nesting />);
