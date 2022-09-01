@@ -1,5 +1,14 @@
 # @preact/signals
 
+## 0.0.4
+
+### Patch Changes
+
+- 702a9c5: Update TypeScript types to mark computed signals as readonly
+- 5f8be64: Optimize size of CJS & UMD bundles.
+- Updated dependencies [702a9c5]
+  - @preact/signals-core@0.0.5
+
 ## 0.0.3
 
 ### Patch Changes
