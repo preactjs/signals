@@ -61,6 +61,7 @@ function createEsbuildPlugin() {
 	const alias = {
 		"@preact/signals-core": subPkgPath("./packages/core"),
 		"@preact/signals": subPkgPath("./packages/preact"),
+		"@preact/signals-react": subPkgPath("./packages/react"),
 	};
 
 	return {
@@ -213,7 +214,7 @@ module.exports = function (config) {
 
 		files: [
 			{
-				pattern: "packages/{core,preact}/test/**/*.test.ts",
+				pattern: process.env.TESTS || "packages/*/test/**/*.test.ts",
 				watched: false,
 				type: "js",
 			},

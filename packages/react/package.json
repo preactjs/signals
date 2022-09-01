@@ -1,6 +1,6 @@
 {
-	"name": "@preact/signals",
-	"version": "0.0.3",
+	"name": "@preact/signals-react",
+	"version": "0.0.1",
 	"license": "MIT",
 	"description": "",
 	"keywords": [],
@@ -14,7 +14,7 @@
 		"type": "opencollective",
 		"url": "https://opencollective.com/preact"
 	},
-	"amdName": "preactSignals",
+	"amdName": "reactSignals",
 	"main": "dist/signals.js",
 	"module": "dist/signals.module.js",
 	"unpkg": "dist/signals.min.js",
@@ -31,15 +31,18 @@
 	},
 	"mangle": "../../mangle.json",
 	"scripts": {
-		"prepublishOnly": "cd ../.. && pnpm build:preact"
+		"prepublishOnly": "cd ../.. && pnpm build:react"
 	},
 	"dependencies": {
 		"@preact/signals-core": "workspace:^0.0.4"
 	},
 	"peerDependencies": {
-		"preact": "10.x"
+		"react": "17.x | 18.x"
 	},
 	"devDependencies": {
-		"preact": "10.9.0"
+		"react": "^18.2.0",
+		"react-dom": "^18.2.0",
+		"@types/react": "^18.0.18",
+		"@types/react-dom": "^18.0.6"
 	}
 }

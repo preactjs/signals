@@ -18,6 +18,7 @@ module.exports = {
 		"@typescript-eslint/no-var-requires": "off",
 		"no-mixed-spaces-and-tabs": "off",
 		"prefer-const": "off",
+		"prefer-rest-params": "off",
 		"@typescript-eslint/no-explicit-any": "off",
 		"@typescript-eslint/no-this-alias": "off",
 		"@typescript-eslint/no-non-null-assertion": "off",

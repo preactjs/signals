@@ -20,7 +20,13 @@ function packages(prod: boolean) {
 }
 
 export default defineConfig(env => ({
-	plugins: [preact(), multiSpa(["index.html", "demos/*.html"])],
+	plugins: [
+		preact({
+			exclude: /\breact/,
+		}),
+		multiSpa(["index.html", "demos/**/*.html"]),
+		unsetPreactAliases(),
+	],
 	build: {
 		polyfillModulePreload: false,
 	},
@@ -29,6 +35,19 @@ export default defineConfig(env => ({
 		alias: env.mode === "production" ? {} : packages(false),
 	},
 }));
+
+function unsetPreactAliases(): Plugin {
+	return {
+		name: "remove react aliases",
+		config(config) {
+			const aliases = config.resolve!.alias!;
+			["react", "react-dom", "react-dom/test-utils"].forEach(pkg => {
+				// @ts-ignore-next-line
+				delete aliases[pkg];
+			});
+		},
+	};
+}
 
 // Vite plugin to serve and build multiple SPA roots (index.html dirs)
 import glob from "tiny-glob";
@@ -41,13 +60,11 @@ function multiSpa(entries: string | string[]): Plugin {
 		// ignore /@x and file extension URLs:
 		if (/(^\/@|\.[a-z]+(?:\?.*)?$)/i.test(url)) return next();
 		// match the longest index.html parent path:
-		let spa = "";
 		for (let html of htmlUrls) {
 			if (!html.endsWith("/index.html")) continue;
 			if (!url.startsWith(html.slice(0, -10))) continue;
-			if (html.length > spa.length) {
-				req.url = spa = html;
-			}
+			req.url = html;
+			break;
 		}
 		next();
 	};
@@ -57,7 +74,10 @@ function multiSpa(entries: string | string[]): Plugin {
 		async config() {
 			let e = await Promise.all([entries].flat().map(x => glob(x)));
 			htmlEntries = Array.from(new Set(e.flat()));
-			htmlUrls = htmlEntries.map(x => "/" + x);
+			// sort by length, longest to shortest:
+			htmlUrls = htmlEntries
+				.map(x => "/" + x)
+				.sort((a, b) => b.length - a.length);
 		},
 		buildStart(options) {
 			options.input = htmlEntries;
