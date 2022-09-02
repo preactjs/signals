@@ -3,7 +3,7 @@
 Signals is a performant state management library with two primary goals:
 
 1. Make it as easy as possible write business logic for small up complex apps. No matter how complex your logic is, your app updates should remain performant without having you think about that. Signals automatically optimized state updates behind the scenes to trigger the fewest updates necessary. They are lazy by default and automatically skip signals that no one listens to.
-1. Integrate into frameworks as if they were native built-in primitives. You don't need any selectors, wrapper functions or something else. Signals can be accessed directly and your component will automatically re-render when the signal's value changes.
+1. Integrate into frameworks as if they were native built-in primitives. You don't need any selectors, wrapper functions, or anything else. Signals can be accessed directly and your component will automatically re-render when the signal's value changes.
 
 Installation:
 
@@ -35,7 +35,7 @@ The signals library exposes four functions which are the building blocks to mode
 
 ### `signal(initialValue)`
 
-The `signal` function creates a new signal that is ready to be subscribed to. You can read its value or subscribe to updates by accessing the `.value` property.
+The `signal` function creates a new signal. A signal is a container for a value that can change over time. You can read a signal's value or subscribe to value updates by accessing the its `.value` property.
 
 ```js
 import { signal } from "@preact/signals-core";
@@ -49,7 +49,7 @@ console.log(counter.value);
 counter.value = 1;
 ```
 
-Writing to a signal is done by setting its `.value` property. Whenever you update a signal it will synchronously update every signal that depends on it and ensure that your app state is always consistent.
+Writing to a signal is done by setting its `.value` property. Changing a signal's value synchronously updates every [computed](#computed) and [effect](#effect) that depends on that signal, ensuring your app state is always consistent.
 
 ### `computed(fn)`
 
@@ -77,7 +77,7 @@ Any signal that is accessed inside the `computed`'s callback function will be au
 
 ### `effect(fn)`
 
-The `effect` function is the last piece that makes everything reactive. When you access a signal inside its callback function, that signal and every dependency of said signal will be activated and subscribe to. By default all updates are lazy, so nothing will update until you access a signal inside `effect`.
+The `effect` function is the last piece that makes everything reactive. When you access a signal inside its callback function, that signal and every dependency of said signal will be activated and subscribed to. By default all updates are lazy, so nothing will update until you access a signal inside `effect`.
 
 ```js
 import { signal, computed, effect } from "@preact/signals-core";
@@ -94,7 +94,7 @@ effect(() => console.log(name.value));
 name.value = "John";
 ```
 
-You can destroy an effect and unsubscribe from all signals it was subscribed to, buy calling the returned function.
+You can destroy an effect and unsubscribe from all signals it was subscribed to, by calling the returned function.
 
 ```js
 import { signal, effect } from "@preact/signals-core";
@@ -117,7 +117,7 @@ surname.value = "Doe 2";
 
 ### `batch(fn)`
 
-The `batch` function allows you to combine multiple signal writes into one single update that are triggered at the end when the callback completes.
+The `batch` function allows you to combine multiple signal writes into one single update that is triggered at the end when the callback completes.
 
 ```js
 import { signal, computed, effect, batch } from "@preact/signals-core";
@@ -137,7 +137,7 @@ batch(() => {
 });
 ```
 
-When you access a signal that you did write to earlier inside the callback, or access a computed signal that was invalidated by another signal, we'll only update the necessary dependenies to get the current value for the signal you read from. All other invalidated signals will update at the end of the callback function.
+When you access a signal that you wrote to earlier inside the callback, or access a computed signal that was invalidated by another signal, we'll only update the necessary dependencies to get the current value for the signal you read from. All other invalidated signals will update at the end of the callback function.
 
 ```js
 import { signal, computed, effect batch } from "@preact/signals-core";
