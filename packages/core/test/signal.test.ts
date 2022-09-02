@@ -11,6 +11,28 @@ describe("signal", () => {
 		const s = signal(123);
 		expect(s.toString()).equal("123");
 	});
+
+	describe(".peek()", () => {
+		it("should get value", () => {
+			const s = signal(1);
+			expect(s.peek()).equal(1);
+		});
+
+		it("should not trigger a read", () => {
+			const s = signal(1);
+
+			const spy = sinon.spy(() => {
+				// When we trigger a read this would cause an infinite loop
+				s.peek();
+			});
+
+			effect(spy);
+
+			s.value = 2;
+
+			expect(spy).to.be.calledOnce;
+		});
+	});
 });
 
 describe("effect()", () => {
