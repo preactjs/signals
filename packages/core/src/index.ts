@@ -42,6 +42,10 @@ export class Signal<T = any> {
 		return "" + this.value;
 	}
 
+	peek() {
+		return this._value;
+	}
+
 	get value() {
 		// If we read a signal outside of a computed we have no way
 		// to unsubscribe from that. So we assume that the user wants
