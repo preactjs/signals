@@ -18,6 +18,7 @@ npm install @preact/signals-react
 
 - [Guide / API](#guide--api)
 	- [`signal(initialValue)`](#signalinitialvalue)
+		- [`signal.peek()`](#signalpeek)
 	- [`computed(fn)`](#computedfn)
 	- [`effect(fn)`](#effectfn)
 	- [`batch(fn)`](#batchfn)
@@ -50,6 +51,25 @@ counter.value = 1;
 ```
 
 Writing to a signal is done by setting its `.value` property. Changing a signal's value synchronously updates every [computed](#computed) and [effect](#effect) that depends on that signal, ensuring your app state is always consistent.
+
+#### `signal.peek()`
+
+In the rare instance that you have an effect that should write to another signal based on the previous value, but you _don't_ want the effect to be subscribed to that signal, you can read a signals's previous value via `signal.peek()`.
+
+```js
+const counter = signal(0);
+const effectCount = signal(0);
+
+effect(() => {
+	console.log(counter.value);
+
+	// Whenever this effect is triggered, increase `effectCount`.
+	// But we don't want this signal to react to `effectCount`
+	effectCount = effectCount.peek() + 1;
+});
+```
+
+Note that you shold only use `signal.peek()` if you really need it. Reading a signal's value via `signal.value` is the preffered way in most scenarios.
 
 ### `computed(fn)`
 
