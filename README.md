@@ -73,7 +73,7 @@ Note that you shold only use `signal.peek()` if you really need it. Reading a si
 
 ### `computed(fn)`
 
-A good portion of data is typically derived from existing pieces. With `computed` you can combine multiple signals into a new one that can be reacted to.
+Data is often derived from other pieces of existing data. The `computed` function lets you combine the values of multiple signals into a new signal that can be reacted to, or even used by additional computeds. When the signals accessed from within a computed callback change, the computed callback is re-executed and its new return value becomes the computed signal's value.
 
 ```js
 import { signal, computed } from "@preact/signals-core";
