@@ -68,8 +68,8 @@ console.log(fullName.value);
 
 // Updates flow through computed, but only if someone
 // subscribes to it. More on that later.
-surname.value = "Doe 2";
-// Logs: "Jane Doe 2"
+name.value = "John";
+// Logs: "John Doe"
 console.log(fullName.value);
 ```
 
