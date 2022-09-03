@@ -1,5 +1,10 @@
 lockfileVersion: 5.4
 
+patchedDependencies:
+  microbundle@0.15.1:
+    hash: yvstdq4ikeml4yz3a6bi3bgrvu
+    path: patches/microbundle@0.15.1.patch
+
 importers:
 
   .:
@@ -70,7 +75,7 @@ importers:
       karma-sinon: 1.0.5_karma@6.3.16+sinon@14.0.0
       kolorist: 1.5.1
       lint-staged: 13.0.3
-      microbundle: 0.15.1
+      microbundle: 0.15.1_yvstdq4ikeml4yz3a6bi3bgrvu
       mocha: 10.0.0
       prettier: 2.7.1
       rimraf: 3.0.2
@@ -120,7 +125,7 @@ importers:
 
   packages/preact:
     specifiers:
-      '@preact/signals-core': workspace:^0.0.4
+      '@preact/signals-core': workspace:^0.0.5
       preact: 10.9.0
     dependencies:
       '@preact/signals-core': link:../core
@@ -129,7 +134,7 @@ importers:
 
   packages/react:
     specifiers:
-      '@preact/signals-core': workspace:^0.0.4
+      '@preact/signals-core': workspace:^0.0.5
       '@types/react': ^18.0.18
       '@types/react-dom': ^18.0.6
       react: ^18.2.0
@@ -4908,7 +4913,7 @@ packages:
     engines: {node: '>= 8'}
     dev: true
 
-  /microbundle/0.15.1:
+  /microbundle/0.15.1_yvstdq4ikeml4yz3a6bi3bgrvu:
     resolution: {integrity: sha512-aAF+nwFbkSIJGfrJk+HyzmJOq3KFaimH6OIFBU6J2DPjQeg1jXIYlIyEv81Gyisb9moUkudn+wj7zLNYMOv75Q==}
     hasBin: true
     dependencies:
@@ -4959,6 +4964,7 @@ packages:
       - supports-color
       - ts-node
     dev: true
+    patched: true
 
   /micromatch/4.0.5:
     resolution: {integrity: sha512-DMy+ERcEW2q8Z2Po+WNXuw3c5YaUSFjAO5GsJqfEl7UjvtIuFKO6ZrKvcItdy98dwFI2N1tg3zNIdKaQT+aNdA==}
@@ -7140,8 +7146,3 @@ packages:
     resolution: {integrity: sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==}
     engines: {node: '>=10'}
     dev: true
-
-patchedDependencies:
-  microbundle@0.15.1:
-    hash: yvstdq4ikeml4yz3a6bi3bgrvu
-    path: patches/microbundle@0.15.1.patch
