@@ -4,6 +4,7 @@
 	"scripts": {
 		"start": "vite",
 		"build": "vite build",
+		"build:size": "SIZE_CHECK=true vite build",
 		"preview": "vite preview"
 	},
 	"postcss": {

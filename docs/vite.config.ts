@@ -29,6 +29,13 @@ export default defineConfig(env => ({
 	],
 	build: {
 		polyfillModulePreload: false,
+		rollupOptions: process.env.SIZE_CHECK ? {
+			output: {
+				entryFileNames: `[name].js`,
+				chunkFileNames: `[name].js`,
+				assetFileNames: `[name].[ext]`
+			}
+		} : {}
 	},
 	resolve: {
 		extensions: [".ts", ".tsx", ".js", ".jsx", ".d.ts"],
