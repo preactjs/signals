@@ -1,5 +1,21 @@
 # @preact/signals-core
 
+## 1.0.0
+
+### Major Changes
+
+- 2ee8489: The v1 release for the signals package, we'd to see the uses you all
+  come up with and are eager to see performance improvements in your
+  applications.
+
+### Minor Changes
+
+- ab22ec7: Add `.peek()` method to read from signals without subscribing to them.
+
+### Patch Changes
+
+- b56abf3: Throw an error when a cycle was detected during state updates
+
 ## 0.0.5
 
 ### Patch Changes
