@@ -1,6 +1,6 @@
 {
 	"name": "@preact/signals",
-	"version": "0.0.4",
+	"version": "1.0.0",
 	"license": "MIT",
 	"description": "",
 	"keywords": [],
@@ -34,7 +34,7 @@
 		"prepublishOnly": "cd ../.. && pnpm build:preact"
 	},
 	"dependencies": {
-		"@preact/signals-core": "workspace:^0.0.5"
+		"@preact/signals-core": "workspace:^1.0.0"
 	},
 	"peerDependencies": {
 		"preact": "10.x"
