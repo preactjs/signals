@@ -33,6 +33,8 @@ export class Signal<T = any> {
 	_requiresUpdate = false;
 	/** @internal Determine if reads should eagerly activate value */
 	_canActivate = false;
+	/** @internal Used to detect if there is a cycle in the graph */
+	_isComputing = false;
 
 	constructor(value: T) {
 		this._value = value;
@@ -171,8 +173,14 @@ function sweep(subs: Set<Signal<any>>) {
 			signal._requiresUpdate = true;
 
 			if (--signal._pending === 0) {
+				if (signal._isComputing) {
+					throw new Error("Cycle detected");
+				}
+
 				signal._requiresUpdate = false;
+				signal._isComputing = true;
 				signal._updater();
+				signal._isComputing = false;
 				sweep(signal._subs);
 			}
 		}

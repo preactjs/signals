@@ -107,6 +107,23 @@ describe("effect()", () => {
 
 		expect(spy).to.be.calledOnce;
 	});
+
+	it("should throw on cycles", () => {
+		const a = signal(0);
+		let i = 0;
+
+		const fn = () =>
+			effect(() => {
+				// Prevent test suite from spinning if limit is not hit
+				if (i++ > 10) {
+					throw new Error("test failed");
+				}
+				a.value;
+				a.value = NaN;
+			});
+
+		expect(fn).to.throw(/Cycle detected/);
+	});
 });
 
 describe("computed()", () => {
