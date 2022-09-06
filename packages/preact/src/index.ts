@@ -135,6 +135,7 @@ function Text(this: ComponentType, { data }: { data: Signal }) {
 
 	return s.value;
 }
+Text.displayName = "_st";
 
 /** Inject low-level property/attribute bindings for Signals into Preact's diff */
 hook(OptionsTypes.DIFF, (old, vnode) => {
