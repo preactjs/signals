@@ -160,7 +160,7 @@ batch(() => {
 When you access a signal that you wrote to earlier inside the callback, or access a computed signal that was invalidated by another signal, we'll only update the necessary dependencies to get the current value for the signal you read from. All other invalidated signals will update at the end of the callback function.
 
 ```js
-import { signal, computed, effect batch } from "@preact/signals-core";
+import { signal, computed, effect, batch } from "@preact/signals-core";
 
 const counter = signal(0);
 const double = computed(() => counter.value * 2);
