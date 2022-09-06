@@ -128,12 +128,14 @@ function Text(this: ComponentType, { data }: { data: Signal }) {
 		};
 
 		return computed(() => {
-			let s = data.value;
+			// @ts-ignore-next-line private options hooks usage
+			let s = options.alwaysPeek ? data.peek() : data.value;
 			return s === 0 ? 0 : s === true ? "" : s || "";
 		});
 	}, []);
 
-	return s.value;
+	// @ts-ignore-next-line private options hooks usage
+	return options.alwaysPeek ? s.peek() : s.value;
 }
 Text.displayName = "_st";
 
