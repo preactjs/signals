@@ -32,7 +32,7 @@ npm install @preact/signals-react
 
 ## Guide / API
 
-The signals library exposes four functions which are the building blocks to model any bussiness logic you can think of.
+The signals library exposes four functions which are the building blocks to model any business logic you can think of.
 
 ### `signal(initialValue)`
 
@@ -69,7 +69,7 @@ effect(() => {
 });
 ```
 
-Note that you shold only use `signal.peek()` if you really need it. Reading a signal's value via `signal.value` is the preffered way in most scenarios.
+Note that you should only use `signal.peek()` if you really need it. Reading a signal's value via `signal.value` is the preferred way in most scenarios.
 
 ### `computed(fn)`
 
@@ -97,7 +97,7 @@ Any signal that is accessed inside the `computed`'s callback function will be au
 
 ### `effect(fn)`
 
-The `effect` function is the last piece that makes everything reactive. When you access a signal inside its callback function, that signal and every dependency of said signal will be activated and subscribed to. In that regard it is very similar to [`computed(fn)](#computedfn). By default all updates are lazy, so nothing will update until you access a signal inside `effect`.
+The `effect` function is the last piece that makes everything reactive. When you access a signal inside its callback function, that signal and every dependency of said signal will be activated and subscribed to. In that regard it is very similar to [`computed(fn)`](#computedfn). By default all updates are lazy, so nothing will update until you access a signal inside `effect`.
 
 ```js
 import { signal, computed, effect } from "@preact/signals-core";
