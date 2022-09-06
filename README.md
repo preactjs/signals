@@ -32,7 +32,7 @@ npm install @preact/signals-react
 
 ## Guide / API
 
-The signals library exposes four functions which are the building blocks to model any bussiness logic you can think of.
+The signals library exposes four functions which are the building blocks to model any business logic you can think of.
 
 ### `signal(initialValue)`
 
@@ -69,7 +69,7 @@ effect(() => {
 });
 ```
 
-Note that you shold only use `signal.peek()` if you really need it. Reading a signal's value via `signal.value` is the preffered way in most scenarios.
+Note that you should only use `signal.peek()` if you really need it. Reading a signal's value via `signal.value` is the preferred way in most scenarios.
 
 ### `computed(fn)`
 
