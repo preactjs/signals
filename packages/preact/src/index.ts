@@ -58,12 +58,12 @@ function createUpdater(updater: () => void) {
 function getElementUpdater(vnode: VNode) {
 	let updater = updaterForComponent.get(vnode) as ElementUpdater;
 	if (!updater) {
-		let signalProps: Array<{ key: string, signal: Signal }> = [];
+		let signalProps: Array<{ _key: string, _signal: Signal }> = [];
 		updater = createUpdater(() => {
 			let dom = vnode.__e as Element;
 
 			for (let i = 0; i < signalProps.length; i++) {
-				let { key: prop, signal } = signalProps[i];
+				let { _key: prop, _signal: signal } = signalProps[i];
 				let value = signal.peek();
 				if (prop in dom) {
 					// @ts-ignore-next-line silly
@@ -151,7 +151,7 @@ hook(OptionsTypes.DIFF, (old, vnode) => {
 				// first Signal prop triggers creation/cleanup of the updater:
 				if (!updater) updater = getElementUpdater(vnode);
 				// track which props are Signals for precise updates:
-				updater._props.push({ key: i, signal: value });
+				updater._props.push({ _key: i, _signal: value });
 				props[i] = value.peek()
 			}
 		}
