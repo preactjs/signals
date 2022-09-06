@@ -244,7 +244,7 @@ function Counter() {
 The Preact adapter ships with several optimizations it can apply out of the box to skip virtual-dom rendering entirely. If you pass a signal directly into JSX, it will bind directly to the DOM `Text` node that is created and update that whenever the signal changes.
 
 ```js
-import { count } from "@preact/signals";
+import { signal } from "@preact/signals";
 
 const count = signal(0);
 
