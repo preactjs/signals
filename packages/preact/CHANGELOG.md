@@ -1,5 +1,11 @@
 # @preact/signals
 
+## 1.0.1
+
+### Patch Changes
+
+- c7c0d91: Add marker for devtools to `Text` that is created when a signal is passed into JSX
+
 ## 1.0.0
 
 ### Major Changes
