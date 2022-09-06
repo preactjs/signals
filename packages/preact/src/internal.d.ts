@@ -18,7 +18,7 @@ export interface ComponentType extends Component {
 export type Updater = Signal<unknown>;
 
 export interface ElementUpdater extends Updater {
-	_props: string[];
+	_props: Array<{ key: string, signal: Signal }>;
 }
 
 export const enum OptionsTypes {
