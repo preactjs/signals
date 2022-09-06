@@ -107,7 +107,7 @@ const surname = signal("Doe");
 const fullName = computed(() => name.value + " " + surname.value);
 
 // Logs: "Jane Doe"
-effect(() => console.log(name.value));
+effect(() => console.log(fullName.value));
 
 // Updating one of its dependenies will automatically trigger
 // the effect above, and will print "John Doe" to the console.
