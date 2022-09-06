@@ -146,4 +146,15 @@ describe("@preact/signals", () => {
 			expect(scratch.textContent).to.equal("bar");
 		});
 	});
+
+	describe('attribute bindings', () => {
+		it('checked', () => {
+			const s = signal(false);
+			// @ts-ignore
+			render(h('input', { checked: s }), scratch);
+
+			expect((scratch.firstChild as HTMLInputElement).checked).to.equal(false)
+			expect(s.value).to.equal(false)
+		})
+	})
 });

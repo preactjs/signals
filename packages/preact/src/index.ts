@@ -153,6 +153,7 @@ hook(OptionsTypes.DIFF, (old, vnode) => {
 				if (!updater) updater = getElementUpdater(vnode);
 				// track which props are Signals for precise updates:
 				updater._props.push(i);
+				props[i] = value.peek()
 			}
 		}
 
