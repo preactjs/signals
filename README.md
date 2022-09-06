@@ -180,7 +180,7 @@ batch(() => {
 Batches can be nested and updates will be flushed when the outermost batch call completes.
 
 ```js
-import { signal, computed, effect batch } from "@preact/signals-core";
+import { signal, computed, effect, batch } from "@preact/signals-core";
 
 const counter = signal(0);
 effect(() => console.log(counter.value));
