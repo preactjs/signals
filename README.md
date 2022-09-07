@@ -175,7 +175,7 @@ batch(() => {
 	counter.value = 1;
 	// Logs: 2, despite being inside batch, but `tripple`
 	// will only update once the callback is complete
-	console.log(counter.double);
+	console.log(double.value);
 });
 // Now we reached the end of the batch and call the effect
 ```
