@@ -91,7 +91,6 @@ export class Signal<T = any> {
 		if (this._value !== value) {
 			this._value = value;
 			let isFirst = pending.size === 0;
-
 			pending.add(this);
 			// in batch mode this signal may be marked already
 			if (this._pending === 0) {

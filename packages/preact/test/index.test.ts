@@ -3,6 +3,8 @@ import { h, render } from "preact";
 import { useMemo } from "preact/hooks";
 import { setupRerender } from "preact/test-utils";
 
+const sleep = (ms?: number) => new Promise(r => setTimeout(r, ms));
+
 describe("@preact/signals", () => {
 	let scratch: HTMLDivElement;
 	let rerender: () => void;
@@ -144,6 +146,87 @@ describe("@preact/signals", () => {
 			sig.value = "bar";
 			rerender();
 			expect(scratch.textContent).to.equal("bar");
+		});
+	});
+
+	describe("prop bindings", () => {
+		it("should set the initial value of the checked property", () => {
+			const s = signal(true);
+			// @ts-ignore
+			render(h("input", { checked: s }), scratch);
+
+			expect(scratch.firstChild).to.have.property("checked", true);
+			expect(s.value).to.equal(true);
+		});
+
+		it("should update the checked property on change", () => {
+			const s = signal(true);
+			// @ts-ignore
+			render(h("input", { checked: s }), scratch);
+
+			expect(scratch.firstChild).to.have.property("checked", true);
+
+			s.value = false;
+
+			expect(scratch.firstChild).to.have.property("checked", false);
+		});
+
+		it("should update props without re-rendering", async () => {
+			const s = signal("initial");
+			const spy = sinon.spy();
+			function Wrap() {
+				spy();
+				// @ts-ignore
+				return h("input", { value: s });
+			}
+			render(h(Wrap, {}), scratch);
+			spy.resetHistory();
+
+			expect(scratch.firstChild).to.have.property("value", "initial");
+
+			s.value = "updated";
+
+			expect(scratch.firstChild).to.have.property("value", "updated");
+
+			// ensure the component was never re-rendered: (even after a tick)
+			await sleep();
+			expect(spy).not.to.have.been.called;
+
+			s.value = "second update";
+
+			expect(scratch.firstChild).to.have.property("value", "second update");
+
+			// ensure the component was never re-rendered: (even after a tick)
+			await sleep();
+			expect(spy).not.to.have.been.called;
+		});
+
+		it("should set and update string style property", async () => {
+			const style = signal("left: 10px");
+			const spy = sinon.spy();
+			function Wrap() {
+				spy();
+				// @ts-ignore
+				return h("div", { style });
+			}
+			render(h(Wrap, {}), scratch);
+			spy.resetHistory();
+
+			const div = scratch.firstChild as HTMLDivElement;
+
+			expect(div.style).to.have.property("left", "10px");
+
+			// ensure the component was never re-rendered: (even after a tick)
+			await sleep();
+			expect(spy).not.to.have.been.called;
+
+			style.value = "left: 20px;";
+
+			expect(div.style).to.have.property("left", "20px");
+
+			// ensure the component was never re-rendered: (even after a tick)
+			await sleep();
+			expect(spy).not.to.have.been.called;
 		});
 	});
 });
