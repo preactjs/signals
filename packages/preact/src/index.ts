@@ -65,6 +65,7 @@ function getElementUpdater(vnode: VNode) {
 			for (let i = 0; i < signalProps.length; i++) {
 				let { _key: prop, _signal: signal } = signalProps[i];
 				let value = signal._value;
+				if (!dom) return;
 				if (prop in dom) {
 					// @ts-ignore-next-line silly
 					dom[prop] = value;
