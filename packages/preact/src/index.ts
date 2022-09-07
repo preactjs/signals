@@ -64,7 +64,7 @@ function getElementUpdater(vnode: VNode) {
 
 			for (let i = 0; i < signalProps.length; i++) {
 				let { _key: prop, _signal: signal } = signalProps[i];
-				let value = signal.peek();
+				let value = signal._value;
 				if (prop in dom) {
 					// @ts-ignore-next-line silly
 					dom[prop] = value;
@@ -152,8 +152,17 @@ hook(OptionsTypes.DIFF, (old, vnode) => {
 				if (!updater) updater = getElementUpdater(vnode);
 				// track which props are Signals for precise updates:
 				updater._props.push({ _key: i, _signal: value });
-				value._updater = updater._updater
-				props[i] = value.peek()
+				let newUpdater = updater._updater
+				if (value._updater) {
+					let oldUpdater = value._updater
+					value._updater = () => {
+						newUpdater();
+						oldUpdater();
+					}
+				} else {
+					value._updater = newUpdater
+				}
+				props[i] = value._value
 			}
 		}
 

@@ -181,5 +181,24 @@ describe("@preact/signals", () => {
 			expect(s.peek()).to.equal('bar')
 			expect((scratch.firstChild as HTMLInputElement).value).to.equal('bar')
 		})
+
+		it('supports reusing an attribute signal', () => {
+			const s = signal('foo');
+			function App() {
+				// @ts-ignore
+				return h('div', {}, [h('input', { value: s }), h('input', { value: s })])
+			}
+			render(h(App, {}), scratch);
+
+			expect((scratch.firstChild?.childNodes[0] as HTMLInputElement).value).to.equal('foo')
+			expect((scratch.firstChild?.childNodes[1] as HTMLInputElement).value).to.equal('foo')
+			expect(s.peek()).to.equal('foo')
+
+			s.value = 'bar'
+			rerender();
+			expect(s.peek()).to.equal('bar')
+			expect((scratch.firstChild?.childNodes[0] as HTMLInputElement).value).to.equal('bar')
+			expect((scratch.firstChild?.childNodes[1] as HTMLInputElement).value).to.equal('bar')
+		})
 	})
 });
