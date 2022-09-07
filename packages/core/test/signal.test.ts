@@ -1,4 +1,4 @@
-import { signal, computed, effect, batch } from "@preact/signals-core";
+import { signal, computed, effect, batch, unwrap } from "@preact/signals-core";
 
 describe("signal", () => {
 	it("should return value", () => {
@@ -651,5 +651,21 @@ describe("batch/transaction", () => {
 		});
 		c.value = "cc";
 		expect(result).to.equal("aa bb cc");
+	});
+});
+
+describe("unwrap()", () => {
+	it("should unwrap signals", () => {
+		const count = signal(123);
+
+		const result = unwrap(count);
+		expect(result).to.equal(123);
+	});
+
+	it("should pass non-signals", () => {
+		const count = 234;
+
+		const result = unwrap(count);
+		expect(result).to.equal(234);
 	});
 });

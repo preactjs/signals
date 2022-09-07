@@ -8,6 +8,7 @@ import {
 import React from "react";
 import {
 	signal,
+	unwrap,
 	computed,
 	batch,
 	effect,
@@ -16,7 +17,7 @@ import {
 } from "@preact/signals-core";
 import { Updater, ReactOwner, ReactDispatcher } from "./internal";
 
-export { signal, computed, batch, effect, Signal, type ReadonlySignal };
+export { signal, unwrap, computed, batch, effect, Signal, type ReadonlySignal };
 
 /**
  * Install a middleware into React.createElement to replace any Signals in props with their value.
