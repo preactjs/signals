@@ -3,6 +3,8 @@ import { h, render } from "preact";
 import { useMemo } from "preact/hooks";
 import { setupRerender } from "preact/test-utils";
 
+const sleep = (ms?: number) => new Promise(r => setTimeout(r, ms));
+
 describe("@preact/signals", () => {
 	let scratch: HTMLDivElement;
 	let rerender: () => void;
@@ -147,77 +149,72 @@ describe("@preact/signals", () => {
 		});
 	});
 
-	describe('attribute bindings', () => {
-		it('supports creating and upating an input checked', () => {
-			const s = signal(false);
-			function App() {
+	describe("prop bindings", () => {
+		it("should set the initial value of the checked property", () => {
+			const s = signal(true);
+			// @ts-ignore
+			render(h("input", { checked: s }), scratch);
+
+			expect(scratch.firstChild).to.have.property("checked", true);
+			expect(s.value).to.equal(true);
+		});
+
+		it("should update the checked property on change", () => {
+			const s = signal(true);
+			// @ts-ignore
+			render(h("input", { checked: s }), scratch);
+
+			expect(scratch.firstChild).to.have.property("checked", true);
+
+			s.value = false;
+
+			expect(scratch.firstChild).to.have.property("checked", false);
+		});
+
+		it("should update props without re-rendering", async () => {
+			const s = signal("initial");
+			const spy = sinon.spy();
+			function Wrap() {
+				spy();
 				// @ts-ignore
-				return h('input', { checked: s })
+				return h("input", { value: s });
 			}
-			render(h(App, {}), scratch);
+			render(h(Wrap, {}), scratch);
+			spy.resetHistory();
 
-			expect((scratch.firstChild as HTMLInputElement).checked).to.equal(false)
-			expect(s.peek()).to.equal(false)
+			expect(scratch.firstChild).to.have.property("value", "initial");
 
-			s.value = true
-			rerender();
-			expect(s.peek()).to.equal(true)
-			expect((scratch.firstChild as HTMLInputElement).checked).to.equal(true)
-		})
+			s.value = "updated";
 
-		it('supports creating and upating an input value', () => {
-			const s = signal('foo');
-			function App() {
-				// @ts-ignore
-				return h('input', { value: s })
-			}
-			render(h(App, {}), scratch);
+			expect(scratch.firstChild).to.have.property("value", "updated");
 
-			expect((scratch.firstChild as HTMLInputElement).value).to.equal('foo')
-			expect(s.peek()).to.equal('foo')
+			// ensure the component was never re-rendered: (even after a tick)
+			await sleep();
+			expect(spy).not.to.have.been.called;
 
-			s.value = 'bar'
-			rerender();
-			expect(s.peek()).to.equal('bar')
-			expect((scratch.firstChild as HTMLInputElement).value).to.equal('bar')
-		})
+			s.value = "second update";
 
-		it('supports reusing an attribute signal', () => {
-			const s = signal('foo');
-			function App() {
-				// @ts-ignore
-				return h('div', {}, [h('input', { value: s }), h('input', { value: s })])
-			}
-			render(h(App, {}), scratch);
+			expect(scratch.firstChild).to.have.property("value", "second update");
 
-			expect((scratch.firstChild?.childNodes[0] as HTMLInputElement).value).to.equal('foo')
-			expect((scratch.firstChild?.childNodes[1] as HTMLInputElement).value).to.equal('foo')
-			expect(s.peek()).to.equal('foo')
+			// ensure the component was never re-rendered: (even after a tick)
+			await sleep();
+			expect(spy).not.to.have.been.called;
+		});
 
-			s.value = 'bar'
-			rerender();
-			expect(s.peek()).to.equal('bar')
-			expect((scratch.firstChild?.childNodes[0] as HTMLInputElement).value).to.equal('bar')
-			expect((scratch.firstChild?.childNodes[1] as HTMLInputElement).value).to.equal('bar')
-		})
+		it("should set and update string style property", () => {
+			// const style = signal({ left: "10px" });
+			const style = signal("left: 10px");
+			// @ts-ignore
+			render(h("div", { style }), scratch);
 
-		it('supports reusing an attribute value-signal', () => {
-			const s = signal('foo');
-			function App() {
-				// @ts-ignore
-				return h('div', {}, [h('input', { value: s.value }), h('input', { value: s.value })])
-			}
-			render(h(App, {}), scratch);
+			const div = scratch.firstChild as HTMLDivElement;
 
-			expect((scratch.firstChild?.childNodes[0] as HTMLInputElement).value).to.equal('foo')
-			expect((scratch.firstChild?.childNodes[1] as HTMLInputElement).value).to.equal('foo')
-			expect(s.peek()).to.equal('foo')
+			expect(div.style).to.have.property("left", "10px");
 
-			s.value = 'bar'
-			rerender();
-			expect(s.peek()).to.equal('bar')
-			expect((scratch.firstChild?.childNodes[0] as HTMLInputElement).value).to.equal('bar')
-			expect((scratch.firstChild?.childNodes[1] as HTMLInputElement).value).to.equal('bar')
-		})
-	})
+			// style.value = { left: "20px" };
+			style.value = "left: 20px;";
+
+			expect(div.style).to.have.property("left", "20px");
+		});
+	});
 });
