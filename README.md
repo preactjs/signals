@@ -112,7 +112,7 @@ const fullName = computed(() => name.value + " " + surname.value);
 // Logs: "Jane Doe"
 effect(() => console.log(fullName.value));
 
-// Updating one of its dependenies will automatically trigger
+// Updating one of its dependencies will automatically trigger
 // the effect above, and will print "John Doe" to the console.
 name.value = "John";
 ```
@@ -217,7 +217,7 @@ import { signal } from "@preact/signals";
 const count = signal(0);
 
 function CounterValue() {
-	// Whenver the `count` signal is updated, we'll
+	// Whenever the `count` signal is updated, we'll
 	// re-render this component automatically for you
 	return <p>Value: {count.value}</p>;
 }
