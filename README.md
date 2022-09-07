@@ -65,7 +65,7 @@ effect(() => {
 
 	// Whenever this effect is triggered, increase `effectCount`.
 	// But we don't want this signal to react to `effectCount`
-	effectCount = effectCount.peek() + 1;
+	effectCount.value = effectCount.peek() + 1;
 });
 ```
 
