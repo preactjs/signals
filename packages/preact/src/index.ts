@@ -163,7 +163,7 @@ hook(OptionsTypes.DIFF, (old, vnode) => {
 				} else {
 					value._updater = newUpdater
 				}
-				props[i] = value._value
+				props[i] = value.peek()
 			}
 		}
 
