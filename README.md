@@ -217,7 +217,7 @@ import { signal } from "@preact/signals";
 const count = signal(0);
 
 function CounterValue() {
-	// Whenver the `count` signal is updated, we'll
+	// Whenever the `count` signal is updated, we'll
 	// re-render this component automatically for you
 	return <p>Value: {count.value}</p>;
 }
