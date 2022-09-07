@@ -201,20 +201,32 @@ describe("@preact/signals", () => {
 			expect(spy).not.to.have.been.called;
 		});
 
-		it("should set and update string style property", () => {
-			// const style = signal({ left: "10px" });
+		it("should set and update string style property", async () => {
 			const style = signal("left: 10px");
-			// @ts-ignore
-			render(h("div", { style }), scratch);
+			const spy = sinon.spy();
+			function Wrap() {
+				spy();
+				// @ts-ignore
+				return h("div", { style });
+			}
+			render(h(Wrap, {}), scratch);
+			spy.resetHistory();
 
 			const div = scratch.firstChild as HTMLDivElement;
 
 			expect(div.style).to.have.property("left", "10px");
 
-			// style.value = { left: "20px" };
+			// ensure the component was never re-rendered: (even after a tick)
+			await sleep();
+			expect(spy).not.to.have.been.called;
+
 			style.value = "left: 20px;";
 
 			expect(div.style).to.have.property("left", "20px");
+
+			// ensure the component was never re-rendered: (even after a tick)
+			await sleep();
+			expect(spy).not.to.have.been.called;
 		});
 	});
 });
