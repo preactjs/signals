@@ -1,5 +1,11 @@
 # @preact/signals-core
 
+## 1.0.1
+
+### Patch Changes
+
+- 5644c1f: Fix stale value returned by `.peek()` when called on a deactivated signal.
+
 ## 1.0.0
 
 ### Major Changes

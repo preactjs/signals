@@ -1,5 +1,13 @@
 # @preact/signals
 
+## 1.0.2
+
+### Patch Changes
+
+- 2383684: Correctly replace props-value with peeked value
+- Updated dependencies [5644c1f]
+  - @preact/signals-core@1.0.1
+
 ## 1.0.1
 
 ### Patch Changes
