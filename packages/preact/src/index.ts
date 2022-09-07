@@ -60,6 +60,7 @@ function getElementUpdater(vnode: VNode) {
 	if (!updater) {
 		let signalProps: Array<{ _key: string, _signal: Signal }> = [];
 		updater = createUpdater(() => {
+			console.log('updater', signalProps)
 			let dom = vnode.__e as Element;
 
 			for (let i = 0; i < signalProps.length; i++) {

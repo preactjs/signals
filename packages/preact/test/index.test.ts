@@ -155,6 +155,11 @@ describe("@preact/signals", () => {
 
 			expect((scratch.firstChild as HTMLInputElement).checked).to.equal(false)
 			expect(s.value).to.equal(false)
+
+			s.value = true
+			rerender();
+			expect((scratch.firstChild as HTMLInputElement).checked).to.equal(true)
+			expect(s.value).to.equal(true)
 		})
 	})
 });
