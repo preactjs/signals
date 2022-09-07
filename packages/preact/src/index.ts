@@ -328,7 +328,7 @@ export function useSignalEffect(cb: () => void) {
 	callback.current = cb;
 
 	useEffect(() => {
-		effect(() => {
+		return effect(() => {
 			callback.current();
 		})
 	}, [])
