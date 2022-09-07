@@ -148,18 +148,38 @@ describe("@preact/signals", () => {
 	});
 
 	describe('attribute bindings', () => {
-		it('checked', () => {
+		it('supports creating and upating an input checked', () => {
 			const s = signal(false);
-			// @ts-ignore
-			render(h('input', { checked: s }), scratch);
+			function App() {
+				// @ts-ignore
+				return h('input', { checked: s })
+			}
+			render(h(App, {}), scratch);
 
 			expect((scratch.firstChild as HTMLInputElement).checked).to.equal(false)
-			expect(s.value).to.equal(false)
+			expect(s.peek()).to.equal(false)
 
 			s.value = true
 			rerender();
+			expect(s.peek()).to.equal(true)
 			expect((scratch.firstChild as HTMLInputElement).checked).to.equal(true)
-			expect(s.value).to.equal(true)
+		})
+
+		it('supports creating and upating an input value', () => {
+			const s = signal('foo');
+			function App() {
+				// @ts-ignore
+				return h('input', { value: s })
+			}
+			render(h(App, {}), scratch);
+
+			expect((scratch.firstChild as HTMLInputElement).value).to.equal('foo')
+			expect(s.peek()).to.equal('foo')
+
+			s.value = 'bar'
+			rerender();
+			expect(s.peek()).to.equal('bar')
+			expect((scratch.firstChild as HTMLInputElement).value).to.equal('bar')
 		})
 	})
 });
