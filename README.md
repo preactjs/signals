@@ -39,7 +39,7 @@ The signals library exposes four functions which are the building blocks to mode
 
 ### `signal(initialValue)`
 
-The `signal` function creates a new signal. A signal is a container for a value that can change over time. You can read a signal's value or subscribe to value updates by accessing the its `.value` property.
+The `signal` function creates a new signal. A signal is a container for a value that can change over time. You can read a signal's value or subscribe to value updates by accessing its `.value` property.
 
 ```js
 import { signal } from "@preact/signals-core";
