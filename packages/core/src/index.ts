@@ -45,6 +45,9 @@ export class Signal<T = any> {
 	}
 
 	peek() {
+		if (currentSignal._canActivate && this._deps.size === 0) {
+			activate(this);
+		}
 		return this._value;
 	}
 

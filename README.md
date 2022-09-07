@@ -1,3 +1,4 @@
+
 # Signals
 
 Signals is a performant state management library with two primary goals:
@@ -5,7 +6,9 @@ Signals is a performant state management library with two primary goals:
 1. Make it as easy as possible to write business logic for small up to complex apps. No matter how complex your logic is, your app updates should stay fast without you needing to think about it. Signals automatically optimize state updates behind the scenes to trigger the fewest updates necessary. They are lazy by default and automatically skip signals that no one listens to.
 2. Integrate into frameworks as if they were native built-in primitives. You don't need any selectors, wrapper functions, or anything else. Signals can be accessed directly and your component will automatically re-render when the signal's value changes.
 
-Installation:
+Read the [announcement post](https://preactjs.com/blog/introducing-signals/) to learn more about which problems signals solve and how it came to be.
+
+## Installation:
 
 ```sh
 # Just the core library
@@ -36,7 +39,7 @@ The signals library exposes four functions which are the building blocks to mode
 
 ### `signal(initialValue)`
 
-The `signal` function creates a new signal. A signal is a container for a value that can change over time. You can read a signal's value or subscribe to value updates by accessing the its `.value` property.
+The `signal` function creates a new signal. A signal is a container for a value that can change over time. You can read a signal's value or subscribe to value updates by accessing its `.value` property.
 
 ```js
 import { signal } from "@preact/signals-core";
@@ -65,7 +68,7 @@ effect(() => {
 
 	// Whenever this effect is triggered, increase `effectCount`.
 	// But we don't want this signal to react to `effectCount`
-	effectCount = effectCount.peek() + 1;
+	effectCount.value = effectCount.peek() + 1;
 });
 ```
 

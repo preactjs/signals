@@ -32,6 +32,20 @@ describe("signal", () => {
 
 			expect(spy).to.be.calledOnce;
 		});
+
+		it("should refresh value if stale", () => {
+			const a = signal(1);
+			const b = computed(() => a.value);
+
+			const dispose = effect(() => {
+				b.value;
+			});
+
+			dispose();
+			a.value = 2;
+
+			expect(b.peek()).to.equal(2);
+		});
 	});
 });
 
