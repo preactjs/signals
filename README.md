@@ -25,12 +25,12 @@ npm install @preact/signals-react
 	- [`computed(fn)`](#computedfn)
 	- [`effect(fn)`](#effectfn)
 	- [`batch(fn)`](#batchfn)
-- [Preact Integration](#preact-integration)
-	- [Hooks](#hooks)
-	- [Rendering optimizations](#rendering-optimizations)
-		- [Attribute optimization (experimental)](#attribute-optimization-experimental)
-- [React Integration](#react-integration)
-	- [Hooks](#hooks-1)
+- [Preact Integration](./packages/preact/README.md#preact-integration)
+	- [Hooks](./packages/preact/README.md#hooks)
+	- [Rendering optimizations](./packages/preact/README.md#rendering-optimizations)
+		- [Attribute optimization (experimental)](./packages/preact/README.md#attribute-optimization-experimental)
+- [React Integration](./packages/react/README.md#react-integration)
+	- [Hooks](./packages/react/README.md#hooks)
 - [License](#license)
 
 ## Guide / API
@@ -198,128 +198,6 @@ batch(() => {
 	// Still not updated...
 });
 // Now the callback completed and we'll trigger the effect.
-```
-
-## Preact Integration
-
-The Preact integration can be installed via:
-
-```sh
-npm install @preact/signals
-```
-
-It allows you to access signals as if they were native to Preact. Whenever you read a signal inside a component we'll automatically subscribe the component to that. When you update the signal we'll know that this component needs to be updated and will do that for you.
-
-```js
-// The Preact adapter re-exports the core library
-import { signal } from "@preact/signals";
-
-const count = signal(0);
-
-function CounterValue() {
-	// Whenever the `count` signal is updated, we'll
-	// re-render this component automatically for you
-	return <p>Value: {count.value}</p>;
-}
-```
-
-### Hooks
-
-If you need to instantiate new signals inside your components, you can use the `useSignal` or `useComputed` hook.
-
-```js
-import { useSignal, useComputed } from "@preact/signals";
-
-function Counter() {
-	const count = useSignal(0);
-	const double = useComputed(() => count.value * 2);
-
-	return (
-		<button onClick={() => count.value++}>
-			Value: {count.value}, value x 2 = {double.value}
-		</button>
-	);
-}
-```
-
-### Rendering optimizations
-
-The Preact adapter ships with several optimizations it can apply out of the box to skip virtual-dom rendering entirely. If you pass a signal directly into JSX, it will bind directly to the DOM `Text` node that is created and update that whenever the signal changes.
-
-```js
-import { signal } from "@preact/signals";
-
-const count = signal(0);
-
-// Unoptimized: Will trigger the surrounding
-// component to re-render
-function Counter() {
-	return <p>Value: {count.value}</p>;
-}
-
-// Optimized: Will update the text node directly
-function Counter() {
-	return <p>Value: {count}</p>;
-}
-```
-
-To opt into this optimization, simply pass the signal directly instead of accessing the `.value` property.
-
-#### Attribute optimization (experimental)
-
-We can also pass signals directly as an attribute to an HTML element node.
-
-```js
-import { signal } from "@preact/signals";
-
-const inputValue = signal("foobar");
-
-function Person() {
-	return <input value={inputValue} />;
-}
-```
-
-This way we'll bypass checking the virtual-dom and update the DOM property directly.
-
-## React Integration
-
-The React integration can be installed via:
-
-```sh
-npm install @preact/signals-react
-```
-
-Similar to the Preact integration, the React adapter allows you to access signals directly inside your components and will automatically subscribe to them.
-
-```js
-import { signal } from "@preact/signals-react";
-
-const count = signal(0);
-
-function CounterValue() {
-	// Whenver the `count` signal is updated, we'll
-	// re-render this component automatically for you
-	return <p>Value: {count.value}</p>;
-}
-```
-
-### Hooks
-
-If you need to instantiate new signals inside your components, you can use the `useSignal` or `useComputed` hook.
-
-```js
-import { useSignal, useComputed } from "@preact/signals-react";
-
-function Counter() {
-	const count = useSignal(0);
-	const double = useComputed(() => count.value * 2);
-
-	return (
-		<button onClick={() => count.value++}>
-			Value: {count.value}, value x 2 = {double.value}
-		</button>
-	);
-}
 ```
 
 ## License
