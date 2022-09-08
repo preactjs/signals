@@ -5,6 +5,7 @@
   },
   "minify": {
     "mangle": {
+      "keep_classnames": true,
       "properties": {
         "regex": "^_[^_]",
         "reserved": [
