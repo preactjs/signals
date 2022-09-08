@@ -50,12 +50,15 @@ describe("@preact/signals", () => {
 			expect(text).to.have.property("data", "changed");
 		});
 
-		it("should update Signal-based Text (in a parent component)", () => {
+		it("should update Signal-based Text (in a parent component)", async () => {
 			const sig = signal("test");
+			const spy = sinon.spy();
 			function App({ x }: { x: typeof sig }) {
+				spy();
 				return h("span", null, x);
 			}
 			render(h(App, { x: sig }), scratch);
+			spy.resetHistory();
 
 			const text = scratch.firstChild!.firstChild!;
 			expect(text).to.have.property("data", "test");
@@ -66,6 +69,51 @@ describe("@preact/signals", () => {
 			expect(scratch.firstChild!.firstChild!).to.equal(text);
 			// should update the text in-place
 			expect(text).to.have.property("data", "changed");
+
+			await sleep();
+			expect(spy).not.to.have.been.called;
+		});
+
+		it("should support swapping Signals in Text positions", async () => {
+			const sig = signal("test");
+			const spy = sinon.spy();
+			function App({ x }: { x: typeof sig }) {
+				spy();
+				return h("span", null, x);
+			}
+			render(h(App, { x: sig }), scratch);
+			spy.resetHistory();
+
+			const text = scratch.firstChild!.firstChild!;
+			expect(text).to.have.property("data", "test");
+
+			const sig2 = signal("different");
+			render(h(App, { x: sig2 }), scratch);
+			expect(spy).to.have.been.called;
+			spy.resetHistory();
+
+			// should not remount/replace Text
+			expect(scratch.firstChild!.firstChild!).to.equal(text);
+			// should update the text in-place
+			expect(text).to.have.property("data", "different");
+
+			await sleep();
+			expect(spy).not.to.have.been.called;
+
+			sig.value = "changed old signal";
+
+			await sleep();
+			expect(spy).not.to.have.been.called;
+			// the text should _not_ have changed:
+			expect(text).to.have.property("data", "different");
+
+			sig2.value = "changed";
+
+			expect(scratch.firstChild!.firstChild!).to.equal(text);
+			expect(text).to.have.property("data", "changed");
+
+			await sleep();
+			expect(spy).not.to.have.been.called;
 		});
 	});
 
@@ -125,27 +173,6 @@ describe("@preact/signals", () => {
 			sig.value = "bar";
 			rerender();
 			expect(spy).to.be.calledOnce;
-		});
-
-		it("should update memo'ed component via signals", async () => {
-			const sig = signal("foo");
-
-			function Inner() {
-				const value = sig.value;
-				return h("p", null, value);
-			}
-
-			function App() {
-				sig.value;
-				return useMemo(() => h(Inner, { foo: 1 }), []);
-			}
-
-			render(h(App, {}), scratch);
-			expect(scratch.textContent).to.equal("foo");
-
-			sig.value = "bar";
-			rerender();
-			expect(scratch.textContent).to.equal("bar");
 		});
 	});
 

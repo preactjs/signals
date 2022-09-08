@@ -58,7 +58,7 @@ function createUpdater(updater: () => void) {
 function getElementUpdater(vnode: VNode) {
 	let updater = updaterForComponent.get(vnode) as ElementUpdater;
 	if (!updater) {
-		let signalProps: Array<{ _key: string, _signal: Signal }> = [];
+		let signalProps: Array<{ _key: string; _signal: Signal }> = [];
 		updater = createUpdater(() => {
 			let dom = vnode.__e as Element;
 
@@ -112,6 +112,11 @@ function childToSignal<T>(child: any, i: keyof T, arr: T) {
 function Text(this: ComponentType, { data }: { data: Signal }) {
 	// hasComputeds.add(this);
 
+	// Store the props.data signal in another signal so that
+	// passing a new signal reference re-runs the text computed:
+	const currentSignal = useSignal(data);
+	currentSignal.value = data;
+
 	const s = useMemo(() => {
 		// mark the parent component as having computeds so it gets optimized
 		let v = this.__v;
@@ -128,6 +133,7 @@ function Text(this: ComponentType, { data }: { data: Signal }) {
 		};
 
 		return computed(() => {
+			let data = currentSignal.value;
 			let s = data.value;
 			return s === 0 ? 0 : s === true ? "" : s || "";
 		});
@@ -153,17 +159,17 @@ hook(OptionsTypes.DIFF, (old, vnode) => {
 				if (!updater) updater = getElementUpdater(vnode);
 				// track which props are Signals for precise updates:
 				updater._props.push({ _key: i, _signal: value });
-				let newUpdater = updater._updater
+				let newUpdater = updater._updater;
 				if (value._updater) {
-					let oldUpdater = value._updater
+					let oldUpdater = value._updater;
 					value._updater = () => {
 						newUpdater();
 						oldUpdater();
-					}
+					};
 				} else {
-					value._updater = newUpdater
+					value._updater = newUpdater;
 				}
-				props[i] = value.peek()
+				props[i] = value.peek();
 			}
 		}
 
