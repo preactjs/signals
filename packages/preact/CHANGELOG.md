@@ -1,5 +1,11 @@
 # @preact/signals
 
+## 1.0.3
+
+### Patch Changes
+
+- ab5bd99: Fix swapping and HMR for signals when used as text
+
 ## 1.0.2
 
 ### Patch Changes
