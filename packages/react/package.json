@@ -40,7 +40,7 @@
 		"@preact/signals-core": "workspace:^1.0.0"
 	},
 	"peerDependencies": {
-		"react": "17.x | 18.x"
+		"react": "17.x || 18.x"
 	},
 	"devDependencies": {
 		"react": "^18.2.0",
