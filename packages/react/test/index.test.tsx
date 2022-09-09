@@ -2,7 +2,7 @@
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
 import { signal, useComputed } from "@preact/signals-react";
-import { createElement as h, useMemo } from "react";
+import { createElement, useMemo } from "react";
 import { createRoot, Root } from "react-dom/client";
 import { act } from "react-dom/test-utils";
 
@@ -24,7 +24,7 @@ describe("@preact/signals-react", () => {
 
 	describe("Text bindings", () => {
 		it("should render text without signals", () => {
-			render(h("span", null, "test"));
+			render(<span>test</span>);
 			const span = scratch.firstChild;
 			const text = span?.firstChild;
 			expect(text).to.have.property("data", "test");
@@ -32,7 +32,7 @@ describe("@preact/signals-react", () => {
 
 		it("should render Signals as Text", () => {
 			const sig = signal("test");
-			render(h("span", null, sig));
+			render(<span>{sig}</span>);
 			const span = scratch.firstChild;
 			expect(span).to.have.property("firstChild").that.is.an.instanceOf(Text);
 			const text = span?.firstChild;
@@ -41,7 +41,7 @@ describe("@preact/signals-react", () => {
 
 		it("should update Signal-based Text (no parent component)", () => {
 			const sig = signal("test");
-			render(h("span", null, sig));
+			render(<span>{sig}</span>);
 
 			const text = scratch.firstChild!.firstChild!;
 			expect(text).to.have.property("data", "test");
@@ -59,9 +59,9 @@ describe("@preact/signals-react", () => {
 		it("should update Signal-based Text (in a parent component)", () => {
 			const sig = signal("test");
 			function App({ x }: { x: typeof sig }) {
-				return h("span", null, x);
+				return <span>{x}</span>;
 			}
-			render(h(App, { x: sig }));
+			render(<App x={sig} />);
 
 			const text = scratch.firstChild!.firstChild!;
 			expect(text).to.have.property("data", "test");
@@ -83,10 +83,10 @@ describe("@preact/signals-react", () => {
 
 			function App() {
 				const value = sig.value;
-				return h("p", null, value);
+				return <p>{value}</p>;
 			}
 
-			render(h(App, {}));
+			render(<App />);
 			expect(scratch.textContent).to.equal("foo");
 
 			act(() => {
@@ -107,10 +107,10 @@ describe("@preact/signals-react", () => {
 				});
 
 				const str = arr.value.join(", ");
-				return h("p", null, str);
+				return <p>{str}</p>;
 			}
 
-			const fn = () => render(h(App, {}));
+			const fn = () => render(<App />);
 			expect(fn).not.to.throw;
 		});
 
@@ -119,16 +119,16 @@ describe("@preact/signals-react", () => {
 
 			function Child() {
 				const value = sig.value;
-				return h("p", null, value);
+				return <p>{value}</p>;
 			}
 
 			const spy = sinon.spy();
 			function App() {
 				spy();
-				return h(Child, null);
+				return <Child />;
 			}
 
-			render(h(App, {}));
+			render(<App />);
 			expect(scratch.textContent).to.equal("foo");
 
 			act(() => {
@@ -142,15 +142,15 @@ describe("@preact/signals-react", () => {
 
 			function Inner() {
 				const value = sig.value;
-				return h("p", null, value);
+				return <p>{value}</p>;
 			}
 
 			function App() {
 				sig.value;
-				return useMemo(() => h(Inner, { foo: 1 }), []);
+				return useMemo(() => <Inner foo={1} />, []);
 			}
 
-			render(h(App, {}));
+			render(<App />);
 			expect(scratch.textContent).to.equal("foo");
 
 			act(() => {

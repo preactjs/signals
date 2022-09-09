@@ -1,6 +1,5 @@
 import { signal, useComputed } from "@preact/signals";
-import { h, render } from "preact";
-import { useMemo } from "preact/hooks";
+import { createElement, render } from "preact";
 import { setupRerender } from "preact/test-utils";
 
 const sleep = (ms?: number) => new Promise(r => setTimeout(r, ms));
@@ -20,7 +19,7 @@ describe("@preact/signals", () => {
 
 	describe("Text bindings", () => {
 		it("should render text without signals", () => {
-			render(h("span", null, "test"), scratch);
+			render(<span>test</span>, scratch);
 			const span = scratch.firstChild;
 			const text = span?.firstChild;
 			expect(text).to.have.property("data", "test");
@@ -28,7 +27,7 @@ describe("@preact/signals", () => {
 
 		it("should render Signals as Text", () => {
 			const sig = signal("test");
-			render(h("span", null, sig), scratch);
+			render(<span>{sig}</span>, scratch);
 			const span = scratch.firstChild;
 			expect(span).to.have.property("firstChild").that.is.an.instanceOf(Text);
 			const text = span?.firstChild;
@@ -37,7 +36,7 @@ describe("@preact/signals", () => {
 
 		it("should update Signal-based Text (no parent component)", () => {
 			const sig = signal("test");
-			render(h("span", null, sig), scratch);
+			render(<span>{sig}</span>, scratch);
 
 			const text = scratch.firstChild!.firstChild!;
 			expect(text).to.have.property("data", "test");
@@ -55,9 +54,9 @@ describe("@preact/signals", () => {
 			const spy = sinon.spy();
 			function App({ x }: { x: typeof sig }) {
 				spy();
-				return h("span", null, x);
+				return <span>{x}</span>;
 			}
-			render(h(App, { x: sig }), scratch);
+			render(<App x={sig} />, scratch);
 			spy.resetHistory();
 
 			const text = scratch.firstChild!.firstChild!;
@@ -79,16 +78,16 @@ describe("@preact/signals", () => {
 			const spy = sinon.spy();
 			function App({ x }: { x: typeof sig }) {
 				spy();
-				return h("span", null, x);
+				return <span>{x}</span>;
 			}
-			render(h(App, { x: sig }), scratch);
+			render(<App x={sig} />, scratch);
 			spy.resetHistory();
 
 			const text = scratch.firstChild!.firstChild!;
 			expect(text).to.have.property("data", "test");
 
 			const sig2 = signal("different");
-			render(h(App, { x: sig2 }), scratch);
+			render(<App x={sig2} />, scratch);
 			expect(spy).to.have.been.called;
 			spy.resetHistory();
 
@@ -123,10 +122,10 @@ describe("@preact/signals", () => {
 
 			function App() {
 				const value = sig.value;
-				return h("p", null, value);
+				return <p>{value}</p>;
 			}
 
-			render(h(App, {}), scratch);
+			render(<App />, scratch);
 			expect(scratch.textContent).to.equal("foo");
 
 			sig.value = "bar";
@@ -146,10 +145,10 @@ describe("@preact/signals", () => {
 				});
 
 				const str = arr.value.join(", ");
-				return h("p", null, str);
+				return <p>{str}</p>;
 			}
 
-			const fn = () => render(h(App, {}), scratch);
+			const fn = () => render(<App />, scratch);
 			expect(fn).not.to.throw;
 		});
 
@@ -158,16 +157,16 @@ describe("@preact/signals", () => {
 
 			function Child() {
 				const value = sig.value;
-				return h("p", null, value);
+				return <p>{value}</p>;
 			}
 
 			const spy = sinon.spy();
 			function App() {
 				spy();
-				return h(Child, null);
+				return <Child />;
 			}
 
-			render(h(App, {}), scratch);
+			render(<App />, scratch);
 			expect(scratch.textContent).to.equal("foo");
 
 			sig.value = "bar";
@@ -180,7 +179,7 @@ describe("@preact/signals", () => {
 		it("should set the initial value of the checked property", () => {
 			const s = signal(true);
 			// @ts-ignore
-			render(h("input", { checked: s }), scratch);
+			render(<input checked={s} />, scratch);
 
 			expect(scratch.firstChild).to.have.property("checked", true);
 			expect(s.value).to.equal(true);
@@ -189,7 +188,7 @@ describe("@preact/signals", () => {
 		it("should update the checked property on change", () => {
 			const s = signal(true);
 			// @ts-ignore
-			render(h("input", { checked: s }), scratch);
+			render(<input checked={s} />, scratch);
 
 			expect(scratch.firstChild).to.have.property("checked", true);
 
@@ -204,9 +203,9 @@ describe("@preact/signals", () => {
 			function Wrap() {
 				spy();
 				// @ts-ignore
-				return h("input", { value: s });
+				return <input value={s} />;
 			}
-			render(h(Wrap, {}), scratch);
+			render(<Wrap />, scratch);
 			spy.resetHistory();
 
 			expect(scratch.firstChild).to.have.property("value", "initial");
@@ -234,9 +233,9 @@ describe("@preact/signals", () => {
 			function Wrap() {
 				spy();
 				// @ts-ignore
-				return h("div", { style });
+				return <div style={style} />;
 			}
-			render(h(Wrap, {}), scratch);
+			render(<Wrap />, scratch);
 			spy.resetHistory();
 
 			const div = scratch.firstChild as HTMLDivElement;
