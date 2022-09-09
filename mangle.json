@@ -33,7 +33,20 @@
       "$_canActivate": "_c",
       "$_readonly": "_r",
       "$_requiresUpdate": "_q",
-      "$_props": "__"
+      "$_props": "__",
+
+      "$_children": "_c",
+      "$_wakeup": "_w",
+      "$_first": "_i",
+      "$_dirty": "_d",
+      "$_hasError": "_h",
+      "$_weak": "_r",
+      "$_parents": "_p",
+      "$_callback": "_f",
+      "$_addDependency": "_a",
+      "$_removeDependencies": "_u",
+      "$_listener": "_l",
+      "$_listen": "_s"
     }
   }
 }

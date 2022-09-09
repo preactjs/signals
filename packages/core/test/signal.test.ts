@@ -204,6 +204,7 @@ describe("computed()", () => {
 			compute.resetHistory();
 
 			a.value = "aa";
+			expect(c.value).to.equal("aab");
 			expect(compute).to.have.been.calledOnce;
 		});
 
@@ -224,7 +225,7 @@ describe("computed()", () => {
 			compute.resetHistory();
 
 			a.value = 4;
-
+			e.value;
 			expect(compute).to.have.been.calledOnce;
 		});
 
@@ -440,6 +441,7 @@ describe("computed()", () => {
 			spy.resetHistory();
 
 			a.value = "aa";
+			d.value;
 			expect(spy).to.returned("aa c");
 		});
 
@@ -468,6 +470,7 @@ describe("computed()", () => {
 			spy.resetHistory();
 
 			a.value = "aa";
+			e.value;
 			expect(spy).to.returned("aa c d");
 		});
 	});
@@ -494,27 +497,46 @@ describe("computed()", () => {
 
 		it("should keep graph consistent on errors in computeds", () => {
 			const a = signal(0);
-			let shouldThrow = false;
+			const shouldThrow = signal(false);
+
 			const b = computed(() => {
-				if (shouldThrow) throw new Error("fail");
+				if (shouldThrow.value) throw new Error("fail");
 				return a.value;
 			});
+
 			const c = computed(() => b.value);
 			expect(c.value).to.equal(0);
 
-			shouldThrow = true;
+			// Update it so that c will now throw
+			batch(() => {
+				shouldThrow.value = true;
+				a.value = 1;
+			});
+
+			// Verify that c throws
 			let error: Error | null = null;
 			try {
-				a.value = 1;
+				c.value;
 			} catch (err: any) {
 				error = err;
 			}
 			expect(error?.message).to.equal("fail");
 
-			// Now update signal again without throwing an error. If we didn't
-			// reset the subtree's PENDING counter C's value wouldn't update.
-			shouldThrow = false;
-			a.value = 2;
+			// Make sure that c always rethrows whenever accessing its value
+			error = null;
+			try {
+				c.value;
+			} catch (err: any) {
+				error = err;
+			}
+			expect(error?.message).to.equal("fail");
+
+			// Update it so that c no longer throws
+			batch(() => {
+				shouldThrow.value = false;
+				a.value = 2;
+			});
+
 			expect(c.value).to.equal(2);
 		});
 
@@ -522,9 +544,10 @@ describe("computed()", () => {
 			const a = signal(1);
 			const b = signal(1);
 			const c = signal(1);
-			let shouldThrow = false;
+			const shouldThrow = signal(false);
+
 			const compute = sinon.spy(() => {
-				if (shouldThrow) {
+				if (shouldThrow.value) {
 					throw new Error("fail: " + c.value);
 				}
 				return a.value + b.value;
@@ -532,30 +555,34 @@ describe("computed()", () => {
 			const d = computed(compute);
 			expect(d.value).to.equal(2);
 
-			shouldThrow = true;
-			expect(() => {
+			batch(() => {
+				shouldThrow.value = true;
 				a.value = 2;
+			});
+
+			expect(() => {
+				d.value;
 			}).to.throw();
-			expect(d.value).to.equal(2);
 
-			// when errors occur, we intentionally over-subscribe.
-			// This includes retaining subscriptions after the error:
+			expect(compute).to.have.been.called;
+
 			compute.resetHistory();
-			try {
+
+			expect(() => {
 				b.value = 2;
-			} catch (e) {
-				// may error, but not in a way we can assert over
-			}
-			expect(compute).to.have.been.called;
+				d.value;
+			}).to.throw();
+
+			expect(compute).to.have.not.been.called;
 
 			compute.resetHistory();
-			shouldThrow = false;
-			// Note: b.value=2 should probably also update the subgraph.
-			// ...but its value is already 2 from the errored computation.
-			// b.value = 2;
-			c.value = 2;
-			expect(compute).to.have.been.called;
+
+			batch(() => {
+				shouldThrow.value = false;
+				c.value = 2;
+			});
 			expect(d.value).to.equal(4);
+			expect(compute).to.have.been.called;
 		});
 	});
 });

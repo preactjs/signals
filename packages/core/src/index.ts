@@ -1,305 +1,341 @@
-let ROOT: Signal;
-
-/** This tracks subscriptions of signals read inside a computed */
-let currentSignal: Signal;
-let commitError: Error | null = null;
-
-const pending = new Set<Signal>();
-/** Batch calls can be nested. 0 means that there is no batching */
-let batchPending = 0;
-/**
- * Subscriptions are set up lazily when a "reactor" is set up.
- * During this activation phase we traverse the graph upwards
- * and refresh all signals that are stale on signal read.
- */
-let activating = false;
-
-let oldDeps = new Set<Signal>();
-
-export class Signal<T = any> {
-	// These property names get minified - see /mangle.json
-
-	/** @internal Internal, do not use. */
-	_subs = new Set<Signal>();
-	/** @internal Internal, do not use. */
-	_deps = new Set<Signal>();
-	/** @internal Internal, do not use. */
-	_pending = 0;
-	/** @internal Internal, do not use. */
-	_value: T;
-	/** @internal Determine if a computed is allowed to write or not */
-	_readonly = false;
-	/** @internal Marks the signal as requiring an update */
-	_requiresUpdate = false;
-	/** @internal Determine if reads should eagerly activate value */
-	_canActivate = false;
-	/** @internal Used to detect if there is a cycle in the graph */
-	_isComputing = false;
-
-	constructor(value: T) {
-		this._value = value;
-	}
-
-	toString() {
-		return "" + this.value;
-	}
-
-	peek() {
-		if (currentSignal._canActivate && this._deps.size === 0) {
-			activate(this);
-		}
-		return this._value;
-	}
-
-	get value() {
-		// If we read a signal outside of a computed we have no way
-		// to unsubscribe from that. So we assume that the user wants
-		// to get the value immediately like for testing.
-		if (currentSignal._canActivate && this._deps.size === 0) {
-			activate(this);
-
-			// The ROOT signal cannot track dependencies as it's never
-			// subscribed to
-			if (currentSignal === ROOT) {
-				return this._value;
-			}
-		}
-
-		// subscribe the current computed to this signal:
-		this._subs.add(currentSignal);
-		// update the current computed's dependencies:
-		currentSignal._deps.add(this);
-		oldDeps.delete(this);
-
-		// refresh stale value when this signal is read from withing
-		// batching and when it has been marked already
-		if (
-			(batchPending > 0 && this._pending > 0) ||
-			// Set up subscriptions during activation phase
-			(activating && this._deps.size === 0)
-		) {
-			refreshStale(this);
-		}
-		return this._value;
-	}
-
-	set value(value) {
-		if (this._readonly) {
-			throw new Error("Computed signals are readonly");
-		}
-
-		if (this._value !== value) {
-			this._value = value;
-			let isFirst = pending.size === 0;
-			pending.add(this);
-			// in batch mode this signal may be marked already
-			if (this._pending === 0) {
-				mark(this);
-			}
-
-			// this is the first change, not a computed and we are not
-			// in batch mode:
-			if (isFirst && batchPending === 0) {
-				sweep(pending);
-				pending.clear();
-				if (commitError) {
-					const err = commitError;
-					// Clear global error flag for next commit
-					commitError = null;
-					throw err;
-				}
-			}
-		}
-	}
-
-	/**
-	 * Start a read operation where this signal is the "current signal" context.
-	 * Returns a function that must be called to end the read context.
-	 * @internal
-	 */
-	_setCurrent() {
-		let prevSignal = currentSignal;
-		let prevOldDeps = oldDeps;
-		currentSignal = this;
-		oldDeps = this._deps;
-		this._deps = new Set();
-
-		return (shouldUnmark: boolean, shouldCleanup: boolean) => {
-			if (shouldUnmark) this._subs.forEach(unmark);
-
-			// Any leftover dependencies here are not needed anymore
-			if (shouldCleanup) {
-				// Unsubscribe from dependencies that were not accessed:
-				oldDeps.forEach(sub => unsubscribe(this, sub));
-			} else {
-				// Re-subscribe to dependencies that not accessed:
-				oldDeps.forEach(sub => subscribe(this, sub));
-			}
-
-			oldDeps.clear();
-			oldDeps = prevOldDeps;
-			currentSignal = prevSignal;
-		};
-	}
-
-	/**
-	 * A custom update routine to run when this Signal's value changes.
-	 * @internal
-	 */
-	_updater() {
-		// override me to handle updates
-	}
+export interface ReadonlySignal<T> {
+    peek(): T;
+    readonly value: T;
 }
 
-function mark(signal: Signal) {
-	if (signal._pending++ === 0) {
-		signal._subs.forEach(mark);
-	}
+export type Disposer = () => void;
+
+type Listener = () => void;
+
+
+// The current computed that is running
+let currentComputed: Computed<unknown> | null = null;
+
+// A set of listeners which will be triggered after the batch is complete
+let batchPending: Set<Listener> | null = null;
+
+const processingSignals: Set<Signal<unknown>> = new Set();
+
+
+export function batch<T>(f: () => T): T {
+    if (batchPending === null) {
+        const listeners: Set<Listener> = new Set();
+
+        const old = batchPending;
+        batchPending = listeners;
+
+        try {
+            return f();
+
+        } finally {
+            batchPending = old;
+            processingSignals.clear();
+
+            // Trigger any pending listeners
+            listeners.forEach((listener) => {
+                listener();
+            });
+        }
+
+    // We're already inside of an outer batch
+    } else {
+        return f();
+    }
 }
 
-function unmark(signal: Signal<any>) {
-	// We can only unmark this node as not needing an update if it
-	// wasn't flagged as needing an update by someone else. This is
-	// done to make the sweeping logic independent of the order
-	// in which a dependency tries to unmark a subtree.
-	if (!signal._requiresUpdate && --signal._pending === 0) {
-		signal._subs.forEach(unmark);
-	}
+
+export class Signal<T> {
+    // These property names get minified - see /mangle.json
+
+    /** @internal */
+    protected _value: T;
+
+    constructor(value: T) {
+        this._value = value;
+    }
+
+    public toString() {
+        return "" + this.value;
+    }
+
+    /**
+     * This uses WeakRef in order to avoid memory leaks: if the child is not
+     * used anywhere then it can be garbage collected.
+     *
+     * @internal
+     */
+    protected _children: Set<WeakRef<Signal<unknown>>> = new Set();
+
+    /**
+     * Recurse down all children, marking them as dirty and adding
+     * listeners to batchPending.
+     *
+     * @internal
+     */
+    protected _wakeup() {
+        this._children.forEach((childRef) => {
+            const child = childRef.deref();
+
+            if (child) {
+                child._wakeup();
+
+            // If the child has been garbage collected, then remove it from the Set
+            } else {
+                this._children.delete(childRef);
+            }
+        });
+    }
+
+    public peek(): T {
+        return this._value;
+    }
+
+    public get value(): T {
+    	const value = this._value;
+
+        if (currentComputed !== null) {
+        	// This is used to detect infinite cycles
+        	if (batchPending !== null) {
+            	processingSignals.add(this);
+            }
+
+            // If accessing inside of a computed, add this to the computed's parents
+            currentComputed._addDependency(this, value);
+        }
+
+        return value;
+    }
+
+    public set value(value: T) {
+        if (currentComputed !== null && batchPending !== null && processingSignals.has(this)) {
+            throw new Error("Cycle detected");
+        }
+
+        this._value = value;
+
+        // If the value is set outside of a batch, this ensures that all of the
+        // children will be fully marked as dirty before triggering any listeners
+        batch(() => {
+            this._wakeup();
+        });
+    }
 }
-
-function sweep(subs: Set<Signal<any>>) {
-	subs.forEach(signal => {
-		// If a computed errored during sweep, we'll discard that subtree
-		// for this sweep cycle by setting PENDING to 0;
-		if (signal._pending > 0) {
-			signal._requiresUpdate = true;
-
-			if (--signal._pending === 0) {
-				if (signal._isComputing) {
-					throw new Error("Cycle detected");
-				}
-
-				signal._requiresUpdate = false;
-				signal._isComputing = true;
-				signal._updater();
-				signal._isComputing = false;
-				sweep(signal._subs);
-			}
-		}
-	});
-}
-
-function subscribe(signal: Signal<any>, to: Signal<any>) {
-	signal._deps.add(to);
-	to._subs.add(signal);
-}
-
-function unsubscribe(signal: Signal<any>, from: Signal<any>) {
-	signal._deps.delete(from);
-	from._subs.delete(signal);
-
-	// If nobody listens to the signal we depended on, we can traverse
-	// upwards and destroy all subscriptions until we encounter a writable
-	// signal or a signal that others listen to as well.
-	if (from._subs.size === 0) {
-		from._deps.forEach(dep => unsubscribe(from, dep));
-	}
-}
-
-const tmpPending: Signal[] = [];
-/**
- * Refresh _just_ this signal and its dependencies recursively.
- * All other signals will be left untouched and added to the
- * global queue to flush later. Since we're traversing "upwards",
- * we don't have to car about topological sorting.
- */
-function refreshStale(signal: Signal) {
-	pending.delete(signal);
-	signal._pending = 0;
-	signal._updater();
-	if (commitError) {
-		const err = commitError;
-		commitError = null;
-		throw err;
-	}
-
-	signal._subs.forEach(sub => {
-		if (sub._pending > 0) {
-			// If PENDING > 1 then we can safely reduce the counter because
-			// the final sweep will take care of the rest. But if it's
-			// exactly 1 we can't do that otherwise the sweeping logic
-			// assumes that this signal was already updated.
-			if (sub._pending > 1) sub._pending--;
-			tmpPending.push(sub);
-		}
-	});
-}
-
-function activate(signal: Signal) {
-	activating = true;
-	try {
-		refreshStale(signal);
-	} finally {
-		activating = false;
-	}
-}
-
-ROOT = currentSignal = new Signal(undefined);
-ROOT._canActivate = true;
 
 export function signal<T>(value: T): Signal<T> {
-	return new Signal(value);
+    return new Signal(value);
 }
 
-export type ReadonlySignal<T = any> = Omit<Signal<T>, "value"> & {
-	readonly value: T;
-};
-export function computed<T>(compute: () => T): ReadonlySignal<T> {
-	const signal = new Signal<T>(undefined as any);
-	signal._readonly = true;
 
-	function updater() {
-		let finish = signal._setCurrent();
+class Computed<T> extends Signal<T> implements ReadonlySignal<T> {
+    // These property names get minified - see /mangle.json
 
-		try {
-			let ret = compute();
+    /**
+     * Whether this is the first time processing this computed
+     *
+     * @internal
+     */
+    protected _first: boolean = true;
 
-			finish(signal._value === ret, true);
-			signal._value = ret;
-		} catch (err: any) {
-			// Ensure that we log the first error not the last
-			if (!commitError) commitError = err;
-			finish(true, false);
-		}
-	}
+    /**
+     * Whether any of the computed's parents have changed or not.
+     *
+     * @internal
+     */
+    protected _dirty: boolean = true;
 
-	signal._updater = updater;
+    /**
+     * Whether the callback errored or not.
+     *
+     * @internal
+     */
+    protected _hasError: boolean = false;
 
-	return signal;
+    /**
+     * WeakRefs have their own object identity, so we must reuse
+     * the same WeakRef over and over again
+     *
+     * @internal
+     */
+    protected _weak: WeakRef<this> = new WeakRef(this);
+
+    /**
+     * The parent dependencies for this computed.
+     *
+     * @internal
+     */
+    protected _parents: Map<Signal<unknown>, unknown> = new Map();
+
+    /** @internal */
+    protected _callback: () => T;
+
+    constructor(callback: () => T) {
+        super(undefined as unknown as T);
+        this._callback = callback;
+    }
+
+    /**
+     * Mark this computed as dirty whenever any of its parents change.
+     *
+     * @internal
+     */
+    protected _wakeup() {
+        this._dirty = true;
+        super._wakeup();
+    }
+
+    /**
+     * This is called when another Signal's .value is accessed inside of
+     * this computed, it adds the Signal as a dependency of this computed.
+     *
+     * @internal
+     */
+    public _addDependency(parent: Signal<unknown>, value: unknown) {
+        this._parents.set(parent, value);
+
+        // This uses a WeakRef to avoid a memory leak
+        (parent as any)._children.add(this._weak);
+    }
+
+    /**
+     * Removes all links between this computed and its dependencies.
+     *
+     * @internal
+     */
+    protected _removeDependencies() {
+        this._parents.forEach((_value, parent) => {
+            (parent as any)._children.delete(this._weak);
+        });
+
+        this._parents.clear();
+    }
+
+    public peek(): T {
+        if (this._dirty) {
+            this._dirty = false;
+
+            try {
+                let changed = false;
+
+                if (this._first) {
+                	this._first = false;
+                    changed = true;
+
+                } else {
+                    // This checks if at least one of its parents has a different value
+                    this._parents.forEach((oldValue, parent) => {
+                        const newValue = parent.peek();
+
+                        if (oldValue !== newValue) {
+                            changed = true;
+                        }
+                    });
+                }
+
+                if (changed) {
+                    this._hasError = false;
+
+                    // Because the dependencies might have changed, we first
+                    // remove all of the old links between this computed and
+                    // its dependencies.
+                    //
+                    // The links will be recreated by the _addDependency method.
+                    this._removeDependencies();
+
+                    const old = currentComputed;
+                    currentComputed = this;
+
+                    try {
+                        this._value = this._callback();
+
+                    } finally {
+                        currentComputed = old;
+                    }
+                }
+
+            } catch (e) {
+                this._hasError = true;
+
+                // We reuse the _value slot for the error, instead of using a separate property
+                this._value = e as T;
+            }
+        }
+
+        if (this._hasError) {
+            throw this._value;
+
+        } else {
+            return this._value;
+        }
+    }
+
+    public get value(): T {
+        const value = this.peek();
+
+        if (currentComputed !== null) {
+        	// If accessing inside of a computed, add this to the computed's parents
+            currentComputed._addDependency(this, value);
+        }
+
+        return value;
+    }
+
+    public set value(v: T) {
+        throw new Error("Computed signals are readonly");
+    }
 }
 
-export function effect(callback: () => void) {
-	const s = computed(() => batch(callback));
-	// Set up subscriptions since this is a "reactor" signal
-	activate(s);
-	return () => s._setCurrent()(true, true);
+export function computed<T>(f: () => T): ReadonlySignal<T> {
+    return new Computed(f);
 }
 
-export function batch<T>(cb: () => T): T {
-	batchPending++;
-	try {
-		return cb();
-	} finally {
-		// Since stale signals are refreshed upwards, we need to
-		// add pending signals in reverse
-		let item: Signal | undefined;
-		while ((item = tmpPending.pop()) !== undefined) {
-			pending.add(item);
-		}
 
-		if (--batchPending === 0) {
-			sweep(pending);
-			pending.clear();
-		}
-	}
+class Effect<T> extends Computed<T> implements ReadonlySignal<T> {
+    // These property names get minified - see /mangle.json
+
+    /** @internal */
+    protected _listener: Listener | null = null;
+
+    constructor(callback: () => T) {
+        super(callback);
+    }
+
+    /** @internal */
+    protected _wakeup() {
+        if (batchPending === null) {
+            throw new Error("Invalid batchPending");
+        }
+
+        if (this._listener !== null) {
+            batchPending!.add(this._listener);
+        }
+
+        super._wakeup();
+    }
+
+    /** @internal */
+    public _listen(callback: (value: T) => void): Disposer {
+        let oldValue = this.value;
+
+        const listener = () => {
+            const newValue = this.value;
+
+            if (oldValue !== newValue) {
+                oldValue = newValue;
+                callback(oldValue);
+            }
+        };
+
+        this._listener = listener;
+
+        callback(oldValue);
+
+        return () => {
+            this._listener = null;
+            this._removeDependencies();
+        };
+    }
+}
+
+export function effect(callback: () => void): Disposer {
+    return new Effect(() => batch(callback))._listen(() => {});
 }
