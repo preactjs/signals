@@ -1,5 +1,5 @@
 import { options, Component, createElement } from "preact";
-import { useRef, useMemo } from "preact/hooks";
+import { useRef, useMemo, useLayoutEffect } from "preact/hooks";
 import {
 	signal,
 	computed,
@@ -297,7 +297,9 @@ export function useComputed<T>(compute: () => T) {
 	const $compute = useRef(compute);
 	$compute.current = compute;
 	hasComputeds.add(currentComponent!);
-	return useMemo(() => computed<T>(() => $compute.current()), []);
+	const result = useMemo(() => computed<T>(() => $compute.current()), []);
+	useLayoutEffect(() => () => result._setCurrent()(true, true), []);
+	return result;
 }
 
 /**
