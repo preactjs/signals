@@ -91,7 +91,7 @@ function createEsbuildPlugin() {
 			});
 
 			// Apply babel pass whenever we load a .js file
-			build.onLoad({ filter: /\.[mc]?js$/ }, async args => {
+			build.onLoad({ filter: /\.[mc]?[jt]sx?$/ }, async args => {
 				const contents = await fs.readFile(args.path, "utf-8");
 
 				// Using a cache is crucial as babel is 30x slower than esbuild
@@ -112,11 +112,29 @@ function createEsbuildPlugin() {
 				if (!pending.has(args.path)) {
 					pending.set(args.path, []);
 
+					const jsx = [
+						"@babel/preset-react",
+						{
+							runtime: "classic",
+							pragma: "createElement",
+							pragmaFrag: "Fragment",
+						},
+					];
+					const ts = [
+						"@babel/preset-typescript",
+						{
+							jsxPragma: "createElement",
+							jsxPragmaFrag: "Fragment",
+						},
+					];
+
 					const tmp = await babel.transformAsync(result, {
 						filename: args.path,
 						sourceMaps: "inline",
 						presets: downlevel
 							? [
+									ts,
+									jsx,
 									[
 										"@babel/preset-env",
 										{
@@ -128,7 +146,7 @@ function createEsbuildPlugin() {
 										},
 									],
 							  ]
-							: [],
+							: [ts, jsx],
 						plugins: [
 							coverage && [
 								"istanbul",
@@ -139,6 +157,12 @@ function createEsbuildPlugin() {
 						].filter(Boolean),
 					});
 					result = tmp.code || result;
+					if (!args.path.includes(".pnpm")) {
+						console.log(args.path);
+					}
+					if (/\/preact\//.test(args.path)) {
+						// console.log("done", result);
+					}
 					cache.set(args.path, { input: contents, result });
 
 					// Fire all pending listeners that are waiting on the same
@@ -173,6 +197,7 @@ module.exports = function (config) {
 		reporters: ["mocha"].concat(coverage ? "coverage" : []),
 
 		formatError(msg) {
+			console.log("MSAG", msg);
 			let stack = msg;
 			// Karma prints error twice if it's an infinite loop
 			if (/^\s*Uncaught/.test(msg)) {
@@ -228,7 +253,7 @@ module.exports = function (config) {
 
 		files: [
 			{
-				pattern: process.env.TESTS || "packages/*/test/**/*.test.ts",
+				pattern: process.env.TESTS || "packages/*/test/**/*.test.tsx",
 				watched: false,
 				type: "js",
 			},
@@ -254,6 +279,7 @@ module.exports = function (config) {
 		esbuild: {
 			// karma-esbuild options
 			singleBundle: false,
+			jsx: "preserve",
 
 			// esbuild options
 			target: downlevel ? "es5" : "es2015",
