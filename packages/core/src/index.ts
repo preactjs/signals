@@ -162,7 +162,11 @@ function unmark(signal: Signal<any>) {
 	// wasn't flagged as needing an update by someone else. This is
 	// done to make the sweeping logic independent of the order
 	// in which a dependency tries to unmark a subtree.
-	if (!signal._requiresUpdate && --signal._pending === 0) {
+	if (
+		!signal._requiresUpdate &&
+		signal._pending > 0 &&
+		--signal._pending === 0
+	) {
 		signal._subs.forEach(unmark);
 	}
 }
