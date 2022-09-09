@@ -120,7 +120,7 @@ name.value = "John";
 You can destroy an effect and unsubscribe from all signals it was subscribed to, by calling the returned function.
 
 ```js
-import { signal, effect } from "@preact/signals-core";
+import { signal, computed, effect } from "@preact/signals-core";
 
 const name = signal("Jane");
 const surname = signal("Doe");
