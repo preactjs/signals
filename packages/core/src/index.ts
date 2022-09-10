@@ -251,7 +251,9 @@ function activate(signal: Signal) {
 ROOT = currentSignal = new Signal(undefined);
 ROOT._canActivate = true;
 
-export function signal<T>(value: T): Signal<T> {
+export function signal<T>(value: T): Signal<T>
+export function signal<T = undefined>(): Signal<T | undefined>
+export function signal<T>(value?: T) {
 	return new Signal(value);
 }
 
