@@ -1,7 +1,5 @@
-let ROOT: Signal;
-
 /** This tracks subscriptions of signals read inside a computed */
-let currentSignal: Signal;
+let currentSignal: Signal | undefined;
 let commitError: Error | null = null;
 
 const pending = new Set<Signal>();
@@ -45,24 +43,21 @@ export class Signal<T = any> {
 	}
 
 	peek() {
-		if (currentSignal._canActivate && this._deps.size === 0) {
+		if (currentSignal && currentSignal._canActivate && this._deps.size === 0) {
 			activate(this);
 		}
 		return this._value;
 	}
 
 	get value() {
+		if (!currentSignal) {
+			return this._value;
+		}
 		// If we read a signal outside of a computed we have no way
 		// to unsubscribe from that. So we assume that the user wants
 		// to get the value immediately like for testing.
 		if (currentSignal._canActivate && this._deps.size === 0) {
 			activate(this);
-
-			// The ROOT signal cannot track dependencies as it's never
-			// subscribed to
-			if (currentSignal === ROOT) {
-				return this._value;
-			}
 		}
 
 		// subscribe the current computed to this signal:
@@ -85,7 +80,7 @@ export class Signal<T = any> {
 
 	set value(value) {
 		if (this._readonly) {
-			throw new Error("Computed signals are readonly");
+			throw Error("Computed signals are readonly");
 		}
 
 		if (this._value !== value) {
@@ -180,7 +175,7 @@ function sweep(subs: Set<Signal<any>>) {
 
 			if (--signal._pending === 0) {
 				if (signal._isComputing) {
-					throw new Error("Cycle detected");
+					throw Error("Cycle detected");
 				}
 
 				signal._requiresUpdate = false;
@@ -247,9 +242,6 @@ function activate(signal: Signal) {
 		activating = false;
 	}
 }
-
-ROOT = currentSignal = new Signal(undefined);
-ROOT._canActivate = true;
 
 export function signal<T>(value: T): Signal<T> {
 	return new Signal(value);
