@@ -327,11 +327,9 @@ export function useSignalEffect(cb: () => void) {
 	const callback = useRef(cb);
 	callback.current = cb;
 
-	useEffect(() => {
-		return effect(() => {
-			callback.current();
-		})
-	}, [])
+	useEffect(() => effect(() => {
+		callback.current();
+	}), []);
 }
 
 /**
