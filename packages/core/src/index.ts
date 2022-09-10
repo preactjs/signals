@@ -43,21 +43,24 @@ export class Signal<T = any> {
 	}
 
 	peek() {
-		if (currentSignal && currentSignal._canActivate && this._deps.size === 0) {
+		const shouldActivate = !currentSignal || currentSignal._canActivate;
+		if (shouldActivate && this._deps.size === 0) {
 			activate(this);
 		}
 		return this._value;
 	}
 
 	get value() {
-		if (!currentSignal) {
-			return this._value;
+		const shouldActivate = !currentSignal || currentSignal._canActivate;
+		if (shouldActivate && this._deps.size === 0) {
+			activate(this);
 		}
+
 		// If we read a signal outside of a computed we have no way
 		// to unsubscribe from that. So we assume that the user wants
 		// to get the value immediately like for testing.
-		if (currentSignal._canActivate && this._deps.size === 0) {
-			activate(this);
+		if (!currentSignal) {
+			return this._value;
 		}
 
 		// subscribe the current computed to this signal:
