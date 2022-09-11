@@ -43,7 +43,6 @@ export class Signal<T = any> {
 	}
 
 	peek() {
-		console.log("peek", this._dirty, this._version);
 		if (this._dirty) {
 			let prevCurrent = currentSignal;
 			currentSignal = undefined;
@@ -200,6 +199,7 @@ function activate(signal: Signal) {
 			let fresh = true;
 
 			signal._deps.forEach((version, dep) => {
+				console.log(dep.name, dep._value, dep._version, version);
 				if (fresh) {
 					fresh = dep._version === version;
 				}
@@ -260,7 +260,6 @@ export function effect(callback: () => void) {
 	const s = computed(() => batch(callback));
 	s._dirty = true;
 	s.name = "effect";
-	// effects.add(s);
 	// Set up subscriptions since this is a "reactor" signal
 	activate(s);
 	return () => s._setCurrent()(true, true);

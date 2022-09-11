@@ -241,7 +241,7 @@ describe("computed()", () => {
 			expect(compute).to.have.been.calledOnce;
 		});
 
-		it("should only update every signal once (diamond graph)", () => {
+		it.only("should only update every signal once (diamond graph)", () => {
 			// In this scenario "D" should only update once when "A" receives
 			// an update. This is sometimes referred to as the "diamond" scenario.
 			//     A
@@ -250,15 +250,20 @@ describe("computed()", () => {
 			//   \   /
 			//     D
 			const a = signal("a");
+			a.name = "a";
 			const b = computed(() => a.value);
+			b.name = "b";
 			const c = computed(() => a.value);
+			c.name = "c";
 
 			const spy = sinon.spy(() => b.value + " " + c.value);
 			const d = computed(spy);
+			d.name = "d";
 
 			expect(d.value).to.equal("a a");
 			expect(spy).to.be.calledOnce;
 
+			console.log("===");
 			a.value = "aa";
 			expect(d.value).to.equal("aa aa");
 			expect(spy).to.be.calledTwice;
