@@ -47,27 +47,6 @@ export class Signal<T = any> {
 		if (shouldActivate && this._deps.size === 0) {
 			activate(this);
 		}
-		return this._value;
-	}
-
-	get value() {
-		const shouldActivate = !currentSignal || currentSignal._canActivate;
-		if (shouldActivate && this._deps.size === 0) {
-			activate(this);
-		}
-
-		// If we read a signal outside of a computed we have no way
-		// to unsubscribe from that. So we assume that the user wants
-		// to get the value immediately like for testing.
-		if (!currentSignal) {
-			return this._value;
-		}
-
-		// subscribe the current computed to this signal:
-		this._subs.add(currentSignal);
-		// update the current computed's dependencies:
-		currentSignal._deps.add(this);
-		oldDeps.delete(this);
 
 		// refresh stale value when this signal is read from withing
 		// batching and when it has been marked already
@@ -78,6 +57,21 @@ export class Signal<T = any> {
 		) {
 			refreshStale(this);
 		}
+
+		return this._value;
+	}
+
+	get value() {
+		this.peek();
+
+		// subscribe the current computed to this signal:
+		if (currentSignal) {
+			this._subs.add(currentSignal);
+			// update the current computed's dependencies:
+			currentSignal._deps.add(this);
+			oldDeps.delete(this);
+		}
+
 		return this._value;
 	}
 
