@@ -20,6 +20,7 @@ describe("signal", () => {
 
 		it("should not trigger a read", () => {
 			const s = signal(1);
+			s.name = "a";
 
 			const spy = sinon.spy(() => {
 				// When we trigger a read this would cause an infinite loop
@@ -61,7 +62,12 @@ describe("effect()", () => {
 
 	it("should subscribe to signals", () => {
 		const s = signal(123);
-		const spy = sinon.spy(() => s.value);
+		s.name = "a";
+		let i = 0;
+		const spy = sinon.spy(() => {
+			if (i++ > 10) throw new Error("loop");
+			return s.value;
+		});
 		effect(spy);
 		spy.resetHistory();
 
@@ -124,6 +130,7 @@ describe("effect()", () => {
 
 	it("should throw on cycles", () => {
 		const a = signal(0);
+		a.name = "a";
 		let i = 0;
 
 		const fn = () =>
@@ -151,9 +158,12 @@ describe("computed()", () => {
 
 	it("should return updated value", () => {
 		const a = signal("a");
+		a.name = "a";
 		const b = signal("b");
+		b.name = "b";
 
 		const c = computed(() => a.value + b.value);
+		c.name = "c";
 		expect(c.value).to.equal("ab");
 
 		a.value = "aa";
@@ -162,7 +172,9 @@ describe("computed()", () => {
 
 	it("should conditionally unsubscribe from signals", () => {
 		const a = signal("a");
+		a.name = "a";
 		const b = signal("b");
+		b.name = "b";
 		const cond = signal(true);
 
 		const spy = sinon.spy(() => {
@@ -170,6 +182,7 @@ describe("computed()", () => {
 		});
 
 		const c = computed(spy);
+		c.name = "c";
 		expect(c.value).to.equal("a");
 		expect(spy).to.be.calledOnce;
 
@@ -281,13 +294,16 @@ describe("computed()", () => {
 			// Bail out if value of "B" never changes
 			// A->B->C
 			const a = signal("a");
+			a.name = "a";
 			const b = computed(() => {
 				a.value;
 				return "foo";
 			});
+			b.name = "b";
 
 			const spy = sinon.spy(() => b.value);
 			const c = computed(spy);
+			c.name = "c";
 
 			expect(c.value).to.equal("foo");
 			expect(spy).to.be.calledOnce;
