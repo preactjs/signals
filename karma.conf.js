@@ -157,9 +157,6 @@ function createEsbuildPlugin() {
 						].filter(Boolean),
 					});
 					result = tmp.code || result;
-					if (/\/preact\//.test(args.path)) {
-						// console.log("done", result);
-					}
 					cache.set(args.path, { input: contents, result });
 
 					// Fire all pending listeners that are waiting on the same
