@@ -111,10 +111,10 @@ export class Signal<T = any> {
 			// Any leftover dependencies here are not needed anymore
 			if (shouldCleanup) {
 				// Unsubscribe from dependencies that were not accessed:
-				oldDeps.forEach(sub => unsubscribe(this, sub));
+				oldDeps.forEach(dep => unsubscribe(this, dep));
 			} else {
-				// Re-subscribe to dependencies that not accessed:
-				oldDeps.forEach(sub => subscribe(this, sub));
+				// Re-subscribe to dependencies that were not accessed:
+				oldDeps.forEach(dep => subscribe(this, dep));
 			}
 
 			oldDeps.clear();
@@ -198,7 +198,7 @@ const tmpPending: Signal[] = [];
  * Refresh _just_ this signal and its dependencies recursively.
  * All other signals will be left untouched and added to the
  * global queue to flush later. Since we're traversing "upwards",
- * we don't have to car about topological sorting.
+ * we don't have to care about topological sorting.
  */
 function refreshStale(signal: Signal) {
 	pending.delete(signal);

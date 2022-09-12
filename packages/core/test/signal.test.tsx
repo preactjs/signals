@@ -361,7 +361,7 @@ describe("computed()", () => {
 
 			// top to bottom
 			expect(eSpy).to.have.been.calledBefore(fSpy);
-			// right to left
+			// left to right
 			expect(fSpy).to.have.been.calledBefore(gSpy);
 		});
 
@@ -650,7 +650,7 @@ describe("batch/transaction", () => {
 		const spyD = sinon.spy(() => c.value);
 		const d = computed(spyD);
 
-		const spyE = sinon.spy(() => b.value);
+		const spyE = sinon.spy(() => d.value);
 		const e = computed(spyE);
 
 		spyC.resetHistory();
