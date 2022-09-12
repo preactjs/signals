@@ -313,9 +313,9 @@ type ReadOnlyDeep<T> = {
 	readonly [P in keyof T]: ReadOnlyDeep<T[P]>;
 }
 
-interface IDeepSignal<T extends Storeable> { value: ReadOnlyDeep<T>, peek: () => ReadOnlyDeep<T> }
+export interface IDeepSignal<T extends Storeable> { value: ReadOnlyDeep<T>, peek: () => ReadOnlyDeep<T> }
 
-type DeepSignal<T extends Storeable> = IDeepSignal<T> & {
+export type DeepSignal<T extends Storeable> = IDeepSignal<T> & {
 	[K in keyof T]:
 	T[K] extends Signalable ? Signal<T[K]> :
 	T[K] extends Storeable ? DeepSignal<T[K]> :

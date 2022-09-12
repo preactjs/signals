@@ -8,6 +8,8 @@ import {
 	Signal,
 	deepSignal,
 	DeepSignalImpl,
+	type IDeepSignal,
+	type DeepSignal,
 	type Storeable,
 	type ReadonlySignal,
 } from "@preact/signals-core";
@@ -20,7 +22,7 @@ import {
 	ElementUpdater,
 } from "./internal";
 
-export { signal, computed, batch, effect, Signal, DeepSignalImpl, deepSignal, type ReadonlySignal, type Storeable };
+export { signal, computed, batch, effect, Signal, DeepSignalImpl, deepSignal, type ReadonlySignal, type Storeable, type IDeepSignal, type DeepSignal };
 
 // Components that have a pending Signal update: (used to bypass default sCU:false)
 const hasPendingUpdate = new WeakSet<Component>();
