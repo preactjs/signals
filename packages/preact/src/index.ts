@@ -223,7 +223,7 @@ hook(OptionsTypes.UNMOUNT, (old, vnode: VNode) => {
 		updaterForComponent.delete(thing);
 		const signals = updater._deps;
 		if (signals) {
-			signals.forEach(signal => signal._subs.delete(updater));
+			signals.forEach((_, signal) => signal._subs.delete(updater));
 			signals.clear();
 		}
 	}
