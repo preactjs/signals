@@ -128,7 +128,7 @@ function Text(this: ComponentType, { data }: { data: Signal }) {
 
 		// Replace this component's vdom updater with a direct text one:
 		currentUpdater!._updater = () => {
-			(this.base as Text).data = s._value;
+			(this.base as Text).data = currentSignal.value.value;
 		};
 
 		return computed(() => {
