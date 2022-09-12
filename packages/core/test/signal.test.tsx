@@ -585,6 +585,32 @@ describe("computed()", () => {
 			a.value = 0;
 			expect(c.value).to.equal(0);
 		});
+
+		it("should not update a sub if all deps unmark it", () => {
+			// In this scenario "B" and "C" always return the same value. When "A"
+			// changes, "D" should not update.
+			//     A
+			//   /   \
+			// *B     *C
+			//   \   /
+			//     D
+			const a = signal("a");
+			const b = computed(() => {
+				a.value;
+				return "b";
+			});
+			const c = computed(() => {
+				a.value;
+				return "c";
+			});
+			const spy = sinon.spy(() => b.value + " " + c.value);
+			const d = computed(spy);
+			expect(d.value).to.equal("b c");
+			spy.resetHistory();
+
+			a.value = "aa";
+			expect(spy).not.to.be.called;
+		});
 	});
 });
 
