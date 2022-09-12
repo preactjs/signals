@@ -45,9 +45,6 @@ export class Signal<T = any> {
 
 	get value() {
 		if (!this._active) {
-			if (!currentSignal) {
-				effects.add(this);
-			}
 			activate(this);
 		}
 
