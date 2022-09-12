@@ -120,15 +120,15 @@ Object.defineProperty(internals.ReactCurrentDispatcher, "current", {
 		return currentDispatcher;
 	},
 	set(api) {
-		let updaterForComponent = dispatcherQueue.get(api);
-		if (!updaterForComponent) {
-			updaterForComponent = new WeakMap<ReactOwner, Updater>();
-			dispatcherQueue.set(api, updaterForComponent);
-		}
-
 		currentDispatcher = api;
 		if (lock) return;
 		if (api && !isInvalidHookAccessor(api)) {
+			let updaterForComponent = dispatcherQueue.get(api);
+			if (!updaterForComponent) {
+				updaterForComponent = new WeakMap<ReactOwner, Updater>();
+				dispatcherQueue.set(api, updaterForComponent);
+			}
+
 			// prevent re-injecting useReducer when the Dispatcher
 			// context changes to run the reducer callback:
 			lock = true;
