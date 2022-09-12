@@ -305,7 +305,7 @@ export function batch<T>(cb: () => T): T {
 
 type Signalable = Array<any> | ((...args: any[]) => any) | string | boolean | number | bigint | symbol | undefined | null;
 
-type Storeable = {
+export type Storeable = {
 	[key: string]: (() => any) | Signalable | Storeable
 };
 

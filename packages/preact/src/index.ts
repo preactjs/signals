@@ -8,6 +8,7 @@ import {
 	Signal,
 	deepSignal,
 	DeepSignalImpl,
+	type Storeable,
 	type ReadonlySignal,
 } from "@preact/signals-core";
 import {
@@ -19,7 +20,7 @@ import {
 	ElementUpdater,
 } from "./internal";
 
-export { signal, computed, batch, effect, Signal, DeepSignalImpl, deepSignal, type ReadonlySignal };
+export { signal, computed, batch, effect, Signal, DeepSignalImpl, deepSignal, type ReadonlySignal, type Storeable };
 
 // Components that have a pending Signal update: (used to bypass default sCU:false)
 const hasPendingUpdate = new WeakSet<Component>();
@@ -300,6 +301,10 @@ export function useComputed<T>(compute: () => T) {
 	$compute.current = compute;
 	hasComputeds.add(currentComponent!);
 	return useMemo(() => computed<T>(() => $compute.current()), []);
+}
+
+export function useDeepSignal<T extends Storeable> (initial: T | (() => T)) {
+	return useMemo(() => deepSignal(typeof initial === "function" ? initial() : initial), []);
 }
 
 /**

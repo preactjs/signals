@@ -14,11 +14,12 @@ import {
 	Signal,
 	deepSignal,
 	DeepSignalImpl,
+	type Storeable,
 	type ReadonlySignal,
 } from "@preact/signals-core";
 import { Updater, ReactOwner, ReactDispatcher } from "./internal";
 
-export { signal, computed, batch, effect, Signal, DeepSignalImpl, deepSignal, type ReadonlySignal };
+export { signal, computed, batch, effect, Signal, DeepSignalImpl, deepSignal, type ReadonlySignal, type Storeable };
 
 /**
  * Install a middleware into React.createElement to replace any Signals in props with their value.
@@ -152,4 +153,8 @@ export function useComputed<T>(compute: () => T) {
 	const $compute = useRef(compute);
 	$compute.current = compute;
 	return useMemo(() => computed<T>(() => $compute.current()), []);
+}
+
+export function useDeepSignal<T extends Storeable> (initial: T | (() => T)) {
+	return useMemo(() => deepSignal(typeof initial === "function" ? initial() : initial), []);
 }
