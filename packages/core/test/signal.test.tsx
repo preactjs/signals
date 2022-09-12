@@ -1,4 +1,4 @@
-import { signal, computed, effect, batch } from "@preact/signals-core";
+import { signal, computed, effect, batch, deepSignal, Signal } from "@preact/signals-core";
 
 describe("signal", () => {
 	it("should return value", () => {
@@ -211,7 +211,6 @@ describe("computed()", () => {
 			const a = signal(2);
 
 			const b = computed(() => a.value - 1);
-			const c = computed(() => a.value + 1);
 
 			const d = computed(() => a.value + b.value);
 
@@ -681,4 +680,37 @@ describe("batch/transaction", () => {
 		c.value = "cc";
 		expect(result).to.equal("aa bb cc");
 	});
+});
+
+describe("deepSignal", () => {
+  it("turns deeply nested atomic properties into Signals with peek and value", () => {
+    const a = deepSignal({
+      b: {
+        c: {
+          d: "a"
+        }
+      }
+    });
+    expect(a.b.c.d instanceof Signal).to.equal(true);
+    expect(a.value.b.c.d).to.equal("a");
+    expect(a.b.value.c.d).to.equal("a");
+    expect(a.b.c.value.d).to.equal("a");
+    expect(a.b.c.d.value).to.equal("a"); 
+    a.value = { b: { c: { d: "b" }} };
+    expect(a.peek().b.c.d).to.equal("b");
+    expect(a.b.peek().c.d).to.equal("b");
+    expect(a.b.c.peek().d).to.equal("b");
+    expect(a.b.c.d.peek()).to.equal("b"); 
+		a.b.c.d.value = "c"
+		expect(a.value.b.c.d).to.equal("c");
+    expect(a.b.value.c.d).to.equal("c");
+    expect(a.b.c.value.d).to.equal("c");
+    expect(a.b.c.d.value).to.equal("c"); 
+  });
+
+  it("doesn't allow you to set a property with keys named peek or value", () => {
+    expect(() => deepSignal({ value: "a" })).to.throw(/reserved property name/);
+    expect(() => deepSignal({ peek: "a" })).to.throw(/reserved property name/);
+  });
+
 });

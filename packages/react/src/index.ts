@@ -12,11 +12,13 @@ import {
 	batch,
 	effect,
 	Signal,
+	deepSignal,
+	DeepSignalImpl,
 	type ReadonlySignal,
 } from "@preact/signals-core";
 import { Updater, ReactOwner, ReactDispatcher } from "./internal";
 
-export { signal, computed, batch, effect, Signal, type ReadonlySignal };
+export { signal, computed, batch, effect, Signal, DeepSignalImpl, deepSignal, type ReadonlySignal };
 
 /**
  * Install a middleware into React.createElement to replace any Signals in props with their value.
