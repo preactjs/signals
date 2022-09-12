@@ -1,6 +1,5 @@
 /** This tracks subscriptions of signals read inside a computed */
 let currentSignal: Signal | undefined;
-let commitError: Error | null = null;
 
 const pending = new Set<Signal>();
 const effects = new Set<Signal>();
@@ -87,14 +86,11 @@ export class Signal<T = any> {
 			// this is the first change, not a computed and we are not
 			// in batch mode:
 			if (isFirst && batchPending === 0) {
-				effects.forEach(signal => activate(signal));
-				pending.forEach(signal => (signal._dirty = false));
-				pending.clear();
-				if (commitError) {
-					const err = commitError;
-					// Clear global error flag for next commit
-					commitError = null;
-					throw err;
+				try {
+					effects.forEach(signal => activate(signal));
+				} finally {
+					pending.forEach(signal => (signal._dirty = false));
+					pending.clear();
 				}
 			}
 		}
@@ -148,25 +144,6 @@ function mark(signal: Signal) {
 	}
 }
 
-function sweep(subs: Set<Signal<any>>) {
-	subs.forEach(signal => {
-		// If a computed errored during sweep, we'll discard that subtree
-		// for this sweep cycle by setting PENDING to 0;
-		if (signal._dirty) {
-			signal._dirty = false;
-
-			// if (signal._isComputing) {
-			// throw Error("Cycle detected");
-			// }
-
-			// signal._isComputing = true;
-			signal._updater();
-			// signal._isComputing = false;
-			sweep(signal._subs);
-		}
-	});
-}
-
 function subscribe(signal: Signal<any>, to: Signal<any>) {
 	signal._active = true;
 	signal._deps.set(to, to._version);
@@ -213,18 +190,7 @@ function refreshStale(signal: Signal) {
 	signal._dirty = false;
 
 	if (first || shouldUpdate) {
-		try {
-			signal._updater();
-		} catch (err) {
-			console.log("caught", err);
-			signal._version--;
-			throw err;
-		}
-		if (commitError) {
-			const err = commitError;
-			commitError = null;
-			throw err;
-		}
+		signal._updater();
 	}
 }
 
@@ -259,9 +225,6 @@ export function computed<T>(compute: () => T): ReadonlySignal<T> {
 			if (!stale) signal._version++;
 			finish(stale, true);
 			signal._value = ret;
-		} catch (err: any) {
-			// Ensure that we log the first error not the last
-			if (!commitError) commitError = err;
 		} finally {
 			signal._isComputing = false;
 			finish(true, false);
