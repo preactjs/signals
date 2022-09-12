@@ -5,12 +5,6 @@ let commitError: Error | null = null;
 const pending = new Set<Signal>();
 /** Batch calls can be nested. 0 means that there is no batching */
 let batchPending = 0;
-/**
- * Subscriptions are set up lazily when a "reactor" is set up.
- * During this activation phase we traverse the graph upwards
- * and refresh all signals that are stale on signal read.
- */
-let activating = false;
 
 let oldDeps = new Set<Signal>();
 
@@ -229,13 +223,8 @@ function refreshStale(signal: Signal) {
 }
 
 function activate(signal: Signal) {
-	activating = true;
 	signal._active = true;
-	try {
-		refreshStale(signal);
-	} finally {
-		activating = false;
-	}
+	refreshStale(signal);
 }
 
 export function signal<T>(value: T): Signal<T> {
