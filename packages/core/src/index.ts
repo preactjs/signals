@@ -1,6 +1,7 @@
 /** This tracks subscriptions of signals read inside a computed */
 let currentSignal: Signal | undefined;
 
+let globalVersion = 1;
 const pending = new Set<Signal>();
 const effects = new Set<Signal>();
 /** Batch calls can be nested. 0 means that there is no batching */
@@ -18,14 +19,14 @@ export class Signal<T = any> {
 	/** @internal Internal, do not use. */
 	_version = 0;
 	/** @internal Internal, do not use. */
+	_globalVersion = globalVersion - 1;
+	/** @internal Internal, do not use. */
 	_dirty = false;
 	/** @internal Internal, do not use. */
 	_value: T;
 	/** @internal Determine if a computed is allowed to write or not */
 	_readonly = false;
 	/** @internal Determine if reads should eagerly activate value */
-	_active = false;
-	/** @internal Used to detect if there is a cycle in the graph */
 	_isComputing = false;
 
 	constructor(value: T) {
@@ -37,14 +38,17 @@ export class Signal<T = any> {
 	}
 
 	peek() {
-		if (!this._active) {
+		if (this._deps.size === 0) {
 			activate(this);
 		}
 		return this._value;
 	}
 
 	get value() {
-		if (!this._active) {
+		if (globalVersion === this._globalVersion) {
+			return this._value;
+		}
+		if (this._deps.size === 0) {
 			activate(this);
 		}
 
@@ -65,6 +69,7 @@ export class Signal<T = any> {
 	}
 
 	set value(value) {
+		globalVersion++;
 		if (this._readonly) {
 			throw Error("Computed signals are readonly");
 		}
@@ -142,7 +147,6 @@ function mark(signal: Signal) {
 }
 
 function subscribe(signal: Signal<any>, to: Signal<any>) {
-	signal._active = true;
 	signal._deps.set(to, to._version);
 	to._subs.add(signal);
 }
@@ -155,7 +159,6 @@ function unsubscribe(signal: Signal<any>, from: Signal<any>) {
 	// upwards and destroy all subscriptions until we encounter a writable
 	// signal or a signal that others listen to as well.
 	if (from._subs.size === 0) {
-		from._active = false;
 		from._deps.forEach((_, dep) => unsubscribe(from, dep));
 	}
 }
@@ -166,14 +169,14 @@ function unsubscribe(signal: Signal<any>, from: Signal<any>) {
  * global queue to flush later. Since we're traversing "upwards",
  * we don't have to care about topological sorting.
  */
-function refreshStale(signal: Signal) {
+function activate(signal: Signal) {
 	const first = signal._deps.size === 0;
 
 	let shouldUpdate = false;
 	if (signal._dirty) {
 		signal._deps.forEach((version, dep) => {
 			if (dep._dirty) {
-				refreshStale(dep);
+				activate(dep);
 			}
 
 			if (dep._version !== version) {
@@ -189,11 +192,6 @@ function refreshStale(signal: Signal) {
 	if (first || shouldUpdate) {
 		signal._updater();
 	}
-}
-
-function activate(signal: Signal) {
-	signal._active = true;
-	refreshStale(signal);
 }
 
 export function signal<T>(value: T): Signal<T> {
