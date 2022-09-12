@@ -30,7 +30,8 @@
       "$_pending": "_p",
       "$_updater": "_u",
       "$_setCurrent": "_",
-      "$_canActivate": "_c",
+      "$_activate": "_a",
+      "$_isComputing": "_c",
       "$_readonly": "_r",
       "$_requiresUpdate": "_q",
       "$_props": "__"

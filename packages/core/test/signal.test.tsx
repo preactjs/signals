@@ -572,6 +572,19 @@ describe("computed()", () => {
 			expect(compute).to.have.been.called;
 			expect(d.value).to.equal(4);
 		});
+
+		it("should support lazy branches", () => {
+			const a = signal(0);
+			const b = computed(() => a.value);
+			const c = computed(() => (a.value > 0 ? a.value : b.value));
+
+			expect(c.value).to.equal(0);
+			a.value = 1;
+			expect(c.value).to.equal(1);
+
+			a.value = 0;
+			expect(c.value).to.equal(0);
+		});
 	});
 });
 
