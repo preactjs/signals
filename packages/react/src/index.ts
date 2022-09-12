@@ -54,7 +54,6 @@ function createPropUpdater(props: any, prop: string, signal: Signal) {
 */
 
 let finishUpdate: ReturnType<Updater["_setCurrent"]> | undefined;
-const updaterForComponent = new WeakMap<ReactOwner, Updater>();
 
 function setCurrentUpdater(updater?: Updater) {
 	// end tracking for the current update:
@@ -90,12 +89,27 @@ Object.defineProperties(Signal.prototype, {
 	ref: { value: null },
 });
 
+// Stores all tracked component Fibers (note: this is never cleared and will leak memory)
+const componentQueue = new Set<ReactOwner>();
+
 // Track the current owner (roughly equiv to current vnode)
-// let currentOwner: ReactOwner;
-// Object.defineProperty(internals.ReactCurrentOwner, "current", {
-// 	get() { return currentOwner; },
-// 	set(owner) { currentOwner = owner; },
-// });
+let currentOwner: ReactOwner;
+Object.defineProperty(internals.ReactCurrentOwner, "current", {
+	get() {
+		return currentOwner;
+	},
+	set(owner) {
+		currentOwner = owner;
+		if (currentOwner && !componentQueue.has(currentOwner))
+			componentQueue.add(currentOwner);
+	},
+});
+
+// Tracks component updaters per dispatcher
+const dispatcherQueue = new WeakMap<
+	ReactDispatcher,
+	WeakMap<ReactOwner, Updater>
+>();
 
 // Track the current dispatcher (roughly equiv to current component impl)
 let lock = false;
@@ -106,6 +120,12 @@ Object.defineProperty(internals.ReactCurrentDispatcher, "current", {
 		return currentDispatcher;
 	},
 	set(api) {
+		let updaterForComponent = dispatcherQueue.get(api);
+		if (!updaterForComponent) {
+			updaterForComponent = new WeakMap<ReactOwner, Updater>();
+			dispatcherQueue.set(api, updaterForComponent);
+		}
+
 		currentDispatcher = api;
 		if (lock) return;
 		if (api && !isInvalidHookAccessor(api)) {
@@ -114,13 +134,14 @@ Object.defineProperty(internals.ReactCurrentDispatcher, "current", {
 			lock = true;
 			const rerender = api.useReducer(UPDATE, {})[1];
 			lock = false;
-			const currentOwner = internals.ReactCurrentOwner.current;
-			let updater = updaterForComponent.get(currentOwner);
-			if (!updater) {
-				updater = createUpdater(rerender);
-				updaterForComponent.set(currentOwner, updater);
-			}
-			setCurrentUpdater(updater);
+			componentQueue.forEach(currentOwner => {
+				let updater = updaterForComponent!.get(currentOwner);
+				if (!updater) {
+					updater = createUpdater(rerender);
+					updaterForComponent!.set(currentOwner, updater);
+				}
+				setCurrentUpdater(updater);
+			});
 		} else {
 			setCurrentUpdater();
 		}
