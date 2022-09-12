@@ -49,7 +49,6 @@ function setCurrentUpdater(updater?: Updater) {
 
 function createUpdater(updater: () => void) {
 	const s = signal(undefined) as Updater;
-	s._canActivate = true;
 	s._updater = updater;
 	return s;
 }

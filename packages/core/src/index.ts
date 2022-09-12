@@ -30,7 +30,7 @@ export class Signal<T = any> {
 	/** @internal Marks the signal as requiring an update */
 	_requiresUpdate = false;
 	/** @internal Determine if reads should eagerly activate value */
-	_canActivate = false;
+	_active = false;
 	/** @internal Used to detect if there is a cycle in the graph */
 	_isComputing = false;
 
@@ -43,16 +43,14 @@ export class Signal<T = any> {
 	}
 
 	peek() {
-		const shouldActivate = !currentSignal || currentSignal._canActivate;
-		if (shouldActivate && this._deps.size === 0) {
+		if (!this._active) {
 			activate(this);
 		}
 		return this._value;
 	}
 
 	get value() {
-		const shouldActivate = !currentSignal || currentSignal._canActivate;
-		if (shouldActivate && this._deps.size === 0) {
+		if (!this._active) {
 			activate(this);
 		}
 
@@ -69,15 +67,6 @@ export class Signal<T = any> {
 		currentSignal._deps.add(this);
 		oldDeps.delete(this);
 
-		// refresh stale value when this signal is read from withing
-		// batching and when it has been marked already
-		if (
-			(batchPending > 0 && this._pending > 0) ||
-			// Set up subscriptions during activation phase
-			(activating && this._deps.size === 0)
-		) {
-			refreshStale(this);
-		}
 		return this._value;
 	}
 
@@ -192,6 +181,7 @@ function sweep(subs: Set<Signal<any>>) {
 }
 
 function subscribe(signal: Signal<any>, to: Signal<any>) {
+	signal._active = true;
 	signal._deps.add(to);
 	to._subs.add(signal);
 }
@@ -204,6 +194,7 @@ function unsubscribe(signal: Signal<any>, from: Signal<any>) {
 	// upwards and destroy all subscriptions until we encounter a writable
 	// signal or a signal that others listen to as well.
 	if (from._subs.size === 0) {
+		from._active = false;
 		from._deps.forEach(dep => unsubscribe(from, dep));
 	}
 }
@@ -239,6 +230,7 @@ function refreshStale(signal: Signal) {
 
 function activate(signal: Signal) {
 	activating = true;
+	signal._active = true;
 	try {
 		refreshStale(signal);
 	} finally {
