@@ -21,5 +21,5 @@ jobs:
         with:
           pattern: '{packages/*/dist/!(*.module|*.min).{js,mjs},docs/dist/**/*.{js,css}}'
           build-script: 'ci:build'
-          strip-hash: "\\.(\\w{8})\\.(?:js|css)$"
+          strip-hash: "[.-](\\w{8,9})\\.(?:js|css)$"
 
