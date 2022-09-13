@@ -319,6 +319,7 @@ class Effect {
 	}
 
 	_start() {
+		/*@__INLINE__**/ startBatch();
 		const oldSources = this._sources;
 		const prevContext = evalContext;
 		const prevRollback = currentRollback;
@@ -336,6 +337,7 @@ class Effect {
 
 		evalContext = prevContext;
 		currentRollback = prevRollback;
+		endBatch();
 	}
 
 	_invalidate() {
