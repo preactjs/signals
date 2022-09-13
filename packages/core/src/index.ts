@@ -2,7 +2,6 @@
 let currentSignal: Signal | undefined;
 
 let globalVersion = 1;
-const pending = new Set<Signal>();
 const effects = new Set<Signal>();
 /** Batch calls can be nested. 0 means that there is no batching */
 let batchPending = 0;
@@ -26,6 +25,10 @@ export class Signal<T = any> {
 	_readonly = false;
 	/** @internal Determine if reads should eagerly activate value */
 	_isComputing = false;
+	/** @internal Determine if this is a computed signal */
+	_computed = false;
+	/** @internal Determine if this is a computed signal */
+	_effectSubsCount = 0;
 
 	constructor(value: T) {
 		this._value = value;
@@ -36,7 +39,7 @@ export class Signal<T = any> {
 	}
 
 	peek() {
-		if (this._deps.size === 0) {
+		if (this._computed) {
 			activate(this, true);
 		}
 		return this._value;
@@ -46,7 +49,7 @@ export class Signal<T = any> {
 		if (globalVersion === this._globalVersion) {
 			return this._value;
 		}
-		if (this._deps.size === 0) {
+		if (this._computed) {
 			activate(this, true);
 		}
 
@@ -74,14 +77,16 @@ export class Signal<T = any> {
 		if (this._value !== value) {
 			this._version++;
 			this._value = value;
-			let isFirst = pending.size === 0;
+			let isFirst = this._effectSubsCount === 0;
 
-			mark(this);
+			this._effectSubsCount = 0;
+			mark(this, this);
 
 			// this is the first change, not a computed and we are not
 			// in batch mode:
 			if (isFirst && batchPending === 0) {
 				effects.forEach(signal => activate(signal, false));
+				effects.clear();
 			}
 		}
 	}
@@ -123,8 +128,9 @@ export class Signal<T = any> {
 	}
 }
 
-function mark(signal: Signal) {
+function mark(signal: Signal, root: Signal) {
 	if (signal._subs.size === 0) {
+		root._effectSubsCount++;
 		effects.add(signal);
 	} else {
 		signal._subs.forEach(mark);
@@ -160,7 +166,7 @@ function activate(signal: Signal, stopAtDeps: boolean) {
 	let shouldUpdate = false;
 	if (!first) {
 		signal._deps.forEach((version, dep) => {
-			if (!stopAtDeps) {
+			if (!stopAtDeps && dep._computed) {
 				activate(dep, stopAtDeps);
 			}
 
@@ -188,6 +194,7 @@ export type ReadonlySignal<T = any> = Omit<Signal<T>, "value"> & {
 export function computed<T>(compute: () => T): ReadonlySignal<T> {
 	const signal = new Signal<T>(undefined as any);
 	signal._readonly = true;
+	signal._computed = true;
 
 	function updater() {
 		let finish = signal._setCurrent();
@@ -229,6 +236,7 @@ export function batch<T>(cb: () => T): T {
 	} finally {
 		if (--batchPending === 0) {
 			effects.forEach(signal => activate(signal, false));
+			effects.clear();
 		}
 	}
 }
