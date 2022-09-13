@@ -146,6 +146,10 @@ export class Signal<T = any> {
 		}
 	}
 
+	subscribe(fn: (value: T) => void): () => void {
+		return effect(() => fn(this.value));
+	}
+
 	toString(): string {
 		return "" + this.value;
 	}
