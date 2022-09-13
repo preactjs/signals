@@ -123,6 +123,10 @@ export class Signal<T = any> {
 		};
 	}
 
+	subscribe(fn: (value: T) => () => void) {
+		return effect(() => fn(this.value));
+	}
+
 	/**
 	 * A custom update routine to run when this Signal's value changes.
 	 * @internal
