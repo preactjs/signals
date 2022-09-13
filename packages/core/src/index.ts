@@ -245,7 +245,7 @@ export class Computed<T = any> extends Signal<T> {
 
 	peek(): T {
 		if (this._computing) {
-			throw new Error("cycle detected");
+			throw new Error("Cycle detected");
 		}
 		if (this._globalVersion === globalVersion) {
 			return returnComputed(this);
@@ -306,6 +306,10 @@ export class Computed<T = any> extends Signal<T> {
 
 	get value(): T {
 		return getValue(this);
+	}
+
+	set value(value: T) {
+		throw Error("Computed signals are readonly");
 	}
 }
 
