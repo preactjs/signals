@@ -226,6 +226,8 @@ describe("computed()", () => {
 			compute.resetHistory();
 
 			a.value = "aa";
+			b.value = "bb";
+			c.value;
 			expect(compute).to.have.been.calledOnce;
 		});
 
@@ -251,7 +253,7 @@ describe("computed()", () => {
 			compute.resetHistory();
 
 			a.value = 4;
-
+			e.value;
 			expect(compute).to.have.been.calledOnce;
 		});
 
@@ -467,6 +469,7 @@ describe("computed()", () => {
 			spy.resetHistory();
 
 			a.value = "aa";
+			d.value;
 			expect(spy).to.returned("aa c");
 		});
 
@@ -495,6 +498,7 @@ describe("computed()", () => {
 			spy.resetHistory();
 
 			a.value = "aa";
+			e.value;
 			expect(spy).to.returned("aa c d");
 		});
 
