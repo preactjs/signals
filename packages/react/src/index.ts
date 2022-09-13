@@ -126,6 +126,7 @@ Object.defineProperty(internals.ReactCurrentDispatcher, "current", {
 			if (!updater || !lastDispatcher !== api) {
 				updater = createUpdater(rerender);
 				updaterForComponent.set(lastOwner, updater);
+				lastDispatcher = api;
 			}
 			setCurrentUpdater(updater);
 		} else {
