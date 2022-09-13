@@ -1,6 +1,6 @@
 import { defineConfig, Plugin, Connect } from "vite";
 import preact from "@preact/preset-vite";
-import { resolve } from "path";
+import { resolve, posix } from "path";
 import fs from "fs";
 
 // Automatically set up aliases for monorepo packages.
