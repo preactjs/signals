@@ -1,0 +1,58 @@
+body {
+	font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
+		"Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+}
+
+:root {
+	--primary: #673ab8;
+	--even: #f3f3f3;
+}
+
+@media (prefers-color-scheme: dark) {
+	:root {
+		--even: #242424;
+	}
+}
+
+.page {
+	margin: 0 auto;
+	max-width: 40rem;
+	padding: 2rem;
+}
+
+table {
+	border-collapse: collapse;
+	margin: 25px 0;
+	font-size: 0.9em;
+	font-family: sans-serif;
+	min-width: 400px;
+	box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);
+}
+
+table thead tr {
+	background-color: var(--primary);
+	color: #ffffff;
+	text-align: left;
+}
+
+table th,
+table td {
+	padding: 12px 15px;
+}
+
+table tbody tr {
+	border-bottom: 1px solid #dddddd;
+}
+
+table tbody tr:nth-of-type(even) {
+	background-color: var(--even);
+}
+
+table tbody tr:last-of-type {
+	border-bottom: 2px solid var(--primary);
+}
+
+table tbody tr.active-row {
+	font-weight: bold;
+	color: var(--primary);
+}

@@ -18,6 +18,7 @@
 		"docs:start": "cd docs && pnpm start",
 		"docs:build": "cd docs && pnpm build",
 		"docs:preview": "cd docs && pnpm preview",
+		"bench:start": "cd benches && pnpm start",
 		"ci:build": "pnpm build && pnpm docs:build",
 		"ci:test": "pnpm lint && pnpm test",
 		"release": "pnpm changeset version && pnpm install && git add -A && git commit -m 'Version Packages' && changeset tag && pnpm publish -r"
