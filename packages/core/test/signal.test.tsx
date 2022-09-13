@@ -151,7 +151,7 @@ describe("effect()", () => {
 		const fn = () =>
 			effect(() => {
 				// Prevent test suite from spinning if limit is not hit
-				if (i++ > 10) {
+				if (i++ > 200) {
 					throw new Error("test failed");
 				}
 				a.value;

@@ -50,17 +50,38 @@ function startBatch() {
 }
 
 function endBatch() {
-	while (batchDepth === 1 && currentBatch) {
+	if (batchDepth > 1) {
+		batchDepth--;
+		return;
+	}
+
+	let error: unknown;
+	let hasError = false;
+
+	while (currentBatch) {
 		const batch = currentBatch;
 		currentBatch = undefined;
+		batchIteration++;
 
 		for (let item: BatchItem | undefined = batch; item; item = item.next) {
 			const runnable = item.effect;
 			runnable._batched = false;
-			runnable._notify();
+			try {
+				runnable._notify();
+			} catch (err) {
+				if (!hasError) {
+					error = err;
+					hasError = true;
+				}
+			}
 		}
 	}
+	batchIteration = 0;
 	batchDepth--;
+
+	if (hasError) {
+		throw error;
+	}
 }
 
 export function batch<T>(callback: () => T): T {
@@ -83,6 +104,7 @@ let effectDepth = 0;
 // Effects collected into a batch.
 let currentBatch: BatchItem | undefined = undefined;
 let batchDepth = 0;
+let batchIteration = 0;
 // A global version number for signalss, used for fast-pathing repeated
 // computed.peek()/computed.value calls when nothing has changed globally.
 let globalVersion = 0;
@@ -176,6 +198,10 @@ export class Signal<T = any> {
 
 	set value(value: T) {
 		if (value !== this._value) {
+			if (batchIteration > 100) {
+				throw new Error("Cycle detected");
+			}
+
 			this._value = value;
 			this._version++;
 			globalVersion++;
@@ -328,18 +354,12 @@ class Effect {
 	_notify: () => void;
 	_sources?: Node = undefined;
 	_batched = false;
-	_started = false;
 
 	constructor(notify: () => void) {
 		this._notify = notify;
 	}
 
 	_start() {
-		if (this._started) {
-			throw new Error("Cycle detected");
-		}
-		this._started = true;
-
 		/*@__INLINE__**/ startBatch();
 		const oldSources = this._sources;
 		const prevContext = evalContext;
@@ -361,14 +381,10 @@ class Effect {
 		evalContext = prevContext;
 		currentRollback = prevRollback;
 		endBatch();
-
-		this._started = false;
 	}
 
 	_invalidate() {
-		if (this._started) {
-			throw new Error("Cycle detected");
-		} else if (!this._batched) {
+		if (!this._batched) {
 			this._batched = true;
 			currentBatch = { effect: this, next: currentBatch };
 		}
