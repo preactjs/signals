@@ -91,8 +91,8 @@ Object.defineProperties(Signal.prototype, {
 });
 
 // Track the current owner (roughly equiv to current vnode)
-let lastOwner: ReactOwner;
-let currentOwner: ReactOwner;
+let lastOwner: ReactOwner | undefined;
+let currentOwner: ReactOwner | null = null;
 Object.defineProperty(internals.ReactCurrentOwner, "current", {
 	get() {
 		return currentOwner;
@@ -106,7 +106,7 @@ Object.defineProperty(internals.ReactCurrentOwner, "current", {
 // Track the current dispatcher (roughly equiv to current component impl)
 let lock = false;
 const UPDATE = () => ({});
-let lastDispatcher: ReactDispatcher;
+let lastDispatcher: ReactDispatcher | undefined;
 let currentDispatcher: ReactDispatcher;
 Object.defineProperty(internals.ReactCurrentDispatcher, "current", {
 	get() {
@@ -123,7 +123,7 @@ Object.defineProperty(internals.ReactCurrentDispatcher, "current", {
 			lock = false;
 
 			let updater = updaterForComponent.get(lastOwner);
-			if (!updater || !lastDispatcher !== api) {
+			if (!updater || lastDispatcher !== api) {
 				updater = createUpdater(rerender);
 				updaterForComponent.set(lastOwner, updater);
 				lastDispatcher = api;
