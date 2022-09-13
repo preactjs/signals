@@ -501,21 +501,6 @@ describe("computed()", () => {
 			e.value;
 			expect(spy).to.returned("aa c d");
 		});
-
-		it("should prevent invalid unmark state when called on a source signal", () => {
-			// Don't allow our internal logic to get in an invalid state, even through
-			// our own internal API. The bug this tests for is that a source signal
-			// will be unmarked, leading to all its subscribers `_pending` value to become
-			// negative. This is invalid and breaks further updates.
-			const a = signal("a");
-			const b = computed(() => a.value);
-			effect(() => b.value);
-
-			a._setCurrent()(true, true);
-
-			a.value = "aa";
-			expect(b.value).to.equal("aa");
-		});
 	});
 
 	describe("error handling", () => {
