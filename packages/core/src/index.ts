@@ -50,16 +50,17 @@ function startBatch() {
 }
 
 function endBatch() {
-	if (--batchDepth === 0) {
+	while (batchDepth === 1 && currentBatch) {
 		const batch = currentBatch;
 		currentBatch = undefined;
 
-		for (let item = batch; item; item = item.next) {
+		for (let item: BatchItem | undefined = batch; item; item = item.next) {
 			const runnable = item.effect;
 			runnable._batched = false;
 			runnable._notify();
 		}
 	}
+	batchDepth--;
 }
 
 export function batch<T>(callback: () => T): T {
@@ -245,7 +246,7 @@ export class Computed<T = any> extends Signal<T> {
 
 	peek(): T {
 		if (this._computing) {
-			throw new Error("Cycle detected");
+			throw new Error("cycle detected");
 		}
 		if (this._globalVersion === globalVersion) {
 			return returnComputed(this);
@@ -325,12 +326,18 @@ class Effect {
 	_notify: () => void;
 	_sources?: Node = undefined;
 	_batched = false;
+	_started = false;
 
 	constructor(notify: () => void) {
 		this._notify = notify;
 	}
 
 	_start() {
+		if (this._started) {
+			throw new Error("Cycle detected");
+		}
+		this._started = true;
+
 		/*@__INLINE__**/ startBatch();
 		const oldSources = this._sources;
 		const prevContext = evalContext;
@@ -352,10 +359,14 @@ class Effect {
 		evalContext = prevContext;
 		currentRollback = prevRollback;
 		endBatch();
+
+		this._started = false;
 	}
 
 	_invalidate() {
-		if (!this._batched) {
+		if (this._started) {
+			throw new Error("Cycle detected");
+		} else if (!this._batched) {
 			this._batched = true;
 			currentBatch = { effect: this, next: currentBatch };
 		}
