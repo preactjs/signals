@@ -2,7 +2,7 @@
 let currentSignal: Signal | undefined;
 
 let globalVersion = 1;
-const effects = new Set<Signal>();
+let effects: Signal[] = [];
 /** Batch calls can be nested. 0 means that there is no batching */
 let batchPending = 0;
 
@@ -90,8 +90,10 @@ export class Signal<T = any> {
 			// this is the first change, not a computed and we are not
 			// in batch mode:
 			if (isFirst && batchPending === 0) {
-				effects.forEach(signal => activate(signal, false));
-				effects.clear();
+				for (let i = 0; i < effects.length; i++) {
+					activate(effects[i], false);
+				}
+				effects = [];
 			}
 		}
 	}
@@ -137,7 +139,7 @@ export class Signal<T = any> {
 function mark(signal: Signal, root: Signal) {
 	if (signal._subs.size === 0) {
 		root._effectSubsCount++;
-		effects.add(signal);
+		effects.push(signal);
 	} else {
 		signal._subs.forEach(mark);
 	}
@@ -191,8 +193,6 @@ function activate(signal: Signal, stopAtDeps: boolean) {
 			}
 		}
 	}
-
-	effects.delete(signal);
 
 	if (first || shouldUpdate) {
 		signal._updater();
@@ -250,8 +250,10 @@ export function batch<T>(cb: () => T): T {
 		return cb();
 	} finally {
 		if (--batchPending === 0) {
-			effects.forEach(signal => activate(signal, false));
-			effects.clear();
+			for (let i = 0; i < effects.length; i++) {
+				activate(effects[i], false);
+			}
+			effects = [];
 		}
 	}
 }
