@@ -89,10 +89,8 @@ Object.defineProperties(Signal.prototype, {
 	ref: { value: null },
 });
 
-// Stores all tracked component Fibers (note: this is never cleared and will leak memory)
-const componentQueue = new Set<ReactOwner>();
-
 // Track the current owner (roughly equiv to current vnode)
+let lastComponent: ReactOwner;
 let currentOwner: ReactOwner;
 Object.defineProperty(internals.ReactCurrentOwner, "current", {
 	get() {
@@ -100,20 +98,17 @@ Object.defineProperty(internals.ReactCurrentOwner, "current", {
 	},
 	set(owner) {
 		currentOwner = owner;
-		if (currentOwner && !componentQueue.has(currentOwner))
-			componentQueue.add(currentOwner);
+		if (currentOwner) lastComponent = currentOwner;
 	},
 });
 
 // Tracks component updaters per dispatcher
-const dispatcherQueue = new WeakMap<
-	ReactDispatcher,
-	WeakMap<ReactOwner, Updater>
->();
+const updaterForComponent = new WeakMap<ReactOwner, Updater>();
 
 // Track the current dispatcher (roughly equiv to current component impl)
 let lock = false;
 const UPDATE = () => ({});
+let lastDispatcher: ReactDispatcher;
 let currentDispatcher: ReactDispatcher;
 Object.defineProperty(internals.ReactCurrentDispatcher, "current", {
 	get() {
@@ -122,26 +117,19 @@ Object.defineProperty(internals.ReactCurrentDispatcher, "current", {
 	set(api) {
 		currentDispatcher = api;
 		if (lock) return;
-		if (api && !isInvalidHookAccessor(api)) {
-			let updaterForComponent = dispatcherQueue.get(api);
-			if (!updaterForComponent) {
-				updaterForComponent = new WeakMap<ReactOwner, Updater>();
-				dispatcherQueue.set(api, updaterForComponent);
-			}
-
+		if (lastComponent && api && !isInvalidHookAccessor(api)) {
 			// prevent re-injecting useReducer when the Dispatcher
 			// context changes to run the reducer callback:
 			lock = true;
 			const rerender = api.useReducer(UPDATE, {})[1];
 			lock = false;
-			componentQueue.forEach(currentOwner => {
-				let updater = updaterForComponent!.get(currentOwner);
-				if (!updater) {
-					updater = createUpdater(rerender);
-					updaterForComponent!.set(currentOwner, updater);
-				}
-				setCurrentUpdater(updater);
-			});
+
+			let updater = updaterForComponent.get(lastComponent);
+			if (!updater || !lastDispatcher !== api) {
+				updater = createUpdater(rerender);
+				updaterForComponent.set(lastComponent, updater);
+			}
+			setCurrentUpdater(updater);
 		} else {
 			setCurrentUpdater();
 		}
