@@ -128,7 +128,7 @@ function Text(this: ComponentType, { data }: { data: Signal }) {
 
 		// Replace this component's vdom updater with a direct text one:
 		currentUpdater!._updater = () => {
-			(this.base as Text).data = currentSignal.value.value;
+			(this.base as Text).data = s._value;
 		};
 
 		return computed(() => {
@@ -221,10 +221,13 @@ hook(OptionsTypes.UNMOUNT, (old, vnode: VNode) => {
 	const updater = updaterForComponent.get(thing);
 	if (updater) {
 		updaterForComponent.delete(thing);
-		const signals = updater._deps;
-		if (signals) {
-			signals.forEach((_, signal) => signal._subs.delete(updater));
-			signals.clear();
+		const deps = updater._deps;
+		if (deps) {
+			for (let i = 0; i < deps.length; i++) {
+				const dep = deps[i];
+				dep._subs.delete(updater);
+			}
+			updater._deps = [];
 		}
 	}
 	old(vnode);
@@ -244,7 +247,7 @@ Component.prototype.shouldComponentUpdate = function (props, state) {
 	// @todo: Once preactjs/preact#3671 lands, this could just use `currentUpdater`:
 	const updater = updaterForComponent.get(this);
 
-	const hasSignals = updater && updater._deps?.size !== 0;
+	const hasSignals = updater && updater._deps.length !== 0;
 
 	// let reason;
 	// if (!hasSignals && !hasComputeds.has(this)) {
