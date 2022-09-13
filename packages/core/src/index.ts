@@ -6,7 +6,7 @@ type Node = {
 	nextSignal?: Node;
 
 	// A target that depends on the source and should be notified when the source changes.
-	target: Computed | Capture;
+	target: Computed | Effect;
 	prevTarget?: Node;
 	nextTarget?: Node;
 
@@ -30,7 +30,7 @@ function unsubscribeFromAll(sources: Node | undefined) {
 
 type RollbackItem = {
 	signal: Signal;
-	evalContext?: Computed | Capture | undefined;
+	evalContext?: Computed | Effect | undefined;
 	next?: RollbackItem;
 };
 
@@ -41,7 +41,7 @@ function rollback(item: RollbackItem | undefined) {
 }
 
 type BatchItem = {
-	capture: Capture;
+	effect: Effect;
 	next?: BatchItem;
 };
 
@@ -55,7 +55,7 @@ function endBatch() {
 		currentBatch = undefined;
 
 		for (let item = batch; item; item = item.next) {
-			const runnable = item.capture;
+			const runnable = item.effect;
 			runnable._batched = false;
 			runnable._notify();
 		}
@@ -76,9 +76,9 @@ export function batch<T>(callback: () => T): T {
 
 // A list for rolling back source's ._evalContext values after a target has been evaluated.
 let currentRollback: RollbackItem | undefined = undefined;
-// Currently evaluated computed or capture.
-let evalContext: Computed | Capture | undefined = undefined;
-// Captures collected into a batch.
+// Currently evaluated computed or effect.
+let evalContext: Computed | Effect | undefined = undefined;
+// Effects collected into a batch.
 let currentBatch: BatchItem | undefined = undefined;
 let batchDepth = 0;
 // A global version number for signalss, used for fast-pathing repeated
@@ -113,7 +113,7 @@ export class Signal<T = any> {
 	_version = 0;
 
 	/** @internal */
-	_evalContext?: Computed | Capture = undefined;
+	_evalContext?: Computed | Effect = undefined;
 
 	/** @internal */
 	_targets?: Node = undefined;
@@ -309,21 +309,16 @@ export function computed<T>(compute: () => T): ReadonlySignal<T> {
 	return new Computed(compute);
 }
 
-class Capture {
-	/** @internal */
+class Effect {
 	_notify: () => void;
-
-	/** @internal */
 	_sources?: Node = undefined;
-
-	/** @internal */
 	_batched = false;
 
 	constructor(notify: () => void) {
 		this._notify = notify;
 	}
 
-	start() {
+	_start() {
 		const oldSources = this._sources;
 		const prevContext = evalContext;
 		const prevRollback = currentRollback;
@@ -334,8 +329,7 @@ class Capture {
 		return this._end.bind(this, oldSources, prevContext, prevRollback);
 	}
 
-	/** @internal */
-	_end(oldSources?: Node, prevContext?: Computed | Capture, prevRollback?: RollbackItem) {
+	_end(oldSources?: Node, prevContext?: Computed | Effect, prevRollback?: RollbackItem) {
 		subscribeToAll(this._sources);
 		unsubscribeFromAll(oldSources);
 		rollback(currentRollback);
@@ -344,16 +338,14 @@ class Capture {
 		currentRollback = prevRollback;
 	}
 
-	/** @internal */
 	_invalidate() {
 		if (!this._batched) {
 			this._batched = true;
-			currentBatch = { capture: this, next: currentBatch };
+			currentBatch = { effect: this, next: currentBatch };
 		}
 	}
 
-	/** @internal */
-	dispose() {
+	_dispose() {
 		for (let node = this._sources; node; node = node.nextSignal) {
 			node.signal._unsubscribe(node);
 		}
@@ -362,18 +354,16 @@ class Capture {
 }
 
 export function effect(callback: () => void): () => void {
-	const capture = new Capture(() => {
-		const finish = capture.start();
+	const effect = new Effect(() => {
+		const finish = effect._start();
 		try {
-			callback();
+			callback.call(effect);
 		} finally {
 			finish();
 		}
 	});
-	capture._notify();
-	// Return a bound function instead of a wrapper like `() => capture._dispose()`,
+	effect._notify();
+	// Return a bound function instead of a wrapper like `() => effect._dispose()`,
 	// because bound functions seem to be just as fast and take up a lot less memory.
-	return capture.dispose.bind(capture);
+	return effect._dispose.bind(effect);
 }
-
-export { Capture as _doNotUseOrYouWillBeFired_Capture };
