@@ -54,6 +54,7 @@ function createPropUpdater(props: any, prop: string, signal: Signal) {
 */
 
 let finishUpdate: ReturnType<Updater["_setCurrent"]> | undefined;
+const updaterForComponent = new WeakMap<ReactOwner, Updater>();
 
 function setCurrentUpdater(updater?: Updater) {
 	// end tracking for the current update:
@@ -101,9 +102,6 @@ Object.defineProperty(internals.ReactCurrentOwner, "current", {
 		if (currentOwner) lastComponent = currentOwner;
 	},
 });
-
-// Tracks component updaters per dispatcher
-const updaterForComponent = new WeakMap<ReactOwner, Updater>();
 
 // Track the current dispatcher (roughly equiv to current component impl)
 let lock = false;
