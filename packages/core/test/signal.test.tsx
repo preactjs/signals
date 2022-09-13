@@ -1,4 +1,4 @@
-import { signal, computed, effect, batch } from "@preact/signals-core";
+import { signal, computed, effect, batch, Signal } from "@preact/signals-core";
 
 describe("signal", () => {
 	it("should return value", () => {
@@ -507,7 +507,7 @@ describe("computed()", () => {
 		it("should throw when writing to computeds", () => {
 			const a = signal("a");
 			const b = computed(() => a.value);
-			const fn = () => ((b as any).value = "aa");
+			const fn = () => ((b as Signal).value = "aa");
 			expect(fn).to.throw(/readonly/);
 		});
 
@@ -525,68 +525,18 @@ describe("computed()", () => {
 
 		it("should keep graph consistent on errors in computeds", () => {
 			const a = signal(0);
-			let shouldThrow = false;
 			const b = computed(() => {
-				if (shouldThrow) throw new Error("fail");
+				if (a.value === 1) throw new Error("fail");
 				return a.value;
 			});
 			const c = computed(() => b.value);
 			expect(c.value).to.equal(0);
 
-			shouldThrow = true;
-			let error: Error | null = null;
-			try {
-				a.value = 1;
-			} catch (err: any) {
-				error = err;
-			}
-			expect(error?.message).to.equal("fail");
+			a.value = 1;
+			expect(() => b.value).to.throw("fail");
 
-			// Now update signal again without throwing an error. If we didn't
-			// reset the subtree's PENDING counter C's value wouldn't update.
-			shouldThrow = false;
 			a.value = 2;
 			expect(c.value).to.equal(2);
-		});
-
-		it("should revert subscriptions on errors in computeds", () => {
-			const a = signal(1);
-			const b = signal(1);
-			const c = signal(1);
-			let shouldThrow = false;
-			const compute = sinon.spy(() => {
-				if (shouldThrow) {
-					throw new Error("fail: " + c.value);
-				}
-				return a.value + b.value;
-			});
-			const d = computed(compute);
-			expect(d.value).to.equal(2);
-
-			shouldThrow = true;
-			expect(() => {
-				a.value = 2;
-			}).to.throw();
-			expect(d.value).to.equal(2);
-
-			// when errors occur, we intentionally over-subscribe.
-			// This includes retaining subscriptions after the error:
-			compute.resetHistory();
-			try {
-				b.value = 2;
-			} catch (e) {
-				// may error, but not in a way we can assert over
-			}
-			expect(compute).to.have.been.called;
-
-			compute.resetHistory();
-			shouldThrow = false;
-			// Note: b.value=2 should probably also update the subgraph.
-			// ...but its value is already 2 from the errored computation.
-			// b.value = 2;
-			c.value = 2;
-			expect(compute).to.have.been.called;
-			expect(d.value).to.equal(4);
 		});
 
 		it("should support lazy branches", () => {
