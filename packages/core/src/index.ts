@@ -16,14 +16,14 @@ type Node = {
 	version: number;
 };
 
-function addTargetToAllSources(target: Computed | Effect) {
-	for (let node = target._sources; node; node = node.nextSignal) {
+function subscribeToAll(sources: Node | undefined) {
+	for (let node = sources; node; node = node.nextSignal) {
 		node.signal._subscribe(node);
 	}
 }
 
-function removeTargetFromAllSources(target: Computed | Effect) {
-	for (let node = target._sources; node; node = node.nextSignal) {
+function unsubscribeFromAll(sources: Node | undefined) {
+	for (let node = sources; node; node = node.nextSignal) {
 		node.signal._unsubscribe(node);
 	}
 }
@@ -212,8 +212,9 @@ export class Computed<T = any> extends Signal<T> {
 			// A computed signal subscribes lazily to its dependencies when
 			// the computed signal gets its first subscriber.
 			this._valid = false;
-			addTargetToAllSources(this);
+			subscribeToAll(this._sources);
 		}
+
 		super._subscribe(node);
 	}
 
@@ -223,14 +224,16 @@ export class Computed<T = any> extends Signal<T> {
 		// When a computed signal loses its last subscriber it also unsubscribes
 		// from its own dependencies.
 		if (!this._targets) {
-			removeTargetFromAllSources(this);
+			unsubscribeFromAll(this._sources);
 		}
 	}
 
 	_invalidate() {
-		this._valid = false;
-		for (let node = this._targets; node; node = node.nextTarget) {
-			node.target._invalidate();
+		if (this._valid) {
+			this._valid = false;
+			for (let node = this._targets; node; node = node.nextTarget) {
+				node.target._invalidate();
+			}
 		}
 	}
 
@@ -262,13 +265,13 @@ export class Computed<T = any> extends Signal<T> {
 		let value: unknown = undefined;
 		let valueIsError = false;
 
+		const oldSources = this._sources;
 		const prevContext = evalContext;
 		const prevRollback = currentRollback;
 		try {
 			evalContext = this;
 			currentRollback = undefined;
 
-			removeTargetFromAllSources(this);
 			this._computing = true;
 			this._sources = undefined;
 
@@ -278,8 +281,9 @@ export class Computed<T = any> extends Signal<T> {
 			value = err;
 		} finally {
 			if (this._targets) {
-				addTargetToAllSources(this);
+				subscribeToAll(this._sources);
 			}
+			unsubscribeFromAll(oldSources);
 			rollback(currentRollback);
 			this._computing = false;
 			evalContext = prevContext;
@@ -314,17 +318,17 @@ class Effect {
 	constructor(readonly _callback: () => void) { }
 
 	_run() {
+		const oldSources = this._sources;
 		const prevContext = evalContext;
 		const prevRollback = currentRollback;
 		try {
 			evalContext = this;
 			currentRollback = undefined;
-
-			removeTargetFromAllSources(this);
 			this._sources = undefined;
 			this._callback();
 		} finally {
-			addTargetToAllSources(this);
+			subscribeToAll(this._sources);
+			unsubscribeFromAll(oldSources);
 			rollback(currentRollback);
 
 			evalContext = prevContext;
@@ -362,9 +366,9 @@ export function _doNotUseOrYouWillBeFired_notify<S extends Signal>(
 ): () => void {
 	const cb = () => callback(signal);
 	const notify = new Effect(cb);
-	const node = { signal: signal, target: notify, version: 0 };
+	const node = { signal: signal as Signal, target: notify, version: 0 };
 	notify._run = cb;
 	notify._sources = node;
-	signal._subscribe(node);
+	(signal as Signal)._subscribe(node);
 	return notify._dispose.bind(notify);
 }
