@@ -84,6 +84,8 @@ let batchDepth = 0;
 // A global version number for signalss, used for fast-pathing repeated
 // computed.peek()/computed.value calls when nothing has changed globally.
 let globalVersion = 0;
+// FIXME
+let effectDepth = 0;
 
 function getValue<T>(signal: Signal<T>): T {
 	let node: Node | undefined = undefined;
@@ -95,12 +97,16 @@ function getValue<T>(signal: Signal<T>): T {
 			next: currentRollback,
 		};
 		signal._evalContext = evalContext;
+
+		if (effectDepth > 0) {
+			signal._subscribe(node);
+		}
 	}
 	const value = signal.peek();
 	if (evalContext && node) {
 		node.nextSignal = evalContext._sources;
-		node.version = node.signal._version;
 		evalContext._sources = node;
+		node.version = node.signal._version;
 	}
 	return value;
 }
@@ -123,7 +129,10 @@ export class Signal<T = any> {
 	}
 
 	/** @internal */
-	_subscribe(node: Node) {
+	_subscribe(node: Node): void {
+		if (this._targets === node || node.prevTarget) {
+			return;
+		}
 		if (this._targets) {
 			this._targets.prevTarget = node;
 		}
@@ -133,12 +142,11 @@ export class Signal<T = any> {
 	}
 
 	/** @internal */
-	_unsubscribe(node: Node) {
+	_unsubscribe(node: Node): void {
 		const prev = node.prevTarget;
 		const next = node.nextTarget;
 		node.prevTarget = undefined;
 		node.nextTarget = undefined;
-
 		if (prev) {
 			prev.nextTarget = next;
 		}
@@ -214,24 +222,24 @@ export class Computed<T = any> extends Signal<T> {
 			this._valid = false;
 			subscribeToAll(this._sources);
 		}
-
 		super._subscribe(node);
 	}
 
 	_unsubscribe(node: Node) {
-		super._unsubscribe(node);
-
 		// When a computed signal loses its last subscriber it also unsubscribes
 		// from its own dependencies.
 		if (!this._targets) {
 			unsubscribeFromAll(this._sources);
 		}
+		super._unsubscribe(node)
 	}
 
 	_invalidate() {
-		this._valid = false;
-		for (let node = this._targets; node; node = node.nextTarget) {
-			node.target._invalidate();
+		if (this._valid) {
+			this._valid = false;
+			for (let node = this._targets; node; node = node.nextTarget) {
+				node.target._invalidate();
+			}
 		}
 	}
 
@@ -323,6 +331,7 @@ class Effect {
 		const oldSources = this._sources;
 		const prevContext = evalContext;
 		const prevRollback = currentRollback;
+		effectDepth++;
 
 		evalContext = this;
 		currentRollback = undefined;
@@ -331,6 +340,7 @@ class Effect {
 	}
 
 	_end(oldSources?: Node, prevContext?: Computed | Effect, prevRollback?: RollbackItem) {
+		effectDepth--;
 		subscribeToAll(this._sources);
 		unsubscribeFromAll(oldSources);
 		rollback(currentRollback);
