@@ -29,6 +29,20 @@ export default defineConfig(env => ({
 	],
 	build: {
 		polyfillModulePreload: false,
+		cssCodeSplit: false,
+		rollupOptions: {
+			output: {
+				entryFileNames(chunk) {
+					let name = chunk.name;
+					if (chunk.facadeModuleId) {
+						const p = posix.normalize(chunk.facadeModuleId);
+						const m = p.match(/([^/]+)(?:\/index)?\.[^/]+$/);
+						if (m) name = m[1];
+					}
+					return `${name}-[hash].js`;
+				},
+			},
+		},
 	},
 	resolve: {
 		extensions: [".ts", ".tsx", ".js", ".jsx", ".d.ts"],
