@@ -21,8 +21,6 @@ export class Signal<T = any> {
 	/** @internal Internal, do not use. */
 	_globalVersion = globalVersion - 1;
 	/** @internal Internal, do not use. */
-	_dirty = false;
-	/** @internal Internal, do not use. */
 	_value: T;
 	/** @internal Determine if a computed is allowed to write or not */
 	_readonly = false;
@@ -39,7 +37,7 @@ export class Signal<T = any> {
 
 	peek() {
 		if (this._deps.size === 0) {
-			activate(this);
+			activate(this, true);
 		}
 		return this._value;
 	}
@@ -49,7 +47,7 @@ export class Signal<T = any> {
 			return this._value;
 		}
 		if (this._deps.size === 0) {
-			activate(this);
+			activate(this, true);
 		}
 
 		// If we read a signal outside of a computed we have no way
@@ -69,7 +67,6 @@ export class Signal<T = any> {
 	}
 
 	set value(value) {
-		globalVersion++;
 		if (this._readonly) {
 			throw Error("Computed signals are readonly");
 		}
@@ -79,21 +76,12 @@ export class Signal<T = any> {
 			this._value = value;
 			let isFirst = pending.size === 0;
 
-			pending.add(this);
-			// in batch mode this signal may be marked already
-			if (!this._dirty) {
-				mark(this);
-			}
+			mark(this);
 
 			// this is the first change, not a computed and we are not
 			// in batch mode:
 			if (isFirst && batchPending === 0) {
-				try {
-					effects.forEach(signal => activate(signal));
-				} finally {
-					pending.forEach(signal => (signal._dirty = false));
-					pending.clear();
-				}
+				effects.forEach(signal => activate(signal, false));
 			}
 		}
 	}
@@ -136,13 +124,10 @@ export class Signal<T = any> {
 }
 
 function mark(signal: Signal) {
-	if (!signal._dirty) {
-		signal._dirty = true;
-		if (signal._subs.size === 0) {
-			effects.add(signal);
-		} else {
-			signal._subs.forEach(mark);
-		}
+	if (signal._subs.size === 0) {
+		effects.add(signal);
+	} else {
+		signal._subs.forEach(mark);
 	}
 }
 
@@ -169,14 +154,14 @@ function unsubscribe(signal: Signal<any>, from: Signal<any>) {
  * global queue to flush later. Since we're traversing "upwards",
  * we don't have to care about topological sorting.
  */
-function activate(signal: Signal) {
+function activate(signal: Signal, stopAtDeps: boolean) {
 	const first = signal._deps.size === 0;
 
 	let shouldUpdate = false;
-	if (signal._dirty) {
+	if (!first) {
 		signal._deps.forEach((version, dep) => {
-			if (dep._dirty) {
-				activate(dep);
+			if (!stopAtDeps) {
+				activate(dep, stopAtDeps);
 			}
 
 			if (dep._version !== version) {
@@ -187,7 +172,6 @@ function activate(signal: Signal) {
 	}
 
 	effects.delete(signal);
-	signal._dirty = false;
 
 	if (first || shouldUpdate) {
 		signal._updater();
@@ -234,7 +218,7 @@ export function computed<T>(compute: () => T): ReadonlySignal<T> {
 export function effect(callback: () => void) {
 	const s = computed(() => batch(callback));
 	// Set up subscriptions since this is a "reactor" signal
-	activate(s);
+	activate(s, true);
 	return () => s._setCurrent()(true, true);
 }
 
@@ -244,12 +228,7 @@ export function batch<T>(cb: () => T): T {
 		return cb();
 	} finally {
 		if (--batchPending === 0) {
-			try {
-				effects.forEach(signal => activate(signal));
-			} finally {
-				pending.forEach(signal => (signal._dirty = false));
-				pending.clear();
-			}
+			effects.forEach(signal => activate(signal, false));
 		}
 	}
 }
