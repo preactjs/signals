@@ -6,7 +6,7 @@ const effects = new Set<Signal>();
 /** Batch calls can be nested. 0 means that there is no batching */
 let batchPending = 0;
 
-let oldDeps = new Map<Signal, number>();
+let oldDeps: Signal[] = [];
 
 export class Signal<T = any> {
 	// These property names get minified - see /mangle.json
@@ -14,7 +14,9 @@ export class Signal<T = any> {
 	/** @internal Internal, do not use. */
 	_subs = new Set<Signal>();
 	/** @internal Internal, do not use. */
-	_deps = new Map<Signal, number>();
+	// _deps = new Map<Signal, number>();
+	_deps: Signal[] = [];
+	_depVersions: number[] = [];
 	/** @internal Internal, do not use. */
 	_version = 0;
 	/** @internal Internal, do not use. */
@@ -63,8 +65,11 @@ export class Signal<T = any> {
 		// subscribe the current computed to this signal:
 		this._subs.add(currentSignal);
 		// update the current computed's dependencies:
-		currentSignal._deps.set(this, this._version);
-		oldDeps.delete(this);
+		currentSignal._deps.push(this);
+		currentSignal._depVersions.push(this._version);
+
+		const idx = oldDeps.indexOf(this);
+		if (idx > -1) oldDeps.splice(idx, 1);
 
 		return this._value;
 	}
@@ -101,19 +106,20 @@ export class Signal<T = any> {
 		let prevOldDeps = oldDeps;
 		currentSignal = this;
 		oldDeps = this._deps;
-		this._deps = new Map();
+		this._deps = [];
+		this._depVersions = [];
 
 		return (shouldUnmark: boolean, shouldCleanup: boolean) => {
 			// Any leftover dependencies here are not needed anymore
 			if (shouldCleanup) {
 				// Unsubscribe from dependencies that were not accessed:
-				oldDeps.forEach((_, dep) => unsubscribe(this, dep));
+				oldDeps.forEach(dep => unsubscribe(this, dep));
 			} else {
 				// Re-subscribe to dependencies that were not accessed:
-				oldDeps.forEach((_, dep) => subscribe(this, dep));
+				oldDeps.forEach(dep => subscribe(this, dep));
 			}
 
-			oldDeps.clear();
+			oldDeps = [];
 			oldDeps = prevOldDeps;
 			currentSignal = prevSignal;
 		};
@@ -138,19 +144,25 @@ function mark(signal: Signal, root: Signal) {
 }
 
 function subscribe(signal: Signal<any>, to: Signal<any>) {
-	signal._deps.set(to, to._version);
+	signal._deps.push(to);
+	signal._depVersions.push(to._version);
 	to._subs.add(signal);
 }
 
 function unsubscribe(signal: Signal<any>, from: Signal<any>) {
-	signal._deps.delete(from);
+	const idx = signal._deps.indexOf(from);
+	if (idx > -1) {
+		signal._deps.splice(idx, 1);
+		signal._depVersions.splice(idx, 1);
+	}
 	from._subs.delete(signal);
 
 	// If nobody listens to the signal we depended on, we can traverse
 	// upwards and destroy all subscriptions until we encounter a writable
 	// signal or a signal that others listen to as well.
 	if (from._subs.size === 0) {
-		from._deps.forEach((_, dep) => unsubscribe(from, dep));
+		from._deps.forEach(dep => unsubscribe(from, dep));
+		from._deps = [];
 	}
 }
 
@@ -161,20 +173,23 @@ function unsubscribe(signal: Signal<any>, from: Signal<any>) {
  * we don't have to care about topological sorting.
  */
 function activate(signal: Signal, stopAtDeps: boolean) {
-	const first = signal._deps.size === 0;
+	const first = signal._deps.length === 0;
 
 	let shouldUpdate = false;
 	if (!first) {
-		signal._deps.forEach((version, dep) => {
+		for (let i = 0; i < signal._deps.length; i++) {
+			const dep = signal._deps[i];
+			const version = signal._depVersions[i];
+
 			if (!stopAtDeps && dep._computed) {
 				activate(dep, stopAtDeps);
 			}
 
 			if (dep._version !== version) {
 				shouldUpdate = true;
-				signal._deps.set(dep, dep._version);
+				signal._depVersions[i] = dep._version;
 			}
-		});
+		}
 	}
 
 	effects.delete(signal);
