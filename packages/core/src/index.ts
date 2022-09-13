@@ -229,11 +229,9 @@ export class Computed<T = any> extends Signal<T> {
 	}
 
 	_invalidate() {
-		if (this._valid) {
-			this._valid = false;
-			for (let node = this._targets; node; node = node.nextTarget) {
-				node.target._invalidate();
-			}
+		this._valid = false;
+		for (let node = this._targets; node; node = node.nextTarget) {
+			node.target._invalidate();
 		}
 	}
 
@@ -369,6 +367,6 @@ export function _doNotUseOrYouWillBeFired_notify<S extends Signal>(
 	const node = { signal: signal as Signal, target: notify, version: 0 };
 	notify._run = cb;
 	notify._sources = node;
-	(signal as Signal)._subscribe(node);
+	signal._subscribe(node);
 	return notify._dispose.bind(notify);
 }
