@@ -30,13 +30,13 @@ function removeTargetFromAllSources(target: Computed | Effect) {
 
 type RollbackItem = {
 	signal: Signal;
-	currentTarget?: Computed | Effect | undefined;
+	evalContext?: Computed | Effect | undefined;
 	next?: RollbackItem;
 };
 
 function rollback(item: RollbackItem | undefined) {
 	for (let rollback = item; rollback; rollback = rollback.next) {
-		rollback.signal._currentTarget = rollback.currentTarget;
+		rollback.signal._evalContext = rollback.evalContext;
 	}
 }
 
@@ -74,10 +74,10 @@ export function batch<T>(callback: () => T): T {
 	}
 }
 
-// A list for rolling back source's ._currentTarget values after a target has been evaluated.
+// A list for rolling back source's ._evalContext values after a target has been evaluated.
 let currentRollback: RollbackItem | undefined = undefined;
 // Currently evaluated computed or effect.
-let currentTarget: Computed | Effect | undefined = undefined;
+let evalContext: Computed | Effect | undefined = undefined;
 // Effects collected into a batch.
 let currentBatch: BatchItem | undefined = undefined;
 let batchDepth = 0;
@@ -87,16 +87,16 @@ let globalVersion = 0;
 
 function getValue<T>(signal: Signal<T>): T {
 	let node: Node | undefined = undefined;
-	if (currentTarget !== undefined && signal._currentTarget !== currentTarget) {
-		node = { signal: signal, target: currentTarget, version: 0 };
-		currentRollback = { signal: signal, currentTarget: signal._currentTarget, next: currentRollback };
-		signal._currentTarget = currentTarget;
+	if (evalContext !== undefined && signal._evalContext !== evalContext) {
+		node = { signal: signal, target: evalContext, version: 0 };
+		currentRollback = { signal: signal, evalContext: signal._evalContext, next: currentRollback };
+		signal._evalContext = evalContext;
 	}
 	const value = signal.peek();
-	if (currentTarget && node) {
-		node.nextSignal = currentTarget._sources;
+	if (evalContext && node) {
+		node.nextSignal = evalContext._sources;
 		node.version = node.signal._version;
-		currentTarget._sources = node;
+		evalContext._sources = node;
 	}
 	return value;
 }
@@ -109,7 +109,7 @@ export class Signal<T = any> {
 	_version = 0;
 
 	/** @internal */
-	_currentTarget?: Computed | Effect = undefined;
+	_evalContext?: Computed | Effect = undefined;
 
 	/** @internal */
 	_targets?: Node = undefined;
@@ -254,10 +254,10 @@ export class Computed<T = any> extends Signal<T>{
 		let value: unknown = undefined;
 		let valueIsError = false;
 
-		const prevContext = currentTarget;
+		const prevContext = evalContext;
 		const prevRollback = currentRollback;
 		try {
-			currentTarget = this;
+			evalContext = this;
 			currentRollback = undefined;
 
 			removeTargetFromAllSources(this);
@@ -274,7 +274,7 @@ export class Computed<T = any> extends Signal<T>{
 			}
 			rollback(currentRollback);
 			this._computing = false;
-			currentTarget = prevContext;
+			evalContext = prevContext;
 			currentRollback = prevRollback;
 		}
 
@@ -306,10 +306,10 @@ class Effect {
 	constructor(readonly _callback: () => void) { }
 
 	_run() {
-		const prevContext = currentTarget;
+		const prevContext = evalContext;
 		const prevRollback = currentRollback;
 		try {
-			currentTarget = this;
+			evalContext = this;
 			currentRollback = undefined;
 
 			removeTargetFromAllSources(this);
@@ -319,7 +319,7 @@ class Effect {
 			addTargetToAllSources(this);
 			rollback(currentRollback);
 
-			currentTarget = prevContext;
+			evalContext = prevContext;
 			currentRollback = prevRollback;
 		}
 	}
