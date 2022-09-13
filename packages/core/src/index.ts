@@ -342,6 +342,9 @@ class Effect {
 export function effect(callback: () => void): () => void {
 	const effect = new Effect(callback);
 	effect._run();
+
+	// Return a bound function instead of a wrapper like `() => effect._dispose()`,
+	// because bound functions seem to be just as fast and take up a lot less memory.
 	return effect._dispose.bind(effect);
 }
 
