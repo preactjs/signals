@@ -57,7 +57,7 @@ function endBatch() {
 		for (let item = batch; item; item = item.next) {
 			const runnable = item.effect;
 			runnable._batched = false;
-			runnable._run()
+			runnable._run();
 		}
 	}
 }
@@ -89,7 +89,11 @@ function getValue<T>(signal: Signal<T>): T {
 	let node: Node | undefined = undefined;
 	if (evalContext !== undefined && signal._evalContext !== evalContext) {
 		node = { signal: signal, target: evalContext, version: 0 };
-		currentRollback = { signal: signal, evalContext: signal._evalContext, next: currentRollback };
+		currentRollback = {
+			signal: signal,
+			evalContext: signal._evalContext,
+			next: currentRollback,
+		};
 		signal._evalContext = evalContext;
 	}
 	const value = signal.peek();
@@ -190,9 +194,9 @@ function returnComputed<T>(computed: Computed<T>): T {
 	return computed._value as T;
 }
 
-export class Computed<T = any> extends Signal<T>{
+export class Computed<T = any> extends Signal<T> {
 	_compute?: () => T;
-	_sources?: Node = undefined;;
+	_sources?: Node = undefined;
 	_computing = false;
 	_valid = false;
 	_valueIsError = false;
@@ -352,12 +356,15 @@ export function effect(callback: () => void): () => void {
 	return effect._dispose.bind(effect);
 }
 
-export function _doNotUseOrYouWillBeFired_notify<S extends Signal | ReadonlySignal>(signal: S, callback: (signal: S) => void): () => void {
+export function _doNotUseOrYouWillBeFired_notify<S extends Signal>(
+	signal: S,
+	callback: (signal: S) => void
+): () => void {
 	const cb = () => callback(signal);
 	const notify = new Effect(cb);
-	const node = { signal: signal as Signal, target: notify, version: 0 };
+	const node = { signal: signal, target: notify, version: 0 };
 	notify._run = cb;
 	notify._sources = node;
-	(signal as Signal)._subscribe(node);
+	signal._subscribe(node);
 	return notify._dispose.bind(notify);
 }
