@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Basic</title>
+		<style>
+			html,
+			body {
+				background: #333;
+				color: #fff;
+				overflow: hidden;
+			}
+			input[type="number"] {
+				width: 5em;
+				margin: 0 1em 0 0;
+			}
+			pre {
+				font-size: 12px;
+				overflow: hidden;
+				contain: strict;
+				height: 14px;
+				width: 100%;
+			}
+			.shape {
+				position: absolute;
+				display: block;
+				left: 100px;
+				top: 130px;
+				width: 10px;
+				height: 10px;
+				margin: -7px 0 0 -7px;
+				border: 2px solid #000;
+				contain: strict;
+			}
+			.shape + .shape {
+				top: 160px;
+			}
+			.shape.dot {
+				margin: -4px 0 0 -4px;
+				width: 0;
+				height: 0;
+				border-width: 4px;
+				border-radius: 50%;
+			}
+			.shape.circle {
+				margin: -7px 0 0 -7px;
+				border-radius: 50%;
+			}
+			.shape.diamond {
+				margin: -10px 0 0 -10px;
+				width: 0;
+				height: 0;
+				border-width: 10px;
+				clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+			}
+			.shape.line {
+				margin: -12px 0 0 -2px;
+				width: 0;
+				height: 20px;
+			}
+		</style>
+	</head>
+	<body>
+		<div id="app"></div>
+		<script type="module">
+			import {
+				mutateAndLayoutAsync,
+				measureName,
+				measureMemory,
+			} from "./util.js";
+			// import { preact, signals } from "framework";
+			// const { render, h } = preact;
+			// const { useSignal, useComputed, effect } = signals;
+			import {
+				render,
+				h,
+			} from "../node_modules/framework/node_modules/preact/dist/preact.module.js";
+			import { useSignal, useComputed, effect } from "framework";
+
+			// Number of warmup runs of the benchmark to execute before the timed run
+			const WARMUP_COUNT = 5;
+
+			const COUNT = 1000;
+
+			let count;
+
+			let sampleText =
+				"This is a reasonably long snippet of sample text to be used for scrolling. ";
+			const len = sampleText.length;
+			sampleText += sampleText;
+
+			function App() {
+				count = useSignal(0);
+
+				const text = useComputed(() => `count is ${count}`);
+
+				const longText = useComputed(() =>
+					sampleText.substr(count.value % len | 0, 40)
+				);
+
+				return h(
+					"div",
+					null,
+					h(
+						"form",
+						{ class: "form" },
+						h("input", { type: "number", value: count }),
+						text
+					),
+					h("pre", null, longText),
+					h(Animation, { count }),
+					h(Animation, { count })
+				);
+			}
+
+			const SHAPES = ["dot", "circle", "box", "diamond", "line"];
+			function Animation({ count }) {
+				const x = useComputed(
+					() => Math.sin((count.value / 90) * Math.PI) * 50
+				);
+				const y = useComputed(
+					() => Math.cos((count.value / 90) * Math.PI) * 50
+				);
+				const style = useComputed(
+					() =>
+						`transform:translate(${x}px,${y}px); border-color:hsl(${
+							count.value % 255
+						},100%,60%);`
+				);
+				const shape = useComputed(
+					() => `shape ${SHAPES[(count.value / 100) % SHAPES.length | 0]}`
+				);
+
+				return h("span", { style, class: shape });
+			}
+
+			const root = document.getElementById("app");
+			function runOnce() {
+				render(h(App, null), root);
+				for (let i = 1; i < COUNT; i++) count.value = i;
+				render(null, root);
+			}
+
+			// const raf = () => new Promise(requestAnimationFrame);
+			// async function runSlow() {
+			// 	render(h(App, null), root);
+			// 	for (let i = 1; i < COUNT; i++, await raf()) count.value = i;
+			// 	render(null, root);
+			// }
+			// setTimeout(runSlow, 1000);
+
+			async function warmup() {
+				for (let i = 0; i < WARMUP_COUNT; i++) {
+					await runOnce();
+					await new Promise(r => requestAnimationFrame(r));
+				}
+			}
+
+			const sleep = ms => new Promise(r => setTimeout(r, ms));
+			warmup().then(async () => {
+				await sleep(200);
+
+				// This triggers a rAF, then runs a synchronous benchmark followed by one "tick",
+				// which should include the cost of layout in all current browsers.
+				await mutateAndLayoutAsync(() => {
+					performance.mark("start");
+					runOnce();
+				});
+				performance.mark("stop");
+				performance.measure(measureName, "start", "stop");
+
+				measureMemory();
+			});
+		</script>
+	</body>
+</html>
