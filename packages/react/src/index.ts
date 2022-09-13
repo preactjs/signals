@@ -106,7 +106,6 @@ Object.defineProperty(internals.ReactCurrentOwner, "current", {
 // Track the current dispatcher (roughly equiv to current component impl)
 let lock = false;
 const UPDATE = () => ({});
-let lastDispatcher: ReactDispatcher | undefined;
 let currentDispatcher: ReactDispatcher;
 Object.defineProperty(internals.ReactCurrentDispatcher, "current", {
 	get() {
@@ -123,10 +122,11 @@ Object.defineProperty(internals.ReactCurrentDispatcher, "current", {
 			lock = false;
 
 			let updater = updaterForComponent.get(lastOwner);
-			if (!updater || lastDispatcher !== api) {
+			if (!updater) {
 				updater = createUpdater(rerender);
 				updaterForComponent.set(lastOwner, updater);
-				lastDispatcher = api;
+			} else {
+				updater._updater = rerender;
 			}
 			setCurrentUpdater(updater);
 		} else {
