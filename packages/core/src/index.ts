@@ -79,14 +79,13 @@ export function batch<T>(callback: () => T): T {
 let currentRollback: RollbackItem | undefined = undefined;
 // Currently evaluated computed or effect.
 let evalContext: Computed | Effect | undefined = undefined;
+let effectDepth = 0;
 // Effects collected into a batch.
 let currentBatch: BatchItem | undefined = undefined;
 let batchDepth = 0;
 // A global version number for signalss, used for fast-pathing repeated
 // computed.peek()/computed.value calls when nothing has changed globally.
 let globalVersion = 0;
-// FIXME
-let effectDepth = 0;
 
 function getValue<T>(signal: Signal<T>): T {
 	let node: Node | undefined = undefined;
@@ -182,10 +181,13 @@ export class Signal<T = any> {
 			globalVersion++;
 
 			/**@__INLINE__*/ startBatch();
-			for (let node = this._targets; node; node = node.nextTarget) {
-				node.target._invalidate();
+			try {
+				for (let node = this._targets; node; node = node.nextTarget) {
+					node.target._invalidate();
+				}
+			} finally {
+				endBatch();
 			}
-			endBatch();
 		}
 	}
 }
