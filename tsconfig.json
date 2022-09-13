@@ -8,6 +8,7 @@
     "jsxFactory": "createElement",
     "jsxFragmentFactory": "Fragment",
     "stripInternal": true,
+    "noUnusedLocals": true,
     "paths": {
       "@preact/signals-core": [
         "./packages/core/src/index.ts"

@@ -49,7 +49,6 @@ function setCurrentUpdater(updater?: Updater) {
 
 function createUpdater(updater: () => void) {
 	const s = signal(undefined) as Updater;
-	s._canActivate = true;
 	s._updater = updater;
 	return s;
 }
@@ -277,6 +276,7 @@ Component.prototype.shouldComponentUpdate = function (props, state) {
 
 	// if there is hook or class state, update:
 	if (hasHookState.has(this)) return true;
+	// @ts-ignore
 	for (let i in state) return true;
 
 	// if any non-Signal props changed, update:

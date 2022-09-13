@@ -1,18 +1,10 @@
-let ROOT: Signal;
-
 /** This tracks subscriptions of signals read inside a computed */
-let currentSignal: Signal;
+let currentSignal: Signal | undefined;
 let commitError: Error | null = null;
 
 const pending = new Set<Signal>();
 /** Batch calls can be nested. 0 means that there is no batching */
 let batchPending = 0;
-/**
- * Subscriptions are set up lazily when a "reactor" is set up.
- * During this activation phase we traverse the graph upwards
- * and refresh all signals that are stale on signal read.
- */
-let activating = false;
 
 let oldDeps = new Set<Signal>();
 
@@ -32,7 +24,7 @@ export class Signal<T = any> {
 	/** @internal Marks the signal as requiring an update */
 	_requiresUpdate = false;
 	/** @internal Determine if reads should eagerly activate value */
-	_canActivate = false;
+	_active = false;
 	/** @internal Used to detect if there is a cycle in the graph */
 	_isComputing = false;
 
@@ -45,24 +37,22 @@ export class Signal<T = any> {
 	}
 
 	peek() {
-		if (currentSignal._canActivate && this._deps.size === 0) {
+		if (!this._active) {
 			activate(this);
 		}
 		return this._value;
 	}
 
 	get value() {
+		if (!this._active) {
+			activate(this);
+		}
+
 		// If we read a signal outside of a computed we have no way
 		// to unsubscribe from that. So we assume that the user wants
 		// to get the value immediately like for testing.
-		if (currentSignal._canActivate && this._deps.size === 0) {
-			activate(this);
-
-			// The ROOT signal cannot track dependencies as it's never
-			// subscribed to
-			if (currentSignal === ROOT) {
-				return this._value;
-			}
+		if (!currentSignal) {
+			return this._value;
 		}
 
 		// subscribe the current computed to this signal:
@@ -71,21 +61,12 @@ export class Signal<T = any> {
 		currentSignal._deps.add(this);
 		oldDeps.delete(this);
 
-		// refresh stale value when this signal is read from withing
-		// batching and when it has been marked already
-		if (
-			(batchPending > 0 && this._pending > 0) ||
-			// Set up subscriptions during activation phase
-			(activating && this._deps.size === 0)
-		) {
-			refreshStale(this);
-		}
 		return this._value;
 	}
 
 	set value(value) {
 		if (this._readonly) {
-			throw new Error("Computed signals are readonly");
+			throw Error("Computed signals are readonly");
 		}
 
 		if (this._value !== value) {
@@ -130,10 +111,10 @@ export class Signal<T = any> {
 			// Any leftover dependencies here are not needed anymore
 			if (shouldCleanup) {
 				// Unsubscribe from dependencies that were not accessed:
-				oldDeps.forEach(sub => unsubscribe(this, sub));
+				oldDeps.forEach(dep => unsubscribe(this, dep));
 			} else {
-				// Re-subscribe to dependencies that not accessed:
-				oldDeps.forEach(sub => subscribe(this, sub));
+				// Re-subscribe to dependencies that were not accessed:
+				oldDeps.forEach(dep => subscribe(this, dep));
 			}
 
 			oldDeps.clear();
@@ -180,7 +161,7 @@ function sweep(subs: Set<Signal<any>>) {
 
 			if (--signal._pending === 0) {
 				if (signal._isComputing) {
-					throw new Error("Cycle detected");
+					throw Error("Cycle detected");
 				}
 
 				signal._requiresUpdate = false;
@@ -194,6 +175,7 @@ function sweep(subs: Set<Signal<any>>) {
 }
 
 function subscribe(signal: Signal<any>, to: Signal<any>) {
+	signal._active = true;
 	signal._deps.add(to);
 	to._subs.add(signal);
 }
@@ -206,6 +188,7 @@ function unsubscribe(signal: Signal<any>, from: Signal<any>) {
 	// upwards and destroy all subscriptions until we encounter a writable
 	// signal or a signal that others listen to as well.
 	if (from._subs.size === 0) {
+		from._active = false;
 		from._deps.forEach(dep => unsubscribe(from, dep));
 	}
 }
@@ -215,7 +198,7 @@ const tmpPending: Signal[] = [];
  * Refresh _just_ this signal and its dependencies recursively.
  * All other signals will be left untouched and added to the
  * global queue to flush later. Since we're traversing "upwards",
- * we don't have to car about topological sorting.
+ * we don't have to care about topological sorting.
  */
 function refreshStale(signal: Signal) {
 	pending.delete(signal);
@@ -240,16 +223,9 @@ function refreshStale(signal: Signal) {
 }
 
 function activate(signal: Signal) {
-	activating = true;
-	try {
-		refreshStale(signal);
-	} finally {
-		activating = false;
-	}
+	signal._active = true;
+	refreshStale(signal);
 }
-
-ROOT = currentSignal = new Signal(undefined);
-ROOT._canActivate = true;
 
 export function signal<T>(value: T): Signal<T>
 export function signal<T = undefined>(): Signal<T | undefined>

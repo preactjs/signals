@@ -157,12 +157,6 @@ function createEsbuildPlugin() {
 						].filter(Boolean),
 					});
 					result = tmp.code || result;
-					if (!args.path.includes(".pnpm")) {
-						console.log(args.path);
-					}
-					if (/\/preact\//.test(args.path)) {
-						// console.log("done", result);
-					}
 					cache.set(args.path, { input: contents, result });
 
 					// Fire all pending listeners that are waiting on the same
@@ -197,7 +191,6 @@ module.exports = function (config) {
 		reporters: ["mocha"].concat(coverage ? "coverage" : []),
 
 		formatError(msg) {
-			console.log("MSAG", msg);
 			let stack = msg;
 			// Karma prints error twice if it's an infinite loop
 			if (/^\s*Uncaught/.test(msg)) {

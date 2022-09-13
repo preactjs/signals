@@ -361,7 +361,7 @@ describe("computed()", () => {
 
 			// top to bottom
 			expect(eSpy).to.have.been.calledBefore(fSpy);
-			// right to left
+			// left to right
 			expect(fSpy).to.have.been.calledBefore(gSpy);
 		});
 
@@ -572,6 +572,19 @@ describe("computed()", () => {
 			expect(compute).to.have.been.called;
 			expect(d.value).to.equal(4);
 		});
+
+		it("should support lazy branches", () => {
+			const a = signal(0);
+			const b = computed(() => a.value);
+			const c = computed(() => (a.value > 0 ? a.value : b.value));
+
+			expect(c.value).to.equal(0);
+			a.value = 1;
+			expect(c.value).to.equal(1);
+
+			a.value = 0;
+			expect(c.value).to.equal(0);
+		});
 	});
 });
 
@@ -637,7 +650,7 @@ describe("batch/transaction", () => {
 		const spyD = sinon.spy(() => c.value);
 		const d = computed(spyD);
 
-		const spyE = sinon.spy(() => b.value);
+		const spyE = sinon.spy(() => d.value);
 		const e = computed(spyE);
 
 		spyC.resetHistory();
