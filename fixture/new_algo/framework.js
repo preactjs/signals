@@ -1,17 +1,18 @@
 /** This tracks subscriptions of signals read inside a computed */
 let currentSignal;
-const pending = new Set();
-const effects = new Set();
+let globalVersion = 1;
+let effects = [];
 /** Batch calls can be nested. 0 means that there is no batching */
 
 let batchPending = 0;
-let oldDeps = new Map();
+let oldDeps = [];
 class Signal {
 	// These property names get minified - see /mangle.json
 
 	/** @internal Internal, do not use. */
 
 	/** @internal Internal, do not use. */
+	// _deps = new Map<Signal, number>();
 
 	/** @internal Internal, do not use. */
 
@@ -23,16 +24,20 @@ class Signal {
 
 	/** @internal Determine if reads should eagerly activate value */
 
-	/** @internal Used to detect if there is a cycle in the graph */
+	/** @internal Determine if this is a computed signal */
+
+	/** @internal Determine if this is a computed signal */
 	constructor(value) {
 		this._subs = new Set();
-		this._deps = new Map();
+		this._deps = [];
+		this._depVersions = [];
 		this._version = 0;
-		this._dirty = false;
+		this._globalVersion = globalVersion - 1;
 		this._value = void 0;
 		this._readonly = false;
-		this._active = false;
 		this._isComputing = false;
+		this._computed = false;
+		this._effectSubsCount = 0;
 		this._value = value;
 	}
 
@@ -41,16 +46,20 @@ class Signal {
 	}
 
 	peek() {
-		if (!this._active) {
-			activate(this);
+		if (this._computed) {
+			activate(this, true);
 		}
 
 		return this._value;
 	}
 
 	get value() {
-		if (!this._active) {
-			activate(this);
+		if (globalVersion === this._globalVersion) {
+			return this._value;
+		}
+
+		if (this._computed) {
+			activate(this, true);
 		} // If we read a signal outside of a computed we have no way
 		// to unsubscribe from that. So we assume that the user wants
 		// to get the value immediately like for testing.
@@ -61,9 +70,12 @@ class Signal {
 
 		this._subs.add(currentSignal); // update the current computed's dependencies:
 
-		currentSignal._deps.set(this, this._version);
+		currentSignal._deps.push(this);
 
-		oldDeps.delete(this);
+		currentSignal._depVersions.push(this._version);
+
+		const idx = oldDeps.indexOf(this);
+		if (idx > -1) oldDeps.splice(idx, 1);
 		return this._value;
 	}
 
@@ -75,21 +87,17 @@ class Signal {
 		if (this._value !== value) {
 			this._version++;
 			this._value = value;
-			let isFirst = pending.size === 0;
-			pending.add(this); // in batch mode this signal may be marked already
-
-			if (!this._dirty) {
-				mark(this);
-			} // this is the first change, not a computed and we are not
+			let isFirst = this._effectSubsCount === 0;
+			this._effectSubsCount = 0;
+			mark(this, this); // this is the first change, not a computed and we are not
 			// in batch mode:
 
 			if (isFirst && batchPending === 0) {
-				try {
-					effects.forEach(signal => activate(signal));
-				} finally {
-					pending.forEach(signal => (signal._dirty = false));
-					pending.clear();
+				for (let i = 0; i < effects.length; i++) {
+					activate(effects[i], false);
 				}
+
+				effects = [];
 			}
 		}
 	}
@@ -104,18 +112,19 @@ class Signal {
 		let prevOldDeps = oldDeps;
 		currentSignal = this;
 		oldDeps = this._deps;
-		this._deps = new Map();
+		this._deps = [];
+		this._depVersions = [];
 		return (shouldUnmark, shouldCleanup) => {
 			// Any leftover dependencies here are not needed anymore
 			if (shouldCleanup) {
 				// Unsubscribe from dependencies that were not accessed:
-				oldDeps.forEach((_, dep) => unsubscribe(this, dep));
+				oldDeps.forEach(dep => unsubscribe(this, dep));
 			} else {
 				// Re-subscribe to dependencies that not accessed:
-				oldDeps.forEach((_, dep) => subscribe(this, dep));
+				oldDeps.forEach(dep => subscribe(this, dep));
 			}
 
-			oldDeps.clear();
+			oldDeps = [];
 			oldDeps = prevOldDeps;
 			currentSignal = prevSignal;
 		};
@@ -130,37 +139,40 @@ class Signal {
 	}
 }
 
-function mark(signal) {
-	if (!signal._dirty) {
-		signal._dirty = true;
-
-		if (signal._subs.size === 0) {
-			effects.add(signal);
-		} else {
-			signal._subs.forEach(mark);
-		}
+function mark(signal, root) {
+	if (signal._subs.size === 0) {
+		root._effectSubsCount++;
+		effects.push(signal);
+	} else {
+		signal._subs.forEach(mark);
 	}
 }
 
 function subscribe(signal, to) {
-	signal._active = true;
+	signal._deps.push(to);
 
-	signal._deps.set(to, to._version);
+	signal._depVersions.push(to._version);
 
 	to._subs.add(signal);
 }
 
 function unsubscribe(signal, from) {
-	signal._deps.delete(from);
+	const idx = signal._deps.indexOf(from);
+
+	if (idx > -1) {
+		signal._deps.splice(idx, 1);
+
+		signal._depVersions.splice(idx, 1);
+	}
 
 	from._subs.delete(signal); // If nobody listens to the signal we depended on, we can traverse
 	// upwards and destroy all subscriptions until we encounter a writable
 	// signal or a signal that others listen to as well.
 
 	if (from._subs.size === 0) {
-		from._active = false;
+		from._deps.forEach(dep => unsubscribe(from, dep));
 
-		from._deps.forEach((_, dep) => unsubscribe(from, dep));
+		from._deps = [];
 	}
 }
 /**
@@ -170,35 +182,29 @@ function unsubscribe(signal, from) {
  * we don't have to care about topological sorting.
  */
 
-function refreshStale(signal) {
-	const first = signal._deps.size === 0;
+function activate(signal, stopAtDeps) {
+	const first = signal._deps.length === 0;
 	let shouldUpdate = false;
 
-	if (signal._dirty) {
-		signal._deps.forEach((version, dep) => {
-			if (dep._dirty) {
-				refreshStale(dep);
+	if (!first) {
+		for (let i = 0; i < signal._deps.length; i++) {
+			const dep = signal._deps[i];
+			const version = signal._depVersions[i];
+
+			if (!stopAtDeps && dep._computed) {
+				activate(dep, stopAtDeps);
 			}
 
 			if (dep._version !== version) {
 				shouldUpdate = true;
-
-				signal._deps.set(dep, dep._version);
+				signal._depVersions[i] = dep._version;
 			}
-		});
+		}
 	}
-
-	effects.delete(signal);
-	signal._dirty = false;
 
 	if (first || shouldUpdate) {
 		signal._updater();
 	}
-}
-
-function activate(signal) {
-	signal._active = true;
-	refreshStale(signal);
 }
 
 function signal(value) {
@@ -207,6 +213,7 @@ function signal(value) {
 function computed(compute) {
 	const signal = new Signal(undefined);
 	signal._readonly = true;
+	signal._computed = true;
 
 	function updater() {
 		let finish = signal._setCurrent();
@@ -234,7 +241,7 @@ function computed(compute) {
 function effect(callback) {
 	const s = computed(() => batch(callback)); // Set up subscriptions since this is a "reactor" signal
 
-	activate(s);
+	activate(s, true);
 	return () => s._setCurrent()(true, true);
 }
 function batch(cb) {
@@ -244,12 +251,11 @@ function batch(cb) {
 		return cb();
 	} finally {
 		if (--batchPending === 0) {
-			try {
-				effects.forEach(signal => activate(signal));
-			} finally {
-				pending.forEach(signal => (signal._dirty = false));
-				pending.clear();
+			for (let i = 0; i < effects.length; i++) {
+				activate(effects[i], false);
 			}
+
+			effects = [];
 		}
 	}
 }
