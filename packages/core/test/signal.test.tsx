@@ -215,12 +215,40 @@ describe("computed()", () => {
 		expect(() => a.value).to.throw(/Cycle detected/);
 	});
 
+	it("should not allow a computed signal to become a direct dependency of itself", () => {
+		const spy = sinon.spy(() => {
+			try {
+				a.value
+			} catch {
+				// pass
+			}
+		})
+		const a = computed(spy);
+		a.value;
+		expect(() => effect(() => a.value)).to.not.throw();
+	});
+
 	it("should detect deep dependency cycles", () => {
 		const a: Signal = computed(() => b.value);
 		const b: Signal = computed(() => c.value);
 		const c: Signal = computed(() => d.value);
 		const d: Signal = computed(() => a.value);
 		expect(() => a.value).to.throw(/Cycle detected/);
+	});
+
+	it("should store failures and recompute after a dependency changes", () => {
+		const a = signal(0);
+		const spy = sinon.spy(() => {
+			a.value;
+			throw new Error();
+		});
+		const c = computed(spy);
+		expect(() => c.value).to.throw();
+		expect(() => c.value).to.throw();
+		expect(spy).to.be.calledOnce;
+		a.value = 1;
+		expect(() => c.value).to.throw();
+		expect(spy).to.be.calledTwice;
 	});
 
 	it("should conditionally unsubscribe from signals", () => {

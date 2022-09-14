@@ -359,6 +359,9 @@ export class Computed<T = any> extends Signal<T> {
 	}
 
 	get value(): T {
+		if (this._computing) {
+			throw new Error("Cycle detected");
+		}
 		return getValue(this);
 	}
 
