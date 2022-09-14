@@ -80,14 +80,15 @@ function Text({ data }: { data: Signal }) {
 //@ts-ignore-next-line
 const $$typeof = createElement("a").$$typeof;
 Object.defineProperties(Signal.prototype, {
-	$$typeof: { value: $$typeof },
-	type: { value: Text },
+	$$typeof: { configurable: true, value: $$typeof },
+	type: { configurable: true, value: Text },
 	props: {
+		configurable: true,
 		get() {
 			return { data: this };
 		},
 	},
-	ref: { value: null },
+	ref: { configurable: true, value: null },
 });
 
 // Track the current owner (roughly equiv to current vnode)

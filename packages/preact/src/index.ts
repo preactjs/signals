@@ -1,4 +1,4 @@
-import { options, Component, createElement } from "preact";
+import { options, Component } from "preact";
 import { useRef, useMemo } from "preact/hooks";
 import {
 	signal,
@@ -92,18 +92,6 @@ function getElementUpdater(vnode: VNode) {
 // 	return false;
 // }
 
-/** Convert Signals within (nested) props.children into Text components */
-function childToSignal<T>(child: any, i: keyof T, arr: T) {
-	if (typeof child !== "object" || child == null) {
-		// can't be a signal
-	} else if (Array.isArray(child)) {
-		child.forEach(childToSignal);
-	} else if (child instanceof Signal) {
-		// @ts-ignore-next-line yes, arr can accept VNodes:
-		arr[i] = createElement(Text, { data: child });
-	}
-}
-
 /**
  * A wrapper component that renders a Signal directly as a Text node.
  * @todo: in Preact 11, just decorate Signal with `type:null`
@@ -142,6 +130,21 @@ function Text(this: ComponentType, { data }: { data: Signal }) {
 }
 Text.displayName = "_st";
 
+Object.defineProperties(Signal.prototype, {
+	constructor: { configurable: true },
+	type: { configurable: true, value: Text },
+	props: {
+		configurable: true,
+		get() {
+			return { data: this };
+		},
+	},
+	// Setting a VNode's _depth to 1 forces Preact to clone it before modifying:
+	// https://github.com/preactjs/preact/blob/d7a433ee8463a7dc23a05111bb47de9ec729ad4d/src/diff/children.js#L77
+	// @todo remove this for Preact 11
+	__b: { configurable: true, value: 1 },
+});
+
 /** Inject low-level property/attribute bindings for Signals into Preact's diff */
 hook(OptionsTypes.DIFF, (old, vnode) => {
 	if (typeof vnode.type === "string") {
@@ -151,9 +154,9 @@ hook(OptionsTypes.DIFF, (old, vnode) => {
 
 		for (let i in props) {
 			let value = props[i];
-			if (i === "children") {
-				childToSignal(value, "children", props);
-			} else if (value instanceof Signal) {
+			if (i === "children") continue;
+
+			if (value instanceof Signal) {
 				// first Signal prop triggers creation/cleanup of the updater:
 				if (!updater) updater = getElementUpdater(vnode);
 				// track which props are Signals for precise updates:
