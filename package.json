@@ -14,7 +14,6 @@
 		"postbuild:preact": "cd packages/preact/dist && mv -f preact/src/index.d.ts signals.d.ts && rm -dr preact",
 		"postbuild:react": "cd packages/react/dist && mv -f react/src/index.d.ts signals.d.ts && rm -dr react",
 		"postbuild": "node ./scripts/node-13-exports.js",
-		"rewriteReadmes": "node ./scripts/rewrite-readme-relative-links.js",
 		"lint": "eslint 'packages/**/*.{ts,tsx,js,jsx}'",
 		"test": "cross-env COVERAGE=true karma start karma.conf.js --single-run",
 		"test:watch": "karma start karma.conf.js --no-single-run",

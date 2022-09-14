@@ -9,7 +9,8 @@
 	],
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/preactjs/signals"
+		"url": "https://github.com/preactjs/signals",
+		"directory": "packages/preact"
 	},
 	"bugs": "https://github.com/preactjs/signals/issues",
 	"homepage": "https://preactjs.com",
@@ -34,7 +35,7 @@
 	},
 	"mangle": "../../mangle.json",
 	"scripts": {
-		"prepublishOnly": "cd ../.. && pnpm build:preact && pnpm rewriteReadmes"
+		"prepublishOnly": "cd ../.. && pnpm build:preact"
 	},
 	"dependencies": {
 		"@preact/signals-core": "workspace:^1.0.1"
