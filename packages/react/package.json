@@ -1,6 +1,6 @@
 {
 	"name": "@preact/signals-react",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"license": "MIT",
 	"description": "",
 	"keywords": [],
@@ -37,7 +37,7 @@
 		"prepublishOnly": "cd ../.. && pnpm build:react && pnpm rewriteReadmes"
 	},
 	"dependencies": {
-		"@preact/signals-core": "workspace:^1.0.0"
+		"@preact/signals-core": "workspace:^1.1.0"
 	},
 	"peerDependencies": {
 		"react": "17.x || 18.x"

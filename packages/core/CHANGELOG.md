@@ -1,5 +1,19 @@
 # @preact/signals-core
 
+## 1.1.0
+
+### Minor Changes
+
+- bc0080c: Add `.subscribe()`-method to signals to add support for natively using signals with Svelte
+
+### Patch Changes
+
+- 336bb34: Don't mangle `Signal` class name
+- 7228418: Fix incorrectly named variables and address typos in code comments.
+- 32abe07: Fix internal API functions being able to unmark non-invalidated signals
+- 4782b41: Fix conditionally signals (lazy branches) not being re-computed upon activation
+- bf6af3b: - Fix a memory leak when computed signals and effects are removed
+
 ## 1.0.1
 
 ### Patch Changes
