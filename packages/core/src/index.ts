@@ -25,11 +25,6 @@ type RollbackItem = {
 	next?: RollbackItem;
 };
 
-type BatchItem = {
-	effect: Effect;
-	next?: BatchItem;
-};
-
 function startBatch() {
 	batchDepth++;
 }
@@ -43,22 +38,25 @@ function endBatch() {
 	let error: unknown;
 	let hasError = false;
 
-	while (currentBatch) {
-		const batch = currentBatch;
-		currentBatch = undefined;
+	while (batchedEffect) {
+		let effect: Effect | undefined = batchedEffect;
+		batchedEffect = undefined;
+
 		batchIteration++;
 
-		for (let item: BatchItem | undefined = batch; item; item = item.next) {
-			const runnable = item.effect;
-			runnable._batched = false;
+		while (effect) {
+			const next: Effect | undefined = effect._nextEffect;
+			effect._nextEffect = undefined;
+			effect._batched = false;
 			try {
-				runnable._notify();
+				effect._notify();
 			} catch (err) {
 				if (!hasError) {
 					error = err;
 					hasError = true;
 				}
 			}
+			effect = next;
 		}
 	}
 	batchIteration = 0;
@@ -89,7 +87,7 @@ let evalContext: Computed | Effect | undefined = undefined;
 // subscribe for updates to the signals depends on.
 let subscribeDepth = 0;
 // Effects collected into a batch.
-let currentBatch: BatchItem | undefined = undefined;
+let batchedEffect: Effect | undefined = undefined;
 let batchDepth = 0;
 let batchIteration = 0;
 // A global version number for signalss, used for fast-pathing repeated
@@ -104,12 +102,11 @@ function getValue<T>(signal: Signal<T>): T {
 			if (node) {
 				currentRollback = { signal: signal, node: node, next: currentRollback };
 			}
-
 			node = { signal: signal, nextSignal: evalContext._sources, target: evalContext, version: 0, used: true };
 			evalContext._sources = node;
 			signal._node = node;
 
-			if (node && subscribeDepth > 0) {
+			if (subscribeDepth > 0) {
 				signal._subscribe(node);
 			}
 		} else if (!node.used) {
@@ -118,11 +115,13 @@ function getValue<T>(signal: Signal<T>): T {
 			node = undefined;
 		}
 	}
-	const value = signal.peek();
-	if (node) {
-		node.version = node.signal._version;
+	try {
+		return signal.peek();
+	} finally {
+		if (node) {
+			node.version = signal._version;
+		}
 	}
-	return value;
 }
 
 export class Signal<T = any> {
@@ -385,6 +384,7 @@ class Effect {
 	_notify: () => void;
 	_sources?: Node = undefined;
 	_batched = false;
+	_nextEffect?: Effect = undefined;
 
 	constructor(notify: () => void) {
 		this._notify = notify;
@@ -415,7 +415,8 @@ class Effect {
 	_invalidate() {
 		if (!this._batched) {
 			this._batched = true;
-			currentBatch = { effect: this, next: currentBatch };
+			this._nextEffect = batchedEffect;
+			batchedEffect = this;
 		}
 	}
 
