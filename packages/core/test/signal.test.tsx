@@ -210,6 +210,19 @@ describe("computed()", () => {
 		expect(spy).to.be.calledOnce;
 	});
 
+	it("should detect simple dependency cycles", () => {
+		const a: Signal = computed(() => a.value);
+		expect(() => a.value).to.throw(/Cycle detected/);
+	});
+
+	it("should detect deep dependency cycles", () => {
+		const a: Signal = computed(() => b.value);
+		const b: Signal = computed(() => c.value);
+		const c: Signal = computed(() => d.value);
+		const d: Signal = computed(() => a.value);
+		expect(() => a.value).to.throw(/Cycle detected/);
+	});
+
 	it("should conditionally unsubscribe from signals", () => {
 		const a = signal("a");
 		const b = signal("b");

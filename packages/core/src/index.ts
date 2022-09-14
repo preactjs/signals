@@ -292,7 +292,7 @@ export class Computed<T = any> extends Signal<T> {
 
 	peek(): T {
 		if (this._computing) {
-			throw new Error("cycle detected");
+			throw new Error("Cycle detected");
 		}
 		if (this._globalVersion === globalVersion) {
 			return returnComputed(this);
