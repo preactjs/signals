@@ -91,11 +91,17 @@ Object.defineProperties(Signal.prototype, {
 });
 
 // Track the current owner (roughly equiv to current vnode)
-// let currentOwner: ReactOwner;
-// Object.defineProperty(internals.ReactCurrentOwner, "current", {
-// 	get() { return currentOwner; },
-// 	set(owner) { currentOwner = owner; },
-// });
+let lastOwner: ReactOwner | undefined;
+let currentOwner: ReactOwner | null = null;
+Object.defineProperty(internals.ReactCurrentOwner, "current", {
+	get() {
+		return currentOwner;
+	},
+	set(owner) {
+		currentOwner = owner;
+		if (currentOwner) lastOwner = currentOwner;
+	},
+});
 
 // Track the current dispatcher (roughly equiv to current component impl)
 let lock = false;
@@ -108,17 +114,19 @@ Object.defineProperty(internals.ReactCurrentDispatcher, "current", {
 	set(api) {
 		currentDispatcher = api;
 		if (lock) return;
-		if (api && !isInvalidHookAccessor(api)) {
+		if (lastOwner && api && !isInvalidHookAccessor(api)) {
 			// prevent re-injecting useReducer when the Dispatcher
 			// context changes to run the reducer callback:
 			lock = true;
 			const rerender = api.useReducer(UPDATE, {})[1];
 			lock = false;
-			const currentOwner = internals.ReactCurrentOwner.current;
-			let updater = updaterForComponent.get(currentOwner);
+
+			let updater = updaterForComponent.get(lastOwner);
 			if (!updater) {
 				updater = createUpdater(rerender);
-				updaterForComponent.set(currentOwner, updater);
+				updaterForComponent.set(lastOwner, updater);
+			} else {
+				updater._updater = rerender;
 			}
 			setCurrentUpdater(updater);
 		} else {
