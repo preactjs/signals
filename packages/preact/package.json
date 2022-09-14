@@ -26,11 +26,11 @@
 	"source": "src/index.ts",
 	"exports": {
 		".": {
+			"types": "./dist/signals.d.ts",
 			"browser": "./dist/signals.module.js",
 			"umd": "./dist/signals.umd.js",
 			"import": "./dist/signals.mjs",
-			"require": "./dist/signals.js",
-			"types": "./dist/signals.d.ts"
+			"require": "./dist/signals.js"
 		}
 	},
 	"mangle": "../../mangle.json",
