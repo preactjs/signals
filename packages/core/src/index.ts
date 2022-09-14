@@ -232,7 +232,7 @@ function returnComputed<T>(computed: Computed<T>): T {
 }
 
 export class Computed<T = any> extends Signal<T> {
-	_compute?: () => T;
+	_compute: () => T;
 	_sources?: Node = undefined;
 	_computing = false;
 	_valid = false;
@@ -310,7 +310,7 @@ export class Computed<T = any> extends Signal<T> {
 			this._computing = true;
 			this._sources = undefined;
 
-			value = this._compute!();
+			value = this._compute();
 		} catch (err: unknown) {
 			valueIsError = true;
 			value = err;
