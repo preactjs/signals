@@ -747,4 +747,44 @@ describe("batch/transaction", () => {
 		c.value = "cc";
 		expect(result).to.equal("aa bb cc");
 	});
+
+	it("should not lead to stale signals with .value in batch", () => {
+		const invokes: number[][] = [];
+		const counter = signal(0);
+		const double = computed(() => counter.value * 2);
+		const tripple = computed(() => counter.value * 3);
+
+		effect(() => {
+			invokes.push([double.value, tripple.value]);
+		});
+
+		expect(invokes).to.deep.equal([[0, 0]]);
+
+		batch(() => {
+			counter.value = 1;
+			expect(double.value).to.equal(2);
+		});
+
+		expect(invokes[1]).to.deep.equal([2, 3]);
+	});
+
+	it("should not lead to stale signals with peek() in batch", () => {
+		const invokes: number[][] = [];
+		const counter = signal(0);
+		const double = computed(() => counter.value * 2);
+		const tripple = computed(() => counter.value * 3);
+
+		effect(() => {
+			invokes.push([double.value, tripple.value]);
+		});
+
+		expect(invokes).to.deep.equal([[0, 0]]);
+
+		batch(() => {
+			counter.value = 1;
+			expect(double.peek()).to.equal(2);
+		});
+
+		expect(invokes[1]).to.deep.equal([2, 3]);
+	});
 });

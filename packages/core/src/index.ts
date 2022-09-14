@@ -35,14 +35,14 @@ export class Signal<T = any> {
 	}
 
 	peek() {
-		if (!this._active) {
+		if (!this._active || this._pending > 0) {
 			activate(this);
 		}
 		return this._value;
 	}
 
 	get value() {
-		if (!this._active) {
+		if (!this._active || this._pending > 0) {
 			activate(this);
 		}
 
@@ -266,7 +266,6 @@ export function effect(callback: () => void) {
 export function batch<T>(cb: () => T): T {
 	if (batchPending !== null) {
 		return cb();
-
 	} else {
 		const pending: Set<Signal> = new Set();
 
@@ -274,7 +273,6 @@ export function batch<T>(cb: () => T): T {
 
 		try {
 			return cb();
-
 		} finally {
 			// Since stale signals are refreshed upwards, we need to
 			// add pending signals in reverse
