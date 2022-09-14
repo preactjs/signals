@@ -148,20 +148,22 @@ function sweep(subs: Set<Signal<any>>) {
 	subs.forEach(signal => {
 		// If a computed errored during sweep, we'll discard that subtree
 		// for this sweep cycle by setting PENDING to 0;
-		if (signal._pending > 0) {
-			signal._requiresUpdate = true;
+		if (signal._pending > 1) return --signal._pending;
+		let ready = true;
+		signal._deps.forEach(dep => {
+			if (dep._pending > 0) ready = false;
+		});
 
-			if (--signal._pending === 0) {
-				if (signal._isComputing) {
-					throw Error("Cycle detected");
-				}
-
-				signal._requiresUpdate = false;
-				signal._isComputing = true;
-				signal._updater();
-				signal._isComputing = false;
-				sweep(signal._subs);
+		if (ready && signal._pending > 0 && --signal._pending === 0) {
+			if (signal._isComputing) {
+				throw Error("Cycle detected");
 			}
+
+			signal._requiresUpdate = false;
+			signal._isComputing = true;
+			signal._updater();
+			signal._isComputing = false;
+			sweep(signal._subs);
 		}
 	});
 }
@@ -238,8 +240,9 @@ export function computed<T>(compute: () => T): ReadonlySignal<T> {
 
 		try {
 			let ret = compute();
-
-			finish(signal._value === ret, true);
+			const stale = signal._value === ret;
+			if (!stale) signal._subs.forEach(sub => (sub._requiresUpdate = true));
+			finish(stale, true);
 			signal._value = ret;
 		} catch (err: any) {
 			// Ensure that we log the first error not the last
