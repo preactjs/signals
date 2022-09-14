@@ -16,12 +16,6 @@ type Node = {
 	version: number;
 };
 
-function subscribeToAll(sources: Node | undefined) {
-	for (let node = sources; node; node = node.nextSignal) {
-		node.signal._subscribe(node);
-	}
-}
-
 function unsubscribeFromAll(sources: Node | undefined) {
 	for (let node = sources; node; node = node.nextSignal) {
 		node.signal._unsubscribe(node);
@@ -100,7 +94,9 @@ export function batch<T>(callback: () => T): T {
 let currentRollback: RollbackItem | undefined = undefined;
 // Currently evaluated computed or effect.
 let evalContext: Computed | Effect | undefined = undefined;
-let effectDepth = 0;
+// Used for keeping track whether the current evaluation context should automatically
+// subscribe for updates to the signals depends on.
+let subscribeDepth = 0;
 // Effects collected into a batch.
 let currentBatch: BatchItem | undefined = undefined;
 let batchDepth = 0;
@@ -120,7 +116,7 @@ function getValue<T>(signal: Signal<T>): T {
 		};
 		signal._evalContext = evalContext;
 
-		if (effectDepth > 0) {
+		if (subscribeDepth > 0) {
 			signal._subscribe(node);
 		}
 	}
@@ -249,7 +245,9 @@ export class Computed<T = any> extends Signal<T> {
 			// A computed signal subscribes lazily to its dependencies when
 			// the computed signal gets its first subscriber.
 			this._valid = false;
-			subscribeToAll(this._sources);
+			for (let node = this._sources; node; node = node.nextSignal) {
+				node.signal._subscribe(node);
+			}
 		}
 		super._subscribe(node);
 	}
@@ -300,6 +298,7 @@ export class Computed<T = any> extends Signal<T> {
 		let value: unknown = undefined;
 		let valueIsError = false;
 
+		const targets = this._targets;
 		const oldSources = this._sources;
 		const prevContext = evalContext;
 		const prevRollback = currentRollback;
@@ -310,13 +309,18 @@ export class Computed<T = any> extends Signal<T> {
 			this._computing = true;
 			this._sources = undefined;
 
+			if (targets) {
+				// Computed signals with current targets should automatically subscribe to
+				// new dependencies it uses in the compute function.
+				subscribeDepth++;
+			}
 			value = this._compute();
 		} catch (err: unknown) {
 			valueIsError = true;
 			value = err;
 		} finally {
-			if (this._targets) {
-				subscribeToAll(this._sources);
+			if (targets) {
+				subscribeDepth--;
 			}
 			unsubscribeFromAll(oldSources);
 			rollback(currentRollback);
@@ -364,7 +368,7 @@ class Effect {
 		const oldSources = this._sources;
 		const prevContext = evalContext;
 		const prevRollback = currentRollback;
-		effectDepth++;
+		subscribeDepth++;
 
 		evalContext = this;
 		currentRollback = undefined;
@@ -373,8 +377,7 @@ class Effect {
 	}
 
 	_end(oldSources?: Node, prevContext?: Computed | Effect, prevRollback?: RollbackItem) {
-		effectDepth--;
-		subscribeToAll(this._sources);
+		subscribeDepth--;
 		unsubscribeFromAll(oldSources);
 		rollback(currentRollback);
 
