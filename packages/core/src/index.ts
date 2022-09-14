@@ -236,8 +236,14 @@ function cleanupSources(target: Computed | Effect) {
 	target._sources = sources;
 }
 
+const enum ComputedState {
+	Invalidated,
+	Revalidate,
+	Valid
+}
+
 function returnComputed<T>(computed: Computed<T>): T {
-	computed._valid = true;
+	computed._state = ComputedState.Valid;
 	computed._globalVersion = globalVersion;
 	if (computed._valueIsError) {
 		throw computed._value;
@@ -249,7 +255,7 @@ export class Computed<T = any> extends Signal<T> {
 	_compute: () => T;
 	_sources?: Node = undefined;
 	_computing = false;
-	_valid = false;
+	_state = ComputedState.Revalidate;
 	_valueIsError = false;
 	_globalVersion = globalVersion - 1;
 
@@ -260,9 +266,11 @@ export class Computed<T = any> extends Signal<T> {
 
 	_subscribe(node: Node) {
 		if (this._targets === undefined) {
-			// A computed signal subscribes lazily to its dependencies when
-			// the computed signal gets its first subscriber.
-			this._valid = false;
+			// The computed value may be up to date, or not.
+			this._state = ComputedState.Revalidate;
+
+			// A computed signal subscribes lazily to its dependencies when the computed
+			// signal gets its first subscriber.
 			for (let node = this._sources; node !== undefined; node = node.nextSignal) {
 				node.signal._subscribe(node);
 			}
@@ -271,6 +279,8 @@ export class Computed<T = any> extends Signal<T> {
 	}
 
 	_unsubscribe(node: Node) {
+		super._unsubscribe(node)
+
 		// When a computed signal loses its last subscriber it also unsubscribes
 		// from its own dependencies.
 		if (this._targets === undefined) {
@@ -278,12 +288,13 @@ export class Computed<T = any> extends Signal<T> {
 				node.signal._unsubscribe(node);
 			}
 		}
-		super._unsubscribe(node)
 	}
 
 	_invalidate() {
-		if (this._valid) {
-			this._valid = false;
+		if (this._state !== ComputedState.Invalidated) {
+			// Mark the computed value as definitely out of date.
+			this._state = ComputedState.Invalidated;
+
 			for (let node = this._targets; node !== undefined; node = node.nextTarget) {
 				node.target._invalidate();
 			}
@@ -297,7 +308,7 @@ export class Computed<T = any> extends Signal<T> {
 		if (this._globalVersion === globalVersion) {
 			return returnComputed(this);
 		}
-		if (this._valid && this._targets !== undefined) {
+		if (this._state === ComputedState.Valid && this._targets !== undefined) {
 			return returnComputed(this);
 		}
 
@@ -337,7 +348,7 @@ export class Computed<T = any> extends Signal<T> {
 
 			this._computing = true;
 			value = this._compute();
-		} catch (err: unknown) {
+		} catch (err) {
 			valueIsError = true;
 			value = err;
 		} finally {

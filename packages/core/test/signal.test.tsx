@@ -308,6 +308,24 @@ describe("computed()", () => {
 		expect(c.value).to.equal("ok");
 	});
 
+	it("should propagate invalidation even right after first subscription", () => {
+		const a = signal(0);
+		const b = computed(() => a.value);
+		const c = computed(() => b.value);
+		c.value;
+
+		const spy = sinon.spy(() => {
+			c.value;
+		});
+
+		effect(spy);
+		expect(spy).to.be.calledOnce;
+		spy.resetHistory();
+
+		a.value = 1;
+		expect(spy).to.be.calledOnce;
+	});
+
 	describe("graph updates", () => {
 		it("should run computeds once for multiple dep changes", async () => {
 			const a = signal("a");
