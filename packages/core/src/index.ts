@@ -24,13 +24,13 @@ function unsubscribeFromAll(sources: Node | undefined) {
 
 type RollbackItem = {
 	signal: Signal;
-	evalContext: Computed | Effect;
+	node: Node;
 	next?: RollbackItem;
 };
 
 function rollback(item: RollbackItem | undefined) {
 	for (let rollback = item; rollback; rollback = rollback.next) {
-		rollback.signal._evalContext = rollback.evalContext;
+		rollback.signal._node = rollback.node;
 	}
 }
 
@@ -90,7 +90,7 @@ export function batch<T>(callback: () => T): T {
 	}
 }
 
-// A list for rolling back source's ._evalContext values after a target has been evaluated.
+// A list for rolling back source's ._node values after a target has been evaluated.
 let currentRollback: RollbackItem | undefined = undefined;
 // Currently evaluated computed or effect.
 let evalContext: Computed | Effect | undefined = undefined;
@@ -106,22 +106,24 @@ let batchIteration = 0;
 let globalVersion = 0;
 
 function getValue<T>(signal: Signal<T>): T {
-	let node: Node | undefined = undefined;
-	if (evalContext !== undefined && signal._evalContext !== evalContext) {
-		node = { signal: signal, target: evalContext, version: 0 };
-		if (signal._evalContext) {
-			currentRollback = { signal: signal, evalContext: signal._evalContext, next: currentRollback, };
+	let node = signal._node;
+	if (evalContext && (!node || node.target !== evalContext)) {
+		if (node) {
+			currentRollback = { signal: signal, node: node, next: currentRollback };
 		}
-		signal._evalContext = evalContext;
+
+		node = { signal: signal, nextSignal: evalContext._sources, target: evalContext, version: 0 };
+		evalContext._sources = node;
+		signal._node = node;
 
 		if (subscribeDepth > 0) {
 			signal._subscribe(node);
 		}
+	} else {
+		node = undefined;
 	}
 	const value = signal.peek();
 	if (evalContext && node) {
-		node.nextSignal = evalContext._sources;
-		evalContext._sources = node;
 		node.version = node.signal._version;
 	}
 	return value;
@@ -135,7 +137,7 @@ export class Signal<T = any> {
 	_version = 0;
 
 	/** @internal */
-	_evalContext?: Computed | Effect = undefined;
+	_node?: Node = undefined;
 
 	/** @internal */
 	_targets?: Node = undefined;
@@ -303,29 +305,36 @@ export class Computed<T = any> extends Signal<T> {
 		try {
 			evalContext = this;
 			currentRollback = undefined;
-
-			this._computing = true;
-			this._sources = undefined;
-
 			if (targets) {
 				// Computed signals with current targets should automatically subscribe to
 				// new dependencies it uses in the compute function.
 				subscribeDepth++;
 			}
+
+			this._sources = undefined;
+			this._computing = true;
 			value = this._compute();
 		} catch (err: unknown) {
 			valueIsError = true;
 			value = err;
 		} finally {
+			this._computing = false;
+
+			let node = oldSources;
+			while (node) {
+				const next = node.nextSignal;
+				node.signal._unsubscribe(node);
+				node.nextSignal = undefined;
+				node = next;
+			}
+			for (let node = this._sources; node; node = node.nextSignal) {
+				node.signal._node = undefined;
+			}
+			rollback(currentRollback);
+
 			if (targets) {
 				subscribeDepth--;
 			}
-			unsubscribeFromAll(oldSources);
-			for (let node = this._sources; node; node = node.nextSignal) {
-				node.signal._evalContext = undefined;
-			}
-			rollback(currentRollback);
-			this._computing = false;
 			evalContext = prevContext;
 			currentRollback = prevRollback;
 		}
@@ -369,22 +378,29 @@ class Effect {
 		const oldSources = this._sources;
 		const prevContext = evalContext;
 		const prevRollback = currentRollback;
-		subscribeDepth++;
 
 		evalContext = this;
 		currentRollback = undefined;
+		subscribeDepth++;
+
 		this._sources = undefined;
 		return this._end.bind(this, oldSources, prevContext, prevRollback);
 	}
 
 	_end(oldSources?: Node, prevContext?: Computed | Effect, prevRollback?: RollbackItem) {
-		subscribeDepth--;
-		unsubscribeFromAll(oldSources);
+		let node = oldSources;
+		while (node) {
+			const next = node.nextSignal;
+			node.signal._unsubscribe(node);
+			node.nextSignal = undefined;
+			node = next;
+		}
 		for (let node = this._sources; node; node = node.nextSignal) {
-			node.signal._evalContext = undefined;
+			node.signal._node = undefined;
 		}
 		rollback(currentRollback);
 
+		subscribeDepth--;
 		evalContext = prevContext;
 		currentRollback = prevRollback;
 		endBatch();
