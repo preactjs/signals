@@ -34,7 +34,7 @@
 	},
 	"mangle": "../../mangle.json",
 	"scripts": {
-		"prepublishOnly": "cd ../.. && pnpm build:react"
+		"prepublishOnly": "cd ../.. && pnpm build:react && pnpm rewriteReadmes"
 	},
 	"dependencies": {
 		"@preact/signals-core": "workspace:^1.0.0"
