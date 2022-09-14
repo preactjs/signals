@@ -2,9 +2,7 @@
 let currentSignal: Signal | undefined;
 let commitError: Error | null = null;
 
-const pending = new Set<Signal>();
-/** Batch calls can be nested. 0 means that there is no batching */
-let batchPending = 0;
+let batchPending: Set<Signal> | null = null;
 
 let oldDeps = new Set<Signal>();
 
@@ -71,25 +69,15 @@ export class Signal<T = any> {
 
 		if (this._value !== value) {
 			this._value = value;
-			let isFirst = pending.size === 0;
-			pending.add(this);
-			// in batch mode this signal may be marked already
-			if (this._pending === 0) {
-				mark(this);
-			}
 
-			// this is the first change, not a computed and we are not
-			// in batch mode:
-			if (isFirst && batchPending === 0) {
-				sweep(pending);
-				pending.clear();
-				if (commitError) {
-					const err = commitError;
-					// Clear global error flag for next commit
-					commitError = null;
-					throw err;
+			batch(() => {
+				batchPending!.add(this);
+
+				// in batch mode this signal may be marked already
+				if (this._pending === 0) {
+					mark(this);
 				}
-			}
+			});
 		}
 	}
 
@@ -205,7 +193,10 @@ const tmpPending: Signal[] = [];
  * we don't have to care about topological sorting.
  */
 function refreshStale(signal: Signal) {
-	pending.delete(signal);
+	if (batchPending) {
+		batchPending.delete(signal);
+	}
+
 	signal._pending = 0;
 	signal._updater();
 	if (commitError) {
@@ -270,20 +261,34 @@ export function effect(callback: () => void) {
 }
 
 export function batch<T>(cb: () => T): T {
-	batchPending++;
-	try {
+	if (batchPending !== null) {
 		return cb();
-	} finally {
-		// Since stale signals are refreshed upwards, we need to
-		// add pending signals in reverse
-		let item: Signal | undefined;
-		while ((item = tmpPending.pop()) !== undefined) {
-			pending.add(item);
-		}
 
-		if (--batchPending === 0) {
+	} else {
+		const pending: Set<Signal> = new Set();
+
+		batchPending = pending;
+
+		try {
+			return cb();
+
+		} finally {
+			// Since stale signals are refreshed upwards, we need to
+			// add pending signals in reverse
+			let item: Signal | undefined;
+			while ((item = tmpPending.pop()) !== undefined) {
+				pending.add(item);
+			}
+
+			batchPending = null;
+
 			sweep(pending);
-			pending.clear();
+			if (commitError) {
+				const err = commitError;
+				// Clear global error flag for next commit
+				commitError = null;
+				throw err;
+			}
 		}
 	}
 }
