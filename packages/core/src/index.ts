@@ -24,7 +24,7 @@ function unsubscribeFromAll(sources: Node | undefined) {
 
 type RollbackItem = {
 	signal: Signal;
-	evalContext?: Computed | Effect | undefined;
+	evalContext: Computed | Effect;
 	next?: RollbackItem;
 };
 
@@ -109,11 +109,9 @@ function getValue<T>(signal: Signal<T>): T {
 	let node: Node | undefined = undefined;
 	if (evalContext !== undefined && signal._evalContext !== evalContext) {
 		node = { signal: signal, target: evalContext, version: 0 };
-		currentRollback = {
-			signal: signal,
-			evalContext: signal._evalContext,
-			next: currentRollback,
-		};
+		if (signal._evalContext) {
+			currentRollback = { signal: signal, evalContext: signal._evalContext, next: currentRollback, };
+		}
 		signal._evalContext = evalContext;
 
 		if (subscribeDepth > 0) {
@@ -323,6 +321,9 @@ export class Computed<T = any> extends Signal<T> {
 				subscribeDepth--;
 			}
 			unsubscribeFromAll(oldSources);
+			for (let node = this._sources; node; node = node.nextSignal) {
+				node.signal._evalContext = undefined;
+			}
 			rollback(currentRollback);
 			this._computing = false;
 			evalContext = prevContext;
@@ -379,6 +380,9 @@ class Effect {
 	_end(oldSources?: Node, prevContext?: Computed | Effect, prevRollback?: RollbackItem) {
 		subscribeDepth--;
 		unsubscribeFromAll(oldSources);
+		for (let node = this._sources; node; node = node.nextSignal) {
+			node.signal._evalContext = undefined;
+		}
 		rollback(currentRollback);
 
 		evalContext = prevContext;
