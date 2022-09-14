@@ -36,13 +36,13 @@ function endBatch() {
 	let error: unknown;
 	let hasError = false;
 
-	while (batchedEffect) {
+	while (batchedEffect !== undefined) {
 		let effect: Effect | undefined = batchedEffect;
 		batchedEffect = undefined;
 
 		batchIteration++;
 
-		while (effect) {
+		while (effect !== undefined) {
 			const next: Effect | undefined = effect._nextEffect;
 			effect._nextEffect = undefined;
 			effect._batched = false;
@@ -92,9 +92,9 @@ let globalVersion = 0;
 
 function getValue<T>(signal: Signal<T>): T {
 	let node: Node | undefined = undefined;
-	if (evalContext) {
+	if (evalContext !== undefined) {
 		node = signal._node;
-		if (!node || node.target !== evalContext) {
+		if (node === undefined || node.target !== evalContext) {
 			node = { signal: signal, nextSignal: evalContext._sources, target: evalContext, version: 0, used: true, rollbackNode: node };
 			evalContext._sources = node;
 			signal._node = node;
@@ -111,7 +111,7 @@ function getValue<T>(signal: Signal<T>): T {
 	try {
 		return signal.peek();
 	} finally {
-		if (node) {
+		if (node !== undefined) {
 			node.version = signal._version;
 		}
 	}
@@ -136,7 +136,7 @@ export class Signal<T = any> {
 
 	/** @internal */
 	_subscribe(node: Node): void {
-		if (this._targets) {
+		if (this._targets !== undefined) {
 			this._targets.prevTarget = node;
 		}
 		node.nextTarget = this._targets;
@@ -150,10 +150,10 @@ export class Signal<T = any> {
 		const next = node.nextTarget;
 		node.prevTarget = undefined;
 		node.nextTarget = undefined;
-		if (prev) {
+		if (prev !== undefined) {
 			prev.nextTarget = next;
 		}
-		if (next) {
+		if (next !== undefined) {
 			next.prevTarget = prev;
 		}
 		if (node === this._targets) {
@@ -189,7 +189,7 @@ export class Signal<T = any> {
 
 			/**@__INLINE__*/ startBatch();
 			try {
-				for (let node = this._targets; node; node = node.nextTarget) {
+				for (let node = this._targets; node !== undefined; node = node.nextTarget) {
 					node.target._invalidate();
 				}
 			} finally {
@@ -204,9 +204,9 @@ export function signal<T>(value: T): Signal<T> {
 }
 
 function prepareSources(target: Computed | Effect) {
-	for (let node = target._sources; node; node = node.nextSignal) {
+	for (let node = target._sources; node !== undefined; node = node.nextSignal) {
 		const rollbackNode = node.signal._node;
-		if (rollbackNode) {
+		if (rollbackNode !== undefined) {
 			node.rollbackNode = rollbackNode;
 		}
 		node.signal._node = node;
@@ -217,7 +217,7 @@ function prepareSources(target: Computed | Effect) {
 function cleanupSources(target: Computed | Effect) {
 	let sources = undefined;
 	let node = target._sources;
-	while (node) {
+	while (node !== undefined) {
 		const next = node.nextSignal;
 		if (node.used) {
 			node.nextSignal = sources;
@@ -228,7 +228,7 @@ function cleanupSources(target: Computed | Effect) {
 		}
 
 		node.signal._node = node.rollbackNode;
-		if (node.rollbackNode) {
+		if (node.rollbackNode !== undefined) {
 			node.rollbackNode = undefined;
 		}
 		node = next;
@@ -259,11 +259,11 @@ export class Computed<T = any> extends Signal<T> {
 	}
 
 	_subscribe(node: Node) {
-		if (!this._targets) {
+		if (this._targets === undefined) {
 			// A computed signal subscribes lazily to its dependencies when
 			// the computed signal gets its first subscriber.
 			this._valid = false;
-			for (let node = this._sources; node; node = node.nextSignal) {
+			for (let node = this._sources; node !== undefined; node = node.nextSignal) {
 				node.signal._subscribe(node);
 			}
 		}
@@ -273,8 +273,8 @@ export class Computed<T = any> extends Signal<T> {
 	_unsubscribe(node: Node) {
 		// When a computed signal loses its last subscriber it also unsubscribes
 		// from its own dependencies.
-		if (!this._targets) {
-			for (let node = this._sources; node; node = node.nextSignal) {
+		if (this._targets === undefined) {
+			for (let node = this._sources; node !== undefined; node = node.nextSignal) {
 				node.signal._unsubscribe(node);
 			}
 		}
@@ -284,7 +284,7 @@ export class Computed<T = any> extends Signal<T> {
 	_invalidate() {
 		if (this._valid) {
 			this._valid = false;
-			for (let node = this._targets; node; node = node.nextTarget) {
+			for (let node = this._targets; node !== undefined; node = node.nextTarget) {
 				node.target._invalidate();
 			}
 		}
@@ -297,20 +297,20 @@ export class Computed<T = any> extends Signal<T> {
 		if (this._globalVersion === globalVersion) {
 			return returnComputed(this);
 		}
-		if (this._targets && this._valid) {
+		if (this._valid && this._targets !== undefined) {
 			return returnComputed(this);
 		}
 
 		if (this._version > 0) {
 			let node = this._sources;
-			while (node) {
+			while (node !== undefined) {
 				node.signal.peek();
 				if (node.signal._version !== node.version) {
 					break;
 				}
 				node = node.nextSignal;
 			}
-			if (!node) {
+			if (node === undefined) {
 				return returnComputed(this);
 			}
 		}
@@ -322,7 +322,7 @@ export class Computed<T = any> extends Signal<T> {
 		const prevContext = evalContext;
 		try {
 			evalContext = this;
-			if (targets) {
+			if (targets !== undefined) {
 				// Computed signals with current targets should automatically subscribe to
 				// new dependencies it uses in the compute function.
 				subscribeDepth++;
@@ -339,7 +339,7 @@ export class Computed<T = any> extends Signal<T> {
 			this._computing = false;
 
 			cleanupSources(this);
-			if (targets) {
+			if (targets !== undefined) {
 				subscribeDepth--;
 			}
 			evalContext = prevContext;
@@ -408,7 +408,7 @@ class Effect {
 	}
 
 	_dispose() {
-		for (let node = this._sources; node; node = node.nextSignal) {
+		for (let node = this._sources; node !== undefined; node = node.nextSignal) {
 			node.signal._unsubscribe(node);
 		}
 		this._sources = undefined;
