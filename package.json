@@ -21,7 +21,8 @@
 		"docs:build": "cd docs && pnpm build",
 		"docs:preview": "cd docs && pnpm preview",
 		"ci:build": "pnpm build && pnpm docs:build",
-		"ci:test": "pnpm lint && pnpm test"
+		"ci:test": "pnpm lint && pnpm test",
+		"release": "pnpm changeset version && pnpm install && git add -A && git commit -m 'Version Packages' && changeset tag && pnpm publish -r"
 	},
 	"keywords": [],
 	"author": "",
