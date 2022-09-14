@@ -182,6 +182,34 @@ describe("computed()", () => {
 		expect(c.value).to.equal("aab");
 	});
 
+	it("should be lazily computed on demand", () => {
+		const a = signal("a");
+		const b = signal("b");
+		const spy = sinon.spy(() => a.value + b.value);
+		const c = computed(spy);
+		expect(spy).to.not.be.called;
+		c.value;
+		expect(spy).to.be.calledOnce;
+		a.value = "x";
+		b.value = "y";
+		expect(spy).to.be.calledOnce;
+		c.value;
+		expect(spy).to.be.calledTwice;
+	});
+
+	it("should computed only when dependency has changed at some point", () => {
+		const a = signal("a");
+		const spy = sinon.spy(() => {
+			return a.value;
+		});
+		const c = computed(spy);
+		c.value;
+		expect(spy).to.be.calledOnce;
+		a.value = "a";
+		c.value;
+		expect(spy).to.be.calledOnce;
+	});
+
 	it("should conditionally unsubscribe from signals", () => {
 		const a = signal("a");
 		const b = signal("b");
