@@ -304,7 +304,12 @@ export class Computed<T = any> extends Signal<T> {
 		if (this._version > 0) {
 			let node = this._sources;
 			while (node !== undefined) {
-				node.signal.peek();
+				try {
+					node.signal.peek();
+				} catch {
+					// Failures of previous dependencies shouldn't be rethrown here
+					// in case they're not dependencies anymore.
+				}
 				if (node.signal._version !== node.version) {
 					break;
 				}
@@ -345,7 +350,7 @@ export class Computed<T = any> extends Signal<T> {
 			evalContext = prevContext;
 		}
 
-		if (valueIsError || this._valueIsError || this._value !== value) {
+		if (valueIsError || this._valueIsError || this._value !== value || this._version === 0) {
 			this._value = value;
 			this._valueIsError = valueIsError;
 			this._version++;

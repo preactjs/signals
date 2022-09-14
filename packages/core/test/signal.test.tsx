@@ -210,6 +210,35 @@ describe("computed()", () => {
 		expect(spy).not.to.be.called;
 	});
 
+	it("should consider undefined value separate from uninitialized value", () => {
+		const a = signal(0);
+		const spy = sinon.spy(() => undefined);
+		const c = computed(spy);
+
+		expect(c.value).to.be.undefined;
+		a.value = 1;
+		expect(c.value).to.be.undefined;
+		expect(spy).to.be.calledOnce;
+	});
+
+	it("should not leak errors raised by dependencies", () => {
+		const a = signal(0);
+		const b = computed(() => {
+			a.value;
+			throw new Error("error");
+		});
+		const c = computed(() => {
+			try {
+				b.value;
+			} catch {
+				return "ok";
+			}
+		});
+		expect(c.value).to.equal("ok");
+		a.value = 1;
+		expect(c.value).to.equal("ok");
+	});
+
 	describe("graph updates", () => {
 		it("should run computeds once for multiple dep changes", async () => {
 			const a = signal("a");
