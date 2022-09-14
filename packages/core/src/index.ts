@@ -17,12 +17,10 @@ type Node = {
 
 	// Whether the target is currently depending the signal.
 	used: boolean;
-};
 
-type RollbackItem = {
-	signal: Signal;
-	node: Node;
-	next?: RollbackItem;
+	// Used to remember & roll back signal's previous `._node` value when entering & exiting
+	// a new evaluation context.
+	rollbackNode?: Node;
 };
 
 function startBatch() {
@@ -79,8 +77,6 @@ export function batch<T>(callback: () => T): T {
 	}
 }
 
-// A list for rolling back source's ._node values after a target has been evaluated.
-let currentRollback: RollbackItem | undefined = undefined;
 // Currently evaluated computed or effect.
 let evalContext: Computed | Effect | undefined = undefined;
 // Used for keeping track whether the current evaluation context should automatically
@@ -99,10 +95,7 @@ function getValue<T>(signal: Signal<T>): T {
 	if (evalContext) {
 		node = signal._node;
 		if (!node || node.target !== evalContext) {
-			if (node) {
-				currentRollback = { signal: signal, node: node, next: currentRollback };
-			}
-			node = { signal: signal, nextSignal: evalContext._sources, target: evalContext, version: 0, used: true };
+			node = { signal: signal, nextSignal: evalContext._sources, target: evalContext, version: 0, used: true, rollbackNode: node };
 			evalContext._sources = node;
 			signal._node = node;
 
@@ -212,11 +205,11 @@ export function signal<T>(value: T): Signal<T> {
 
 function prepareSources(target: Computed | Effect) {
 	for (let node = target._sources; node; node = node.nextSignal) {
-		const signal = node.signal;
-		if (signal._node) {
-			currentRollback = { signal: signal, node: signal._node, next: currentRollback };
+		const rollbackNode = node.signal._node;
+		if (rollbackNode) {
+			node.rollbackNode = rollbackNode;
 		}
-		signal._node = node;
+		node.signal._node = node;
 		node.used = false;
 	}
 }
@@ -233,14 +226,14 @@ function cleanupSources(target: Computed | Effect) {
 			node.signal._unsubscribe(node);
 			node.nextSignal = undefined;
 		}
-		node.signal._node = undefined;
+
+		node.signal._node = node.rollbackNode;
+		if (node.rollbackNode) {
+			node.rollbackNode = undefined;
+		}
 		node = next;
 	}
 	target._sources = sources;
-
-	for (let rollback = currentRollback; rollback; rollback = rollback.next) {
-		rollback.signal._node = rollback.node;
-	}
 }
 
 function returnComputed<T>(computed: Computed<T>): T {
@@ -327,10 +320,8 @@ export class Computed<T = any> extends Signal<T> {
 
 		const targets = this._targets;
 		const prevContext = evalContext;
-		const prevRollback = currentRollback;
 		try {
 			evalContext = this;
-			currentRollback = undefined;
 			if (targets) {
 				// Computed signals with current targets should automatically subscribe to
 				// new dependencies it uses in the compute function.
@@ -352,7 +343,6 @@ export class Computed<T = any> extends Signal<T> {
 				subscribeDepth--;
 			}
 			evalContext = prevContext;
-			currentRollback = prevRollback;
 		}
 
 		if (valueIsError || this._valueIsError || this._value !== value) {
@@ -393,22 +383,19 @@ class Effect {
 	_start() {
 		/*@__INLINE__**/ startBatch();
 		const prevContext = evalContext;
-		const prevRollback = currentRollback;
 
 		evalContext = this;
-		currentRollback = undefined;
 		subscribeDepth++;
 
 		prepareSources(this);
-		return this._end.bind(this, prevContext, prevRollback);
+		return this._end.bind(this, prevContext);
 	}
 
-	_end(prevContext?: Computed | Effect, prevRollback?: RollbackItem) {
+	_end(prevContext?: Computed | Effect) {
 		cleanupSources(this);
 
 		subscribeDepth--;
 		evalContext = prevContext;
-		currentRollback = prevRollback;
 		endBatch();
 	}
 
