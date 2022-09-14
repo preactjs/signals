@@ -1,0 +1,24 @@
+{
+  "name": "preact/signals",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "eslint.format.enable": true,
+        "explorer.excludeGitIgnore": true,
+        "[javascript][javascriptreact][typescript][typescriptreact]": {
+          "editor.defaultFormatter": "dbaeumer.vscode-eslint"
+        }
+      },
+      "extensions":[
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode"
+      ]
+    }
+  },
+  "postCreateCommand": "pnpm i",
+  "remoteUser": "node"
+}
