@@ -53,36 +53,6 @@ function createUpdater(updater: () => void) {
 	return s;
 }
 
-// Get a (cached) Signal property updater for an element VNode
-function getElementUpdater(vnode: VNode) {
-	let updater = updaterForComponent.get(vnode) as ElementUpdater;
-	if (!updater) {
-		let signalProps: Array<{ _key: string; _signal: Signal }> = [];
-		updater = createUpdater(() => {
-			let dom = vnode.__e as Element;
-
-			for (let i = 0; i < signalProps.length; i++) {
-				let { _key: prop, _signal: signal } = signalProps[i];
-				let value = signal._value;
-				if (!dom) return;
-				if (prop in dom) {
-					// @ts-ignore-next-line silly
-					dom[prop] = value;
-				} else if (value) {
-					dom.setAttribute(prop, value);
-				} else {
-					dom.removeAttribute(prop);
-				}
-			}
-		}) as ElementUpdater;
-		updater._props = signalProps;
-		updaterForComponent.set(vnode, updater);
-	} else {
-		updater._props.length = 0;
-	}
-	return updater;
-}
-
 /** @todo This may be needed for complex prop value detection. */
 // function isSignalValue(value: any): value is Signal {
 // 	if (typeof value !== "object" || value == null) return false;
@@ -148,34 +118,19 @@ Object.defineProperties(Signal.prototype, {
 /** Inject low-level property/attribute bindings for Signals into Preact's diff */
 hook(OptionsTypes.DIFF, (old, vnode) => {
 	if (typeof vnode.type === "string") {
-		// let orig = vnode.__o || vnode;
-		let props = vnode.props;
-		let updater;
+		let signalProps: Record<string, any> | undefined;
 
+		let props = vnode.props;
 		for (let i in props) {
-			let value = props[i];
 			if (i === "children") continue;
 
+			let value = props[i];
 			if (value instanceof Signal) {
-				// first Signal prop triggers creation/cleanup of the updater:
-				if (!updater) updater = getElementUpdater(vnode);
-				// track which props are Signals for precise updates:
-				updater._props.push({ _key: i, _signal: value });
-				let newUpdater = updater._updater;
-				if (value._updater) {
-					let oldUpdater = value._updater;
-					value._updater = () => {
-						newUpdater();
-						oldUpdater();
-					};
-				} else {
-					value._updater = newUpdater;
-				}
+				if (!signalProps) vnode.__np = signalProps = {};
+				signalProps[i] = value;
 				props[i] = value.peek();
 			}
 		}
-
-		setCurrentUpdater(updater);
 	}
 
 	old(vnode);
@@ -215,19 +170,77 @@ hook(OptionsTypes.CATCH_ERROR, (old, error, vnode, oldVNode) => {
 hook(OptionsTypes.DIFFED, (old, vnode) => {
 	setCurrentUpdater();
 	currentComponent = undefined;
+
+	let dom: Element;
+	let updater: ElementUpdater;
+
+	// vnode._dom is undefined during string rendering,
+	// so we use this to skip prop subscriptions during SSR.
+	if (typeof vnode.type === "string" && (dom = vnode.__e as Element)) {
+		let props = vnode.__np;
+		if (props) {
+			// @ts-ignore-next
+			updater = dom._updater;
+			if (!updater) {
+				updater = createElementUpdater(dom);
+				// @ts-ignore-next
+				dom._updater = updater;
+			}
+			updater!._props = props;
+			setCurrentUpdater(updater);
+			// @ts-ignore-next we're adding an argument here
+			updater._updater(true);
+		}
+	}
 	old(vnode);
 });
 
+// per-element updater for 1+ signal bindings
+function createElementUpdater(dom: Element) {
+	const cache: Record<string, any> = { __proto__: null };
+	const updater = createUpdater((skip?: boolean) => {
+		const props = updater._props;
+		for (let prop in props) {
+			if (prop === "children") continue;
+			let signal = props[prop];
+			if (signal instanceof Signal) {
+				let value = signal.value;
+				let cached = cache[prop];
+				cache[prop] = value;
+				if (skip === true || cached === value) {
+					// this is just a subscribe run, not an update
+				} else if (prop in dom) {
+					// @ts-ignore-next-line silly
+					dom[prop] = value;
+				} else if (value) {
+					dom.setAttribute(prop, value);
+				} else {
+					dom.removeAttribute(prop);
+				}
+			}
+		}
+	}) as ElementUpdater;
+	return updater;
+}
+
 /** Unsubscribe from Signals when unmounting components/vnodes */
 hook(OptionsTypes.UNMOUNT, (old, vnode: VNode) => {
-	let thing = vnode.__c || vnode;
-	const updater = updaterForComponent.get(thing);
+	let component = vnode.__c;
+	const updater = component && updaterForComponent.get(component);
 	if (updater) {
-		updaterForComponent.delete(thing);
-		const signals = updater._deps;
-		if (signals) {
-			signals.forEach(signal => signal._subs.delete(updater));
-			signals.clear();
+		updaterForComponent.delete(component);
+		updater._setCurrent()(true, true);
+	}
+
+	if (typeof vnode.type === "string") {
+		const dom = vnode.__e as Element;
+
+		// @ts-ignore-next
+		const updater = dom._updater;
+		if (updater) {
+			updater._setCurrent()(true, true);
+			// @ts-ignore-next
+			dom._updater = null;
 		}
 	}
 	old(vnode);

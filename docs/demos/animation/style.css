@@ -1,0 +1,49 @@
+.animation {
+	position: absolute;
+	left: 0;
+	top: 52px;
+	bottom: 0;
+	width: 100%;
+	background: #222;
+	color: #888;
+	text-rendering: optimizeSpeed;
+	touch-action: none;
+	overflow: hidden;
+}
+
+.circle {
+	position: absolute;
+	left: 0;
+	top: 0;
+	width: 8px;
+	height: 8px;
+	margin: -5px 0 0 -5px;
+	border: 2px solid #f00;
+	border-radius: 50%;
+	transform-origin: 50% 50%;
+	transition: all 250ms ease;
+	transition-property: width, height, margin;
+	pointer-events: none;
+	overflow: hidden;
+	font-size: 9px;
+	line-height: 25px;
+	text-indent: 15px;
+	white-space: nowrap;
+
+	&.label {
+		overflow: visible;
+	}
+
+	&.big {
+		width: 24px;
+		height: 24px;
+		margin: -13px 0 0 -13px;
+	}
+
+	& > .label {
+		position: absolute;
+		left: 0;
+		top: 0;
+		z-index: 10;
+	}
+}

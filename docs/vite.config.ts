@@ -21,12 +21,21 @@ function packages(prod: boolean) {
 
 export default defineConfig(env => ({
 	plugins: [
-		preact({
-			exclude: /\breact/,
-		}),
+		process.env.DEBUG
+			? preact({
+					exclude: /\breact/,
+			  })
+			: null,
 		multiSpa(["index.html", "demos/**/*.html"]),
 		unsetPreactAliases(),
 	],
+	esbuild: {
+		jsx: "automatic",
+		jsxImportSource: "preact",
+	},
+	optimizeDeps: {
+		include: ["preact/jsx-runtime", "preact/jsx-dev-runtime"],
+	},
 	build: {
 		polyfillModulePreload: false,
 		cssCodeSplit: false,
