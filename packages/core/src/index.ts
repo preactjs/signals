@@ -309,7 +309,7 @@ function returnComputed<T>(computed: Computed<T>): T {
 	return computed._value as T;
 }
 
-export class Computed<T = any> extends Signal<T> {
+class Computed<T = any> extends Signal<T> {
 	_compute: () => T;
 	_sources?: Node = undefined;
 	_globalVersion = globalVersion - 1;
