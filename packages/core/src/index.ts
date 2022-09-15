@@ -190,7 +190,7 @@ export class Signal<T = any> {
 			/**@__INLINE__*/ startBatch();
 			try {
 				for (let node = this._targets; node !== undefined; node = node.nextTarget) {
-					node.target._invalidate();
+					node.target._notify();
 				}
 			} finally {
 				endBatch();
@@ -237,13 +237,13 @@ function cleanupSources(target: Computed | Effect) {
 }
 
 const enum ComputedState {
-	Invalidated,
-	Revalidate,
-	Valid
+	Notified,
+	Stale,
+	Ok
 }
 
 function returnComputed<T>(computed: Computed<T>): T {
-	computed._state = ComputedState.Valid;
+	computed._state = ComputedState.Ok;
 	computed._globalVersion = globalVersion;
 	if (computed._valueIsError) {
 		throw computed._value;
@@ -255,7 +255,7 @@ export class Computed<T = any> extends Signal<T> {
 	_compute: () => T;
 	_sources?: Node = undefined;
 	_computing = false;
-	_state = ComputedState.Revalidate;
+	_state = ComputedState.Stale;
 	_valueIsError = false;
 	_globalVersion = globalVersion - 1;
 
@@ -267,7 +267,7 @@ export class Computed<T = any> extends Signal<T> {
 	_subscribe(node: Node) {
 		if (this._targets === undefined) {
 			// The computed value may be up to date, or not.
-			this._state = ComputedState.Revalidate;
+			this._state = ComputedState.Stale;
 
 			// A computed signal subscribes lazily to its dependencies when the computed
 			// signal gets its first subscriber.
@@ -290,13 +290,13 @@ export class Computed<T = any> extends Signal<T> {
 		}
 	}
 
-	_invalidate() {
-		if (this._state !== ComputedState.Invalidated) {
+	_notify() {
+		if (this._state !== ComputedState.Notified) {
 			// Mark the computed value as definitely out of date.
-			this._state = ComputedState.Invalidated;
+			this._state = ComputedState.Notified;
 
 			for (let node = this._targets; node !== undefined; node = node.nextTarget) {
-				node.target._invalidate();
+				node.target._notify();
 			}
 		}
 	}
@@ -308,7 +308,7 @@ export class Computed<T = any> extends Signal<T> {
 		if (this._globalVersion === globalVersion) {
 			return returnComputed(this);
 		}
-		if (this._state === ComputedState.Valid && this._targets !== undefined) {
+		if (this._state === ComputedState.Ok && this._targets !== undefined) {
 			return returnComputed(this);
 		}
 
@@ -418,7 +418,7 @@ class Effect {
 		return endEffect.bind(this, prevContext);
 	}
 
-	_invalidate() {
+	_notify() {
 		if (!this._batched) {
 			this._batched = true;
 			this._nextEffect = batchedEffect;
