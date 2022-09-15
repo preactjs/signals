@@ -326,6 +326,41 @@ describe("computed()", () => {
 		expect(spy).to.be.calledOnce;
 	});
 
+	it("should not recompute dependencies out of order", () => {
+		const a = signal(1);
+		const b = signal(1);
+		const c = signal(1);
+
+		const spy = sinon.spy(() => c.value);
+		const d = computed(spy);
+
+		const e = computed(() => {
+			if (a.value > 0) {
+				b.value;
+				d.value;
+			} else {
+				b.value;
+			}
+		});
+
+		e.value;
+		spy.resetHistory()
+
+		a.value = 2;
+		b.value = 2;
+		c.value = 2;
+		e.value;
+		expect(spy).to.be.calledOnce;
+		spy.resetHistory()
+
+		a.value = -1;
+		b.value = -1;
+		c.value = -1;
+		e.value;
+		expect(spy).not.to.be.called;
+		spy.resetHistory()
+	});
+
 	describe("graph updates", () => {
 		it("should run computeds once for multiple dep changes", async () => {
 			const a = signal("a");

@@ -12,6 +12,7 @@ const HAS_ERROR = 1 << 3;
 type Node = {
 	// A source whose value the target depends on.
 	signal: Signal;
+	prevSignal?: Node;
 	nextSignal?: Node;
 
 	// A target that depends on the source and should be notified when the source changes.
@@ -104,16 +105,51 @@ function getValue<T>(signal: Signal<T>): T {
 	if (evalContext !== undefined) {
 		node = signal._node;
 		if (node === undefined || node.target !== evalContext) {
-			node = { signal: signal, nextSignal: evalContext._sources, target: evalContext, version: 0, used: true, rollbackNode: node };
+			// `signal` is a new dependency. Create a new node dependency node, move it
+			//  to the front of the current context's dependency list.
+			node = {
+				signal: signal,
+				nextSignal: evalContext._sources,
+				target: evalContext,
+				version: 0,
+				used: true,
+				rollbackNode: node
+			};
 			evalContext._sources = node;
 			signal._node = node;
 
+			// Subscribe to change notifications from this dependency if we're in an effect
+			// OR evaluating a computed signal that in turn has subscribers.
 			if (subscribeDepth > 0) {
 				signal._subscribe(node);
 			}
 		} else if (!node.used) {
+			// `signal` is an existing dependency from a previous evaluation. Reuse the dependency
+			// node and move it to the front of the evaluation context's dependency list.
 			node.used = true;
+
+			const head = evalContext._sources;
+			if (node !== head) {
+				const prev = node.prevSignal;
+				const next = node.nextSignal;
+				if (prev) {
+					prev.nextSignal = next;
+				}
+				if (next) {
+					next.prevSignal = prev;
+				}
+				if (head !== undefined) {
+					head.prevSignal = node;
+				}
+				node.prevSignal = undefined;
+				node.nextSignal = head;
+				evalContext._sources = node;
+			}
+
+			// We can assume that the currently evaluated effect / computed signal is already
+			// subscribed to change notifications from `signal` if needed.
 		} else {
+			// `signal` is an existing dependency from current evaluation.
 			node = undefined;
 		}
 	}
@@ -224,11 +260,21 @@ function prepareSources(target: Computed | Effect) {
 }
 
 function cleanupSources(target: Computed | Effect) {
-	let sources = undefined;
+	// At this point target._sources is a mishmash of current & former dependencies.
+	// The current dependencies are also in a reverse order of use.
+	// Therefore build a new, reverted list of dependencies containing only the current
+	// dependencies in a proper order of use.
+	// Drop former dependencies from the list and unsubscribe from their change notifications.
+
 	let node = target._sources;
+	let sources = undefined;
 	while (node !== undefined) {
 		const next = node.nextSignal;
 		if (node.used) {
+			if (sources) {
+				sources.prevSignal = node;
+			}
+			node.prevSignal = undefined;
 			node.nextSignal = sources;
 			sources = node;
 		} else {
@@ -318,13 +364,19 @@ export class Computed<T = any> extends Signal<T> {
 		this._globalVersion = globalVersion;
 
 		if (this._version > 0) {
+			// Check current dependencies for changes. The dependency list is already in
+			// order of use. Therefore if >1 dependencies have changed only the first used one
+			// is re-evaluated at this point.
 			let node = this._sources;
 			while (node !== undefined) {
+				if (node.signal._version !== node.version) {
+					break;
+				}
 				try {
 					node.signal.peek();
 				} catch {
-					// Failures of previous dependencies shouldn't be rethrown here
-					// in case they're not dependencies anymore.
+					// Failures of current dependencies shouldn't be rethrown here in case the
+					// compute function catches them.
 				}
 				if (node.signal._version !== node.version) {
 					break;
