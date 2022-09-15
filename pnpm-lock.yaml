@@ -129,7 +129,7 @@ importers:
 
   packages/preact:
     specifiers:
-      '@preact/signals-core': workspace:^1.0.1
+      '@preact/signals-core': workspace:^1.1.1
       preact: 10.9.0
     dependencies:
       '@preact/signals-core': link:../core
@@ -138,7 +138,7 @@ importers:
 
   packages/react:
     specifiers:
-      '@preact/signals-core': workspace:^1.1.0
+      '@preact/signals-core': workspace:^1.1.1
       '@types/react': ^18.0.18
       '@types/react-dom': ^18.0.6
       react: ^18.2.0
