@@ -45,7 +45,7 @@ function endBatch() {
 		while (effect !== undefined) {
 			const next: Effect | undefined = effect._nextEffect;
 			effect._nextEffect = undefined;
-			effect._batched = false;
+			effect._notified = false;
 			try {
 				effect._callback();
 			} catch (err) {
@@ -236,15 +236,8 @@ function cleanupSources(target: Computed | Effect) {
 	target._sources = sources;
 }
 
-const enum ComputedState {
-	Notified,
-	Stale,
-	Ok
-}
-
 function returnComputed<T>(computed: Computed<T>): T {
-	computed._state = ComputedState.Ok;
-	computed._globalVersion = globalVersion;
+	computed._running = false;
 	if (computed._valueIsError) {
 		throw computed._value;
 	}
@@ -254,8 +247,9 @@ function returnComputed<T>(computed: Computed<T>): T {
 export class Computed<T = any> extends Signal<T> {
 	_compute: () => T;
 	_sources?: Node = undefined;
-	_computing = false;
-	_state = ComputedState.Stale;
+	_running = false;
+	_stale = true;
+	_notified = false;
 	_valueIsError = false;
 	_globalVersion = globalVersion - 1;
 
@@ -266,8 +260,7 @@ export class Computed<T = any> extends Signal<T> {
 
 	_subscribe(node: Node) {
 		if (this._targets === undefined) {
-			// The computed value may be up to date, or not.
-			this._state = ComputedState.Stale;
+			this._stale = true;
 
 			// A computed signal subscribes lazily to its dependencies when the computed
 			// signal gets its first subscriber.
@@ -291,9 +284,9 @@ export class Computed<T = any> extends Signal<T> {
 	}
 
 	_notify() {
-		if (this._state !== ComputedState.Notified) {
-			// Mark the computed value as definitely out of date.
-			this._state = ComputedState.Notified;
+		if (!this._notified) {
+			this._notified = true;
+			this._stale = true;
 
 			for (let node = this._targets; node !== undefined; node = node.nextTarget) {
 				node.target._notify();
@@ -302,15 +295,22 @@ export class Computed<T = any> extends Signal<T> {
 	}
 
 	peek(): T {
-		if (this._computing) {
+		this._notified = false;
+
+		if (this._running) {
 			throw new Error("Cycle detected");
 		}
+		this._running = true;
+
+		if (!this._stale && this._targets !== undefined) {
+			return returnComputed(this);
+		}
+		this._stale = false;
+
 		if (this._globalVersion === globalVersion) {
 			return returnComputed(this);
 		}
-		if (this._state === ComputedState.Ok && this._targets !== undefined) {
-			return returnComputed(this);
-		}
+		this._globalVersion = globalVersion;
 
 		if (this._version > 0) {
 			let node = this._sources;
@@ -343,17 +343,13 @@ export class Computed<T = any> extends Signal<T> {
 				// new dependencies it uses in the compute function.
 				subscribeDepth++;
 			}
-
 			prepareSources(this);
 
-			this._computing = true;
 			value = this._compute();
 		} catch (err) {
 			valueIsError = true;
 			value = err;
 		} finally {
-			this._computing = false;
-
 			cleanupSources(this);
 			if (targets !== undefined) {
 				subscribeDepth--;
@@ -370,7 +366,7 @@ export class Computed<T = any> extends Signal<T> {
 	}
 
 	get value(): T {
-		if (this._computing) {
+		if (this._running) {
 			throw new Error("Cycle detected");
 		}
 		return getValue(this);
@@ -400,7 +396,7 @@ function endEffect(this: Effect, prevContext?: Computed | Effect) {
 class Effect {
 	_callback: () => void;
 	_sources?: Node = undefined;
-	_batched = false;
+	_notified = false;
 	_nextEffect?: Effect = undefined;
 
 	constructor(callback: () => void) {
@@ -419,8 +415,8 @@ class Effect {
 	}
 
 	_notify() {
-		if (!this._batched) {
-			this._batched = true;
+		if (!this._notified) {
+			this._notified = true;
 			this._nextEffect = batchedEffect;
 			batchedEffect = this;
 		}
