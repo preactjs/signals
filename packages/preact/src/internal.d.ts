@@ -1,6 +1,21 @@
 import { Component } from "preact";
 import { Signal } from "@preact/signals-core";
 
+export interface Effect {
+	_sources: object | undefined;
+	_start(): () => void;
+	_callback(): void;
+	_dispose(): void;
+}
+
+export interface PropertyEffect extends Effect {
+	_callback(newSignal?: Signal): void;
+}
+
+export interface AugmentedElement extends HTMLElement {
+	_updaters?: Record<string, PropertyEffect | undefined> | null;
+}
+
 export interface VNode<P = any> extends preact.VNode<P> {
 	/** The component instance for this VNode */
 	__c: Component;
@@ -15,12 +30,6 @@ export interface VNode<P = any> extends preact.VNode<P> {
 export interface ComponentType extends Component {
 	/** This component's owner VNode */
 	__v: VNode;
-}
-
-export type Updater = Signal<unknown>;
-
-export interface ElementUpdater extends Updater {
-	_props: Record<string, any>;
 }
 
 export const enum OptionsTypes {
