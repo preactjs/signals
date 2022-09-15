@@ -2,6 +2,11 @@ function cycleDetected() {
 	throw new Error("Cycle detected");
 }
 
+const RUNNING = 1 << 0;
+const STALE = 1 << 1;
+const NOTIFIED = 1 << 2;
+const HAS_ERROR = 1 << 3;
+
 // A linked list node used to track dependencies (sources) and dependents (targets).
 // Also used to remember the source's last version number that the target saw.
 type Node = {
@@ -241,8 +246,8 @@ function cleanupSources(target: Computed | Effect) {
 }
 
 function returnComputed<T>(computed: Computed<T>): T {
-	computed._running = false;
-	if (computed._valueIsError) {
+	computed._flags &= ~RUNNING;
+	if (computed._flags & HAS_ERROR) {
 		throw computed._value;
 	}
 	return computed._value as T;
@@ -251,11 +256,8 @@ function returnComputed<T>(computed: Computed<T>): T {
 export class Computed<T = any> extends Signal<T> {
 	_compute: () => T;
 	_sources?: Node = undefined;
-	_running = false;
-	_stale = true;
-	_notified = false;
-	_valueIsError = false;
 	_globalVersion = globalVersion - 1;
+	_flags = STALE;
 
 	constructor(compute: () => T) {
 		super(undefined);
@@ -264,7 +266,7 @@ export class Computed<T = any> extends Signal<T> {
 
 	_subscribe(node: Node) {
 		if (this._targets === undefined) {
-			this._stale = true;
+			this._flags |= STALE;
 
 			// A computed signal subscribes lazily to its dependencies when the computed
 			// signal gets its first subscriber.
@@ -288,9 +290,8 @@ export class Computed<T = any> extends Signal<T> {
 	}
 
 	_notify() {
-		if (!this._notified) {
-			this._notified = true;
-			this._stale = true;
+		if (!(this._flags & NOTIFIED)) {
+			this._flags |= STALE | NOTIFIED;
 
 			for (let node = this._targets; node !== undefined; node = node.nextTarget) {
 				node.target._notify();
@@ -299,17 +300,17 @@ export class Computed<T = any> extends Signal<T> {
 	}
 
 	peek(): T {
-		this._notified = false;
+		this._flags &= ~NOTIFIED;
 
-		if (this._running) {
+		if (this._flags & RUNNING) {
 			cycleDetected();
 		}
-		this._running = true;
+		this._flags |= RUNNING;
 
-		if (!this._stale && this._targets !== undefined) {
+		if (!(this._flags & STALE) && this._targets !== undefined) {
 			return returnComputed(this);
 		}
-		this._stale = false;
+		this._flags &= ~STALE;
 
 		if (this._globalVersion === globalVersion) {
 			return returnComputed(this);
@@ -361,16 +362,20 @@ export class Computed<T = any> extends Signal<T> {
 			evalContext = prevContext;
 		}
 
-		if (valueIsError || this._valueIsError || this._value !== value || this._version === 0) {
+		if (valueIsError || (this._flags & HAS_ERROR) || this._value !== value || this._version === 0) {
+			if (valueIsError) {
+				this._flags |= HAS_ERROR;
+			} else {
+				this._flags &= ~HAS_ERROR;
+			}
 			this._value = value;
-			this._valueIsError = valueIsError;
 			this._version++;
 		}
 		return returnComputed(this);
 	}
 
 	get value(): T {
-		if (this._running) {
+		if (this._flags & RUNNING) {
 			cycleDetected();
 		}
 		return getValue(this);
