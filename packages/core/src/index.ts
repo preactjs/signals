@@ -7,31 +7,34 @@ const STALE = 1 << 1;
 const NOTIFIED = 1 << 2;
 const HAS_ERROR = 1 << 3;
 const SHOULD_SUBSCRIBE = 1 << 4;
+const SUBSCRIBED = 1 << 5;
 
 // A linked list node used to track dependencies (sources) and dependents (targets).
 // Also used to remember the source's last version number that the target saw.
 type Node = {
+	// A node may have the following flags:
+	//  SUBSCRIBED when `.target` has subscribed to listen change notifications from `.signal`
+	//  STALE when it's unclear whether `.signal` is still a dependency of `.target`
+	_flags: number;
+
 	// A source whose value the target depends on.
-	signal: Signal;
-	prevSignal?: Node;
-	nextSignal?: Node;
+	_signal: Signal;
+	_prevSignal?: Node;
+	_nextSignal?: Node;
 
 	// A target that depends on the source and should be notified when the source changes.
-	target: Computed | Effect;
-	prevTarget?: Node;
-	nextTarget?: Node;
+	_target: Computed | Effect;
+	_prevTarget?: Node;
+	_nextTarget?: Node;
 
 	// The version number of the source that target has last seen. We use version numbers
 	// instead of storing the source value, because source values can take arbitrary amount
 	// of memory, and computeds could hang on to them forever because they're lazily evaluated.
-	version: number;
-
-	// Whether the target is currently depending the signal.
-	used: boolean;
+	_version: number;
 
 	// Used to remember & roll back signal's previous `._node` value when entering & exiting
 	// a new evaluation context.
-	rollbackNode?: Node;
+	_rollbackNode?: Node;
 };
 
 function startBatch() {
@@ -104,16 +107,16 @@ function getValue<T>(signal: Signal<T>): T {
 	let node: Node | undefined = undefined;
 	if (evalContext !== undefined) {
 		node = signal._node;
-		if (node === undefined || node.target !== evalContext) {
+		if (node === undefined || node._target !== evalContext) {
 			// `signal` is a new dependency. Create a new node dependency node, move it
 			//  to the front of the current context's dependency list.
 			node = {
-				signal: signal,
-				nextSignal: evalContext._sources,
-				target: evalContext,
-				version: 0,
-				used: true,
-				rollbackNode: node
+				_flags: 0,
+				_version: 0,
+				_signal: signal,
+				_nextSignal: evalContext._sources,
+				_target: evalContext,
+				_rollbackNode: node
 			};
 			evalContext._sources = node;
 			signal._node = node;
@@ -123,26 +126,26 @@ function getValue<T>(signal: Signal<T>): T {
 			if (evalContext._flags & SHOULD_SUBSCRIBE) {
 				signal._subscribe(node);
 			}
-		} else if (!node.used) {
+		} else if (node._flags & STALE) {
 			// `signal` is an existing dependency from a previous evaluation. Reuse the dependency
 			// node and move it to the front of the evaluation context's dependency list.
-			node.used = true;
+			node._flags &= ~STALE;
 
 			const head = evalContext._sources;
 			if (node !== head) {
-				const prev = node.prevSignal;
-				const next = node.nextSignal;
+				const prev = node._prevSignal;
+				const next = node._nextSignal;
 				if (prev) {
-					prev.nextSignal = next;
+					prev._nextSignal = next;
 				}
 				if (next) {
-					next.prevSignal = prev;
+					next._prevSignal = prev;
 				}
 				if (head !== undefined) {
-					head.prevSignal = node;
+					head._prevSignal = node;
 				}
-				node.prevSignal = undefined;
-				node.nextSignal = head;
+				node._prevSignal = undefined;
+				node._nextSignal = head;
 				evalContext._sources = node;
 			}
 
@@ -157,7 +160,7 @@ function getValue<T>(signal: Signal<T>): T {
 		return signal.peek();
 	} finally {
 		if (node !== undefined) {
-			node.version = signal._version;
+			node._version = signal._version;
 		}
 	}
 }
@@ -181,28 +184,35 @@ export class Signal<T = any> {
 
 	/** @internal */
 	_subscribe(node: Node): void {
-		if (this._targets !== undefined) {
-			this._targets.prevTarget = node;
+		if (!(node._flags & SUBSCRIBED)) {
+			node._flags |= SUBSCRIBED;
+			node._nextTarget = this._targets;
+
+			if (this._targets !== undefined) {
+				this._targets._prevTarget = node;
+			}
+			this._targets = node;
 		}
-		node.nextTarget = this._targets;
-		node.prevTarget = undefined;
-		this._targets = node;
 	}
 
 	/** @internal */
 	_unsubscribe(node: Node): void {
-		const prev = node.prevTarget;
-		const next = node.nextTarget;
-		node.prevTarget = undefined;
-		node.nextTarget = undefined;
-		if (prev !== undefined) {
-			prev.nextTarget = next;
-		}
-		if (next !== undefined) {
-			next.prevTarget = prev;
-		}
-		if (node === this._targets) {
-			this._targets = next;
+		if (node._flags & SUBSCRIBED) {
+			node._flags &= ~SUBSCRIBED;
+
+			const prev = node._prevTarget;
+			const next = node._nextTarget;
+			if (prev !== undefined) {
+				prev._nextTarget = next;
+				node._prevTarget = undefined;
+			}
+			if (next !== undefined) {
+				next._prevTarget = prev;
+				node._nextTarget = undefined;
+			}
+			if (node === this._targets) {
+				this._targets = next;
+			}
 		}
 	}
 
@@ -234,8 +244,8 @@ export class Signal<T = any> {
 
 			/**@__INLINE__*/ startBatch();
 			try {
-				for (let node = this._targets; node !== undefined; node = node.nextTarget) {
-					node.target._notify();
+				for (let node = this._targets; node !== undefined; node = node._nextTarget) {
+					node._target._notify();
 				}
 			} finally {
 				endBatch();
@@ -249,13 +259,13 @@ export function signal<T>(value: T): Signal<T> {
 }
 
 function prepareSources(target: Computed | Effect) {
-	for (let node = target._sources; node !== undefined; node = node.nextSignal) {
-		const rollbackNode = node.signal._node;
+	for (let node = target._sources; node !== undefined; node = node._nextSignal) {
+		const rollbackNode = node._signal._node;
 		if (rollbackNode !== undefined) {
-			node.rollbackNode = rollbackNode;
+			node._rollbackNode = rollbackNode;
 		}
-		node.signal._node = node;
-		node.used = false;
+		node._signal._node = node;
+		node._flags |= STALE;
 	}
 }
 
@@ -269,22 +279,22 @@ function cleanupSources(target: Computed | Effect) {
 	let node = target._sources;
 	let sources = undefined;
 	while (node !== undefined) {
-		const next = node.nextSignal;
-		if (node.used) {
-			if (sources) {
-				sources.prevSignal = node;
-			}
-			node.prevSignal = undefined;
-			node.nextSignal = sources;
-			sources = node;
+		const next = node._nextSignal;
+		if (node._flags & STALE) {
+			node._signal._unsubscribe(node);
+			node._nextSignal = undefined;
 		} else {
-			node.signal._unsubscribe(node);
-			node.nextSignal = undefined;
+			if (sources !== undefined) {
+				sources._prevSignal = node;
+			}
+			node._prevSignal = undefined;
+			node._nextSignal = sources;
+			sources = node;
 		}
 
-		node.signal._node = node.rollbackNode;
-		if (node.rollbackNode !== undefined) {
-			node.rollbackNode = undefined;
+		node._signal._node = node._rollbackNode;
+		if (node._rollbackNode !== undefined) {
+			node._rollbackNode = undefined;
 		}
 		node = next;
 	}
@@ -316,8 +326,8 @@ export class Computed<T = any> extends Signal<T> {
 
 			// A computed signal subscribes lazily to its dependencies when the computed
 			// signal gets its first subscriber.
-			for (let node = this._sources; node !== undefined; node = node.nextSignal) {
-				node.signal._subscribe(node);
+			for (let node = this._sources; node !== undefined; node = node._nextSignal) {
+				node._signal._subscribe(node);
 			}
 		}
 		super._subscribe(node);
@@ -331,8 +341,8 @@ export class Computed<T = any> extends Signal<T> {
 		if (this._targets === undefined) {
 			this._flags &= ~SHOULD_SUBSCRIBE;
 
-			for (let node = this._sources; node !== undefined; node = node.nextSignal) {
-				node.signal._unsubscribe(node);
+			for (let node = this._sources; node !== undefined; node = node._nextSignal) {
+				node._signal._unsubscribe(node);
 			}
 		}
 	}
@@ -341,8 +351,8 @@ export class Computed<T = any> extends Signal<T> {
 		if (!(this._flags & NOTIFIED)) {
 			this._flags |= STALE | NOTIFIED;
 
-			for (let node = this._targets; node !== undefined; node = node.nextTarget) {
-				node.target._notify();
+			for (let node = this._targets; node !== undefined; node = node._nextTarget) {
+				node._target._notify();
 			}
 		}
 	}
@@ -371,19 +381,19 @@ export class Computed<T = any> extends Signal<T> {
 			// is re-evaluated at this point.
 			let node = this._sources;
 			while (node !== undefined) {
-				if (node.signal._version !== node.version) {
+				if (node._signal._version !== node._version) {
 					break;
 				}
 				try {
-					node.signal.peek();
+					node._signal.peek();
 				} catch {
 					// Failures of current dependencies shouldn't be rethrown here in case the
 					// compute function catches them.
 				}
-				if (node.signal._version !== node.version) {
+				if (node._signal._version !== node._version) {
 					break;
 				}
-				node = node.nextSignal;
+				node = node._nextSignal;
 			}
 			if (node === undefined) {
 				return returnComputed(this);
@@ -481,8 +491,8 @@ class Effect {
 	}
 
 	_dispose() {
-		for (let node = this._sources; node !== undefined; node = node.nextSignal) {
-			node.signal._unsubscribe(node);
+		for (let node = this._sources; node !== undefined; node = node._nextSignal) {
+			node._signal._unsubscribe(node);
 		}
 		this._sources = undefined;
 	}
