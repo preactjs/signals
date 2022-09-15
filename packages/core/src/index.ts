@@ -444,13 +444,22 @@ function endEffect(this: Effect, prevContext?: Computed | Effect) {
 }
 
 class Effect {
-	_callback: () => void;
+	_compute: () => void;
 	_sources?: Node = undefined;
 	_nextEffect?: Effect = undefined;
 	_flags = SHOULD_SUBSCRIBE;
 
-	constructor(callback: () => void) {
-		this._callback = callback;
+	constructor(compute: () => void) {
+		this._compute = compute;
+	}
+
+	_callback() {
+		const finish = this._start();
+		try {
+			this._compute();
+		} finally {
+			finish();
+		}
 	}
 
 	_start() {
@@ -484,15 +493,8 @@ class Effect {
 	}
 }
 
-export function effect(callback: () => void): () => void {
-	const effect = new Effect(() => {
-		const finish = effect._start();
-		try {
-			callback.call(effect);
-		} finally {
-			finish();
-		}
-	});
+export function effect(compute: () => void): () => void {
+	const effect = new Effect(compute);
 	effect._callback();
 	// Return a bound function instead of a wrapper like `() => effect._dispose()`,
 	// because bound functions seem to be just as fast and take up a lot less memory.
