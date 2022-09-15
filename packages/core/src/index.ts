@@ -399,30 +399,24 @@ export class Computed<T = any> extends Signal<T> {
 			}
 		}
 
-		let value: unknown = undefined;
-		let valueIsError = false;
-
+		const prevValue = this._value;
+		const prevFlags = this._flags;
 		const prevContext = evalContext;
 		try {
 			evalContext = this;
 			prepareSources(this);
-			value = this._compute();
+			this._value = this._compute();
+			this._flags &= ~HAS_ERROR;
+			if ((prevFlags & HAS_ERROR) || this._value !== prevValue || this._version === 0) {
+				this._version++;
+			}
 		} catch (err) {
-			valueIsError = true;
-			value = err;
+			this._value = err;
+			this._flags |= HAS_ERROR;
+			this._version++;
 		} finally {
 			cleanupSources(this)
 			evalContext = prevContext;
-		}
-
-		if (valueIsError || (this._flags & HAS_ERROR) || this._value !== value || this._version === 0) {
-			if (valueIsError) {
-				this._flags |= HAS_ERROR;
-			} else {
-				this._flags &= ~HAS_ERROR;
-			}
-			this._value = value;
-			this._version++;
 		}
 		return returnComputed(this);
 	}
