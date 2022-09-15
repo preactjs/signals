@@ -389,6 +389,14 @@ export function computed<T>(compute: () => T): ReadonlySignal<T> {
 	return new Computed(compute);
 }
 
+function endEffect(this: Effect, prevContext?: Computed | Effect) {
+	cleanupSources(this);
+
+	subscribeDepth--;
+	evalContext = prevContext;
+	endBatch();
+}
+
 class Effect {
 	_notify: () => void;
 	_sources?: Node = undefined;
@@ -407,15 +415,7 @@ class Effect {
 		subscribeDepth++;
 
 		prepareSources(this);
-		return this._end.bind(this, prevContext);
-	}
-
-	_end(prevContext?: Computed | Effect) {
-		cleanupSources(this);
-
-		subscribeDepth--;
-		evalContext = prevContext;
-		endBatch();
+		return endEffect.bind(this, prevContext);
 	}
 
 	_invalidate() {
