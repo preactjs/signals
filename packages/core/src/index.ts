@@ -54,7 +54,7 @@ function endBatch() {
 		while (effect !== undefined) {
 			const next: Effect | undefined = effect._nextEffect;
 			effect._nextEffect = undefined;
-			effect._notified = false;
+			effect._flags &= ~NOTIFIED;
 			try {
 				effect._callback();
 			} catch (err) {
@@ -401,25 +401,24 @@ function endEffect(this: Effect, prevContext?: Computed | Effect) {
 	evalContext = prevContext;
 	endBatch();
 
-	this._running = false;
+	this._flags &= ~RUNNING;
 }
 
 class Effect {
 	_callback: () => void;
 	_sources?: Node = undefined;
-	_running = false;
-	_notified = false;
 	_nextEffect?: Effect = undefined;
+	_flags = 0;
 
 	constructor(callback: () => void) {
 		this._callback = callback;
 	}
 
 	_start() {
-		if (this._running) {
+		if (this._flags & RUNNING) {
 			cycleDetected();
 		}
-		this._running = true;
+		this._flags |= RUNNING;
 
 		/*@__INLINE__**/ startBatch();
 		const prevContext = evalContext;
@@ -432,8 +431,8 @@ class Effect {
 	}
 
 	_notify() {
-		if (!this._notified) {
-			this._notified = true;
+		if (!(this._flags & NOTIFIED)) {
+			this._flags |= NOTIFIED;
 			this._nextEffect = batchedEffect;
 			batchedEffect = this;
 		}
