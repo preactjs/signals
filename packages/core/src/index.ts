@@ -1,3 +1,7 @@
+function cycleDetected() {
+	throw new Error("Cycle detected");
+}
+
 // A linked list node used to track dependencies (sources) and dependents (targets).
 // Also used to remember the source's last version number that the target saw.
 type Node = {
@@ -180,7 +184,7 @@ export class Signal<T = any> {
 	set value(value: T) {
 		if (value !== this._value) {
 			if (batchIteration > 100) {
-				throw new Error("Cycle detected");
+				cycleDetected();
 			}
 
 			this._value = value;
@@ -298,7 +302,7 @@ export class Computed<T = any> extends Signal<T> {
 		this._notified = false;
 
 		if (this._running) {
-			throw new Error("Cycle detected");
+			cycleDetected();
 		}
 		this._running = true;
 
@@ -367,7 +371,7 @@ export class Computed<T = any> extends Signal<T> {
 
 	get value(): T {
 		if (this._running) {
-			throw new Error("Cycle detected");
+			cycleDetected();
 		}
 		return getValue(this);
 	}
@@ -391,11 +395,14 @@ function endEffect(this: Effect, prevContext?: Computed | Effect) {
 	subscribeDepth--;
 	evalContext = prevContext;
 	endBatch();
+
+	this._running = false;
 }
 
 class Effect {
 	_callback: () => void;
 	_sources?: Node = undefined;
+	_running = false;
 	_notified = false;
 	_nextEffect?: Effect = undefined;
 
@@ -404,6 +411,11 @@ class Effect {
 	}
 
 	_start() {
+		if (this._running) {
+			cycleDetected();
+		}
+		this._running = true;
+
 		/*@__INLINE__**/ startBatch();
 		const prevContext = evalContext;
 
