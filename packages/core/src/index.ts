@@ -135,10 +135,10 @@ function getValue<T>(signal: Signal<T>): T {
 			if (node !== head) {
 				const prev = node._prevSource;
 				const next = node._nextSource;
-				if (prev) {
+				if (prev !== undefined) {
 					prev._nextSource = next;
 				}
-				if (next) {
+				if (next !== undefined) {
 					next._prevSource = prev;
 				}
 				if (head !== undefined) {
