@@ -40,7 +40,7 @@
       "$_compute": "v",
       "$_globalVersion": "g",
       "core: Effect": "",
-      "$_callback": "v",
+			"$_callback": "c",
       "$_nextEffect": "e",
       "$_start": "S",
       "$_dispose": "d",
