@@ -1,5 +1,19 @@
 # @preact/signals-core
 
+## 1.1.1
+
+### Patch Changes
+
+- [#143](https://github.com/preactjs/signals/pull/143) [`f2ba3d6`](https://github.com/preactjs/signals/commit/f2ba3d657bf8169c6ba1d47c0827aa18cfe1c947) Thanks [@Pauan](https://github.com/Pauan)! - Simplify `batch()` to use a single flag instead of a counter
+
+* [#150](https://github.com/preactjs/signals/pull/150) [`160ea77`](https://github.com/preactjs/signals/commit/160ea7791f3adb55c562f5990e0b4848d8491a38) Thanks [@marvinhagemeister](https://github.com/marvinhagemeister)! - Fix computed signal being re-calculated despite dependencies not having changed
+
+- [#137](https://github.com/preactjs/signals/pull/137) [`4385ea8`](https://github.com/preactjs/signals/commit/4385ea8c8358a154d8b789685bb061658ce1153f) Thanks [@jviide](https://github.com/jviide)! - Fix `.subscribe`'s TypeScript type
+
+* [#148](https://github.com/preactjs/signals/pull/148) [`b948745`](https://github.com/preactjs/signals/commit/b948745de7b5b60a20ce3bdc5ee72d47d47f38ec) Thanks [@marvinhagemeister](https://github.com/marvinhagemeister)! - Move `types` field in `package.json` to the top of the entry list to ensure that TypeScript always finds it.
+
+- [#149](https://github.com/preactjs/signals/pull/149) [`00a59c6`](https://github.com/preactjs/signals/commit/00a59c6475bd4542fb934474d82d1e242b2ac870) Thanks [@marvinhagemeister](https://github.com/marvinhagemeister)! - Fix invalidated signals inside `batch()` not being refreshed when read inside a batching operation. This fixes a regression.
+
 ## 1.1.0
 
 ### Minor Changes
