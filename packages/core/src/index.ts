@@ -6,6 +6,7 @@ const RUNNING = 1 << 0;
 const STALE = 1 << 1;
 const NOTIFIED = 1 << 2;
 const HAS_ERROR = 1 << 3;
+const SHOULD_SUBSCRIBE = 1 << 4;
 
 // A linked list node used to track dependencies (sources) and dependents (targets).
 // Also used to remember the source's last version number that the target saw.
@@ -89,13 +90,12 @@ export function batch<T>(callback: () => T): T {
 
 // Currently evaluated computed or effect.
 let evalContext: Computed | Effect | undefined = undefined;
-// Used for keeping track whether the current evaluation context should automatically
-// subscribe for updates to the signals depends on.
-let subscribeDepth = 0;
+
 // Effects collected into a batch.
 let batchedEffect: Effect | undefined = undefined;
 let batchDepth = 0;
 let batchIteration = 0;
+
 // A global version number for signalss, used for fast-pathing repeated
 // computed.peek()/computed.value calls when nothing has changed globally.
 let globalVersion = 0;
@@ -120,7 +120,7 @@ function getValue<T>(signal: Signal<T>): T {
 
 			// Subscribe to change notifications from this dependency if we're in an effect
 			// OR evaluating a computed signal that in turn has subscribers.
-			if (subscribeDepth > 0) {
+			if (evalContext._flags & SHOULD_SUBSCRIBE) {
 				signal._subscribe(node);
 			}
 		} else if (!node.used) {
@@ -312,7 +312,7 @@ export class Computed<T = any> extends Signal<T> {
 
 	_subscribe(node: Node) {
 		if (this._targets === undefined) {
-			this._flags |= STALE;
+			this._flags |= STALE | SHOULD_SUBSCRIBE;
 
 			// A computed signal subscribes lazily to its dependencies when the computed
 			// signal gets its first subscriber.
@@ -329,6 +329,8 @@ export class Computed<T = any> extends Signal<T> {
 		// When a computed signal loses its last subscriber it also unsubscribes
 		// from its own dependencies.
 		if (this._targets === undefined) {
+			this._flags &= ~SHOULD_SUBSCRIBE;
+
 			for (let node = this._sources; node !== undefined; node = node.nextSignal) {
 				node.signal._unsubscribe(node);
 			}
@@ -391,26 +393,16 @@ export class Computed<T = any> extends Signal<T> {
 		let value: unknown = undefined;
 		let valueIsError = false;
 
-		const targets = this._targets;
 		const prevContext = evalContext;
 		try {
 			evalContext = this;
-			if (targets !== undefined) {
-				// Computed signals with current targets should automatically subscribe to
-				// new dependencies it uses in the compute function.
-				subscribeDepth++;
-			}
 			prepareSources(this);
-
 			value = this._compute();
 		} catch (err) {
 			valueIsError = true;
 			value = err;
 		} finally {
-			cleanupSources(this);
-			if (targets !== undefined) {
-				subscribeDepth--;
-			}
+			cleanupSources(this)
 			evalContext = prevContext;
 		}
 
@@ -449,7 +441,6 @@ export function computed<T>(compute: () => T): ReadonlySignal<T> {
 function endEffect(this: Effect, prevContext?: Computed | Effect) {
 	cleanupSources(this);
 
-	subscribeDepth--;
 	evalContext = prevContext;
 	endBatch();
 
@@ -460,7 +451,7 @@ class Effect {
 	_callback: () => void;
 	_sources?: Node = undefined;
 	_nextEffect?: Effect = undefined;
-	_flags = 0;
+	_flags = SHOULD_SUBSCRIBE;
 
 	constructor(callback: () => void) {
 		this._callback = callback;
@@ -476,7 +467,6 @@ class Effect {
 		const prevContext = evalContext;
 
 		evalContext = this;
-		subscribeDepth++;
 
 		prepareSources(this);
 		return endEffect.bind(this, prevContext);
