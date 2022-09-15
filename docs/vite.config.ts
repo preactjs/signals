@@ -33,6 +33,9 @@ export default defineConfig(env => ({
 		jsx: "automatic",
 		jsxImportSource: "preact",
 	},
+	optimizeDeps: {
+		include: ["preact/jsx-runtime", "preact/jsx-dev-runtime"],
+	},
 	build: {
 		polyfillModulePreload: false,
 		cssCodeSplit: false,
