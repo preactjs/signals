@@ -218,11 +218,11 @@ describe("computed()", () => {
 	it("should not allow a computed signal to become a direct dependency of itself", () => {
 		const spy = sinon.spy(() => {
 			try {
-				a.value
+				a.value;
 			} catch {
 				// pass
 			}
-		})
+		});
 		const a = computed(spy);
 		a.value;
 		expect(() => effect(() => a.value)).to.not.throw();
@@ -344,21 +344,21 @@ describe("computed()", () => {
 		});
 
 		e.value;
-		spy.resetHistory()
+		spy.resetHistory();
 
 		a.value = 2;
 		b.value = 2;
 		c.value = 2;
 		e.value;
 		expect(spy).to.be.calledOnce;
-		spy.resetHistory()
+		spy.resetHistory();
 
 		a.value = -1;
 		b.value = -1;
 		c.value = -1;
 		e.value;
 		expect(spy).not.to.be.called;
-		spy.resetHistory()
+		spy.resetHistory();
 	});
 
 	describe("graph updates", () => {
@@ -404,7 +404,7 @@ describe("computed()", () => {
 			compute.resetHistory();
 
 			a.value = 4;
-			e.value;
+			d.value;
 			expect(compute).to.have.been.calledOnce;
 		});
 
