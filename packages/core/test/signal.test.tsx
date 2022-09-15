@@ -659,7 +659,7 @@ describe("computed()", () => {
 			const a = signal("a");
 			const b = computed(() => a.value);
 			const fn = () => ((b as Signal).value = "aa");
-			expect(fn).to.throw(/readonly/);
+			expect(fn).to.throw(/Cannot set property value/);
 		});
 
 		it("should keep graph consistent on errors during activation", () => {

@@ -1,4 +1,4 @@
-function cycleDetected() {
+function cycleDetected(): never {
 	throw new Error("Cycle detected");
 }
 
@@ -433,19 +433,12 @@ export class Computed<T = any> extends Signal<T> {
 		}
 		return getValue(this);
 	}
-
-	set value(value: T) {
-		throw Error("Computed signals are readonly");
-	}
 }
 
-export interface ReadonlySignal<T = any> extends Signal<T> {
-	readonly value: T;
-}
-
-export function computed<T>(compute: () => T): ReadonlySignal<T> {
+export function computed<T>(compute: () => T): Computed<T> {
 	return new Computed(compute);
 }
+export type { Computed as ReadonlySignal };
 
 function endEffect(this: Effect, prevContext?: Computed | Effect) {
 	cleanupSources(this);
