@@ -47,7 +47,7 @@ function endBatch() {
 			effect._nextEffect = undefined;
 			effect._batched = false;
 			try {
-				effect._notify();
+				effect._callback();
 			} catch (err) {
 				if (!hasError) {
 					error = err;
@@ -398,13 +398,13 @@ function endEffect(this: Effect, prevContext?: Computed | Effect) {
 }
 
 class Effect {
-	_notify: () => void;
+	_callback: () => void;
 	_sources?: Node = undefined;
 	_batched = false;
 	_nextEffect?: Effect = undefined;
 
-	constructor(notify: () => void) {
-		this._notify = notify;
+	constructor(callback: () => void) {
+		this._callback = callback;
 	}
 
 	_start() {
@@ -443,7 +443,7 @@ export function effect(callback: () => void): () => void {
 			finish();
 		}
 	});
-	effect._notify();
+	effect._callback();
 	// Return a bound function instead of a wrapper like `() => effect._dispose()`,
 	// because bound functions seem to be just as fast and take up a lot less memory.
 	return effect._dispose.bind(effect);
