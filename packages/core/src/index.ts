@@ -83,7 +83,7 @@ function endBatch() {
 	}
 }
 
-export function batch<T>(callback: () => T): T {
+function batch<T>(callback: () => T): T {
 	if (batchDepth > 0) {
 		return callback();
 	}
@@ -169,78 +169,93 @@ function getValue<T>(signal: Signal<T>): T {
 	}
 }
 
-export class Signal<T = any> {
+declare class Signal<T = any> {
 	/** @internal */
 	_value: unknown;
 
 	/** @internal */
-	_version = 0;
+	_version: number;
 
 	/** @internal */
-	_node?: Node = undefined;
+	_node?: Node;
 
 	/** @internal */
-	_targets?: Node = undefined;
+	_targets?: Node;
 
-	constructor(value?: T) {
-		this._value = value;
+	/** @internal */
+	constructor(value?: T);
+
+	/** @internal */
+	_subscribe(node: Node): void;
+
+	/** @internal */
+	_unsubscribe(node: Node): void;
+
+	subscribe(fn: (value: T) => void): () => void;
+
+	toString(): string;
+
+	peek(): T;
+
+	value: T;
+}
+
+function Signal(this: Signal, value?: unknown) {
+	this._value = value;
+	this._version = 0;
+	this._node = undefined;
+	this._targets = undefined;
+}
+
+Signal.prototype._subscribe = function (node) {
+	if (!(node._flags & SUBSCRIBED)) {
+		node._flags |= SUBSCRIBED;
+		node._nextTarget = this._targets;
+
+		if (this._targets !== undefined) {
+			this._targets._prevTarget = node;
+		}
+		this._targets = node;
 	}
+};
 
-	/** @internal */
-	_subscribe(node: Node): void {
-		if (!(node._flags & SUBSCRIBED)) {
-			node._flags |= SUBSCRIBED;
-			node._nextTarget = this._targets;
+Signal.prototype._unsubscribe = function (node) {
+	if (node._flags & SUBSCRIBED) {
+		node._flags &= ~SUBSCRIBED;
 
-			if (this._targets !== undefined) {
-				this._targets._prevTarget = node;
-			}
-			this._targets = node;
+		const prev = node._prevTarget;
+		const next = node._nextTarget;
+		if (prev !== undefined) {
+			prev._nextTarget = next;
+			node._prevTarget = undefined;
+		}
+		if (next !== undefined) {
+			next._prevTarget = prev;
+			node._nextTarget = undefined;
+		}
+		if (node === this._targets) {
+			this._targets = next;
 		}
 	}
+};
 
-	/** @internal */
-	_unsubscribe(node: Node): void {
-		if (node._flags & SUBSCRIBED) {
-			node._flags &= ~SUBSCRIBED;
+Signal.prototype.subscribe = function (fn) {
+	return effect(() => fn(this.value));
+};
 
-			const prev = node._prevTarget;
-			const next = node._nextTarget;
-			if (prev !== undefined) {
-				prev._nextTarget = next;
-				node._prevTarget = undefined;
-			}
-			if (next !== undefined) {
-				next._prevTarget = prev;
-				node._nextTarget = undefined;
-			}
-			if (node === this._targets) {
-				this._targets = next;
-			}
-		}
-	}
+Signal.prototype.toString = function () {
+	return "" + this.value;
+};
 
-	subscribe(fn: (value: T) => void): () => void {
-		return effect(() => fn(this.value));
-	}
+Signal.prototype.peek = function () {
+	return this._value;
+};
 
-	valueOf(): T {
-		return this.value;
-	}
-
-	toString(): string {
-		return this.value + "";
-	}
-
-	peek(): T {
-		return this._value as T;
-	}
-
-	get value(): T {
+Object.defineProperty(Signal.prototype, "value", {
+	get() {
 		return getValue(this);
-	}
-
-	set value(value: T) {
+	},
+	set(value: unknown) {
 		if (value !== this._value) {
 			if (batchIteration > 100) {
 				cycleDetected();
@@ -263,10 +278,10 @@ export class Signal<T = any> {
 				endBatch();
 			}
 		}
-	}
-}
+	},
+});
 
-export function signal<T>(value: T): Signal<T> {
+function signal<T>(value: T): Signal<T> {
 	return new Signal(value);
 }
 
@@ -336,161 +351,182 @@ function disposeNestedEffects(context: Computed | Effect) {
 	}
 }
 
-class Computed<T = any> extends Signal<T> {
+declare class Computed<T = any> extends Signal<T> {
 	/** @internal */
 	_compute: () => T;
 
 	/** @internal */
-	_sources?: Node = undefined;
+	_sources?: Node;
 
 	/** @internal */
-	_effects?: Effect = undefined;
+	_effects?: Effect;
 
 	/** @internal */
-	_globalVersion = globalVersion - 1;
+	_globalVersion: number;
 
 	/** @internal */
-	_flags = STALE;
-
-	constructor(compute: () => T) {
-		super(undefined);
-		this._compute = compute;
-	}
+	_flags: number;
 
 	/** @internal */
-	_subscribe(node: Node) {
-		if (this._targets === undefined) {
-			this._flags |= STALE | SHOULD_SUBSCRIBE;
-
-			// A computed signal subscribes lazily to its dependencies when the it
-			// gets its first subscriber.
-			for (
-				let node = this._sources;
-				node !== undefined;
-				node = node._nextSource
-			) {
-				node._source._subscribe(node);
-			}
-		}
-		super._subscribe(node);
-	}
+	constructor(compute: () => T);
 
 	/** @internal */
-	_unsubscribe(node: Node) {
-		super._unsubscribe(node);
-
-		// Computed signal unsubscribes from its dependencies from it loses its last subscriber.
-		if (this._targets === undefined) {
-			this._flags &= ~SHOULD_SUBSCRIBE;
-
-			for (
-				let node = this._sources;
-				node !== undefined;
-				node = node._nextSource
-			) {
-				node._source._unsubscribe(node);
-			}
-		}
-	}
+	_subscribe(node: Node): void;
 
 	/** @internal */
-	_notify() {
-		if (!(this._flags & NOTIFIED)) {
-			this._flags |= STALE | NOTIFIED;
+	_unsubscribe(node: Node): void;
 
-			for (
-				let node = this._targets;
-				node !== undefined;
-				node = node._nextTarget
-			) {
-				node._target._notify();
-			}
-		}
-	}
+	/** @internal */
+	_notify(): void;
 
-	peek(): T {
-		this._flags &= ~NOTIFIED;
+	peek(): T;
 
-		if (this._flags & RUNNING) {
-			cycleDetected();
-		}
-		this._flags |= RUNNING;
+	readonly value: T;
+}
 
-		if (!(this._flags & STALE) && this._targets !== undefined) {
-			return returnComputed(this);
-		}
-		this._flags &= ~STALE;
+function Computed(this: Computed, compute: () => unknown) {
+	Signal.call(this, undefined);
 
-		if (this._globalVersion === globalVersion) {
-			return returnComputed(this);
-		}
-		this._globalVersion = globalVersion;
+	this._compute = compute;
+	this._sources = undefined;
+	this._effects = undefined;
+	this._globalVersion = globalVersion - 1;
+	this._flags = STALE;
+}
 
-		if (this._version > 0) {
-			// Check current dependencies for changes. The dependency list is already in
-			// order of use. Therefore if >1 dependencies have changed only the first used one
-			// is re-evaluated at this point.
+Computed.prototype = Object.create(Signal.prototype);
+
+Computed.prototype._subscribe = function (node) {
+	if (this._targets === undefined) {
+		this._flags |= STALE | SHOULD_SUBSCRIBE;
+
+		// A computed signal subscribes lazily to its dependencies when the it
+		// gets its first subscriber.
+		for (
 			let node = this._sources;
-			while (node !== undefined) {
-				if (node._source._version !== node._version) {
-					break;
-				}
-				try {
-					node._source.peek();
-				} catch {
-					// Failures of current dependencies shouldn't be rethrown here in case the
-					// compute function catches them.
-				}
-				if (node._source._version !== node._version) {
-					break;
-				}
-				node = node._nextSource;
-			}
-			if (node === undefined) {
-				return returnComputed(this);
-			}
+			node !== undefined;
+			node = node._nextSource
+		) {
+			node._source._subscribe(node);
 		}
+	}
+	Signal.prototype._subscribe.call(this, node);
+};
 
-		disposeNestedEffects(this);
+Computed.prototype._unsubscribe = function (node) {
+	Signal.prototype._unsubscribe.call(this, node);
 
-		const prevValue = this._value;
-		const prevFlags = this._flags;
-		const prevContext = evalContext;
-		try {
-			evalContext = this;
-			prepareSources(this);
-			this._value = this._compute();
-			this._flags &= ~HAS_ERROR;
-			if (
-				prevFlags & HAS_ERROR ||
-				this._value !== prevValue ||
-				this._version === 0
-			) {
-				this._version++;
-			}
-		} catch (err) {
-			this._value = err;
-			this._flags |= HAS_ERROR;
-			this._version++;
-		} finally {
-			cleanupSources(this);
-			evalContext = prevContext;
+	// Computed signal unsubscribes from its dependencies from it loses its last subscriber.
+	if (this._targets === undefined) {
+		this._flags &= ~SHOULD_SUBSCRIBE;
+
+		for (
+			let node = this._sources;
+			node !== undefined;
+			node = node._nextSource
+		) {
+			node._source._unsubscribe(node);
 		}
+	}
+};
+
+Computed.prototype._notify = function () {
+	if (!(this._flags & NOTIFIED)) {
+		this._flags |= STALE | NOTIFIED;
+
+		for (
+			let node = this._targets;
+			node !== undefined;
+			node = node._nextTarget
+		) {
+			node._target._notify();
+		}
+	}
+};
+
+Computed.prototype.peek = function () {
+	this._flags &= ~NOTIFIED;
+
+	if (this._flags & RUNNING) {
+		cycleDetected();
+	}
+	this._flags |= RUNNING;
+
+	if (!(this._flags & STALE) && this._targets !== undefined) {
 		return returnComputed(this);
 	}
+	this._flags &= ~STALE;
 
-	get value(): T {
+	if (this._globalVersion === globalVersion) {
+		return returnComputed(this);
+	}
+	this._globalVersion = globalVersion;
+
+	if (this._version > 0) {
+		// Check current dependencies for changes. The dependency list is already in
+		// order of use. Therefore if >1 dependencies have changed only the first used one
+		// is re-evaluated at this point.
+		let node = this._sources;
+		while (node !== undefined) {
+			if (node._source._version !== node._version) {
+				break;
+			}
+			try {
+				node._source.peek();
+			} catch {
+				// Failures of current dependencies shouldn't be rethrown here in case the
+				// compute function catches them.
+			}
+			if (node._source._version !== node._version) {
+				break;
+			}
+			node = node._nextSource;
+		}
+		if (node === undefined) {
+			return returnComputed(this);
+		}
+	}
+
+	disposeNestedEffects(this);
+
+	const prevValue = this._value;
+	const prevFlags = this._flags;
+	const prevContext = evalContext;
+	try {
+		evalContext = this;
+		prepareSources(this);
+		this._value = this._compute();
+		this._flags &= ~HAS_ERROR;
+		if (
+			prevFlags & HAS_ERROR ||
+			this._value !== prevValue ||
+			this._version === 0
+		) {
+			this._version++;
+		}
+	} catch (err) {
+		this._value = err;
+		this._flags |= HAS_ERROR;
+		this._version++;
+	} finally {
+		cleanupSources(this);
+		evalContext = prevContext;
+	}
+	return returnComputed(this);
+};
+
+Object.defineProperty(Computed.prototype, "value", {
+	get() {
 		if (this._flags & RUNNING) {
 			cycleDetected();
 		}
 		return getValue(this);
-	}
-}
+	},
+});
 
-export function computed<T>(compute: () => T): Computed<T> {
+function computed<T>(compute: () => T): Computed<T> {
 	return new Computed(compute);
 }
-export type { Computed as ReadonlySignal };
 
 function endEffect(this: Effect, prevContext?: Computed | Effect) {
 	if (evalContext !== this) {
@@ -505,76 +541,93 @@ function endEffect(this: Effect, prevContext?: Computed | Effect) {
 	this._flags &= ~RUNNING;
 }
 
-class Effect {
+declare class Effect {
 	_compute: () => void;
 	_sources?: Node;
 	_effects?: Effect;
 	_nextNestedEffect?: Effect;
 	_nextBatchedEffect?: Effect;
-	_flags = SHOULD_SUBSCRIBE;
+	_flags: number;
 
-	constructor(compute: () => void) {
-		this._compute = compute;
-	}
+	constructor(compute: () => void);
 
-	_callback() {
-		const finish = this._start();
-		try {
-			this._compute();
-		} finally {
-			finish();
-		}
-	}
-
-	_start() {
-		if (this._flags & RUNNING) {
-			cycleDetected();
-		}
-		this._flags |= RUNNING;
-		this._flags &= ~DISPOSED;
-		disposeNestedEffects(this);
-
-		/*@__INLINE__**/ startBatch();
-		const prevContext = evalContext;
-		if (prevContext !== undefined) {
-			this._nextNestedEffect = prevContext._effects;
-			prevContext._effects = this;
-		}
-		evalContext = this;
-
-		prepareSources(this);
-		return endEffect.bind(this, prevContext);
-	}
-
-	_notify() {
-		if (!(this._flags & NOTIFIED)) {
-			this._flags |= NOTIFIED;
-			this._nextBatchedEffect = batchedEffect;
-			batchedEffect = this;
-		}
-	}
-
-	_dispose() {
-		if (this._flags & RUNNING) {
-			throw new Error("Effect still running");
-		}
-		for (
-			let node = this._sources;
-			node !== undefined;
-			node = node._nextSource
-		) {
-			node._source._unsubscribe(node);
-		}
-		disposeNestedEffects(this);
-		this._sources = undefined;
-		this._flags |= DISPOSED;
-	}
+	_callback(): void;
+	_start(): () => void;
+	_notify(): void;
+	_dispose(): void;
 }
 
-export function effect(compute: () => void): () => void {
+function Effect(this: Effect, compute: () => void) {
+	this._compute = compute;
+	this._sources = undefined;
+	this._effects = undefined;
+	this._nextNestedEffect = undefined;
+	this._nextBatchedEffect = undefined;
+	this._flags = SHOULD_SUBSCRIBE;
+}
+
+Effect.prototype._callback = function () {
+	const finish = this._start();
+	try {
+		this._compute();
+	} finally {
+		finish();
+	}
+};
+
+Effect.prototype._start = function () {
+	if (this._flags & RUNNING) {
+		cycleDetected();
+	}
+	this._flags |= RUNNING;
+	this._flags &= ~DISPOSED;
+	disposeNestedEffects(this);
+
+	/*@__INLINE__**/ startBatch();
+	const prevContext = evalContext;
+	if (prevContext !== undefined) {
+		this._nextNestedEffect = prevContext._effects;
+		prevContext._effects = this;
+	}
+	evalContext = this;
+
+	prepareSources(this);
+	return endEffect.bind(this, prevContext);
+};
+
+Effect.prototype._notify = function () {
+	if (!(this._flags & NOTIFIED)) {
+		this._flags |= NOTIFIED;
+		this._nextBatchedEffect = batchedEffect;
+		batchedEffect = this;
+	}
+};
+
+Effect.prototype._dispose = function () {
+	if (this._flags & RUNNING) {
+		throw new Error("Effect still running");
+	}
+	for (let node = this._sources; node !== undefined; node = node._nextSource) {
+		node._source._unsubscribe(node);
+	}
+	disposeNestedEffects(this);
+	this._sources = undefined;
+	this._flags |= DISPOSED;
+};
+
+function effect(compute: () => void): () => void {
 	const effect = new Effect(compute);
 	effect._callback();
 	// Return a bound function instead of a wrapper like `() => effect._dispose()`,
 	// because bound functions seem to be just as fast and take up a lot less memory.
 	return effect._dispose.bind(effect);
 }
+
+export {
+	signal,
+	computed,
+	effect,
+	batch,
+	Signal,
+	type Computed as ReadonlySignal,
+};
