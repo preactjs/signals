@@ -161,6 +161,74 @@ describe("effect()", () => {
 		expect(fn).to.throw(/Cycle detected/);
 	});
 
+	it("should automatically dispose nested effects on re-evaluation", () => {
+		const a = signal(0);
+		const b = signal(0);
+		const spyInner = sinon.spy(() => a.value + b.value);
+		const spyOuter = sinon.spy(() => {
+			a.value;
+			effect(spyInner);
+		});
+		effect(spyOuter);
+
+		expect(spyOuter).to.be.calledOnce;
+		expect(spyInner).to.be.calledOnce;
+		spyOuter.resetHistory();
+		spyInner.resetHistory();
+
+		a.value = 1;
+		expect(spyOuter).to.be.calledOnce;
+		expect(spyInner).to.be.calledOnce;
+		spyOuter.resetHistory();
+		spyInner.resetHistory();
+
+		b.value = 2;
+		expect(spyOuter).to.not.be.called;
+		expect(spyInner).to.be.calledOnce;
+	});
+
+	it("should automatically dispose nested effects on disposal", () => {
+		const a = signal(0);
+		const b = signal(0);
+		const spyInner = sinon.spy(() => a.value + b.value);
+		const spyOuter = sinon.spy(() => {
+			a.value;
+			effect(spyInner);
+		});
+		const dispose = effect(spyOuter);
+
+		expect(spyOuter).to.be.calledOnce;
+		expect(spyInner).to.be.calledOnce;
+		spyOuter.resetHistory();
+		spyInner.resetHistory();
+
+		dispose();
+
+		a.value = 1;
+		expect(spyOuter).not.to.be.called;
+		expect(spyInner).not.to.be.called;
+	});
+
+	it("should keep nested computed signals active even after enclosing effect", () => {
+		const a = signal(0);
+		const spy = sinon.spy(() => a.value);
+
+		let c!: Signal;
+		const dispose = effect(() => {
+			c = computed(() => {
+				a.value;
+				effect(spy);
+			});
+		});
+		dispose();
+		expect(spy).not.to.be.called;
+
+		c.value;
+		expect(spy).to.be.calledOnce;
+		a.value = 1;
+		expect(spy).to.be.calledTwice;
+	});
+
 	it("should allow disposing the effect multiple times", () => {
 		const dispose = effect(() => undefined);
 		dispose();
@@ -420,6 +488,32 @@ describe("computed()", () => {
 	it("should detect simple dependency cycles", () => {
 		const a: Signal = computed(() => a.value);
 		expect(() => a.value).to.throw(/Cycle detected/);
+	});
+
+	it("should automatically dispose nested effects on re-evaluation", () => {
+		const a = signal(0);
+		const b = signal(0);
+		const spyInner = sinon.spy(() => a.value + b.value);
+		const spyOuter = sinon.spy(() => {
+			a.value;
+			effect(spyInner);
+		});
+		const c = computed(spyOuter);
+		c.value;
+		expect(spyOuter).to.be.calledOnce;
+		expect(spyInner).to.be.calledOnce;
+		spyOuter.resetHistory();
+		spyInner.resetHistory();
+
+		a.value = 1;
+		expect(spyOuter).not.to.be.called;
+		expect(spyInner).to.be.calledOnce;
+		spyOuter.resetHistory();
+		spyInner.resetHistory();
+
+		c.value;
+		expect(spyOuter).to.be.calledOnce;
+		expect(spyInner).to.be.calledOnce;
 	});
 
 	it("should not allow a computed signal to become a direct dependency of itself", () => {
