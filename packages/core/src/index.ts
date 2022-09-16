@@ -634,13 +634,11 @@ function effect(compute: () => void): () => void {
 	return effect._dispose.bind(effect);
 }
 
-// Work around problems with the test runner not finding the exported Signal class object.
-const _Signal = Signal;
 export {
 	signal,
 	computed,
 	effect,
 	batch,
-	_Signal as Signal,
+	Signal,
 	type Computed as ReadonlySignal
 };
