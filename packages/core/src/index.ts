@@ -310,9 +310,16 @@ function returnComputed<T>(computed: Computed<T>): T {
 }
 
 class Computed<T = any> extends Signal<T> {
+	/** @internal */
 	_compute: () => T;
+
+	/** @internal */
 	_sources?: Node = undefined;
+
+	/** @internal */
 	_globalVersion = globalVersion - 1;
+
+	/** @internal */
 	_flags = STALE;
 
 	constructor(compute: () => T) {
@@ -320,6 +327,7 @@ class Computed<T = any> extends Signal<T> {
 		this._compute = compute;
 	}
 
+	/** @internal */
 	_subscribe(node: Node) {
 		if (this._targets === undefined) {
 			this._flags |= STALE | SHOULD_SUBSCRIBE;
@@ -333,6 +341,7 @@ class Computed<T = any> extends Signal<T> {
 		super._subscribe(node);
 	}
 
+	/** @internal */
 	_unsubscribe(node: Node) {
 		super._unsubscribe(node)
 
@@ -346,6 +355,7 @@ class Computed<T = any> extends Signal<T> {
 		}
 	}
 
+	/** @internal */
 	_notify() {
 		if (!(this._flags & NOTIFIED)) {
 			this._flags |= STALE | NOTIFIED;
