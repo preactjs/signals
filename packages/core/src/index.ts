@@ -1,295 +1,576 @@
-/** This tracks subscriptions of signals read inside a computed */
-let currentSignal: Signal | undefined;
-let commitError: Error | null = null;
+function cycleDetected(): never {
+	throw new Error("Cycle detected");
+}
 
-let batchPending: Set<Signal> | null = null;
+const RUNNING = 1 << 0;
+const STALE = 1 << 1;
+const NOTIFIED = 1 << 2;
+const HAS_ERROR = 1 << 3;
+const SHOULD_SUBSCRIBE = 1 << 4;
+const SUBSCRIBED = 1 << 5;
+const DISPOSED = 1 << 6;
 
-let oldDeps = new Set<Signal>();
+// A linked list node used to track dependencies (sources) and dependents (targets).
+// Also used to remember the source's last version number that the target saw.
+type Node = {
+	// A node may have the following flags:
+	//  SUBSCRIBED when the target has subscribed to listen change notifications from the source
+	//  STALE when it's unclear whether the source is still a dependency of the target
+	_flags: number;
+
+	// A source whose value the target depends on.
+	_source: Signal;
+	_prevSource?: Node;
+	_nextSource?: Node;
+
+	// A target that depends on the source and should be notified when the source changes.
+	_target: Computed | Effect;
+	_prevTarget?: Node;
+	_nextTarget?: Node;
+
+	// The version number of the source that target has last seen. We use version numbers
+	// instead of storing the source value, because source values can take arbitrary amount
+	// of memory, and computeds could hang on to them forever because they're lazily evaluated.
+	_version: number;
+
+	// Used to remember & roll back the source's previous `._node` value when entering &
+	// exiting a new evaluation context.
+	_rollbackNode?: Node;
+};
+
+function startBatch() {
+	batchDepth++;
+}
+
+function endBatch() {
+	if (batchDepth > 1) {
+		batchDepth--;
+		return;
+	}
+
+	let error: unknown;
+	let hasError = false;
+
+	while (batchedEffect !== undefined) {
+		let effect: Effect | undefined = batchedEffect;
+		batchedEffect = undefined;
+
+		batchIteration++;
+
+		while (effect !== undefined) {
+			const next: Effect | undefined = effect._nextBatchedEffect;
+			effect._nextBatchedEffect = undefined;
+			effect._flags &= ~NOTIFIED;
+
+			if (!(effect._flags & DISPOSED)) {
+				try {
+					effect._callback();
+				} catch (err) {
+					if (!hasError) {
+						error = err;
+						hasError = true;
+					}
+				}
+			}
+			effect = next;
+		}
+	}
+	batchIteration = 0;
+	batchDepth--;
+
+	if (hasError) {
+		throw error;
+	}
+}
+
+export function batch<T>(callback: () => T): T {
+	if (batchDepth > 0) {
+		return callback();
+	}
+	/*@__INLINE__**/ startBatch();
+	try {
+		return callback();
+	} finally {
+		endBatch();
+	}
+}
+
+// Currently evaluated computed or effect.
+let evalContext: Computed | Effect | undefined = undefined;
+
+// Effects collected into a batch.
+let batchedEffect: Effect | undefined = undefined;
+let batchDepth = 0;
+let batchIteration = 0;
+
+// A global version number for signals, used for fast-pathing repeated
+// computed.peek()/computed.value calls when nothing has changed globally.
+let globalVersion = 0;
+
+function getValue<T>(signal: Signal<T>): T {
+	let node: Node | undefined = undefined;
+	if (evalContext !== undefined) {
+		node = signal._node;
+		if (node === undefined || node._target !== evalContext) {
+			// `signal` is a new dependency. Create a new node dependency node, move it
+			//  to the front of the current context's dependency list.
+			node = {
+				_flags: 0,
+				_version: 0,
+				_source: signal,
+				_nextSource: evalContext._sources,
+				_target: evalContext,
+				_rollbackNode: node,
+			};
+			evalContext._sources = node;
+			signal._node = node;
+
+			// Subscribe to change notifications from this dependency if we're in an effect
+			// OR evaluating a computed signal that in turn has subscribers.
+			if (evalContext._flags & SHOULD_SUBSCRIBE) {
+				signal._subscribe(node);
+			}
+		} else if (node._flags & STALE) {
+			// `signal` is an existing dependency from a previous evaluation. Reuse the dependency
+			// node and move it to the front of the evaluation context's dependency list.
+			node._flags &= ~STALE;
+
+			const head = evalContext._sources;
+			if (node !== head) {
+				const prev = node._prevSource;
+				const next = node._nextSource;
+				if (prev !== undefined) {
+					prev._nextSource = next;
+				}
+				if (next !== undefined) {
+					next._prevSource = prev;
+				}
+				if (head !== undefined) {
+					head._prevSource = node;
+				}
+				node._prevSource = undefined;
+				node._nextSource = head;
+				evalContext._sources = node;
+			}
+
+			// We can assume that the currently evaluated effect / computed signal is already
+			// subscribed to change notifications from `signal` if needed.
+		} else {
+			// `signal` is an existing dependency from current evaluation.
+			node = undefined;
+		}
+	}
+	try {
+		return signal.peek();
+	} finally {
+		if (node !== undefined) {
+			node._version = signal._version;
+		}
+	}
+}
 
 export class Signal<T = any> {
-	// These property names get minified - see /mangle.json
+	/** @internal */
+	_value: unknown;
 
-	/** @internal Internal, do not use. */
-	_subs = new Set<Signal>();
-	/** @internal Internal, do not use. */
-	_deps = new Set<Signal>();
-	/** @internal Internal, do not use. */
-	_pending = 0;
-	/** @internal Internal, do not use. */
-	_value: T;
-	/** @internal Determine if a computed is allowed to write or not */
-	_readonly = false;
-	/** @internal Marks the signal as requiring an update */
-	_requiresUpdate = false;
-	/** @internal Determine if reads should eagerly activate value */
-	_active = false;
-	/** @internal Used to detect if there is a cycle in the graph */
-	_isComputing = false;
+	/** @internal */
+	_version = 0;
 
-	constructor(value: T) {
+	/** @internal */
+	_node?: Node = undefined;
+
+	/** @internal */
+	_targets?: Node = undefined;
+
+	constructor(value?: T) {
 		this._value = value;
 	}
 
-	toString() {
-		return "" + this.value;
-	}
+	/** @internal */
+	_subscribe(node: Node): void {
+		if (!(node._flags & SUBSCRIBED)) {
+			node._flags |= SUBSCRIBED;
+			node._nextTarget = this._targets;
 
-	peek() {
-		if (!this._active || this._pending > 0) {
-			activate(this);
-		}
-		return this._value;
-	}
-
-	get value() {
-		if (!this._active || this._pending > 0) {
-			activate(this);
-		}
-
-		// If we read a signal outside of a computed we have no way
-		// to unsubscribe from that. So we assume that the user wants
-		// to get the value immediately like for testing.
-		if (!currentSignal) {
-			return this._value;
-		}
-
-		// subscribe the current computed to this signal:
-		this._subs.add(currentSignal);
-		// update the current computed's dependencies:
-		currentSignal._deps.add(this);
-		oldDeps.delete(this);
-
-		return this._value;
-	}
-
-	set value(value) {
-		if (this._readonly) {
-			throw Error("Computed signals are readonly");
-		}
-
-		if (this._value !== value) {
-			this._value = value;
-
-			batch(() => {
-				batchPending!.add(this);
-
-				// in batch mode this signal may be marked already
-				if (this._pending === 0) {
-					mark(this);
-				}
-			});
-		}
-	}
-
-	/**
-	 * Start a read operation where this signal is the "current signal" context.
-	 * Returns a function that must be called to end the read context.
-	 * @internal
-	 */
-	_setCurrent() {
-		let prevSignal = currentSignal;
-		let prevOldDeps = oldDeps;
-		currentSignal = this;
-		oldDeps = this._deps;
-		this._deps = new Set();
-
-		return (shouldUnmark: boolean, shouldCleanup: boolean) => {
-			if (shouldUnmark) this._subs.forEach(unmark);
-
-			// Any leftover dependencies here are not needed anymore
-			if (shouldCleanup) {
-				// Unsubscribe from dependencies that were not accessed:
-				oldDeps.forEach(dep => unsubscribe(this, dep));
-			} else {
-				// Re-subscribe to dependencies that were not accessed:
-				oldDeps.forEach(dep => subscribe(this, dep));
+			if (this._targets !== undefined) {
+				this._targets._prevTarget = node;
 			}
+			this._targets = node;
+		}
+	}
 
-			oldDeps.clear();
-			oldDeps = prevOldDeps;
-			currentSignal = prevSignal;
-		};
+	/** @internal */
+	_unsubscribe(node: Node): void {
+		if (node._flags & SUBSCRIBED) {
+			node._flags &= ~SUBSCRIBED;
+
+			const prev = node._prevTarget;
+			const next = node._nextTarget;
+			if (prev !== undefined) {
+				prev._nextTarget = next;
+				node._prevTarget = undefined;
+			}
+			if (next !== undefined) {
+				next._prevTarget = prev;
+				node._nextTarget = undefined;
+			}
+			if (node === this._targets) {
+				this._targets = next;
+			}
+		}
 	}
 
 	subscribe(fn: (value: T) => void): () => void {
 		return effect(() => fn(this.value));
 	}
 
-	/**
-	 * A custom update routine to run when this Signal's value changes.
-	 * @internal
-	 */
-	_updater() {
-		// override me to handle updates
+	toString(): string {
+		return this.value + "";
 	}
-}
 
-function mark(signal: Signal) {
-	if (signal._pending++ === 0) {
-		signal._subs.forEach(mark);
+	peek(): T {
+		return this._value as T;
 	}
-}
 
-function unmark(signal: Signal<any>) {
-	// We can only unmark this node as not needing an update if it
-	// wasn't flagged as needing an update by someone else. This is
-	// done to make the sweeping logic independent of the order
-	// in which a dependency tries to unmark a subtree.
-	if (
-		!signal._requiresUpdate &&
-		signal._pending > 0 &&
-		--signal._pending === 0
-	) {
-		signal._subs.forEach(unmark);
+	get value(): T {
+		return getValue(this);
 	}
-}
 
-function sweep(subs: Set<Signal<any>>) {
-	subs.forEach(signal => {
-		// If a computed errored during sweep, we'll discard that subtree
-		// for this sweep cycle by setting PENDING to 0;
-		if (signal._pending > 1) return --signal._pending;
-		let ready = true;
-		signal._deps.forEach(dep => {
-			if (dep._pending > 0) ready = false;
-		});
-
-		if (ready && signal._pending > 0 && --signal._pending === 0) {
-			if (signal._isComputing) {
-				throw Error("Cycle detected");
+	set value(value: T) {
+		if (value !== this._value) {
+			if (batchIteration > 100) {
+				cycleDetected();
 			}
 
-			signal._requiresUpdate = false;
-			signal._isComputing = true;
-			signal._updater();
-			signal._isComputing = false;
-			sweep(signal._subs);
+			this._value = value;
+			this._version++;
+			globalVersion++;
+
+			/**@__INLINE__*/ startBatch();
+			try {
+				for (
+					let node = this._targets;
+					node !== undefined;
+					node = node._nextTarget
+				) {
+					node._target._notify();
+				}
+			} finally {
+				endBatch();
+			}
 		}
-	});
-}
-
-function subscribe(signal: Signal<any>, to: Signal<any>) {
-	signal._active = true;
-	signal._deps.add(to);
-	to._subs.add(signal);
-}
-
-function unsubscribe(signal: Signal<any>, from: Signal<any>) {
-	signal._deps.delete(from);
-	from._subs.delete(signal);
-
-	// If nobody listens to the signal we depended on, we can traverse
-	// upwards and destroy all subscriptions until we encounter a writable
-	// signal or a signal that others listen to as well.
-	if (from._subs.size === 0) {
-		from._active = false;
-		from._deps.forEach(dep => unsubscribe(from, dep));
 	}
-}
-
-const tmpPending: Signal[] = [];
-/**
- * Refresh _just_ this signal and its dependencies recursively.
- * All other signals will be left untouched and added to the
- * global queue to flush later. Since we're traversing "upwards",
- * we don't have to care about topological sorting.
- */
-function refreshStale(signal: Signal) {
-	if (batchPending) {
-		batchPending.delete(signal);
-	}
-
-	signal._pending = 0;
-	signal._updater();
-	if (commitError) {
-		const err = commitError;
-		commitError = null;
-		throw err;
-	}
-
-	signal._subs.forEach(sub => {
-		if (sub._pending > 0) {
-			// If PENDING > 1 then we can safely reduce the counter because
-			// the final sweep will take care of the rest. But if it's
-			// exactly 1 we can't do that otherwise the sweeping logic
-			// assumes that this signal was already updated.
-			if (sub._pending > 1) sub._pending--;
-			tmpPending.push(sub);
-		}
-	});
-}
-
-function activate(signal: Signal) {
-	signal._active = true;
-	refreshStale(signal);
 }
 
 export function signal<T>(value: T): Signal<T> {
 	return new Signal(value);
 }
 
-export type ReadonlySignal<T = any> = Omit<Signal<T>, "value"> & {
-	readonly value: T;
-};
-export function computed<T>(compute: () => T): ReadonlySignal<T> {
-	const signal = new Signal<T>(undefined as any);
-	signal._readonly = true;
+function prepareSources(target: Computed | Effect) {
+	for (
+		let node = target._sources;
+		node !== undefined;
+		node = node._nextSource
+	) {
+		const rollbackNode = node._source._node;
+		if (rollbackNode !== undefined) {
+			node._rollbackNode = rollbackNode;
+		}
+		node._source._node = node;
+		node._flags |= STALE;
+	}
+}
 
-	function updater() {
-		let finish = signal._setCurrent();
+function cleanupSources(target: Computed | Effect) {
+	// At this point target._sources is a mishmash of current & former dependencies.
+	// The current dependencies are also in a reverse order of use.
+	// Therefore build a new, reverted list of dependencies containing only the current
+	// dependencies in a proper order of use.
+	// Drop former dependencies from the list and unsubscribe from their change notifications.
 
-		try {
-			let ret = compute();
-			const stale = signal._value === ret;
-			if (!stale) signal._subs.forEach(sub => (sub._requiresUpdate = true));
-			finish(stale, true);
-			signal._value = ret;
-		} catch (err: any) {
-			// Ensure that we log the first error not the last
-			if (!commitError) commitError = err;
-			finish(true, false);
+	let node = target._sources;
+	let sources = undefined;
+	while (node !== undefined) {
+		const next = node._nextSource;
+		if (node._flags & STALE) {
+			node._source._unsubscribe(node);
+			node._nextSource = undefined;
+		} else {
+			if (sources !== undefined) {
+				sources._prevSource = node;
+			}
+			node._prevSource = undefined;
+			node._nextSource = sources;
+			sources = node;
+		}
+
+		node._source._node = node._rollbackNode;
+		if (node._rollbackNode !== undefined) {
+			node._rollbackNode = undefined;
+		}
+		node = next;
+	}
+	target._sources = sources;
+}
+
+function returnComputed<T>(computed: Computed<T>): T {
+	computed._flags &= ~RUNNING;
+	if (computed._flags & HAS_ERROR) {
+		throw computed._value;
+	}
+	return computed._value as T;
+}
+
+function disposeNestedEffects(context: Computed | Effect) {
+	let effect = context._effects;
+	if (effect !== undefined) {
+		do {
+			effect._dispose();
+			effect = effect._nextNestedEffect;
+		} while (effect !== undefined);
+		context._effects = undefined;
+	}
+}
+
+class Computed<T = any> extends Signal<T> {
+	/** @internal */
+	_compute: () => T;
+
+	/** @internal */
+	_sources?: Node = undefined;
+
+	/** @internal */
+	_effects?: Effect = undefined;
+
+	/** @internal */
+	_globalVersion = globalVersion - 1;
+
+	/** @internal */
+	_flags = STALE;
+
+	constructor(compute: () => T) {
+		super(undefined);
+		this._compute = compute;
+	}
+
+	/** @internal */
+	_subscribe(node: Node) {
+		if (this._targets === undefined) {
+			this._flags |= STALE | SHOULD_SUBSCRIBE;
+
+			// A computed signal subscribes lazily to its dependencies when the it
+			// gets its first subscriber.
+			for (
+				let node = this._sources;
+				node !== undefined;
+				node = node._nextSource
+			) {
+				node._source._subscribe(node);
+			}
+		}
+		super._subscribe(node);
+	}
+
+	/** @internal */
+	_unsubscribe(node: Node) {
+		super._unsubscribe(node);
+
+		// Computed signal unsubscribes from its dependencies from it loses its last subscriber.
+		if (this._targets === undefined) {
+			this._flags &= ~SHOULD_SUBSCRIBE;
+
+			for (
+				let node = this._sources;
+				node !== undefined;
+				node = node._nextSource
+			) {
+				node._source._unsubscribe(node);
+			}
 		}
 	}
 
-	signal._updater = updater;
+	/** @internal */
+	_notify() {
+		if (!(this._flags & NOTIFIED)) {
+			this._flags |= STALE | NOTIFIED;
 
-	return signal;
-}
+			for (
+				let node = this._targets;
+				node !== undefined;
+				node = node._nextTarget
+			) {
+				node._target._notify();
+			}
+		}
+	}
 
-export function effect(callback: () => void) {
-	const s = computed(() => batch(callback));
-	// Set up subscriptions since this is a "reactor" signal
-	activate(s);
-	return () => s._setCurrent()(true, true);
-}
+	peek(): T {
+		this._flags &= ~NOTIFIED;
 
-export function batch<T>(cb: () => T): T {
-	if (batchPending !== null) {
-		return cb();
-	} else {
-		const pending: Set<Signal> = new Set();
+		if (this._flags & RUNNING) {
+			cycleDetected();
+		}
+		this._flags |= RUNNING;
 
-		batchPending = pending;
+		if (!(this._flags & STALE) && this._targets !== undefined) {
+			return returnComputed(this);
+		}
+		this._flags &= ~STALE;
 
+		if (this._globalVersion === globalVersion) {
+			return returnComputed(this);
+		}
+		this._globalVersion = globalVersion;
+
+		if (this._version > 0) {
+			// Check current dependencies for changes. The dependency list is already in
+			// order of use. Therefore if >1 dependencies have changed only the first used one
+			// is re-evaluated at this point.
+			let node = this._sources;
+			while (node !== undefined) {
+				if (node._source._version !== node._version) {
+					break;
+				}
+				try {
+					node._source.peek();
+				} catch {
+					// Failures of current dependencies shouldn't be rethrown here in case the
+					// compute function catches them.
+				}
+				if (node._source._version !== node._version) {
+					break;
+				}
+				node = node._nextSource;
+			}
+			if (node === undefined) {
+				return returnComputed(this);
+			}
+		}
+
+		disposeNestedEffects(this);
+
+		const prevValue = this._value;
+		const prevFlags = this._flags;
+		const prevContext = evalContext;
 		try {
-			return cb();
+			evalContext = this;
+			prepareSources(this);
+			this._value = this._compute();
+			this._flags &= ~HAS_ERROR;
+			if (
+				prevFlags & HAS_ERROR ||
+				this._value !== prevValue ||
+				this._version === 0
+			) {
+				this._version++;
+			}
+		} catch (err) {
+			this._value = err;
+			this._flags |= HAS_ERROR;
+			this._version++;
 		} finally {
-			// Since stale signals are refreshed upwards, we need to
-			// add pending signals in reverse
-			let item: Signal | undefined;
-			while ((item = tmpPending.pop()) !== undefined) {
-				pending.add(item);
-			}
+			cleanupSources(this);
+			evalContext = prevContext;
+		}
+		return returnComputed(this);
+	}
 
-			batchPending = null;
+	get value(): T {
+		if (this._flags & RUNNING) {
+			cycleDetected();
+		}
+		return getValue(this);
+	}
+}
 
-			sweep(pending);
-			if (commitError) {
-				const err = commitError;
-				// Clear global error flag for next commit
-				commitError = null;
-				throw err;
-			}
+export function computed<T>(compute: () => T): Computed<T> {
+	return new Computed(compute);
+}
+export type { Computed as ReadonlySignal };
+
+function endEffect(this: Effect, prevContext?: Computed | Effect) {
+	if (evalContext !== this) {
+		throw new Error("Out-of-order effect");
+	}
+
+	cleanupSources(this);
+
+	evalContext = prevContext;
+	endBatch();
+
+	this._flags &= ~RUNNING;
+}
+
+class Effect {
+	_compute: () => void;
+	_sources?: Node;
+	_effects?: Effect;
+	_nextNestedEffect?: Effect;
+	_nextBatchedEffect?: Effect;
+	_flags = SHOULD_SUBSCRIBE;
+
+	constructor(compute: () => void) {
+		this._compute = compute;
+	}
+
+	_callback() {
+		const finish = this._start();
+		try {
+			this._compute();
+		} finally {
+			finish();
 		}
 	}
+
+	_start() {
+		if (this._flags & RUNNING) {
+			cycleDetected();
+		}
+		this._flags |= RUNNING;
+		this._flags &= ~DISPOSED;
+		disposeNestedEffects(this);
+
+		/*@__INLINE__**/ startBatch();
+		const prevContext = evalContext;
+		if (prevContext !== undefined) {
+			this._nextNestedEffect = prevContext._effects;
+			prevContext._effects = this;
+		}
+		evalContext = this;
+
+		prepareSources(this);
+		return endEffect.bind(this, prevContext);
+	}
+
+	_notify() {
+		if (!(this._flags & NOTIFIED)) {
+			this._flags |= NOTIFIED;
+			this._nextBatchedEffect = batchedEffect;
+			batchedEffect = this;
+		}
+	}
+
+	_dispose() {
+		if (this._flags & RUNNING) {
+			throw new Error("Effect still running");
+		}
+		for (
+			let node = this._sources;
+			node !== undefined;
+			node = node._nextSource
+		) {
+			node._source._unsubscribe(node);
+		}
+		disposeNestedEffects(this);
+		this._sources = undefined;
+		this._flags |= DISPOSED;
+	}
+}
+
+export function effect(compute: () => void): () => void {
+	const effect = new Effect(compute);
+	effect._callback();
+	// Return a bound function instead of a wrapper like `() => effect._dispose()`,
+	// because bound functions seem to be just as fast and take up a lot less memory.
+	return effect._dispose.bind(effect);
 }
