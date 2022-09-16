@@ -236,7 +236,7 @@ describe("effect()", () => {
 			expect(newSpy).to.be.called;
 		});
 
-		it("_start returns a function for closing the effect scope", () => {
+		it("should returns a function for closing the effect scope from _start", () => {
 			const s = signal(0);
 
 			let e: any;
@@ -261,7 +261,7 @@ describe("effect()", () => {
 			expect(spy).not.to.be.called;
 		});
 
-		it("___", () => {
+		it("should throw on out-of-order start1-start2-end1 sequences", () => {
 			let e1: any;
 			effect(function (this: any) { e1 = this; });
 
@@ -334,6 +334,38 @@ describe("effect()", () => {
 			}
 			s.value = 2;
 			expect(spy).to.be.called;
+		});
+
+		it("should have property _sources that is undefined when and only when the effect has no sources", () => {
+			const s = signal(0);
+
+			let e: any;
+			effect(function (this: any) { e = this; });
+			expect(e._sources).to.be.undefined;
+
+			const done1 = e._start();
+			try {
+				s.value;
+			} finally {
+				done1();
+			}
+			expect(e._sources).not.to.be.undefined;
+
+			const done2 = e._start();
+			done2();
+			expect(e._sources).to.be.undefined;
+
+
+			const done3 = e._start();
+			try {
+				s.value;
+			} finally {
+				done3();
+			}
+			expect(e._sources).not.to.be.undefined;
+
+			e._dispose();
+			expect(e._sources).to.be.undefined;
 		});
 	});
 });
