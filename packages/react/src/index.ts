@@ -14,7 +14,7 @@ import {
 	Signal,
 	type ReadonlySignal,
 } from "@preact/signals-core";
-import { Updater, ReactOwner, ReactDispatcher } from "./internal";
+import { Effect, ReactOwner, ReactDispatcher } from "./internal";
 
 export { signal, computed, batch, effect, Signal, type ReadonlySignal };
 
@@ -53,20 +53,23 @@ function createPropUpdater(props: any, prop: string, signal: Signal) {
 }
 */
 
-let finishUpdate: ReturnType<Updater["_setCurrent"]> | undefined;
-const updaterForComponent = new WeakMap<ReactOwner, Updater>();
+let finishUpdate: (() => void) | undefined;
+const updaterForComponent = new WeakMap<ReactOwner, Effect>();
 
-function setCurrentUpdater(updater?: Updater) {
+function setCurrentUpdater(updater?: Effect) {
 	// end tracking for the current update:
-	if (finishUpdate) finishUpdate(true, true);
+	if (finishUpdate) finishUpdate();
 	// start tracking the new update:
-	finishUpdate = updater && updater._setCurrent();
+	finishUpdate = updater && updater._start();
 }
 
-function createUpdater(updater: () => void) {
-	const s = signal(undefined) as Updater;
-	s._updater = updater;
-	return s;
+function createUpdater(update: () => void) {
+	let updater!: Effect;
+	effect(function (this: Effect) {
+		updater = this;
+	});
+	updater._callback = update;
+	return updater;
 }
 
 /**
@@ -127,7 +130,7 @@ Object.defineProperty(internals.ReactCurrentDispatcher, "current", {
 				updater = createUpdater(rerender);
 				updaterForComponent.set(lastOwner, updater);
 			} else {
-				updater._updater = rerender;
+				updater._callback = rerender;
 			}
 			setCurrentUpdater(updater);
 		} else {
