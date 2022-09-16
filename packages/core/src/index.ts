@@ -58,8 +58,8 @@ function endBatch() {
 		batchIteration++;
 
 		while (effect !== undefined) {
-			const next: Effect | undefined = effect._nextEffect;
-			effect._nextEffect = undefined;
+			const next: Effect | undefined = effect._nextBatchedEffect;
+			effect._nextBatchedEffect = undefined;
 			effect._flags &= ~NOTIFIED;
 
 			if (!(effect._flags & DISPOSED)) {
@@ -321,12 +321,26 @@ function returnComputed<T>(computed: Computed<T>): T {
 	return computed._value as T;
 }
 
+function disposeNestedEffects(context: Computed | Effect) {
+	let effect = context._effects;
+	if (effect !== undefined) {
+		do {
+			effect._dispose();
+			effect = effect._nextNestedEffect;
+		} while (effect !== undefined);
+		context._effects = undefined;
+	}
+}
+
 class Computed<T = any> extends Signal<T> {
 	/** @internal */
 	_compute: () => T;
 
 	/** @internal */
 	_sources?: Node = undefined;
+
+	/** @internal */
+	_effects?: Effect = undefined;
 
 	/** @internal */
 	_globalVersion = globalVersion - 1;
@@ -433,6 +447,8 @@ class Computed<T = any> extends Signal<T> {
 			}
 		}
 
+		disposeNestedEffects(this);
+
 		const prevValue = this._value;
 		const prevFlags = this._flags;
 		const prevContext = evalContext;
@@ -487,8 +503,10 @@ function endEffect(this: Effect, prevContext?: Computed | Effect) {
 
 class Effect {
 	_compute: () => void;
-	_sources?: Node = undefined;
-	_nextEffect?: Effect = undefined;
+	_sources?: Node;
+	_effects?: Effect;
+	_nextNestedEffect?: Effect;
+	_nextBatchedEffect?: Effect;
 	_flags = SHOULD_SUBSCRIBE;
 
 	constructor(compute: () => void) {
@@ -510,10 +528,14 @@ class Effect {
 		}
 		this._flags |= RUNNING;
 		this._flags &= ~DISPOSED;
+		disposeNestedEffects(this);
 
 		/*@__INLINE__**/ startBatch();
 		const prevContext = evalContext;
-
+		if (prevContext !== undefined) {
+			this._nextNestedEffect = prevContext._effects;
+			prevContext._effects = this;
+		}
 		evalContext = this;
 
 		prepareSources(this);
@@ -523,7 +545,7 @@ class Effect {
 	_notify() {
 		if (!(this._flags & NOTIFIED)) {
 			this._flags |= NOTIFIED;
-			this._nextEffect = batchedEffect;
+			this._nextBatchedEffect = batchedEffect;
 			batchedEffect = this;
 		}
 	}
@@ -539,6 +561,7 @@ class Effect {
 		) {
 			node._source._unsubscribe(node);
 		}
+		disposeNestedEffects(this);
 		this._sources = undefined;
 		this._flags |= DISPOSED;
 	}
