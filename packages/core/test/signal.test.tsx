@@ -1,4 +1,4 @@
-import { signal, computed, effect, batch } from "@preact/signals-core";
+import { signal, computed, effect, batch, Signal } from "@preact/signals-core";
 
 describe("signal", () => {
 	it("should return value", () => {
@@ -151,7 +151,7 @@ describe("effect()", () => {
 		const fn = () =>
 			effect(() => {
 				// Prevent test suite from spinning if limit is not hit
-				if (i++ > 10) {
+				if (i++ > 200) {
 					throw new Error("test failed");
 				}
 				a.value;
@@ -159,6 +159,213 @@ describe("effect()", () => {
 			});
 
 		expect(fn).to.throw(/Cycle detected/);
+	});
+
+	it("should allow disposing the effect multiple times", () => {
+		const dispose = effect(() => undefined);
+		dispose();
+		expect(() => dispose()).to.throw;
+	});
+
+	it("should throw when disposing a running effect", () => {
+		const a = signal(0);
+		const dispose = effect(() => {
+			if (a.value === 1) {
+				dispose();
+			}
+		});
+		expect(() => {
+			a.value = 1;
+		}).to.throw("Effect still running");
+	});
+
+	it("should not run if it's first been triggered and then disposed in a batch", () => {
+		const a = signal(0);
+		const spy = sinon.spy(() => a.value);
+		const dispose = effect(spy);
+		spy.resetHistory();
+
+		batch(() => {
+			a.value = 1;
+			dispose();
+		});
+
+		expect(spy).not.to.be.called;
+	});
+
+	it("should not run if it's been triggered, disposed and then triggered again in a batch", () => {
+		const a = signal(0);
+		const spy = sinon.spy(() => a.value);
+		const dispose = effect(spy);
+		spy.resetHistory();
+
+		batch(() => {
+			a.value = 2;
+			dispose();
+		});
+
+		expect(spy).not.to.be.called;
+	});
+
+	// Test internal behavior depended on by Preact & React integrations
+	describe("internals", () => {
+		it("should pass in the effect instance in callback's `this`", () => {
+			let e: any;
+			effect(function (this: any) { e = this; });
+			expect(e).to.have.property("_start");
+			expect(e).to.have.property("_dispose");
+		});
+
+		it("should allow setting _callback that replaces the default functionality", () => {
+			const a = signal(0);
+			const oldSpy = sinon.spy();
+			const newSpy = sinon.spy();
+
+			let e: any;
+			effect(function (this: any) {
+				e = this;
+				a.value;
+				oldSpy();
+			});
+			oldSpy.resetHistory();
+
+			e._callback = newSpy;
+			a.value = 1;
+
+			expect(oldSpy).not.to.be.called;
+			expect(newSpy).to.be.called;
+		});
+
+		it("should returns a function for closing the effect scope from _start", () => {
+			const s = signal(0);
+
+			let e: any;
+			effect(function (this: any) {	e = this;	});
+
+			const spy = sinon.spy();
+			e._callback = spy;
+
+			const done1 = e._start();
+			s.value;
+			done1();
+			expect(spy).not.to.be.called;
+
+			s.value = 2;
+			expect(spy).to.be.called;
+			spy.resetHistory();
+
+			const done2 = e._start();
+			done2();
+
+			s.value = 3;
+			expect(spy).not.to.be.called;
+		});
+
+		it("should throw on out-of-order start1-start2-end1 sequences", () => {
+			let e1: any;
+			effect(function (this: any) { e1 = this; });
+
+			let e2: any;
+			effect(function (this: any) { e2 = this; });
+
+			const done1 = e1._start();
+			const done2 = e2._start()
+			try {
+				expect(() => done1()).to.throw(/Out-of-order/);
+			} finally {
+				done2()
+				done1();
+			}
+		});
+
+		it("should throw a cycle detection error when _start is called while the effect is running", () => {
+			let e: any;
+			effect(function (this: any) {	e = this;	});
+
+			const done = e._start();
+			try {
+				expect(() => e._start()).to.throw(/Cycle detected/);
+			} finally {
+				done();
+			}
+		});
+
+		it("should dispose the effect on _dispose", () => {
+			const s = signal(0);
+
+			let e: any;
+			effect(function (this: any) {	e = this;	});
+
+			const spy = sinon.spy();
+			e._callback = spy;
+
+			const done = e._start();
+			try {
+				s.value;
+			} finally {
+				done();
+			}
+			expect(spy).not.to.be.called;
+
+			s.value = 2;
+			expect(spy).to.be.called;
+			spy.resetHistory();
+
+			e._dispose();
+			s.value = 2;
+			expect(spy).not.to.be.called;
+		});
+
+		it("should allow reusing the effect after disposing it", () => {
+			const s = signal(0);
+
+			let e: any;
+			effect(function (this: any) {	e = this;	});
+
+			const spy = sinon.spy();
+			e._callback = spy;
+			e._dispose();
+
+			const done = e._start();
+			try {
+				s.value;
+			} finally {
+				done();
+			}
+			s.value = 2;
+			expect(spy).to.be.called;
+		});
+
+		it("should have property _sources that is undefined when and only when the effect has no sources", () => {
+			const s = signal(0);
+
+			let e: any;
+			effect(function (this: any) { e = this; });
+			expect(e._sources).to.be.undefined;
+
+			const done1 = e._start();
+			try {
+				s.value;
+			} finally {
+				done1();
+			}
+			expect(e._sources).not.to.be.undefined;
+
+			const done2 = e._start();
+			done2();
+			expect(e._sources).to.be.undefined;
+
+			const done3 = e._start();
+			try {
+				s.value;
+			} finally {
+				done3();
+			}
+			expect(e._sources).not.to.be.undefined;
+
+			e._dispose();
+			expect(e._sources).to.be.undefined;
+		});
 	});
 });
 
@@ -180,6 +387,75 @@ describe("computed()", () => {
 
 		a.value = "aa";
 		expect(c.value).to.equal("aab");
+	});
+
+	it("should be lazily computed on demand", () => {
+		const a = signal("a");
+		const b = signal("b");
+		const spy = sinon.spy(() => a.value + b.value);
+		const c = computed(spy);
+		expect(spy).to.not.be.called;
+		c.value;
+		expect(spy).to.be.calledOnce;
+		a.value = "x";
+		b.value = "y";
+		expect(spy).to.be.calledOnce;
+		c.value;
+		expect(spy).to.be.calledTwice;
+	});
+
+	it("should computed only when dependency has changed at some point", () => {
+		const a = signal("a");
+		const spy = sinon.spy(() => {
+			return a.value;
+		});
+		const c = computed(spy);
+		c.value;
+		expect(spy).to.be.calledOnce;
+		a.value = "a";
+		c.value;
+		expect(spy).to.be.calledOnce;
+	});
+
+	it("should detect simple dependency cycles", () => {
+		const a: Signal = computed(() => a.value);
+		expect(() => a.value).to.throw(/Cycle detected/);
+	});
+
+	it("should not allow a computed signal to become a direct dependency of itself", () => {
+		const spy = sinon.spy(() => {
+			try {
+				a.value
+			} catch {
+				// pass
+			}
+		})
+		const a = computed(spy);
+		a.value;
+		expect(() => effect(() => a.value)).to.not.throw();
+	});
+
+	it("should detect deep dependency cycles", () => {
+		const a: Signal = computed(() => b.value);
+		const b: Signal = computed(() => c.value);
+		const c: Signal = computed(() => d.value);
+		const d: Signal = computed(() => a.value);
+		expect(() => a.value).to.throw(/Cycle detected/);
+	});
+
+	it("should store failures and recompute after a dependency changes", () => {
+		const a = signal(0);
+		const spy = sinon.spy(() => {
+			a.value;
+			throw new Error();
+		});
+		const c = computed(spy);
+		expect(() => c.value).to.throw();
+		expect(() => c.value).to.throw();
+		expect(spy).to.be.calledOnce;
+		a.value = 1;
+		expect(() => c.value).to.throw();
+		expect(spy).to.be.calledTwice;
 	});
 
 	it("should conditionally unsubscribe from signals", () => {
@@ -210,6 +486,88 @@ describe("computed()", () => {
 		expect(spy).not.to.be.called;
 	});
 
+	it("should consider undefined value separate from uninitialized value", () => {
+		const a = signal(0);
+		const spy = sinon.spy(() => undefined);
+		const c = computed(spy);
+
+		expect(c.value).to.be.undefined;
+		a.value = 1;
+		expect(c.value).to.be.undefined;
+		expect(spy).to.be.calledOnce;
+	});
+
+	it("should not leak errors raised by dependencies", () => {
+		const a = signal(0);
+		const b = computed(() => {
+			a.value;
+			throw new Error("error");
+		});
+		const c = computed(() => {
+			try {
+				b.value;
+			} catch {
+				return "ok";
+			}
+		});
+		expect(c.value).to.equal("ok");
+		a.value = 1;
+		expect(c.value).to.equal("ok");
+	});
+
+	it("should propagate invalidation even right after first subscription", () => {
+		const a = signal(0);
+		const b = computed(() => a.value);
+		const c = computed(() => b.value);
+		c.value;
+
+		const spy = sinon.spy(() => {
+			c.value;
+		});
+
+		effect(spy);
+		expect(spy).to.be.calledOnce;
+		spy.resetHistory();
+
+		a.value = 1;
+		expect(spy).to.be.calledOnce;
+	});
+
+	it("should not recompute dependencies out of order", () => {
+		const a = signal(1);
+		const b = signal(1);
+		const c = signal(1);
+
+		const spy = sinon.spy(() => c.value);
+		const d = computed(spy);
+
+		const e = computed(() => {
+			if (a.value > 0) {
+				b.value;
+				d.value;
+			} else {
+				b.value;
+			}
+		});
+
+		e.value;
+		spy.resetHistory()
+
+		a.value = 2;
+		b.value = 2;
+		c.value = 2;
+		e.value;
+		expect(spy).to.be.calledOnce;
+		spy.resetHistory()
+
+		a.value = -1;
+		b.value = -1;
+		c.value = -1;
+		e.value;
+		expect(spy).not.to.be.called;
+		spy.resetHistory()
+	});
+
 	describe("graph updates", () => {
 		it("should run computeds once for multiple dep changes", async () => {
 			const a = signal("a");
@@ -226,6 +584,8 @@ describe("computed()", () => {
 			compute.resetHistory();
 
 			a.value = "aa";
+			b.value = "bb";
+			c.value;
 			expect(compute).to.have.been.calledOnce;
 		});
 
@@ -251,7 +611,7 @@ describe("computed()", () => {
 			compute.resetHistory();
 
 			a.value = 4;
-
+			d.value;
 			expect(compute).to.have.been.calledOnce;
 		});
 
@@ -467,6 +827,7 @@ describe("computed()", () => {
 			spy.resetHistory();
 
 			a.value = "aa";
+			d.value;
 			expect(spy).to.returned("aa c");
 		});
 
@@ -495,22 +856,8 @@ describe("computed()", () => {
 			spy.resetHistory();
 
 			a.value = "aa";
+			e.value;
 			expect(spy).to.returned("aa c d");
-		});
-
-		it("should prevent invalid unmark state when called on a source signal", () => {
-			// Don't allow our internal logic to get in an invalid state, even through
-			// our own internal API. The bug this tests for is that a source signal
-			// will be unmarked, leading to all its subscribers `_pending` value to become
-			// negative. This is invalid and breaks further updates.
-			const a = signal("a");
-			const b = computed(() => a.value);
-			effect(() => b.value);
-
-			a._setCurrent()(true, true);
-
-			a.value = "aa";
-			expect(b.value).to.equal("aa");
 		});
 	});
 
@@ -518,8 +865,8 @@ describe("computed()", () => {
 		it("should throw when writing to computeds", () => {
 			const a = signal("a");
 			const b = computed(() => a.value);
-			const fn = () => ((b as any).value = "aa");
-			expect(fn).to.throw(/readonly/);
+			const fn = () => ((b as Signal).value = "aa");
+			expect(fn).to.throw(/Cannot set property value/);
 		});
 
 		it("should keep graph consistent on errors during activation", () => {
@@ -536,68 +883,18 @@ describe("computed()", () => {
 
 		it("should keep graph consistent on errors in computeds", () => {
 			const a = signal(0);
-			let shouldThrow = false;
 			const b = computed(() => {
-				if (shouldThrow) throw new Error("fail");
+				if (a.value === 1) throw new Error("fail");
 				return a.value;
 			});
 			const c = computed(() => b.value);
 			expect(c.value).to.equal(0);
 
-			shouldThrow = true;
-			let error: Error | null = null;
-			try {
-				a.value = 1;
-			} catch (err: any) {
-				error = err;
-			}
-			expect(error?.message).to.equal("fail");
+			a.value = 1;
+			expect(() => b.value).to.throw("fail");
 
-			// Now update signal again without throwing an error. If we didn't
-			// reset the subtree's PENDING counter C's value wouldn't update.
-			shouldThrow = false;
 			a.value = 2;
 			expect(c.value).to.equal(2);
-		});
-
-		it("should revert subscriptions on errors in computeds", () => {
-			const a = signal(1);
-			const b = signal(1);
-			const c = signal(1);
-			let shouldThrow = false;
-			const compute = sinon.spy(() => {
-				if (shouldThrow) {
-					throw new Error("fail: " + c.value);
-				}
-				return a.value + b.value;
-			});
-			const d = computed(compute);
-			expect(d.value).to.equal(2);
-
-			shouldThrow = true;
-			expect(() => {
-				a.value = 2;
-			}).to.throw();
-			expect(d.value).to.equal(2);
-
-			// when errors occur, we intentionally over-subscribe.
-			// This includes retaining subscriptions after the error:
-			compute.resetHistory();
-			try {
-				b.value = 2;
-			} catch (e) {
-				// may error, but not in a way we can assert over
-			}
-			expect(compute).to.have.been.called;
-
-			compute.resetHistory();
-			shouldThrow = false;
-			// Note: b.value=2 should probably also update the subgraph.
-			// ...but its value is already 2 from the errored computation.
-			// b.value = 2;
-			c.value = 2;
-			expect(compute).to.have.been.called;
-			expect(d.value).to.equal(4);
 		});
 
 		it("should support lazy branches", () => {
