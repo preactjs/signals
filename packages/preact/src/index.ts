@@ -323,13 +323,20 @@ export function useComputed<T>(compute: () => T) {
 	return useMemo(() => computed<T>(() => $compute.current()), []);
 }
 
-export function useSignalEffect(cb: () => void) {
+export function useSignalEffect(cb: () => void | (() => void)) {
 	const callback = useRef(cb);
 	callback.current = cb;
 
-	useEffect(() => effect(() => {
-		callback.current();
-	}), []);
+	useEffect(() => {
+		let cleanup: (() => void) | undefined;
+		effect(() => {
+			if (cleanup) {
+				cleanup();
+				cleanup = undefined
+			}
+			cleanup = callback.current();
+		})
+	}, []);
 }
 
 /**
