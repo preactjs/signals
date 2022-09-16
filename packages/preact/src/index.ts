@@ -334,7 +334,10 @@ export function useSignalEffect(cb: () => void | (() => void)) {
 				cleanup();
 				cleanup = undefined
 			}
-			cleanup = callback.current();
+			const result = callback.current();
+			if (typeof result == 'function') {
+				cleanup = result
+			}
 		})
 	}, []);
 }
