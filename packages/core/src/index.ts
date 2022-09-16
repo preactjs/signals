@@ -182,7 +182,6 @@ declare class Signal<T = any> {
 	/** @internal */
 	_targets?: Node;
 
-	/** @internal */
 	constructor(value?: T);
 
 	/** @internal */
@@ -192,6 +191,8 @@ declare class Signal<T = any> {
 	_unsubscribe(node: Node): void;
 
 	subscribe(fn: (value: T) => void): () => void;
+
+	valueOf(): T;
 
 	toString(): string;
 
@@ -241,6 +242,10 @@ Signal.prototype._unsubscribe = function (node) {
 
 Signal.prototype.subscribe = function (fn) {
 	return effect(() => fn(this.value));
+};
+
+Signal.prototype.valueOf = function () {
+	return this.value;
 };
 
 Signal.prototype.toString = function () {
@@ -367,7 +372,6 @@ declare class Computed<T = any> extends Signal<T> {
 	/** @internal */
 	_flags: number;
 
-	/** @internal */
 	constructor(compute: () => T);
 
 	/** @internal */
