@@ -206,6 +206,136 @@ describe("effect()", () => {
 
 		expect(spy).not.to.be.called;
 	});
+
+	// Test internal behavior depended on by Preact & React integrations
+	describe("internals", () => {
+		it("should pass in the effect instance in callback's `this`", () => {
+			let e: any;
+			effect(function (this: any) { e = this; });
+			expect(e).to.have.property("_start");
+			expect(e).to.have.property("_dispose");
+		});
+
+		it("should allow setting _callback that replaces the default functionality", () => {
+			const a = signal(0);
+			const oldSpy = sinon.spy();
+			const newSpy = sinon.spy();
+
+			let e: any;
+			effect(function (this: any) {
+				e = this;
+				a.value;
+				oldSpy();
+			});
+			oldSpy.resetHistory();
+
+			e._callback = newSpy;
+			a.value = 1;
+
+			expect(oldSpy).not.to.be.called;
+			expect(newSpy).to.be.called;
+		});
+
+		it("_start returns a function for closing the effect scope", () => {
+			const s = signal(0);
+
+			let e: any;
+			effect(function (this: any) {	e = this;	});
+
+			const spy = sinon.spy();
+			e._callback = spy;
+
+			const done1 = e._start();
+			s.value;
+			done1();
+			expect(spy).not.to.be.called;
+
+			s.value = 2;
+			expect(spy).to.be.called;
+			spy.resetHistory();
+
+			const done2 = e._start();
+			done2();
+
+			s.value = 3;
+			expect(spy).not.to.be.called;
+		});
+
+		it("___", () => {
+			let e1: any;
+			effect(function (this: any) { e1 = this; });
+
+			let e2: any;
+			effect(function (this: any) { e2 = this; });
+
+			const done1 = e1._start();
+			const done2 = e2._start()
+			try {
+				expect(() => done1()).to.throw(/Out-of-order/);
+			} finally {
+				done2()
+				done1();
+			}
+		});
+
+		it("should throw a cycle detection error when _start is called while the effect is running", () => {
+			let e: any;
+			effect(function (this: any) {	e = this;	});
+
+			const done = e._start();
+			try {
+				expect(() => e._start()).to.throw(/Cycle detected/);
+			} finally {
+				done();
+			}
+		});
+
+		it("should dispose the effect on _dispose", () => {
+			const s = signal(0);
+
+			let e: any;
+			effect(function (this: any) {	e = this;	});
+
+			const spy = sinon.spy();
+			e._callback = spy;
+
+			const done = e._start();
+			try {
+				s.value;
+			} finally {
+				done();
+			}
+			expect(spy).not.to.be.called;
+
+			s.value = 2;
+			expect(spy).to.be.called;
+			spy.resetHistory();
+
+			e._dispose();
+			s.value = 2;
+			expect(spy).not.to.be.called;
+		});
+
+		it("should allow reusing the effect after disposing it", () => {
+			const s = signal(0);
+
+			let e: any;
+			effect(function (this: any) {	e = this;	});
+
+			const spy = sinon.spy();
+			e._callback = spy;
+			e._dispose();
+
+			const done = e._start();
+			try {
+				s.value;
+			} finally {
+				done();
+			}
+			s.value = 2;
+			expect(spy).to.be.called;
+		});
+	});
 });
 
 describe("computed()", () => {

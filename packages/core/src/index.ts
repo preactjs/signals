@@ -449,6 +449,10 @@ export function computed<T>(compute: () => T): Computed<T> {
 export type { Computed as ReadonlySignal };
 
 function endEffect(this: Effect, prevContext?: Computed | Effect) {
+	if (evalContext !== this) {
+		throw new Error("Out-of-order effect");
+	}
+
 	cleanupSources(this);
 
 	evalContext = prevContext;
