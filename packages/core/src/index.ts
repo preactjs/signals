@@ -500,6 +500,9 @@ class Effect {
 	}
 
 	_dispose() {
+		if (this._flags & RUNNING) {
+			throw new Error("Effect still running");
+		}
 		for (let node = this._sources; node !== undefined; node = node._nextSource) {
 			node._source._unsubscribe(node);
 		}
