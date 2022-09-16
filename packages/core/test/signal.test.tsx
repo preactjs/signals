@@ -355,7 +355,6 @@ describe("effect()", () => {
 			done2();
 			expect(e._sources).to.be.undefined;
 
-
 			const done3 = e._start();
 			try {
 				s.value;
@@ -612,7 +611,7 @@ describe("computed()", () => {
 			compute.resetHistory();
 
 			a.value = 4;
-			e.value;
+			d.value;
 			expect(compute).to.have.been.calledOnce;
 		});
 
