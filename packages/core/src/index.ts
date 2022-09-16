@@ -317,22 +317,38 @@ function cleanupSources(target: Computed | Effect) {
 	target._sources = sources;
 }
 
-function returnComputed<T>(computed: Computed<T>): T {
-	computed._flags &= ~RUNNING;
-	if (computed._flags & HAS_ERROR) {
-		throw computed._value;
+function disposeContext(context: Computed | Effect) {
+	for (
+		let node = context._sources;
+		node !== undefined;
+		node = node._nextSource
+	) {
+		node._source._unsubscribe(node);
 	}
-	return computed._value as T;
+	context._sources = undefined;
+	disposeNestedContexts(context);
 }
 
-function disposeNestedEffects(context: Computed | Effect) {
-	let effect = context._effects;
+function disposeNestedContexts(context: Computed | Effect) {
+	let effect = context._nestedContexts;
 	if (effect !== undefined) {
 		do {
 			effect._dispose();
-			effect = effect._nextNestedEffect;
+			effect = effect._nextNestedContext;
 		} while (effect !== undefined);
-		context._effects = undefined;
+		context._nestedContexts = undefined;
+	}
+}
+
+function returnComputed<T>(computed: Computed<T>): T {
+	computed._flags &= ~RUNNING;
+	if (computed._flags & DISPOSED) {
+		disposeContext(computed);
+		return computed.peek();
+	} else if (computed._flags & HAS_ERROR) {
+		throw computed._value;
+	} else {
+		return computed._value as T;
 	}
 }
 
@@ -344,7 +360,10 @@ class Computed<T = any> extends Signal<T> {
 	_sources?: Node = undefined;
 
 	/** @internal */
-	_effects?: Effect = undefined;
+	_nestedContexts?: Effect | Computed = undefined;
+
+	/** @internal */
+	_nextNestedContext?: Effect | Computed = undefined;
 
 	/** @internal */
 	_globalVersion = globalVersion - 1;
@@ -355,6 +374,11 @@ class Computed<T = any> extends Signal<T> {
 	constructor(compute: () => T) {
 		super(undefined);
 		this._compute = compute;
+
+		if (evalContext !== undefined) {
+			this._nextNestedContext = evalContext._nestedContexts;
+			evalContext._nestedContexts = this;
+		}
 	}
 
 	/** @internal */
@@ -408,7 +432,19 @@ class Computed<T = any> extends Signal<T> {
 		}
 	}
 
+	/** @internal */
+	_dispose() {
+		this._flags |= DISPOSED;
+		if (!(this._flags & RUNNING)) {
+			disposeContext(this);
+		}
+	}
+
 	peek(): T {
+		if (this._flags & DISPOSED) {
+			throw new Error("Computed disposed");
+		}
+
 		this._flags &= ~NOTIFIED;
 
 		if (this._flags & RUNNING) {
@@ -451,14 +487,14 @@ class Computed<T = any> extends Signal<T> {
 			}
 		}
 
-		disposeNestedEffects(this);
-
 		const prevValue = this._value;
 		const prevFlags = this._flags;
 		const prevContext = evalContext;
 		try {
 			evalContext = this;
 			prepareSources(this);
+			disposeNestedContexts(this);
+
 			this._value = this._compute();
 			this._flags &= ~HAS_ERROR;
 			if (
@@ -496,25 +532,30 @@ function endEffect(this: Effect, prevContext?: Computed | Effect) {
 	if (evalContext !== this) {
 		throw new Error("Out-of-order effect");
 	}
-
 	cleanupSources(this);
-
 	evalContext = prevContext;
-	endBatch();
-
 	this._flags &= ~RUNNING;
+	if (this._flags & DISPOSED) {
+		disposeContext(this);
+	}
+	endBatch();
 }
 
 class Effect {
 	_compute: () => void;
 	_sources?: Node;
-	_effects?: Effect;
-	_nextNestedEffect?: Effect;
+	_nestedContexts?: Effect | Computed;
+	_nextNestedContext?: Effect | Computed;
 	_nextBatchedEffect?: Effect;
 	_flags = SHOULD_SUBSCRIBE;
 
 	constructor(compute: () => void) {
 		this._compute = compute;
+
+		if (evalContext !== undefined) {
+			this._nextNestedContext = evalContext._nestedContexts;
+			evalContext._nestedContexts = this;
+		}
 	}
 
 	_callback() {
@@ -532,17 +573,13 @@ class Effect {
 		}
 		this._flags |= RUNNING;
 		this._flags &= ~DISPOSED;
-		disposeNestedEffects(this);
 
 		/*@__INLINE__**/ startBatch();
 		const prevContext = evalContext;
-		if (prevContext !== undefined) {
-			this._nextNestedEffect = prevContext._effects;
-			prevContext._effects = this;
-		}
 		evalContext = this;
 
 		prepareSources(this);
+		disposeNestedContexts(this);
 		return endEffect.bind(this, prevContext);
 	}
 
@@ -555,19 +592,10 @@ class Effect {
 	}
 
 	_dispose() {
-		if (this._flags & RUNNING) {
-			throw new Error("Effect still running");
-		}
-		for (
-			let node = this._sources;
-			node !== undefined;
-			node = node._nextSource
-		) {
-			node._source._unsubscribe(node);
-		}
-		disposeNestedEffects(this);
-		this._sources = undefined;
 		this._flags |= DISPOSED;
+		if (!(this._flags & RUNNING)) {
+			disposeContext(this);
+		}
 	}
 }
 

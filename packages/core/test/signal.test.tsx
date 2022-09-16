@@ -174,7 +174,7 @@ describe("effect()", () => {
 		expect(fn).to.throw(/Cycle detected/);
 	});
 
-	it("should automatically dispose nested effects on re-evaluation", () => {
+	it("should dispose nested effects on re-evaluation", () => {
 		const a = signal(0);
 		const b = signal(0);
 		const spyInner = sinon.spy(() => a.value + b.value);
@@ -200,7 +200,7 @@ describe("effect()", () => {
 		expect(spyInner).to.be.calledOnce;
 	});
 
-	it("should automatically dispose nested effects on disposal", () => {
+	it("should dispose nested effects on disposal", () => {
 		const a = signal(0);
 		const b = signal(0);
 		const spyInner = sinon.spy(() => a.value + b.value);
@@ -222,24 +222,20 @@ describe("effect()", () => {
 		expect(spyInner).not.to.be.called;
 	});
 
-	it("should keep nested computed signals active even after enclosing effect", () => {
+	it("should dispose nested computed signals on disposal", () => {
 		const a = signal(0);
 		const spy = sinon.spy(() => a.value);
 
 		let c!: Signal;
 		const dispose = effect(() => {
-			c = computed(() => {
-				a.value;
-				effect(spy);
-			});
+			c = computed(spy);
 		});
-		dispose();
-		expect(spy).not.to.be.called;
-
 		c.value;
 		expect(spy).to.be.calledOnce;
+
+		dispose();
 		a.value = 1;
-		expect(spy).to.be.calledTwice;
+		expect(() => c.value).to.throw(/Computed disposed/);
 	});
 
 	it("should allow disposing the effect multiple times", () => {
@@ -248,16 +244,23 @@ describe("effect()", () => {
 		expect(() => dispose()).to.throw;
 	});
 
-	it("should throw when disposing a running effect", () => {
+	it("should allow disposing a running effect", () => {
 		const a = signal(0);
-		const dispose = effect(() => {
+		const spy = sinon.spy(() => {
 			if (a.value === 1) {
 				dispose();
 			}
 		});
-		expect(() => {
-			a.value = 1;
-		}).to.throw("Effect still running");
+		const dispose = effect(spy);
+		expect(spy).to.be.calledOnce;
+		spy.resetHistory();
+
+		a.value = 1;
+		expect(spy).to.be.calledOnce;
+		spy.resetHistory();
+
+		a.value = 2;
+		expect(spy).not.to.be.called;
 	});
 
 	it("should not run if it's first been triggered and then disposed in a batch", () => {
@@ -543,6 +546,42 @@ describe("computed()", () => {
 		c.value;
 		expect(spyOuter).to.be.calledOnce;
 		expect(spyInner).to.be.calledOnce;
+	});
+
+	it("should automatically dispose nested effects when disposed itself", () => {
+		const a = signal(0);
+		const b = signal(0);
+		const spyInner = sinon.spy(() => a.value + b.value);
+		const spyOuter = sinon.spy(() => {
+			a.value;
+			effect(spyInner);
+		});
+
+		let c!: Signal;
+		const dispose = effect(() => {
+			c = computed(spyOuter);
+		});
+		c.value;
+		expect(spyOuter).to.be.calledOnce;
+		expect(spyInner).to.be.calledOnce;
+		spyOuter.resetHistory();
+		spyInner.resetHistory();
+
+		dispose();
+		expect(spyOuter).not.to.be.called;
+		expect(spyInner).not.to.be.called;
+	});
+
+	it("should support getting disposed mid-run", () => {
+		const a = signal(0);
+		let c!: Signal;
+		const dispose = effect(() => {
+			c = computed(() => {
+				a.value;
+				dispose();
+			});
+		});
+		expect(() => c.value).to.throw("Computed disposed");
 	});
 
 	it("should not allow a computed signal to become a direct dependency of itself", () => {
