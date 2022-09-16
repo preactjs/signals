@@ -384,6 +384,7 @@ declare class Computed<T = any> extends Signal<T> {
 	readonly value: T;
 }
 
+/** @internal */
 function Computed(this: Computed, compute: () => unknown) {
 	Signal.call(this, undefined);
 
@@ -394,6 +395,7 @@ function Computed(this: Computed, compute: () => unknown) {
 	this._flags = STALE;
 }
 
+/** @internal */
 Computed.prototype = Object.create(Signal.prototype);
 
 Computed.prototype._subscribe = function (node) {
@@ -623,11 +625,13 @@ function effect(compute: () => void): () => void {
 	return effect._dispose.bind(effect);
 }
 
+// Work around problems with the test runner not finding the exported Signal class object.
+const _Signal = Signal;
 export {
 	signal,
 	computed,
 	effect,
 	batch,
-	Signal,
-	type Computed as ReadonlySignal,
+	_Signal as Signal,
+	type Computed as ReadonlySignal
 };
