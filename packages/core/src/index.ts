@@ -59,9 +59,10 @@ function endBatch() {
 
 		while (effect !== undefined) {
 			const next: Effect | undefined = effect._nextEffect;
+			effect._nextEffect = undefined;
+			effect._flags &= ~NOTIFIED;
+
 			if (!(effect._flags & DISPOSED)) {
-				effect._nextEffect = undefined;
-				effect._flags &= ~NOTIFIED;
 				try {
 					effect._callback();
 				} catch (err) {
