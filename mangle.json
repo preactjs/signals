@@ -1,59 +1,59 @@
 {
-	"help": {
-		"what is this file?": "It controls protected/private property mangling so that minified builds have consistent property names.",
-		"why are there duplicate minified properties?": "Most properties are only used on one type of objects, so they can have the same name since they will never collide. Doing this reduces size."
-	},
-	"minify": {
-		"mangle": {
-			"keep_classnames": true,
-			"properties": {
-				"regex": "^_[^_]",
-				"reserved": [
-					"__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED",
-					"__REACT_DEVTOOLS_GLOBAL_HOOK__",
-					"__PREACT_DEVTOOLS__",
-					"_renderers",
-					"_"
-				]
-			}
-		},
-		"compress": {
-			"reduce_funcs": false
-		}
-	},
-	"props": {
-		"cname": 6,
-		"props": {
-			"core: Node": "",
-			"$_source": "s",
-			"$_prevSource": "p",
-			"$_nextSource": "n",
-			"$_target": "t",
-			"$_prevTarget": "e",
-			"$_nextTarget": "x",
-			"$_rollbackNode": "r",
-			"core: Signal": "",
-			"$_value": "v",
-			"$_node": "n",
-			"$_targets": "t",
-			"core: Computed": "",
-			"$_compute": "v",
-			"$_globalVersion": "g",
-			"core: Effect": "",
-			"$_callback": "c",
-			"$_nextEffect": "e",
-			"$_start": "S",
-			"$_dispose": "d",
-			"core: Computed+Effect": "",
-			"$_sources": "s",
-			"$_notify": "N",
-			"core: Signal+Node+Computed+Effect": "",
-			"$_flags": "f",
-			"$_version": "i",
-			"$_subscribe": "S",
-			"$_unsubscribe": "U",
-			"preact": "",
-			"$_updaters": "U"
-		}
-	}
+  "help": {
+    "what is this file?": "It controls protected/private property mangling so that minified builds have consistent property names.",
+    "why are there duplicate minified properties?": "Most properties are only used on one type of objects, so they can have the same name since they will never collide. Doing this reduces size."
+  },
+  "minify": {
+    "mangle": {
+      "keep_classnames": true,
+      "properties": {
+        "regex": "^_[^_]",
+        "reserved": [
+          "__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED",
+          "__REACT_DEVTOOLS_GLOBAL_HOOK__",
+          "__PREACT_DEVTOOLS__",
+          "_renderers",
+          "_"
+        ]
+      }
+    },
+    "compress": {
+      "reduce_funcs": false
+    }
+  },
+  "props": {
+    "cname": 6,
+    "props": {
+      "core: Node": "",
+      "$_source": "s",
+      "$_prevSource": "p",
+      "$_nextSource": "n",
+      "$_target": "t",
+      "$_prevTarget": "e",
+      "$_nextTarget": "x",
+      "$_rollbackNode": "r",
+      "core: Signal": "",
+      "$_value": "v",
+      "$_node": "n",
+      "$_targets": "t",
+      "core: Computed": "",
+      "$_compute": "v",
+      "$_globalVersion": "g",
+      "core: Effect": "",
+      "$_callback": "c",
+      "$_nextEffect": "e",
+      "$_start": "S",
+      "$_dispose": "d",
+      "core: Computed+Effect": "",
+      "$_sources": "s",
+      "$_notify": "N",
+      "core: Signal+Node+Computed+Effect": "",
+      "$_flags": "f",
+      "$_version": "i",
+      "$_subscribe": "S",
+      "$_unsubscribe": "U",
+      "preact": "",
+      "$_updaters": "U"
+    }
+  }
 }
