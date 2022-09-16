@@ -329,7 +329,7 @@ export function useSignalEffect(cb: () => void | (() => void)) {
 
 	useEffect(() => {
 		let cleanup: (() => void) | undefined;
-		effect(() => {
+		return effect(() => {
 			if (cleanup) {
 				cleanup();
 				cleanup = undefined
