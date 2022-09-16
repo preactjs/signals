@@ -224,6 +224,10 @@ export class Signal<T = any> {
 		return effect(() => fn(this.value));
 	}
 
+	valueOf(): T {
+		return this.value;
+	}
+
 	toString(): string {
 		return this.value + "";
 	}

@@ -12,6 +12,19 @@ describe("signal", () => {
 		expect(s.toString()).equal("123");
 	});
 
+	it("should support .valueOf()", () => {
+		const s = signal(123);
+		expect(s).to.have.property("valueOf");
+		expect(s.valueOf).to.be.a("function");
+		expect(s.valueOf()).equal(123);
+		expect(+s).equal(123);
+
+		const a = signal(1);
+		const b = signal(2);
+		// @ts-ignore-next-line
+		expect(a + b).to.equal(3);
+	});
+
 	describe(".peek()", () => {
 		it("should get value", () => {
 			const s = signal(1);
@@ -279,7 +292,9 @@ describe("effect()", () => {
 	describe("internals", () => {
 		it("should pass in the effect instance in callback's `this`", () => {
 			let e: any;
-			effect(function (this: any) { e = this; });
+			effect(function (this: any) {
+				e = this;
+			});
 			expect(e).to.have.property("_start");
 			expect(e).to.have.property("_dispose");
 		});
@@ -308,7 +323,9 @@ describe("effect()", () => {
 			const s = signal(0);
 
 			let e: any;
-			effect(function (this: any) {	e = this;	});
+			effect(function (this: any) {
+				e = this;
+			});
 
 			const spy = sinon.spy();
 			e._callback = spy;
@@ -331,24 +348,30 @@ describe("effect()", () => {
 
 		it("should throw on out-of-order start1-start2-end1 sequences", () => {
 			let e1: any;
-			effect(function (this: any) { e1 = this; });
+			effect(function (this: any) {
+				e1 = this;
+			});
 
 			let e2: any;
-			effect(function (this: any) { e2 = this; });
+			effect(function (this: any) {
+				e2 = this;
+			});
 
 			const done1 = e1._start();
-			const done2 = e2._start()
+			const done2 = e2._start();
 			try {
 				expect(() => done1()).to.throw(/Out-of-order/);
 			} finally {
-				done2()
+				done2();
 				done1();
 			}
 		});
 
 		it("should throw a cycle detection error when _start is called while the effect is running", () => {
 			let e: any;
-			effect(function (this: any) {	e = this;	});
+			effect(function (this: any) {
+				e = this;
+			});
 
 			const done = e._start();
 			try {
@@ -362,7 +385,9 @@ describe("effect()", () => {
 			const s = signal(0);
 
 			let e: any;
-			effect(function (this: any) {	e = this;	});
+			effect(function (this: any) {
+				e = this;
+			});
 
 			const spy = sinon.spy();
 			e._callback = spy;
@@ -388,7 +413,9 @@ describe("effect()", () => {
 			const s = signal(0);
 
 			let e: any;
-			effect(function (this: any) {	e = this;	});
+			effect(function (this: any) {
+				e = this;
+			});
 
 			const spy = sinon.spy();
 			e._callback = spy;
@@ -408,7 +435,9 @@ describe("effect()", () => {
 			const s = signal(0);
 
 			let e: any;
-			effect(function (this: any) { e = this; });
+			effect(function (this: any) {
+				e = this;
+			});
 			expect(e._sources).to.be.undefined;
 
 			const done1 = e._start();
