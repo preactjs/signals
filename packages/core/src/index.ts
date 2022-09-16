@@ -8,6 +8,7 @@ const NOTIFIED = 1 << 2;
 const HAS_ERROR = 1 << 3;
 const SHOULD_SUBSCRIBE = 1 << 4;
 const SUBSCRIBED = 1 << 5;
+const DISPOSED = 1 << 6;
 
 // A linked list node used to track dependencies (sources) and dependents (targets).
 // Also used to remember the source's last version number that the target saw.
@@ -58,14 +59,16 @@ function endBatch() {
 
 		while (effect !== undefined) {
 			const next: Effect | undefined = effect._nextEffect;
-			effect._nextEffect = undefined;
-			effect._flags &= ~NOTIFIED;
-			try {
-				effect._callback();
-			} catch (err) {
-				if (!hasError) {
-					error = err;
-					hasError = true;
+			if (!(effect._flags & DISPOSED)) {
+				effect._nextEffect = undefined;
+				effect._flags &= ~NOTIFIED;
+				try {
+					effect._callback();
+				} catch (err) {
+					if (!hasError) {
+						error = err;
+						hasError = true;
+					}
 				}
 			}
 			effect = next;
@@ -477,6 +480,7 @@ class Effect {
 			cycleDetected();
 		}
 		this._flags |= RUNNING;
+		this._flags &= ~DISPOSED;
 
 		/*@__INLINE__**/ startBatch();
 		const prevContext = evalContext;
@@ -500,6 +504,7 @@ class Effect {
 			node._source._unsubscribe(node);
 		}
 		this._sources = undefined;
+		this._flags |= DISPOSED;
 	}
 }
 

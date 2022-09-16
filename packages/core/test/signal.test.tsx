@@ -160,6 +160,34 @@ describe("effect()", () => {
 
 		expect(fn).to.throw(/Cycle detected/);
 	});
+
+	it("should not run if it's first been triggered and then disposed in a batch", () => {
+		const a = signal(0);
+		const spy = sinon.spy(() => a.value);
+		const dispose = effect(spy);
+		spy.resetHistory();
+
+		batch(() => {
+			a.value = 1;
+			dispose();
+		});
+
+		expect(spy).not.to.be.called;
+	});
+
+	it("should not run if it's been triggered, disposed and then triggered again in a batch", () => {
+		const a = signal(0);
+		const spy = sinon.spy(() => a.value);
+		const dispose = effect(spy);
+		spy.resetHistory();
+
+		batch(() => {
+			a.value = 2;
+			dispose();
+		});
+
+		expect(spy).not.to.be.called;
+	});
 });
 
 describe("computed()", () => {
