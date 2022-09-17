@@ -18,14 +18,17 @@
       }
     },
     "compress": {
-      "reduce_funcs": false
+      "conditionals": false,
+      "evaluate": false,
+      "loops": false,
+      "sequences": false
     }
   },
   "props": {
     "cname": 6,
     "props": {
       "core: Node": "",
-      "$_source": "s",
+      "$_source": "S",
       "$_prevSource": "p",
       "$_nextSource": "n",
       "$_target": "t",
