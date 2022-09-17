@@ -495,17 +495,31 @@ export function computed<T>(compute: () => T): Computed<T> {
 }
 export type { Computed as ReadonlySignal };
 
+function disposeEffect(effect: Effect) {
+	for (
+		let node = effect._sources;
+		node !== undefined;
+		node = node._nextSource
+	) {
+		node._source._unsubscribe(node);
+	}
+	disposeNestedEffects(effect);
+	effect._sources = undefined;
+	effect._flags |= DISPOSED;
+}
+
 function endEffect(this: Effect, prevContext?: Computed | Effect) {
 	if (evalContext !== this) {
 		throw new Error("Out-of-order effect");
 	}
-
 	cleanupSources(this);
-
 	evalContext = prevContext;
 	endBatch();
 
 	this._flags &= ~RUNNING;
+	if (this._flags & DISPOSED) {
+		disposeEffect(this);
+	}
 }
 
 class Effect {
@@ -559,19 +573,9 @@ class Effect {
 	}
 
 	_dispose() {
-		if (this._flags & RUNNING) {
-			throw new Error("Effect still running");
+		if (!(this._flags & RUNNING)) {
+			disposeEffect(this);
 		}
-		for (
-			let node = this._sources;
-			node !== undefined;
-			node = node._nextSource
-		) {
-			node._source._unsubscribe(node);
-		}
-		disposeNestedEffects(this);
-		this._sources = undefined;
-		this._flags |= DISPOSED;
 	}
 }
 

@@ -248,16 +248,20 @@ describe("effect()", () => {
 		expect(() => dispose()).to.throw;
 	});
 
-	it("should throw when disposing a running effect", () => {
+	it("should allow disposing a running effect", () => {
 		const a = signal(0);
+		const spy = sinon.spy();
 		const dispose = effect(() => {
 			if (a.value === 1) {
 				dispose();
+				spy();
 			}
 		});
-		expect(() => {
-			a.value = 1;
-		}).to.throw("Effect still running");
+		expect(spy).not.to.be.called;
+		a.value = 1;
+		expect(spy).to.be.calledOnce;
+		a.value = 2;
+		expect(spy).to.be.calledOnce;
 	});
 
 	it("should not run if it's first been triggered and then disposed in a batch", () => {
