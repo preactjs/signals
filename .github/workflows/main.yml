@@ -47,3 +47,6 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+      - name: Test production build
+        run: pnpm test:minify
