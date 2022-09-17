@@ -14,7 +14,7 @@ import {
 	OptionsTypes,
 	HookFn,
 	Effect,
-	PropertyEffect,
+	PropertyUpdater,
 	AugmentedElement as Element,
 } from "./internal";
 
@@ -203,30 +203,30 @@ hook(OptionsTypes.DIFFED, (old, vnode) => {
 					updater = createPropUpdater(dom, prop, signal);
 					updaters[prop] = updater;
 				}
-				setCurrentUpdater(updater);
-				updater._callback(signal);
+				updater._signal.value = signal;
 			}
 		}
 	}
 	old(vnode);
 });
 
-function createPropUpdater(dom: Element, prop: string, signal: Signal) {
+function createPropUpdater(dom: Element, prop: string, propSignal: Signal): PropertyUpdater {
 	const setAsProperty = prop in dom;
-	return createUpdater((newSignal?: Signal) => {
-		if (newSignal) signal = newSignal;
-		let value = signal.value;
-		if (newSignal) {
-			// just a new signal reference passed in, don't update
-		} else if (setAsProperty) {
-			// @ts-ignore-next-line silly
-			dom[prop] = value;
-		} else if (value) {
-			dom.setAttribute(prop, value);
-		} else {
-			dom.removeAttribute(prop);
-		}
-	}) as PropertyEffect;
+	const changeSignal = signal(propSignal);
+	return {
+		_signal: changeSignal,
+		_dispose: effect(() => {
+			const value = changeSignal.value.value;
+			if (setAsProperty) {
+				// @ts-ignore-next-line silly
+				dom[prop] = value;
+			} else if (value) {
+				dom.setAttribute(prop, value);
+			} else {
+				dom.removeAttribute(prop);
+			}
+		})
+	};
 }
 
 /** Unsubscribe from Signals when unmounting components/vnodes */

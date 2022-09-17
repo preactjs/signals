@@ -8,12 +8,13 @@ export interface Effect {
 	_dispose(): void;
 }
 
-export interface PropertyEffect extends Effect {
-	_callback(newSignal?: Signal): void;
+export interface PropertyUpdater {
+	_signal: Signal<Signal>;
+	_dispose: () => void;
 }
 
 export interface AugmentedElement extends HTMLElement {
-	_updaters?: Record<string, PropertyEffect | undefined> | null;
+	_updaters?: Record<string, PropertyUpdater | undefined> | null;
 }
 
 export interface VNode<P = any> extends preact.VNode<P> {
