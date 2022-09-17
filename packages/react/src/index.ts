@@ -1,6 +1,7 @@
 import {
 	useRef,
 	useMemo,
+	useEffect,
 	// @ts-ignore-next-line
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED as internals,
@@ -161,4 +162,23 @@ export function useComputed<T>(compute: () => T) {
 	const $compute = useRef(compute);
 	$compute.current = compute;
 	return useMemo(() => computed<T>(() => $compute.current()), []);
+}
+
+export function useSignalEffect(cb: () => void | (() => void)) {
+	const callback = useRef(cb);
+	callback.current = cb;
+
+	useEffect(() => {
+		let cleanup: (() => void) | undefined;
+		return effect(() => {
+			if (cleanup) {
+				cleanup();
+				cleanup = undefined
+			}
+			const result = callback.current();
+			if (typeof result == 'function') {
+				cleanup = result
+			}
+		})
+	}, []);
 }
