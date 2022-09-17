@@ -295,8 +295,8 @@ describe("effect()", () => {
 			effect(function (this: any) {
 				e = this;
 			});
-			expect(e).to.have.property("_start");
-			expect(e).to.have.property("_dispose");
+			expect(typeof e._start).to.equal("function");
+			expect(typeof e._dispose).to.equal("function");
 		});
 
 		it("should allow setting _callback that replaces the default functionality", () => {

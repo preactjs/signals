@@ -23,6 +23,7 @@ importers:
       '@typescript-eslint/eslint-plugin': ^5.33.0
       '@typescript-eslint/parser': ^5.33.0
       babel-plugin-istanbul: ^6.1.1
+      babel-plugin-transform-rename-properties: ^0.1.0
       chai: ^4.3.6
       cross-env: ^7.0.3
       errorstacks: ^2.4.0
@@ -62,6 +63,7 @@ importers:
       '@typescript-eslint/eslint-plugin': 5.33.0_njno5y7ry2l2lcmiu4tywxkwnq
       '@typescript-eslint/parser': 5.33.0_qugx7qdu5zevzvxaiqyxfiwquq
       babel-plugin-istanbul: 6.1.1
+      babel-plugin-transform-rename-properties: 0.1.0_@babel+core@7.18.10
       chai: 4.3.6
       cross-env: 7.0.3
       errorstacks: 2.4.0
@@ -2521,6 +2523,14 @@ packages:
     resolution: {integrity: sha512-5gafyjyyBTTdX/tQQ0hRgu4AhNHG/hqWi0ZZmg2xvs2FgRkJXzDNKBZCyoYqgFkovfDrgM8OoKg8karoUvWeCw==}
     peerDependencies:
       '@babel/core': ^7.12.10
+    dependencies:
+      '@babel/core': 7.18.10
+    dev: true
+
+  /babel-plugin-transform-rename-properties/0.1.0_@babel+core@7.18.10:
+    resolution: {integrity: sha512-uBSvAC8qH81TsXsWYD20ME4qg9ICflMLjsNfeuSxrKkJkym4Riqne1BrCCW15lcM/t9lfEiz4FJbVeUoaOVGWA==}
+    peerDependencies:
+      '@babel/core': ^7.0.0-0
     dependencies:
       '@babel/core': 7.18.10
     dev: true
