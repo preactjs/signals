@@ -57,8 +57,8 @@
       "$_unsubscribe": "U",
       "preact": "",
       "$_signal": "s",
-      "$_updater": "_$u",
-      "$_updateFlags": "_$f",
+      "$_updater": "__$u",
+      "$_updateFlags": "__$f",
       "$_updaters": "U"
     }
   }
