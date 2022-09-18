@@ -172,78 +172,99 @@ function getValue<T>(signal: Signal<T>): T {
 	}
 }
 
-class Signal<T = any> {
+declare class Signal<T = any> {
 	/** @internal */
 	_value: unknown;
 
 	/** @internal */
-	_version = 0;
+	_version: number;
 
 	/** @internal */
-	_node?: Node = undefined;
+	_node?: Node;
 
 	/** @internal */
-	_targets?: Node = undefined;
+	_targets?: Node;
 
-	constructor(value?: T) {
-		this._value = value;
+	constructor(value?: T);
+
+	/** @internal */
+	_subscribe(node: Node): void;
+
+	/** @internal */
+	_unsubscribe(node: Node): void;
+
+	subscribe(fn: (value: T) => void): () => void;
+
+	valueOf(): T;
+
+	toString(): string;
+
+	peek(): T;
+
+	get value(): T;
+	set value(value: T);
+}
+
+function Signal(this: Signal, value: unknown) {
+	this._value = value;
+	this._version = 0;
+	this._node = undefined;
+	this._targets = undefined;
+}
+
+Signal.prototype._subscribe = function(node) {
+	if (!(node._flags & SUBSCRIBED)) {
+		node._flags |= SUBSCRIBED;
+		node._nextTarget = this._targets;
+
+		if (this._targets !== undefined) {
+			this._targets._prevTarget = node;
+		}
+		this._targets = node;
 	}
+};
 
-	/** @internal */
-	_subscribe(node: Node): void {
-		if (!(node._flags & SUBSCRIBED)) {
-			node._flags |= SUBSCRIBED;
-			node._nextTarget = this._targets;
+Signal.prototype._unsubscribe = function(node) {
+	if (node._flags & SUBSCRIBED) {
+		node._flags &= ~SUBSCRIBED;
 
-			if (this._targets !== undefined) {
-				this._targets._prevTarget = node;
-			}
-			this._targets = node;
+		const prev = node._prevTarget;
+		const next = node._nextTarget;
+		if (prev !== undefined) {
+			prev._nextTarget = next;
+			node._prevTarget = undefined;
+		}
+		if (next !== undefined) {
+			next._prevTarget = prev;
+			node._nextTarget = undefined;
+		}
+		if (node === this._targets) {
+			this._targets = next;
 		}
 	}
+};
 
-	/** @internal */
-	_unsubscribe(node: Node): void {
-		if (node._flags & SUBSCRIBED) {
-			node._flags &= ~SUBSCRIBED;
+Signal.prototype.subscribe = function(fn) {
+	return effect(() => fn(this.value));
+};
 
-			const prev = node._prevTarget;
-			const next = node._nextTarget;
-			if (prev !== undefined) {
-				prev._nextTarget = next;
-				node._prevTarget = undefined;
-			}
-			if (next !== undefined) {
-				next._prevTarget = prev;
-				node._nextTarget = undefined;
-			}
-			if (node === this._targets) {
-				this._targets = next;
-			}
-		}
-	}
+Signal.prototype.valueOf = function() {
+	return this.value;
+};
 
-	subscribe(fn: (value: T) => void): () => void {
-		return effect(() => fn(this.value));
-	}
+Signal.prototype.toString = function() {
+	return this.value + "";
+};
 
-	valueOf(): T {
-		return this.value;
-	}
+Signal.prototype.peek = function() {
+	return this._value;
+};
 
-	toString(): string {
-		return this.value + "";
-	}
-
-	peek(): T {
-		return this._value as T;
-	}
-
-	get value(): T {
+Object.defineProperty(Signal.prototype, "value", {
+	get() {
 		return getValue(this);
-	}
-
-	set value(value: T) {
+	},
+	set(value) {
 		if (value !== this._value) {
 			if (batchIteration > 100) {
 				cycleDetected();
@@ -267,7 +288,7 @@ class Signal<T = any> {
 			}
 		}
 	}
-}
+});
 
 function signal<T>(value: T): Signal<T> {
 	return new Signal(value);
