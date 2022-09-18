@@ -7,6 +7,10 @@ describe("signal", () => {
 		expect(s.value).to.equal(v);
 	});
 
+	it("should inherit from Signal", () => {
+		expect(signal(0)).to.be.instanceOf(Signal);
+	});
+
 	it("should support .toString()", () => {
 		const s = signal(123);
 		expect(s.toString()).equal("123");
@@ -477,6 +481,10 @@ describe("computed()", () => {
 
 		const c = computed(() => a.value + b.value);
 		expect(c.value).to.equal("ab");
+	});
+
+	it("should inherit from Signal", () => {
+		expect(computed(() => 0)).to.be.instanceOf(Signal);
 	});
 
 	it("should return updated value", () => {
