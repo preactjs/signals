@@ -56,6 +56,9 @@
       "$_subscribe": "S",
       "$_unsubscribe": "U",
       "preact": "",
+      "$_signal": "s",
+      "$_updater": "_$u",
+      "$_updateFlags": "_$f",
       "$_updaters": "U"
     }
   }
