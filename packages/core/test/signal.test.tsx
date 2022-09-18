@@ -285,8 +285,9 @@ describe("effect()", () => {
 		spy.resetHistory();
 
 		batch(() => {
-			a.value = 2;
+			a.value = 1;
 			dispose();
+			a.value = 2;
 		});
 
 		expect(spy).not.to.be.called;
