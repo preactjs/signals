@@ -31,15 +31,12 @@ function hook<T extends OptionsTypes>(hookName: T, hookFn: HookFn<T>) {
 }
 
 let currentComponent: AugmentedComponent | undefined;
-let currentUpdater: Effect | undefined;
 let finishUpdate: (() => void) | undefined;
-const updaterForComponent = new WeakMap<Component | VNode, Effect>();
 
 function setCurrentUpdater(updater?: Effect) {
 	// end tracking for the current update:
 	if (finishUpdate) finishUpdate();
 	// start tracking the new update:
-	currentUpdater = updater;
 	finishUpdate = updater && updater._start();
 }
 
@@ -84,7 +81,7 @@ function Text(this: AugmentedComponent, { data }: { data: Signal }) {
 		}
 
 		// Replace this component's vdom updater with a direct text one:
-		currentUpdater!._callback = () => {
+		this._updater!._callback = () => {
 			(this.base as Text).data = s.peek();
 		};
 
@@ -143,13 +140,12 @@ hook(OptionsTypes.RENDER, (old, vnode) => {
 	if (component) {
 		component._updateFlags &= ~HAS_PENDING_UPDATE;
 
-		updater = updaterForComponent.get(component);
+		updater = component._updater;
 		if (updater === undefined) {
-			updater = createUpdater(() => {
+			component._updater = updater = createUpdater(() => {
 				component._updateFlags |= HAS_PENDING_UPDATE;
 				component.setState({});
 			});
-			updaterForComponent.set(component, updater);
 		}
 	}
 
@@ -227,9 +223,8 @@ function createPropUpdater(dom: Element, prop: string, propSignal: Signal): Prop
 /** Unsubscribe from Signals when unmounting components/vnodes */
 hook(OptionsTypes.UNMOUNT, (old, vnode: VNode) => {
 	let component = vnode.__c;
-	const updater = component && updaterForComponent.get(component);
+	const updater = component && component._updater;
 	if (updater) {
-		updaterForComponent.delete(component);
 		updater._dispose();
 	}
 
@@ -260,7 +255,7 @@ hook(OptionsTypes.HOOK, (old, component, index, type) => {
  */
 Component.prototype.shouldComponentUpdate = function (this: AugmentedComponent, props, state) {
 	// @todo: Once preactjs/preact#3671 lands, this could just use `currentUpdater`:
-	const updater = updaterForComponent.get(this);
+	const updater = this._updater;
 	const hasSignals = updater && updater._sources !== undefined;
 
 	// let reason;
