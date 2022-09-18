@@ -1272,4 +1272,14 @@ describe("batch/transaction", () => {
 		expect(spy1).to.be.calledOnce;
 		expect(spy2).to.be.calledOnce;
 	});
+
+	it("should run effect's first run immediately even inside a batch", () => {
+		let callCount = 0;
+		const spy = sinon.spy();
+		batch(() => {
+			effect(spy);
+			callCount = spy.callCount;
+		});
+		expect(callCount).to.equal(1);
+	});
 });
