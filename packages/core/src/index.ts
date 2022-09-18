@@ -83,7 +83,7 @@ function endBatch() {
 	}
 }
 
-export function batch<T>(callback: () => T): T {
+function batch<T>(callback: () => T): T {
 	if (batchDepth > 0) {
 		return callback();
 	}
@@ -172,7 +172,7 @@ function getValue<T>(signal: Signal<T>): T {
 	}
 }
 
-export class Signal<T = any> {
+class Signal<T = any> {
 	/** @internal */
 	_value: unknown;
 
@@ -269,7 +269,7 @@ export class Signal<T = any> {
 	}
 }
 
-export function signal<T>(value: T): Signal<T> {
+function signal<T>(value: T): Signal<T> {
 	return new Signal(value);
 }
 
@@ -490,10 +490,9 @@ class Computed<T = any> extends Signal<T> {
 	}
 }
 
-export function computed<T>(compute: () => T): Computed<T> {
+function computed<T>(compute: () => T): Computed<T> {
 	return new Computed(compute);
 }
-export type { Computed as ReadonlySignal };
 
 function disposeEffect(effect: Effect) {
 	for (
@@ -522,67 +521,88 @@ function endEffect(this: Effect, prevContext?: Computed | Effect) {
 	}
 }
 
-class Effect {
+declare class Effect {
 	_compute: () => void;
 	_sources?: Node;
 	_effects?: Effect;
 	_nextNestedEffect?: Effect;
 	_nextBatchedEffect?: Effect;
-	_flags = SHOULD_SUBSCRIBE;
+	_flags: number;
 
-	constructor(compute: () => void) {
-		this._compute = compute;
+	constructor(compute: () => void);
 
-		if (evalContext !== undefined) {
-			this._nextNestedEffect = evalContext._effects;
-			evalContext._effects = this;
-		}
-	}
+	_callback(): void;
+	_start(): () => void;
+	_notify(): void;
+	_dispose(): void;
+}
 
-	_callback() {
-		const finish = this._start();
-		try {
-			this._compute();
-		} finally {
-			finish();
-		}
-	}
+function Effect(this: Effect, compute: () => void) {
+	this._compute = compute;
+	this._sources = undefined;
+	this._effects = undefined;
+	this._nextNestedEffect = undefined;
+	this._nextBatchedEffect = undefined;
+	this._flags = SHOULD_SUBSCRIBE;
 
-	_start() {
-		if (this._flags & RUNNING) {
-			cycleDetected();
-		}
-		this._flags |= RUNNING;
-		this._flags &= ~DISPOSED;
-		disposeNestedEffects(this);
-
-		/*@__INLINE__**/ startBatch();
-		const prevContext = evalContext;
-		evalContext = this;
-
-		prepareSources(this);
-		return endEffect.bind(this, prevContext);
-	}
-
-	_notify() {
-		if (!(this._flags & NOTIFIED)) {
-			this._flags |= NOTIFIED;
-			this._nextBatchedEffect = batchedEffect;
-			batchedEffect = this;
-		}
-	}
-
-	_dispose() {
-		if (!(this._flags & RUNNING)) {
-			disposeEffect(this);
-		}
+	if (evalContext !== undefined) {
+		this._nextNestedEffect = evalContext._effects;
+		evalContext._effects = this;
 	}
 }
 
-export function effect(compute: () => void): () => void {
+Effect.prototype._callback = function() {
+	const finish = this._start();
+	try {
+		this._compute();
+	} finally {
+		finish();
+	}
+};
+
+Effect.prototype._start = function() {
+	if (this._flags & RUNNING) {
+		cycleDetected();
+	}
+	this._flags |= RUNNING;
+	this._flags &= ~DISPOSED;
+	disposeNestedEffects(this);
+
+	/*@__INLINE__**/ startBatch();
+	const prevContext = evalContext;
+	evalContext = this;
+
+	prepareSources(this);
+	return endEffect.bind(this, prevContext);
+};
+
+Effect.prototype._notify = function() {
+	if (!(this._flags & NOTIFIED)) {
+		this._flags |= NOTIFIED;
+		this._nextBatchedEffect = batchedEffect;
+		batchedEffect = this;
+	}
+};
+
+Effect.prototype._dispose = function() {
+	if (!(this._flags & RUNNING)) {
+		disposeEffect(this);
+	}
+};
+
+function effect(compute: () => void): () => void {
 	const effect = new Effect(compute);
 	effect._callback();
 	// Return a bound function instead of a wrapper like `() => effect._dispose()`,
 	// because bound functions seem to be just as fast and take up a lot less memory.
 	return effect._dispose.bind(effect);
 }
+
+export {
+	signal,
+	computed,
+	effect,
+	batch,
+	Signal,
+	type Computed as ReadonlySignal
+};
