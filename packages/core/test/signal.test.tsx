@@ -1066,11 +1066,21 @@ describe("computed()", () => {
 });
 
 describe("batch/transaction", () => {
+	it("should return the value from the callback", () => {
+		expect(batch(() => 1)).to.equal(1);
+	});
+
+	it("should throw the error raised from the callback", () => {
+		expect(() => batch(() => {
+			throw Error("hello");
+		})).to.throw("hello");
+	});
+
 	it("should delay writes", () => {
 		const a = signal("a");
 		const b = signal("b");
 		const spy = sinon.spy(() => a.value + " " + b.value);
-		const c = computed(spy);
+		effect(spy);
 		spy.resetHistory();
 
 		batch(() => {
@@ -1078,7 +1088,6 @@ describe("batch/transaction", () => {
 			b.value = "bb";
 		});
 
-		expect(c.value).to.equal("aa bb");
 		expect(spy).to.be.calledOnce;
 	});
 
@@ -1086,7 +1095,7 @@ describe("batch/transaction", () => {
 		const a = signal("a");
 		const b = signal("b");
 		const spy = sinon.spy(() => a.value + ", " + b.value);
-		const c = computed(spy);
+		effect(spy);
 		spy.resetHistory();
 
 		batch(() => {
@@ -1098,7 +1107,6 @@ describe("batch/transaction", () => {
 			b.value += " outer";
 		});
 
-		expect(c.value).to.equal("a inner outer, b inner outer");
 		// If the inner batch() would have flushed the update
 		// this spy would've been called twice.
 		expect(spy).to.be.calledOnce;
@@ -1210,5 +1218,57 @@ describe("batch/transaction", () => {
 		});
 
 		expect(invokes[1]).to.deep.equal([2, 3]);
+	});
+
+	it("should run pending effects even if the callback throws", () => {
+		const a = signal(0);
+		const b = signal(1);
+		const spy1 = sinon.spy(() => a.value);
+		const spy2 = sinon.spy(() => b.value);
+		effect(spy1);
+		effect(spy2);
+		spy1.resetHistory();
+		spy2.resetHistory();
+
+		expect(() => batch(() => {
+			a.value++;
+			b.value++;
+			throw Error("hello");
+		})).to.throw("hello");
+
+		expect(spy1).to.be.calledOnce;
+		expect(spy2).to.be.calledOnce;
+	});
+
+	it("should run pending effects even if some effects throw", () => {
+		const a = signal(0);
+		const spy1 = sinon.spy(() => a.value);
+		const spy2 = sinon.spy(() => a.value);
+		effect(() => {
+			if (a.value === 1) {
+				throw new Error("hello");
+			}
+		});
+		effect(spy1);
+		effect(() => {
+			if (a.value === 1) {
+				throw new Error("hello");
+			}
+		});
+		effect(spy2);
+		effect(() => {
+			if (a.value === 1) {
+				throw new Error("hello");
+			}
+		});
+		spy1.resetHistory();
+		spy2.resetHistory();
+
+		expect(() => batch(() => {
+			a.value++;
+		})).to.throw("hello");
+
+		expect(spy1).to.be.calledOnce;
+		expect(spy2).to.be.calledOnce;
 	});
 });
