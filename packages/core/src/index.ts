@@ -118,8 +118,11 @@ function getValue<T>(signal: Signal<T>): T {
 				_flags: 0,
 				_version: 0,
 				_source: signal,
+				_prevSource: undefined,
 				_nextSource: evalContext._sources,
 				_target: evalContext,
+				_prevTarget: undefined,
+				_nextTarget: undefined,
 				_rollbackNode: node,
 			};
 			evalContext._sources = node;
@@ -492,17 +495,31 @@ export function computed<T>(compute: () => T): Computed<T> {
 }
 export type { Computed as ReadonlySignal };
 
+function disposeEffect(effect: Effect) {
+	for (
+		let node = effect._sources;
+		node !== undefined;
+		node = node._nextSource
+	) {
+		node._source._unsubscribe(node);
+	}
+	disposeNestedEffects(effect);
+	effect._sources = undefined;
+	effect._flags |= DISPOSED;
+}
+
 function endEffect(this: Effect, prevContext?: Computed | Effect) {
 	if (evalContext !== this) {
 		throw new Error("Out-of-order effect");
 	}
-
 	cleanupSources(this);
-
 	evalContext = prevContext;
 	endBatch();
 
 	this._flags &= ~RUNNING;
+	if (this._flags & DISPOSED) {
+		disposeEffect(this);
+	}
 }
 
 class Effect {
@@ -515,6 +532,11 @@ class Effect {
 
 	constructor(compute: () => void) {
 		this._compute = compute;
+
+		if (evalContext !== undefined) {
+			this._nextNestedEffect = evalContext._effects;
+			evalContext._effects = this;
+		}
 	}
 
 	_callback() {
@@ -536,10 +558,6 @@ class Effect {
 
 		/*@__INLINE__**/ startBatch();
 		const prevContext = evalContext;
-		if (prevContext !== undefined) {
-			this._nextNestedEffect = prevContext._effects;
-			prevContext._effects = this;
-		}
 		evalContext = this;
 
 		prepareSources(this);
@@ -555,19 +573,9 @@ class Effect {
 	}
 
 	_dispose() {
-		if (this._flags & RUNNING) {
-			throw new Error("Effect still running");
+		if (!(this._flags & RUNNING)) {
+			disposeEffect(this);
 		}
-		for (
-			let node = this._sources;
-			node !== undefined;
-			node = node._nextSource
-		) {
-			node._source._unsubscribe(node);
-		}
-		disposeNestedEffects(this);
-		this._sources = undefined;
-		this._flags |= DISPOSED;
 	}
 }
 
