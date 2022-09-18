@@ -172,78 +172,99 @@ function getValue<T>(signal: Signal<T>): T {
 	}
 }
 
-class Signal<T = any> {
+declare class Signal<T = any> {
 	/** @internal */
 	_value: unknown;
 
 	/** @internal */
-	_version = 0;
+	_version: number;
 
 	/** @internal */
-	_node?: Node = undefined;
+	_node?: Node;
 
 	/** @internal */
-	_targets?: Node = undefined;
+	_targets?: Node;
 
-	constructor(value?: T) {
-		this._value = value;
+	constructor(value?: T);
+
+	/** @internal */
+	_subscribe(node: Node): void;
+
+	/** @internal */
+	_unsubscribe(node: Node): void;
+
+	subscribe(fn: (value: T) => void): () => void;
+
+	valueOf(): T;
+
+	toString(): string;
+
+	peek(): T;
+
+	get value(): T;
+	set value(value: T);
+}
+
+function Signal(this: Signal, value?: unknown) {
+	this._value = value;
+	this._version = 0;
+	this._node = undefined;
+	this._targets = undefined;
+}
+
+Signal.prototype._subscribe = function(node) {
+	if (!(node._flags & SUBSCRIBED)) {
+		node._flags |= SUBSCRIBED;
+		node._nextTarget = this._targets;
+
+		if (this._targets !== undefined) {
+			this._targets._prevTarget = node;
+		}
+		this._targets = node;
 	}
+};
 
-	/** @internal */
-	_subscribe(node: Node): void {
-		if (!(node._flags & SUBSCRIBED)) {
-			node._flags |= SUBSCRIBED;
-			node._nextTarget = this._targets;
+Signal.prototype._unsubscribe = function(node) {
+	if (node._flags & SUBSCRIBED) {
+		node._flags &= ~SUBSCRIBED;
 
-			if (this._targets !== undefined) {
-				this._targets._prevTarget = node;
-			}
-			this._targets = node;
+		const prev = node._prevTarget;
+		const next = node._nextTarget;
+		if (prev !== undefined) {
+			prev._nextTarget = next;
+			node._prevTarget = undefined;
+		}
+		if (next !== undefined) {
+			next._prevTarget = prev;
+			node._nextTarget = undefined;
+		}
+		if (node === this._targets) {
+			this._targets = next;
 		}
 	}
+};
 
-	/** @internal */
-	_unsubscribe(node: Node): void {
-		if (node._flags & SUBSCRIBED) {
-			node._flags &= ~SUBSCRIBED;
+Signal.prototype.subscribe = function(fn) {
+	return effect(() => fn(this.value));
+};
 
-			const prev = node._prevTarget;
-			const next = node._nextTarget;
-			if (prev !== undefined) {
-				prev._nextTarget = next;
-				node._prevTarget = undefined;
-			}
-			if (next !== undefined) {
-				next._prevTarget = prev;
-				node._nextTarget = undefined;
-			}
-			if (node === this._targets) {
-				this._targets = next;
-			}
-		}
-	}
+Signal.prototype.valueOf = function() {
+	return this.value;
+};
 
-	subscribe(fn: (value: T) => void): () => void {
-		return effect(() => fn(this.value));
-	}
+Signal.prototype.toString = function() {
+	return this.value + "";
+};
 
-	valueOf(): T {
-		return this.value;
-	}
+Signal.prototype.peek = function() {
+	return this._value;
+};
 
-	toString(): string {
-		return this.value + "";
-	}
-
-	peek(): T {
-		return this._value as T;
-	}
-
-	get value(): T {
+Object.defineProperty(Signal.prototype, "value", {
+	get() {
 		return getValue(this);
-	}
-
-	set value(value: T) {
+	},
+	set(value) {
 		if (value !== this._value) {
 			if (batchIteration > 100) {
 				cycleDetected();
@@ -267,7 +288,7 @@ class Signal<T = any> {
 			}
 		}
 	}
-}
+});
 
 function signal<T>(value: T): Signal<T> {
 	return new Signal(value);
@@ -339,29 +360,46 @@ function disposeNestedEffects(context: Computed | Effect) {
 	}
 }
 
-class Computed<T = any> extends Signal<T> {
+declare class Computed<T = any> extends Signal<T> {
 	/** @internal */
 	_compute: () => T;
 
 	/** @internal */
-	_sources?: Node = undefined;
+	_sources?: Node;
 
 	/** @internal */
-	_effects?: Effect = undefined;
+	_effects?: Effect;
 
 	/** @internal */
-	_globalVersion = globalVersion - 1;
+	_globalVersion: number;
 
 	/** @internal */
-	_flags = STALE;
+	_flags: number;
 
-	constructor(compute: () => T) {
-		super(undefined);
-		this._compute = compute;
-	}
+	constructor(compute: () => T);
 
 	/** @internal */
-	_subscribe(node: Node) {
+	_notify(): void;
+
+	get value(): T;
+}
+
+function Computed(this: Computed, compute: () => unknown) {
+	Signal.call(this, undefined);
+
+	this._compute = compute;
+	this._sources = undefined;
+	this._effects = undefined;
+	this._globalVersion = globalVersion - 1;
+	this._flags = STALE;
+}
+
+// Do this IIFE wrapping thing instead of deriving directly from Signal, to avoid
+// a performance cliff (at least on on Node.js 18.9.0).
+(function(_Signal: typeof Signal) {
+	Computed.prototype = new _Signal() as Computed;
+
+	Computed.prototype._subscribe = function(node) {
 		if (this._targets === undefined) {
 			this._flags |= STALE | SHOULD_SUBSCRIBE;
 
@@ -375,12 +413,11 @@ class Computed<T = any> extends Signal<T> {
 				node._source._subscribe(node);
 			}
 		}
-		super._subscribe(node);
-	}
+		_Signal.prototype._subscribe.call(this, node);
+	};
 
-	/** @internal */
-	_unsubscribe(node: Node) {
-		super._unsubscribe(node);
+	Computed.prototype._unsubscribe = function(node) {
+		_Signal.prototype._unsubscribe.call(this, node);
 
 		// Computed signal unsubscribes from its dependencies from it loses its last subscriber.
 		if (this._targets === undefined) {
@@ -394,10 +431,9 @@ class Computed<T = any> extends Signal<T> {
 				node._source._unsubscribe(node);
 			}
 		}
-	}
+	};
 
-	/** @internal */
-	_notify() {
+	Computed.prototype._notify = function() {
 		if (!(this._flags & NOTIFIED)) {
 			this._flags |= STALE | NOTIFIED;
 
@@ -409,9 +445,9 @@ class Computed<T = any> extends Signal<T> {
 				node._target._notify();
 			}
 		}
-	}
+	};
 
-	peek(): T {
+	Computed.prototype.peek = function() {
 		this._flags &= ~NOTIFIED;
 
 		if (this._flags & RUNNING) {
@@ -480,15 +516,17 @@ class Computed<T = any> extends Signal<T> {
 			evalContext = prevContext;
 		}
 		return returnComputed(this);
-	}
+	};
 
-	get value(): T {
-		if (this._flags & RUNNING) {
-			cycleDetected();
+	Object.defineProperty(Computed.prototype, "value", {
+		get() {
+			if (this._flags & RUNNING) {
+				cycleDetected();
+			}
+			return getValue(this);
 		}
-		return getValue(this);
-	}
-}
+	});
+})(Signal);
 
 function computed<T>(compute: () => T): Computed<T> {
 	return new Computed(compute);
