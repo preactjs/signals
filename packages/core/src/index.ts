@@ -83,7 +83,7 @@ function endBatch() {
 	}
 }
 
-export function batch<T>(callback: () => T): T {
+function batch<T>(callback: () => T): T {
 	if (batchDepth > 0) {
 		return callback();
 	}
@@ -172,7 +172,7 @@ function getValue<T>(signal: Signal<T>): T {
 	}
 }
 
-export class Signal<T = any> {
+class Signal<T = any> {
 	/** @internal */
 	_value: unknown;
 
@@ -269,7 +269,7 @@ export class Signal<T = any> {
 	}
 }
 
-export function signal<T>(value: T): Signal<T> {
+function signal<T>(value: T): Signal<T> {
 	return new Signal(value);
 }
 
@@ -490,10 +490,9 @@ class Computed<T = any> extends Signal<T> {
 	}
 }
 
-export function computed<T>(compute: () => T): Computed<T> {
+function computed<T>(compute: () => T): Computed<T> {
 	return new Computed(compute);
 }
-export type { Computed as ReadonlySignal };
 
 function disposeEffect(effect: Effect) {
 	for (
@@ -591,10 +590,19 @@ Effect.prototype._dispose = function() {
 	}
 };
 
-export function effect(compute: () => void): () => void {
+function effect(compute: () => void): () => void {
 	const effect = new Effect(compute);
 	effect._callback();
 	// Return a bound function instead of a wrapper like `() => effect._dispose()`,
 	// because bound functions seem to be just as fast and take up a lot less memory.
 	return effect._dispose.bind(effect);
 }
+
+export {
+	signal,
+	computed,
+	effect,
+	batch,
+	Signal,
+	type Computed as ReadonlySignal
+};
