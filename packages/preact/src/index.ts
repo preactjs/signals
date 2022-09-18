@@ -10,24 +10,19 @@ import {
 } from "@preact/signals-core";
 import {
 	VNode,
-	ComponentType,
 	OptionsTypes,
 	HookFn,
 	Effect,
 	PropertyUpdater,
+	AugmentedComponent,
 	AugmentedElement as Element,
 } from "./internal";
 
 export { signal, computed, batch, effect, Signal, type ReadonlySignal };
 
-// Components that have a pending Signal update: (used to bypass default sCU:false)
-const hasPendingUpdate = new WeakSet<Component>();
-
-// Components that have useState()/useReducer() hooks:
-const hasHookState = new WeakSet<Component>();
-
-// Components that have useComputed():
-const hasComputeds = new WeakSet<Component>();
+const HAS_PENDING_UPDATE = 1 << 0;
+const HAS_HOOK_STATE = 1 << 1;
+const HAS_COMPUTEDS = 1 << 2;
 
 // Install a Preact options hook
 function hook<T extends OptionsTypes>(hookName: T, hookFn: HookFn<T>) {
@@ -35,7 +30,7 @@ function hook<T extends OptionsTypes>(hookName: T, hookFn: HookFn<T>) {
 	options[hookName] = hookFn.bind(null, options[hookName] || (() => {}));
 }
 
-let currentComponent: Component | undefined;
+let currentComponent: AugmentedComponent | undefined;
 let currentUpdater: Effect | undefined;
 let finishUpdate: (() => void) | undefined;
 const updaterForComponent = new WeakMap<Component | VNode, Effect>();
@@ -70,7 +65,7 @@ function createUpdater(update: () => void) {
  * A wrapper component that renders a Signal directly as a Text node.
  * @todo: in Preact 11, just decorate Signal with `type:null`
  */
-function Text(this: ComponentType, { data }: { data: Signal }) {
+function Text(this: AugmentedComponent, { data }: { data: Signal }) {
 	// hasComputeds.add(this);
 
 	// Store the props.data signal in another signal so that
@@ -83,7 +78,7 @@ function Text(this: ComponentType, { data }: { data: Signal }) {
 		let v = this.__v;
 		while ((v = v.__!)) {
 			if (v.__c) {
-				hasComputeds.add(v.__c);
+				v.__c._updateFlags |= HAS_COMPUTEDS;
 				break;
 			}
 		}
@@ -146,12 +141,12 @@ hook(OptionsTypes.RENDER, (old, vnode) => {
 
 	let component = vnode.__c;
 	if (component) {
-		hasPendingUpdate.delete(component);
+		component._updateFlags &= ~HAS_PENDING_UPDATE;
 
 		updater = updaterForComponent.get(component);
 		if (updater === undefined) {
 			updater = createUpdater(() => {
-				hasPendingUpdate.add(component);
+				component._updateFlags |= HAS_PENDING_UPDATE;
 				component.setState({});
 			});
 			updaterForComponent.set(component, updater);
@@ -255,7 +250,7 @@ hook(OptionsTypes.UNMOUNT, (old, vnode: VNode) => {
 
 /** Mark components that use hook state so we can skip sCU optimization. */
 hook(OptionsTypes.HOOK, (old, component, index, type) => {
-	if (type < 3) hasHookState.add(component);
+	if (type < 3) (component as AugmentedComponent)._updateFlags |= HAS_HOOK_STATE;
 	old(component, index, type);
 });
 
@@ -263,10 +258,9 @@ hook(OptionsTypes.HOOK, (old, component, index, type) => {
  * Auto-memoize components that use Signals/Computeds.
  * Note: Does _not_ optimize components that use hook/class state.
  */
-Component.prototype.shouldComponentUpdate = function (props, state) {
+Component.prototype.shouldComponentUpdate = function (this: AugmentedComponent, props, state) {
 	// @todo: Once preactjs/preact#3671 lands, this could just use `currentUpdater`:
 	const updater = updaterForComponent.get(this);
-
 	const hasSignals = updater && updater._sources !== undefined;
 
 	// let reason;
@@ -292,13 +286,12 @@ Component.prototype.shouldComponentUpdate = function (props, state) {
 	// }
 
 	// if this component used no signals or computeds, update:
-	if (!hasSignals && !hasComputeds.has(this)) return true;
+	if (!hasSignals && !(this._updateFlags & HAS_COMPUTEDS)) return true;
 
-	// if there is a pending re-render triggered from Signals, update:
-	if (hasPendingUpdate.has(this)) return true;
+	// if there is a pending re-render triggered from Signals,
+	// or if there is hook or class state, update:
+	if (this._updateFlags & (HAS_PENDING_UPDATE | HAS_HOOK_STATE)) return true;
 
-	// if there is hook or class state, update:
-	if (hasHookState.has(this)) return true;
 	// @ts-ignore
 	for (let i in state) return true;
 
@@ -319,7 +312,7 @@ export function useSignal<T>(value: T) {
 export function useComputed<T>(compute: () => T) {
 	const $compute = useRef(compute);
 	$compute.current = compute;
-	hasComputeds.add(currentComponent!);
+	(currentComponent as AugmentedComponent)._updateFlags |= HAS_COMPUTEDS;
 	return useMemo(() => computed<T>(() => $compute.current()), []);
 }
 
