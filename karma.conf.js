@@ -35,11 +35,10 @@ const subPkgPath = pkgName => {
 	}
 
 	// Resolve from package.exports field
-	const stripped = pkgName.replace(/[/\\./]/g, "");
-	const pkgJson = path.join(__dirname, "package.json");
+	const pkgJson = path.join(__dirname, pkgName, "package.json");
 	const pkgExports = require(pkgJson).exports;
-	const file = pkgExports[stripped ? `./${stripped}` : "."].browser;
-	return path.join(__dirname, file);
+	const file = pkgExports["."].browser;
+	return path.join(__dirname, pkgName, file);
 };
 
 // Esbuild plugin for aliasing + babel pass
@@ -128,6 +127,13 @@ function createEsbuildPlugin() {
 						},
 					];
 
+					const renamePlugin = [
+						"babel-plugin-transform-rename-properties",
+						{
+							rename,
+						},
+					];
+
 					const tmp = await babel.transformAsync(result, {
 						filename: args.path,
 						sourceMaps: "inline",
@@ -154,6 +160,7 @@ function createEsbuildPlugin() {
 									include: minify ? "**/dist/**/*.js" : "**/src/**/*.js",
 								},
 							],
+							minify && renamePlugin,
 						].filter(Boolean),
 					});
 					result = tmp.code || result;

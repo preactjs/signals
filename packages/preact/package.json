@@ -1,6 +1,6 @@
 {
 	"name": "@preact/signals",
-	"version": "1.0.3",
+	"version": "1.0.4",
 	"license": "MIT",
 	"description": "",
 	"keywords": [],
@@ -9,7 +9,8 @@
 	],
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/preactjs/signals"
+		"url": "https://github.com/preactjs/signals",
+		"directory": "packages/preact"
 	},
 	"bugs": "https://github.com/preactjs/signals/issues",
 	"homepage": "https://preactjs.com",
@@ -25,11 +26,11 @@
 	"source": "src/index.ts",
 	"exports": {
 		".": {
+			"types": "./dist/signals.d.ts",
 			"browser": "./dist/signals.module.js",
 			"umd": "./dist/signals.umd.js",
 			"import": "./dist/signals.mjs",
-			"require": "./dist/signals.js",
-			"types": "./dist/signals.d.ts"
+			"require": "./dist/signals.js"
 		}
 	},
 	"mangle": "../../mangle.json",
@@ -37,7 +38,7 @@
 		"prepublishOnly": "cd ../.. && pnpm build:preact"
 	},
 	"dependencies": {
-		"@preact/signals-core": "workspace:^1.0.1"
+		"@preact/signals-core": "workspace:^1.1.1"
 	},
 	"peerDependencies": {
 		"preact": "10.x"

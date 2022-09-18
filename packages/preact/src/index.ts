@@ -1,5 +1,5 @@
-import { options, Component, createElement } from "preact";
-import { useRef, useMemo } from "preact/hooks";
+import { options, Component } from "preact";
+import { useRef, useMemo, useEffect } from "preact/hooks";
 import {
 	signal,
 	computed,
@@ -13,8 +13,9 @@ import {
 	ComponentType,
 	OptionsTypes,
 	HookFn,
-	Updater,
-	ElementUpdater,
+	Effect,
+	PropertyEffect,
+	AugmentedElement as Element,
 } from "./internal";
 
 export { signal, computed, batch, effect, Signal, type ReadonlySignal };
@@ -35,51 +36,24 @@ function hook<T extends OptionsTypes>(hookName: T, hookFn: HookFn<T>) {
 }
 
 let currentComponent: Component | undefined;
-let currentUpdater: Updater | undefined;
-let finishUpdate: ReturnType<Updater["_setCurrent"]> | undefined;
-const updaterForComponent = new WeakMap<Component | VNode, Updater>();
+let currentUpdater: Effect | undefined;
+let finishUpdate: (() => void) | undefined;
+const updaterForComponent = new WeakMap<Component | VNode, Effect>();
 
-function setCurrentUpdater(updater?: Updater) {
+function setCurrentUpdater(updater?: Effect) {
 	// end tracking for the current update:
-	if (finishUpdate) finishUpdate(true, true);
+	if (finishUpdate) finishUpdate();
 	// start tracking the new update:
 	currentUpdater = updater;
-	finishUpdate = updater && updater._setCurrent();
+	finishUpdate = updater && updater._start();
 }
 
-function createUpdater(updater: () => void) {
-	const s = signal(undefined) as Updater;
-	s._updater = updater;
-	return s;
-}
-
-// Get a (cached) Signal property updater for an element VNode
-function getElementUpdater(vnode: VNode) {
-	let updater = updaterForComponent.get(vnode) as ElementUpdater;
-	if (!updater) {
-		let signalProps: Array<{ _key: string; _signal: Signal }> = [];
-		updater = createUpdater(() => {
-			let dom = vnode.__e as Element;
-
-			for (let i = 0; i < signalProps.length; i++) {
-				let { _key: prop, _signal: signal } = signalProps[i];
-				let value = signal._value;
-				if (!dom) return;
-				if (prop in dom) {
-					// @ts-ignore-next-line silly
-					dom[prop] = value;
-				} else if (value) {
-					dom.setAttribute(prop, value);
-				} else {
-					dom.removeAttribute(prop);
-				}
-			}
-		}) as ElementUpdater;
-		updater._props = signalProps;
-		updaterForComponent.set(vnode, updater);
-	} else {
-		updater._props.length = 0;
-	}
+function createUpdater(update: () => void) {
+	let updater!: Effect;
+	effect(function (this: Effect) {
+		updater = this;
+	});
+	updater._callback = update;
 	return updater;
 }
 
@@ -91,18 +65,6 @@ function getElementUpdater(vnode: VNode) {
 // 	// for (let i in value) if (value[i] instanceof Signal) return true;
 // 	return false;
 // }
-
-/** Convert Signals within (nested) props.children into Text components */
-function childToSignal<T>(child: any, i: keyof T, arr: T) {
-	if (typeof child !== "object" || child == null) {
-		// can't be a signal
-	} else if (Array.isArray(child)) {
-		child.forEach(childToSignal);
-	} else if (child instanceof Signal) {
-		// @ts-ignore-next-line yes, arr can accept VNodes:
-		arr[i] = createElement(Text, { data: child });
-	}
-}
 
 /**
  * A wrapper component that renders a Signal directly as a Text node.
@@ -127,8 +89,8 @@ function Text(this: ComponentType, { data }: { data: Signal }) {
 		}
 
 		// Replace this component's vdom updater with a direct text one:
-		currentUpdater!._updater = () => {
-			(this.base as Text).data = s._value;
+		currentUpdater!._callback = () => {
+			(this.base as Text).data = s.peek();
 		};
 
 		return computed(() => {
@@ -142,37 +104,37 @@ function Text(this: ComponentType, { data }: { data: Signal }) {
 }
 Text.displayName = "_st";
 
+Object.defineProperties(Signal.prototype, {
+	constructor: { configurable: true },
+	type: { configurable: true, value: Text },
+	props: {
+		configurable: true,
+		get() {
+			return { data: this };
+		},
+	},
+	// Setting a VNode's _depth to 1 forces Preact to clone it before modifying:
+	// https://github.com/preactjs/preact/blob/d7a433ee8463a7dc23a05111bb47de9ec729ad4d/src/diff/children.js#L77
+	// @todo remove this for Preact 11
+	__b: { configurable: true, value: 1 },
+});
+
 /** Inject low-level property/attribute bindings for Signals into Preact's diff */
 hook(OptionsTypes.DIFF, (old, vnode) => {
 	if (typeof vnode.type === "string") {
-		// let orig = vnode.__o || vnode;
-		let props = vnode.props;
-		let updater;
+		let signalProps: Record<string, any> | undefined;
 
+		let props = vnode.props;
 		for (let i in props) {
+			if (i === "children") continue;
+
 			let value = props[i];
-			if (i === "children") {
-				childToSignal(value, "children", props);
-			} else if (value instanceof Signal) {
-				// first Signal prop triggers creation/cleanup of the updater:
-				if (!updater) updater = getElementUpdater(vnode);
-				// track which props are Signals for precise updates:
-				updater._props.push({ _key: i, _signal: value });
-				let newUpdater = updater._updater;
-				if (value._updater) {
-					let oldUpdater = value._updater;
-					value._updater = () => {
-						newUpdater();
-						oldUpdater();
-					};
-				} else {
-					value._updater = newUpdater;
-				}
+			if (value instanceof Signal) {
+				if (!signalProps) vnode.__np = signalProps = {};
+				signalProps[i] = value;
 				props[i] = value.peek();
 			}
 		}
-
-		setCurrentUpdater(updater);
 	}
 
 	old(vnode);
@@ -212,19 +174,80 @@ hook(OptionsTypes.CATCH_ERROR, (old, error, vnode, oldVNode) => {
 hook(OptionsTypes.DIFFED, (old, vnode) => {
 	setCurrentUpdater();
 	currentComponent = undefined;
+
+	let dom: Element;
+
+	// vnode._dom is undefined during string rendering,
+	// so we use this to skip prop subscriptions during SSR.
+	if (typeof vnode.type === "string" && (dom = vnode.__e as Element)) {
+		let props = vnode.__np;
+		if (props) {
+			let updaters = dom._updaters;
+			if (updaters) {
+				for (let prop in updaters) {
+					let updater = updaters[prop];
+					if (updater !== undefined && !(prop in props)) {
+						updater._dispose();
+						// @todo we could just always invoke _dispose() here
+						updaters[prop] = undefined;
+					}
+				}
+			} else {
+				updaters = {};
+				dom._updaters = updaters;
+			}
+			for (let prop in props) {
+				let updater = updaters[prop];
+				let signal = props[prop];
+				if (updater === undefined) {
+					updater = createPropUpdater(dom, prop, signal);
+					updaters[prop] = updater;
+				}
+				setCurrentUpdater(updater);
+				updater._callback(signal);
+			}
+		}
+	}
 	old(vnode);
 });
 
+function createPropUpdater(dom: Element, prop: string, signal: Signal) {
+	const setAsProperty = prop in dom;
+	return createUpdater((newSignal?: Signal) => {
+		if (newSignal) signal = newSignal;
+		let value = signal.value;
+		if (newSignal) {
+			// just a new signal reference passed in, don't update
+		} else if (setAsProperty) {
+			// @ts-ignore-next-line silly
+			dom[prop] = value;
+		} else if (value) {
+			dom.setAttribute(prop, value);
+		} else {
+			dom.removeAttribute(prop);
+		}
+	}) as PropertyEffect;
+}
+
 /** Unsubscribe from Signals when unmounting components/vnodes */
 hook(OptionsTypes.UNMOUNT, (old, vnode: VNode) => {
-	let thing = vnode.__c || vnode;
-	const updater = updaterForComponent.get(thing);
+	let component = vnode.__c;
+	const updater = component && updaterForComponent.get(component);
 	if (updater) {
-		updaterForComponent.delete(thing);
-		const signals = updater._deps;
-		if (signals) {
-			signals.forEach(signal => signal._subs.delete(updater));
-			signals.clear();
+		updaterForComponent.delete(component);
+		updater._dispose();
+	}
+
+	if (typeof vnode.type === "string") {
+		const dom = vnode.__e as Element;
+
+		const updaters = dom._updaters;
+		if (updaters) {
+			dom._updaters = null;
+			for (let prop in updaters) {
+				let updater = updaters[prop];
+				if (updater) updater._dispose();
+			}
 		}
 	}
 	old(vnode);
@@ -244,7 +267,7 @@ Component.prototype.shouldComponentUpdate = function (props, state) {
 	// @todo: Once preactjs/preact#3671 lands, this could just use `currentUpdater`:
 	const updater = updaterForComponent.get(this);
 
-	const hasSignals = updater && updater._deps?.size !== 0;
+	const hasSignals = updater && updater._sources !== undefined;
 
 	// let reason;
 	// if (!hasSignals && !hasComputeds.has(this)) {
@@ -298,6 +321,25 @@ export function useComputed<T>(compute: () => T) {
 	$compute.current = compute;
 	hasComputeds.add(currentComponent!);
 	return useMemo(() => computed<T>(() => $compute.current()), []);
+}
+
+export function useSignalEffect(cb: () => void | (() => void)) {
+	const callback = useRef(cb);
+	callback.current = cb;
+
+	useEffect(() => {
+		let cleanup: (() => void) | undefined;
+		return effect(() => {
+			if (cleanup) {
+				cleanup();
+				cleanup = undefined
+			}
+			const result = callback.current();
+			if (typeof result == 'function') {
+				cleanup = result
+			}
+		})
+	}, []);
 }
 
 /**

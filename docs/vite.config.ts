@@ -1,6 +1,6 @@
 import { defineConfig, Plugin, Connect } from "vite";
 import preact from "@preact/preset-vite";
-import { resolve } from "path";
+import { resolve, posix } from "path";
 import fs from "fs";
 
 // Automatically set up aliases for monorepo packages.
@@ -21,14 +21,37 @@ function packages(prod: boolean) {
 
 export default defineConfig(env => ({
 	plugins: [
-		preact({
-			exclude: /\breact/,
-		}),
+		process.env.DEBUG
+			? preact({
+					exclude: /\breact/,
+			  })
+			: null,
 		multiSpa(["index.html", "demos/**/*.html"]),
 		unsetPreactAliases(),
 	],
+	esbuild: {
+		jsx: "automatic",
+		jsxImportSource: "preact",
+	},
+	optimizeDeps: {
+		include: ["preact/jsx-runtime", "preact/jsx-dev-runtime"],
+	},
 	build: {
 		polyfillModulePreload: false,
+		cssCodeSplit: false,
+		rollupOptions: {
+			output: {
+				entryFileNames(chunk) {
+					let name = chunk.name;
+					if (chunk.facadeModuleId) {
+						const p = posix.normalize(chunk.facadeModuleId);
+						const m = p.match(/([^/]+)(?:\/index)?\.[^/]+$/);
+						if (m) name = m[1];
+					}
+					return `${name}-[hash].js`;
+				},
+			},
+		},
 	},
 	resolve: {
 		extensions: [".ts", ".tsx", ".js", ".jsx", ".d.ts"],

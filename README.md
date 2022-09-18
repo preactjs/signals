@@ -17,6 +17,8 @@ npm install @preact/signals-core
 npm install @preact/signals
 # If you're using React
 npm install @preact/signals-react
+# If you're using Svelte
+npm install @preact/signals-core
 ```
 
 - [Guide / API](#guide--api)

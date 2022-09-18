@@ -1,6 +1,7 @@
 import {
 	useRef,
 	useMemo,
+	useEffect,
 	// @ts-ignore-next-line
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED as internals,
@@ -14,7 +15,7 @@ import {
 	Signal,
 	type ReadonlySignal,
 } from "@preact/signals-core";
-import { Updater, ReactOwner, ReactDispatcher } from "./internal";
+import { Effect, ReactOwner, ReactDispatcher } from "./internal";
 
 export { signal, computed, batch, effect, Signal, type ReadonlySignal };
 
@@ -53,20 +54,23 @@ function createPropUpdater(props: any, prop: string, signal: Signal) {
 }
 */
 
-let finishUpdate: ReturnType<Updater["_setCurrent"]> | undefined;
-const updaterForComponent = new WeakMap<ReactOwner, Updater>();
+let finishUpdate: (() => void) | undefined;
+const updaterForComponent = new WeakMap<ReactOwner, Effect>();
 
-function setCurrentUpdater(updater?: Updater) {
+function setCurrentUpdater(updater?: Effect) {
 	// end tracking for the current update:
-	if (finishUpdate) finishUpdate(true, true);
+	if (finishUpdate) finishUpdate();
 	// start tracking the new update:
-	finishUpdate = updater && updater._setCurrent();
+	finishUpdate = updater && updater._start();
 }
 
-function createUpdater(updater: () => void) {
-	const s = signal(undefined) as Updater;
-	s._updater = updater;
-	return s;
+function createUpdater(update: () => void) {
+	let updater!: Effect;
+	effect(function (this: Effect) {
+		updater = this;
+	});
+	updater._callback = update;
+	return updater;
 }
 
 /**
@@ -80,22 +84,29 @@ function Text({ data }: { data: Signal }) {
 //@ts-ignore-next-line
 const $$typeof = createElement("a").$$typeof;
 Object.defineProperties(Signal.prototype, {
-	$$typeof: { value: $$typeof },
-	type: { value: Text },
+	$$typeof: { configurable: true, value: $$typeof },
+	type: { configurable: true, value: Text },
 	props: {
+		configurable: true,
 		get() {
 			return { data: this };
 		},
 	},
-	ref: { value: null },
+	ref: { configurable: true, value: null },
 });
 
 // Track the current owner (roughly equiv to current vnode)
-// let currentOwner: ReactOwner;
-// Object.defineProperty(internals.ReactCurrentOwner, "current", {
-// 	get() { return currentOwner; },
-// 	set(owner) { currentOwner = owner; },
-// });
+let lastOwner: ReactOwner | undefined;
+let currentOwner: ReactOwner | null = null;
+Object.defineProperty(internals.ReactCurrentOwner, "current", {
+	get() {
+		return currentOwner;
+	},
+	set(owner) {
+		currentOwner = owner;
+		if (currentOwner) lastOwner = currentOwner;
+	},
+});
 
 // Track the current dispatcher (roughly equiv to current component impl)
 let lock = false;
@@ -108,17 +119,19 @@ Object.defineProperty(internals.ReactCurrentDispatcher, "current", {
 	set(api) {
 		currentDispatcher = api;
 		if (lock) return;
-		if (api && !isInvalidHookAccessor(api)) {
+		if (lastOwner && api && !isInvalidHookAccessor(api)) {
 			// prevent re-injecting useReducer when the Dispatcher
 			// context changes to run the reducer callback:
 			lock = true;
 			const rerender = api.useReducer(UPDATE, {})[1];
 			lock = false;
-			const currentOwner = internals.ReactCurrentOwner.current;
-			let updater = updaterForComponent.get(currentOwner);
+
+			let updater = updaterForComponent.get(lastOwner);
 			if (!updater) {
 				updater = createUpdater(rerender);
-				updaterForComponent.set(currentOwner, updater);
+				updaterForComponent.set(lastOwner, updater);
+			} else {
+				updater._callback = rerender;
 			}
 			setCurrentUpdater(updater);
 		} else {
@@ -149,4 +162,23 @@ export function useComputed<T>(compute: () => T) {
 	const $compute = useRef(compute);
 	$compute.current = compute;
 	return useMemo(() => computed<T>(() => $compute.current()), []);
+}
+
+export function useSignalEffect(cb: () => void | (() => void)) {
+	const callback = useRef(cb);
+	callback.current = cb;
+
+	useEffect(() => {
+		let cleanup: (() => void) | undefined;
+		return effect(() => {
+			if (cleanup) {
+				cleanup();
+				cleanup = undefined
+			}
+			const result = callback.current();
+			if (typeof result == 'function') {
+				cleanup = result
+			}
+		})
+	}, []);
 }

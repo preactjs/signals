@@ -1,0 +1,54 @@
+diff --git a/lib/index.js b/lib/index.js
+index 9753d47727d94827bc40a674a721527e50331acd..9c7acc8d88ffd1b588f5c4c9c3a73256892c30dd 100644
+--- a/lib/index.js
++++ b/lib/index.js
+@@ -54,6 +54,20 @@ function registerGlobalType(programScope, name) {
+   GLOBAL_TYPES.get(programScope).add(name);
+ }
+ 
++// A hack to avoid removing the impl Binding when we remove the declare NodePath
++function safeRemove(path) {
++  const ids = path.getBindingIdentifiers();
++  for (const name of Object.keys(ids)) {
++    const binding = path.scope.getBinding(name);
++    if (binding && binding.identifier === ids[name]) {
++      binding.scope.removeBinding(name);
++    }
++  }
++  path.opts.noScope = true;
++  path.remove();
++  path.opts.noScope = false;
++}
++
+ var _default = (0, _helperPluginUtils.declare)((api, opts) => {
+   api.assertVersion(7);
+   const JSX_PRAGMA_REGEX = /\*?\s*@jsx((?:Frag)?)\s+([^\s]+)/;
+@@ -347,16 +361,16 @@ var _default = (0, _helperPluginUtils.declare)((api, opts) => {
+       },
+ 
+       TSDeclareFunction(path) {
+-        path.remove();
++        safeRemove(path)
+       },
+ 
+       TSDeclareMethod(path) {
+-        path.remove();
++        safeRemove(path)
+       },
+ 
+       VariableDeclaration(path) {
+         if (path.node.declare) {
+-          path.remove();
++          safeRemove(path)
+         }
+       },
+ 
+@@ -376,7 +390,7 @@ var _default = (0, _helperPluginUtils.declare)((api, opts) => {
+         } = path;
+ 
+         if (node.declare) {
+-          path.remove();
++          safeRemove(path)
+           return;
+         }
+       },

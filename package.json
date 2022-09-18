@@ -16,21 +16,25 @@
 		"postbuild": "node ./scripts/node-13-exports.js",
 		"lint": "eslint 'packages/**/*.{ts,tsx,js,jsx}'",
 		"test": "cross-env COVERAGE=true karma start karma.conf.js --single-run",
+		"test:minify": "cross-env COVERAGE=true MINIFY=true karma start karma.conf.js --single-run",
 		"test:watch": "karma start karma.conf.js --no-single-run",
 		"docs:start": "cd docs && pnpm start",
 		"docs:build": "cd docs && pnpm build",
 		"docs:preview": "cd docs && pnpm preview",
 		"ci:build": "pnpm build && pnpm docs:build",
-		"ci:test": "pnpm lint && pnpm test"
+		"ci:test": "pnpm lint && pnpm test",
+		"release": "pnpm changeset version && pnpm install && git add -A && git commit -m 'Version Packages' && changeset tag && pnpm publish -r"
 	},
 	"keywords": [],
 	"author": "",
 	"license": "MIT",
 	"devDependencies": {
-		"@babel/core": "^7.18.10",
-		"@babel/preset-env": "^7.18.10",
+		"@babel/core": "^7.19.1",
+		"@babel/preset-env": "^7.19.1",
 		"@babel/preset-react": "^7.18.6",
 		"@babel/preset-typescript": "^7.18.6",
+		"@babel/plugin-transform-typescript": "^7.19.1",
+		"@changesets/changelog-github": "^0.4.6",
 		"@changesets/cli": "^2.24.2",
 		"@types/chai": "^4.3.3",
 		"@types/mocha": "^9.1.1",
@@ -40,6 +44,7 @@
 		"@typescript-eslint/eslint-plugin": "^5.33.0",
 		"@typescript-eslint/parser": "^5.33.0",
 		"babel-plugin-istanbul": "^6.1.1",
+		"babel-plugin-transform-rename-properties": "^0.1.0",
 		"chai": "^4.3.6",
 		"cross-env": "^7.0.3",
 		"errorstacks": "^2.4.0",
@@ -81,7 +86,8 @@
 	},
 	"pnpm": {
 		"patchedDependencies": {
-			"microbundle@0.15.1": "patches/microbundle@0.15.1.patch"
+			"microbundle@0.15.1": "patches/microbundle@0.15.1.patch",
+			"@babel/plugin-transform-typescript@7.19.1": "patches/@babel__plugin-transform-typescript@7.19.1.patch"
 		}
 	}
 }

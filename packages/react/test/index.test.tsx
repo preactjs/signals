@@ -2,7 +2,7 @@
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
 import { signal, useComputed } from "@preact/signals-react";
-import { createElement, useMemo } from "react";
+import { createElement, useMemo, memo, StrictMode } from "react";
 import { createRoot, Root } from "react-dom/client";
 import { act } from "react-dom/test-utils";
 
@@ -157,6 +157,27 @@ describe("@preact/signals-react", () => {
 				sig.value = "bar";
 			});
 			expect(scratch.textContent).to.equal("bar");
+		});
+
+		it("should consistently rerender in strict mode", async () => {
+			const sig = signal<string>(null!);
+
+			const Test = memo(() => <p>{sig.value}</p>);
+			const App = () => (
+				<StrictMode>
+					<Test />
+				</StrictMode>
+			);
+
+			for (let i = 0; i < 3; i++) {
+				const value = `${i}`;
+
+				act(() => {
+					sig.value = value;
+					render(<App />);
+				});
+				expect(scratch.textContent).to.equal(value);
+			}
 		});
 	});
 });
