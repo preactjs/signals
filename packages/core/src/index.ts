@@ -522,62 +522,74 @@ function endEffect(this: Effect, prevContext?: Computed | Effect) {
 	}
 }
 
-class Effect {
+declare class Effect {
 	_compute: () => void;
 	_sources?: Node;
 	_effects?: Effect;
 	_nextNestedEffect?: Effect;
 	_nextBatchedEffect?: Effect;
-	_flags = SHOULD_SUBSCRIBE;
+	_flags: number;
 
-	constructor(compute: () => void) {
-		this._compute = compute;
+	constructor(compute: () => void);
 
-		if (evalContext !== undefined) {
-			this._nextNestedEffect = evalContext._effects;
-			evalContext._effects = this;
-		}
-	}
+	_callback(): void;
+	_start(): () => void;
+	_notify(): void;
+	_dispose(): void;
+}
 
-	_callback() {
-		const finish = this._start();
-		try {
-			this._compute();
-		} finally {
-			finish();
-		}
-	}
+function Effect(this: Effect, compute: () => void) {
+	this._compute = compute;
+	this._sources = undefined;
+	this._effects = undefined;
+	this._nextNestedEffect = undefined;
+	this._nextBatchedEffect = undefined;
+	this._flags = SHOULD_SUBSCRIBE;
 
-	_start() {
-		if (this._flags & RUNNING) {
-			cycleDetected();
-		}
-		this._flags |= RUNNING;
-		this._flags &= ~DISPOSED;
-		disposeNestedEffects(this);
-
-		/*@__INLINE__**/ startBatch();
-		const prevContext = evalContext;
-		evalContext = this;
-
-		prepareSources(this);
-		return endEffect.bind(this, prevContext);
-	}
-
-	_notify() {
-		if (!(this._flags & NOTIFIED)) {
-			this._flags |= NOTIFIED;
-			this._nextBatchedEffect = batchedEffect;
-			batchedEffect = this;
-		}
-	}
-
-	_dispose() {
-		if (!(this._flags & RUNNING)) {
-			disposeEffect(this);
-		}
+	if (evalContext !== undefined) {
+		this._nextNestedEffect = evalContext._effects;
+		evalContext._effects = this;
 	}
 }
+
+Effect.prototype._callback = function() {
+	const finish = this._start();
+	try {
+		this._compute();
+	} finally {
+		finish();
+	}
+};
+
+Effect.prototype._start = function() {
+	if (this._flags & RUNNING) {
+		cycleDetected();
+	}
+	this._flags |= RUNNING;
+	this._flags &= ~DISPOSED;
+	disposeNestedEffects(this);
+
+	/*@__INLINE__**/ startBatch();
+	const prevContext = evalContext;
+	evalContext = this;
+
+	prepareSources(this);
+	return endEffect.bind(this, prevContext);
+};
+
+Effect.prototype._notify = function() {
+	if (!(this._flags & NOTIFIED)) {
+		this._flags |= NOTIFIED;
+		this._nextBatchedEffect = batchedEffect;
+		batchedEffect = this;
+	}
+};
+
+Effect.prototype._dispose = function() {
+	if (!(this._flags & RUNNING)) {
+		disposeEffect(this);
+	}
+};
 
 export function effect(compute: () => void): () => void {
 	const effect = new Effect(compute);
