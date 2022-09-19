@@ -134,6 +134,8 @@ hook(OptionsTypes.DIFF, (old, vnode) => {
 
 /** Set up Updater before rendering a component */
 hook(OptionsTypes.RENDER, (old, vnode) => {
+	setCurrentUpdater();
+
 	let updater;
 
 	let component = vnode.__c;
