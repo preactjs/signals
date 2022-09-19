@@ -19,7 +19,6 @@
     },
     "compress": {
       "conditionals": false,
-      "evaluate": false,
       "loops": false,
       "sequences": false
     }
@@ -36,6 +35,7 @@
       "$_nextTarget": "x",
       "$_rollbackNode": "r",
       "core: Signal": "",
+      "$_refresh": "h",
       "$_value": "v",
       "$_node": "n",
       "$_targets": "t",
