@@ -1,6 +1,6 @@
 import { signal, useComputed } from "@preact/signals";
 import { createElement, render } from "preact";
-import { setupRerender } from "preact/test-utils";
+import { setupRerender, act } from "preact/test-utils";
 
 const sleep = (ms?: number) => new Promise(r => setTimeout(r, ms));
 
@@ -253,6 +253,66 @@ describe("@preact/signals", () => {
 			// ensure the component was never re-rendered: (even after a tick)
 			await sleep();
 			expect(spy).not.to.have.been.called;
+		});
+
+		it("should set updated signal prop values at most once", async () => {
+			const s = signal("initial");
+			const spy = sinon.spy();
+			function Wrap() {
+				spy();
+				// @ts-ignore
+				return <span ariaLabel={s} ariaDescription={s.value} />;
+			}
+			render(<Wrap />, scratch);
+			spy.resetHistory();
+
+			const span = scratch.firstElementChild as HTMLSpanElement;
+			const ariaLabel = sinon.spy();
+			Object.defineProperty(span, "ariaLabel", {
+				set: ariaLabel,
+			});
+			const ariaDescription = sinon.spy();
+			Object.defineProperty(span, "ariaDescription", {
+				set: ariaDescription,
+			});
+
+			act(() => {
+				s.value = "updated";
+			});
+
+			expect(spy).to.have.been.calledOnce;
+
+			expect(ariaLabel).to.have.been.calledOnce;
+			expect(ariaLabel).to.have.been.calledWith("updated");
+			ariaLabel.resetHistory();
+
+			expect(ariaDescription).to.have.been.calledOnce;
+			expect(ariaDescription).to.have.been.calledWith("updated");
+			ariaDescription.resetHistory();
+
+			// ensure the component was never re-rendered: (even after a tick)
+			await sleep();
+
+			expect(ariaLabel).not.to.have.been.called;
+			expect(ariaDescription).not.to.have.been.called;
+
+			act(() => {
+				s.value = "second update";
+			});
+
+			expect(ariaLabel).to.have.been.calledOnce;
+			expect(ariaLabel).to.have.been.calledWith("second update");
+			ariaLabel.resetHistory();
+
+			expect(ariaDescription).to.have.been.calledOnce;
+			expect(ariaDescription).to.have.been.calledWith("second update");
+			ariaDescription.resetHistory();
+
+			// ensure the component was never re-rendered: (even after a tick)
+			await sleep();
+
+			expect(ariaLabel).not.to.have.been.called;
+			expect(ariaDescription).not.to.have.been.called;
 		});
 	});
 });
