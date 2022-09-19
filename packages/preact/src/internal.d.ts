@@ -9,7 +9,7 @@ export interface Effect {
 }
 
 export interface PropertyUpdater {
-	_signal: Signal<Signal>;
+	_update: (newSignal: Signal, newProps: Record<string, any>) => void;
 	_dispose: () => void;
 }
 
@@ -32,8 +32,6 @@ export interface VNode<P = any> extends preact.VNode<P> {
 	__e?: Element | Text;
 	/** Props that had Signal values before diffing (used after diffing to subscribe) */
 	__np?: Record<string, any> | null;
-	/** VNode._depth is a number during CSR, undefined during renderToString() */
-	__b?: number;
 }
 
 export const enum OptionsTypes {

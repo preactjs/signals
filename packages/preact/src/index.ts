@@ -20,9 +20,6 @@ import {
 
 export { signal, computed, batch, effect, Signal, type ReadonlySignal };
 
-// VNode._depth is a number during CSR, undefined during renderToString()
-const DEPTH = "__b";
-
 const HAS_PENDING_UPDATE = 1 << 0;
 const HAS_HOOK_STATE = 1 << 1;
 const HAS_COMPUTEDS = 1 << 2;
@@ -127,8 +124,7 @@ hook(OptionsTypes.DIFF, (old, vnode) => {
 			if (value instanceof Signal) {
 				if (!signalProps) vnode.__np = signalProps = {};
 				signalProps[i] = value;
-				// Use the resolved value during SSR, but render nothing on the client (signals handle it):
-				props[i] = vnode[DEPTH] === undefined ? value.peek() : undefined;
+				props[i] = value.peek();
 			}
 		}
 	}
@@ -198,10 +194,11 @@ hook(OptionsTypes.DIFFED, (old, vnode) => {
 				let updater = updaters[prop];
 				let signal = props[prop];
 				if (updater === undefined) {
-					updater = createPropUpdater(dom, prop, signal, renderedProps[prop]);
+					updater = createPropUpdater(dom, prop, signal, renderedProps);
 					updaters[prop] = updater;
+				} else {
+					updater._update(signal, renderedProps);
 				}
-				updater._signal.value = signal;
 			}
 		}
 	}
@@ -212,17 +209,20 @@ function createPropUpdater(
 	dom: Element,
 	prop: string,
 	propSignal: Signal,
-	propValue: any
+	props: Record<string, any>
 ): PropertyUpdater {
 	const setAsProperty = prop in dom;
 	const changeSignal = signal(propSignal);
 	return {
-		_signal: changeSignal,
+		_update: (newSignal: Signal, newProps: typeof props) => {
+			changeSignal.value = newSignal;
+			props = newProps;
+		},
 		_dispose: effect(() => {
 			const value = changeSignal.value.value;
 			// If Preact just rendered this value, don't render it again:
-			if (value === propValue) return;
-			propValue = value;
+			if (props[prop] === value) return;
+			props[prop] = value;
 			if (setAsProperty) {
 				// @ts-ignore-next-line silly
 				dom[prop] = value;
