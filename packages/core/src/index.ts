@@ -205,6 +205,7 @@ declare class Signal<T = any> {
 	set value(value: T);
 }
 
+/** @internal */
 function Signal(this: Signal, value?: unknown) {
 	this._value = value;
 	this._version = 0;
@@ -384,6 +385,7 @@ declare class Computed<T = any> extends Signal<T> {
 	get value(): T;
 }
 
+/** @internal */
 function Computed(this: Computed, compute: () => unknown) {
 	Signal.call(this, undefined);
 
