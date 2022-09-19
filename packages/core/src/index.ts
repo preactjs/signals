@@ -68,7 +68,7 @@ function endBatch() {
 			effect._nextBatchedEffect = undefined;
 			effect._flags &= ~NOTIFIED;
 
-			if (!(effect._flags & DISPOSED) && (effect._flags & OUTDATED)) {
+			if (!(effect._flags & DISPOSED) && effect._flags & OUTDATED) {
 				try {
 					effect._callback();
 				} catch (err) {
@@ -170,7 +170,6 @@ function addDependency(signal: Signal): Node | undefined {
 		return node;
 	}
 	return undefined;
-
 }
 
 declare class Signal<T = any> {
@@ -217,11 +216,11 @@ function Signal(this: Signal, value?: unknown) {
 	this._targets = undefined;
 }
 
-Signal.prototype._refresh = function() {
+Signal.prototype._refresh = function () {
 	return true;
 };
 
-Signal.prototype._subscribe = function(node) {
+Signal.prototype._subscribe = function (node) {
 	if (!(node._flags & NODE_SUBSCRIBED)) {
 		node._flags |= NODE_SUBSCRIBED;
 		node._nextTarget = this._targets;
@@ -233,7 +232,7 @@ Signal.prototype._subscribe = function(node) {
 	}
 };
 
-Signal.prototype._unsubscribe = function(node) {
+Signal.prototype._unsubscribe = function (node) {
 	if (node._flags & NODE_SUBSCRIBED) {
 		node._flags &= ~NODE_SUBSCRIBED;
 
@@ -253,19 +252,19 @@ Signal.prototype._unsubscribe = function(node) {
 	}
 };
 
-Signal.prototype.subscribe = function(fn) {
+Signal.prototype.subscribe = function (fn) {
 	return effect(() => fn(this.value));
 };
 
-Signal.prototype.valueOf = function() {
+Signal.prototype.valueOf = function () {
 	return this.value;
 };
 
-Signal.prototype.toString = function() {
+Signal.prototype.toString = function () {
 	return this.value + "";
 };
 
-Signal.prototype.peek = function() {
+Signal.prototype.peek = function () {
 	return this._value;
 };
 
@@ -300,7 +299,7 @@ Object.defineProperty(Signal.prototype, "value", {
 				endBatch();
 			}
 		}
-	}
+	},
 });
 
 function signal<T>(value: T): Signal<T> {
@@ -439,7 +438,7 @@ function Computed(this: Computed, compute: () => unknown) {
 
 Computed.prototype = new Signal() as Computed;
 
-Computed.prototype._refresh = function() {
+Computed.prototype._refresh = function () {
 	this._flags &= ~NOTIFIED;
 
 	if (this._flags & RUNNING) {
@@ -456,7 +455,7 @@ Computed.prototype._refresh = function() {
 	if (this._globalVersion === globalVersion) {
 		return true;
 	}
-	this._globalVersion = globalVersion
+	this._globalVersion = globalVersion;
 
 	const prevContext = evalContext;
 	try {
@@ -468,7 +467,10 @@ Computed.prototype._refresh = function() {
 			// is re-evaluated at this point.
 			let node = this._sources;
 			while (node !== undefined) {
-				if (!node._source._refresh() || node._source._version !== node._version) {
+				if (
+					!node._source._refresh() ||
+					node._source._version !== node._version
+				) {
 					// If a dependency has something blocking it refreshing (e.g. a dependency
 					// cycle) or there's a new version of the dependency, then we need to recompute.
 					break;
@@ -506,7 +508,7 @@ Computed.prototype._refresh = function() {
 	return true;
 };
 
-Computed.prototype._subscribe = function(node) {
+Computed.prototype._subscribe = function (node) {
 	if (this._targets === undefined) {
 		this._flags |= OUTDATED | AUTO_SUBSCRIBE;
 
@@ -523,7 +525,7 @@ Computed.prototype._subscribe = function(node) {
 	Signal.prototype._subscribe.call(this, node);
 };
 
-Computed.prototype._unsubscribe = function(node) {
+Computed.prototype._unsubscribe = function (node) {
 	Signal.prototype._unsubscribe.call(this, node);
 
 	// Computed signal unsubscribes from its dependencies from it loses its last subscriber.
@@ -540,7 +542,7 @@ Computed.prototype._unsubscribe = function(node) {
 	}
 };
 
-Computed.prototype._notify = function() {
+Computed.prototype._notify = function () {
 	if (!(this._flags & NOTIFIED)) {
 		this._flags |= OUTDATED | NOTIFIED;
 
@@ -554,7 +556,7 @@ Computed.prototype._notify = function() {
 	}
 };
 
-Computed.prototype.peek = function() {
+Computed.prototype.peek = function () {
 	if (!this._refresh()) {
 		cycleDetected();
 	}
@@ -578,7 +580,7 @@ Object.defineProperty(Computed.prototype, "value", {
 			throw this._value;
 		}
 		return this._value;
-	}
+	},
 });
 
 function computed<T>(compute: () => T): Computed<T> {
@@ -638,13 +640,13 @@ function Effect(this: Effect, compute: () => void, flags: number) {
 	this._nextBatchedEffect = undefined;
 	this._flags = IS_EFFECT | OUTDATED | flags;
 
-	if ((flags & AUTO_DISPOSE) && evalContext !== undefined) {
+	if (flags & AUTO_DISPOSE && evalContext !== undefined) {
 		this._nextNestedEffect = evalContext._effects;
 		evalContext._effects = this;
 	}
 }
 
-Effect.prototype._callback = function() {
+Effect.prototype._callback = function () {
 	const finish = this._start();
 	try {
 		if (!(this._flags & DISPOSED)) {
@@ -655,7 +657,7 @@ Effect.prototype._callback = function() {
 	}
 };
 
-Effect.prototype._start = function() {
+Effect.prototype._start = function () {
 	if (this._flags & RUNNING) {
 		cycleDetected();
 	}
@@ -671,7 +673,7 @@ Effect.prototype._start = function() {
 	return endEffect.bind(this, prevContext);
 };
 
-Effect.prototype._notify = function() {
+Effect.prototype._notify = function () {
 	if (!(this._flags & NOTIFIED)) {
 		this._flags |= NOTIFIED | OUTDATED;
 		this._nextBatchedEffect = batchedEffect;
@@ -679,7 +681,7 @@ Effect.prototype._notify = function() {
 	}
 };
 
-Effect.prototype._dispose = function() {
+Effect.prototype._dispose = function () {
 	this._flags |= DISPOSED;
 
 	if (!(this._flags & RUNNING)) {
@@ -701,5 +703,5 @@ export {
 	effect,
 	batch,
 	Signal,
-	type Computed as ReadonlySignal
+	type Computed as ReadonlySignal,
 };
