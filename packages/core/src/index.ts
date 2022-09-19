@@ -406,43 +406,35 @@ Computed.prototype._refresh = function() {
 	if (!(this._flags & STALE) && this._targets !== undefined) {
 		return true;
 	}
+	this._flags &= ~STALE;
 
 	if (this._globalVersion === globalVersion) {
-		this._flags &= ~STALE;
 		return true;
 	}
-
-	this._flags |= RUNNING;
-	if (this._version > 0) {
-		// Check current dependencies for changes. The dependency list is already in
-		// order of use. Therefore if >1 dependencies have changed only the first used one
-		// is re-evaluated at this point.
-		let node = this._sources;
-		while (node !== undefined) {
-			if (node._source._version !== node._version) {
-				break;
-			}
-			if (!node._source._refresh()) {
-				this._flags &= ~RUNNING;
-				return false;
-			}
-			if (node._source._version !== node._version) {
-				break;
-			}
-			node = node._nextSource;
-		}
-		if (node === undefined) {
-			this._flags &= ~STALE;
-			this._flags &= ~RUNNING;
-			this._globalVersion = globalVersion;
-			return true;
-		}
-	}
-
-	this._flags &= ~STALE;
 	this._globalVersion = globalVersion
+
 	const prevContext = evalContext;
 	try {
+		this._flags |= RUNNING;
+
+		if (this._version > 0) {
+			// Check current dependencies for changes. The dependency list is already in
+			// order of use. Therefore if >1 dependencies have changed only the first used one
+			// is re-evaluated at this point.
+			let node = this._sources;
+			while (node !== undefined) {
+				if (!node._source._refresh() || node._source._version !== node._version) {
+					// If a dependency has something blocking it refreshing (e.g. a dependency
+					// cycle) or there's a new version of the dependency, then we need to recompute.
+					break;
+				}
+				node = node._nextSource;
+			}
+			if (node === undefined) {
+				return true;
+			}
+		}
+
 		prepareSources(this);
 		disposeNestedEffects(this);
 
@@ -462,9 +454,9 @@ Computed.prototype._refresh = function() {
 		this._flags |= HAS_ERROR;
 		this._version++;
 	} finally {
-		this._flags &= ~RUNNING;
 		evalContext = prevContext;
 		cleanupSources(this);
+		this._flags &= ~RUNNING;
 	}
 	return true;
 };
