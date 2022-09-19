@@ -124,7 +124,7 @@ hook(OptionsTypes.DIFF, (old, vnode) => {
 			if (value instanceof Signal) {
 				if (!signalProps) vnode.__np = signalProps = {};
 				signalProps[i] = value;
-				props[i] = value.peek();
+				props[i] = undefined;
 			}
 		}
 	}
