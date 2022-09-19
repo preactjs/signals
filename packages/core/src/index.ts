@@ -107,69 +107,64 @@ let batchIteration = 0;
 // computed.peek()/computed.value calls when nothing has changed globally.
 let globalVersion = 0;
 
-function getValue<T>(signal: Signal<T>): T {
-	let node: Node | undefined = undefined;
-	if (evalContext !== undefined) {
-		node = signal._node;
-		if (node === undefined || node._target !== evalContext) {
-			// `signal` is a new dependency. Create a new node dependency node, move it
-			//  to the front of the current context's dependency list.
-			node = {
-				_flags: 0,
-				_version: 0,
-				_source: signal,
-				_prevSource: undefined,
-				_nextSource: evalContext._sources,
-				_target: evalContext,
-				_prevTarget: undefined,
-				_nextTarget: undefined,
-				_rollbackNode: node,
-			};
+function addDependency(signal: Signal): Node | undefined {
+	if (evalContext === undefined) {
+		return undefined;
+	}
+
+	let node = signal._node;
+	if (node === undefined || node._target !== evalContext) {
+		// `signal` is a new dependency. Create a new node dependency node, move it
+		//  to the front of the current context's dependency list.
+		node = {
+			_flags: 0,
+			_version: 0,
+			_source: signal,
+			_prevSource: undefined,
+			_nextSource: evalContext._sources,
+			_target: evalContext,
+			_prevTarget: undefined,
+			_nextTarget: undefined,
+			_rollbackNode: node,
+		};
+		evalContext._sources = node;
+		signal._node = node;
+
+		// Subscribe to change notifications from this dependency if we're in an effect
+		// OR evaluating a computed signal that in turn has subscribers.
+		if (evalContext._flags & SHOULD_SUBSCRIBE) {
+			signal._subscribe(node);
+		}
+		return node;
+	} else if (node._flags & STALE) {
+		// `signal` is an existing dependency from a previous evaluation. Reuse the dependency
+		// node and move it to the front of the evaluation context's dependency list.
+		node._flags &= ~STALE;
+
+		const head = evalContext._sources;
+		if (node !== head) {
+			const prev = node._prevSource;
+			const next = node._nextSource;
+			if (prev !== undefined) {
+				prev._nextSource = next;
+			}
+			if (next !== undefined) {
+				next._prevSource = prev;
+			}
+			if (head !== undefined) {
+				head._prevSource = node;
+			}
+			node._prevSource = undefined;
+			node._nextSource = head;
 			evalContext._sources = node;
-			signal._node = node;
-
-			// Subscribe to change notifications from this dependency if we're in an effect
-			// OR evaluating a computed signal that in turn has subscribers.
-			if (evalContext._flags & SHOULD_SUBSCRIBE) {
-				signal._subscribe(node);
-			}
-		} else if (node._flags & STALE) {
-			// `signal` is an existing dependency from a previous evaluation. Reuse the dependency
-			// node and move it to the front of the evaluation context's dependency list.
-			node._flags &= ~STALE;
-
-			const head = evalContext._sources;
-			if (node !== head) {
-				const prev = node._prevSource;
-				const next = node._nextSource;
-				if (prev !== undefined) {
-					prev._nextSource = next;
-				}
-				if (next !== undefined) {
-					next._prevSource = prev;
-				}
-				if (head !== undefined) {
-					head._prevSource = node;
-				}
-				node._prevSource = undefined;
-				node._nextSource = head;
-				evalContext._sources = node;
-			}
-
-			// We can assume that the currently evaluated effect / computed signal is already
-			// subscribed to change notifications from `signal` if needed.
-		} else {
-			// `signal` is an existing dependency from current evaluation.
-			node = undefined;
 		}
+
+		// We can assume that the currently evaluated effect / computed signal is already
+		// subscribed to change notifications from `signal` if needed.
+		return node;
 	}
-	try {
-		return signal.peek();
-	} finally {
-		if (node !== undefined) {
-			node._version = signal._version;
-		}
-	}
+	return undefined;
+
 }
 
 declare class Signal<T = any> {
@@ -270,7 +265,11 @@ Signal.prototype.peek = function() {
 
 Object.defineProperty(Signal.prototype, "value", {
 	get() {
-		return getValue(this);
+		const node = addDependency(this);
+		if (node !== undefined) {
+			node._version = this._version;
+		}
+		return this._value;
 	},
 	set(value) {
 		if (value !== this._value) {
@@ -533,7 +532,15 @@ Object.defineProperty(Computed.prototype, "value", {
 		if (this._flags & RUNNING) {
 			cycleDetected();
 		}
-		return getValue(this);
+		const node = addDependency(this);
+		this._refresh();
+		if (node !== undefined) {
+			node._version = this._version;
+		}
+		if (this._flags & HAS_ERROR) {
+			throw this._value;
+		}
+		return this._value;
 	}
 });
 
