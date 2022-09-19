@@ -188,6 +188,9 @@ declare class Signal<T = any> {
 	constructor(value?: T);
 
 	/** @internal */
+	_refresh(): boolean;
+
+	/** @internal */
 	_subscribe(node: Node): void;
 
 	/** @internal */
@@ -212,6 +215,10 @@ function Signal(this: Signal, value?: unknown) {
 	this._node = undefined;
 	this._targets = undefined;
 }
+
+Signal.prototype._refresh = function() {
+	return true;
+};
 
 Signal.prototype._subscribe = function(node) {
 	if (!(node._flags & SUBSCRIBED)) {
@@ -342,14 +349,6 @@ function cleanupSources(target: Computed | Effect) {
 	target._sources = sources;
 }
 
-function returnComputed<T>(computed: Computed<T>): T {
-	computed._flags &= ~RUNNING;
-	if (computed._flags & HAS_ERROR) {
-		throw computed._value;
-	}
-	return computed._value as T;
-}
-
 function disposeNestedEffects(context: Computed | Effect) {
 	let effect = context._effects;
 	if (effect !== undefined) {
@@ -401,6 +400,79 @@ function Computed(this: Computed, compute: () => unknown) {
 (function(_Signal: typeof Signal) {
 	Computed.prototype = new _Signal() as Computed;
 
+	Computed.prototype._refresh = function() {
+		this._flags &= ~NOTIFIED;
+
+		if (this._flags & RUNNING) {
+			return false;
+		}
+
+		if (!(this._flags & STALE) && this._targets !== undefined) {
+			return true;
+		}
+
+		if (this._globalVersion === globalVersion) {
+			this._flags &= ~STALE;
+			return true;
+		}
+
+		this._flags |= RUNNING;
+		if (this._version > 0) {
+			// Check current dependencies for changes. The dependency list is already in
+			// order of use. Therefore if >1 dependencies have changed only the first used one
+			// is re-evaluated at this point.
+			let node = this._sources;
+			while (node !== undefined) {
+				if (node._source._version !== node._version) {
+					break;
+				}
+				if (!node._source._refresh()) {
+					this._flags &= ~RUNNING;
+					return false;
+				}
+				if (node._source._version !== node._version) {
+					break;
+				}
+				node = node._nextSource;
+			}
+			if (node === undefined) {
+				this._flags &= ~STALE;
+				this._flags &= ~RUNNING;
+				this._globalVersion = globalVersion;
+				return true;
+			}
+		}
+
+		this._flags &= ~STALE;
+		this._globalVersion = globalVersion
+		const prevContext = evalContext;
+		try {
+			prepareSources(this);
+			disposeNestedEffects(this);
+
+			evalContext = this;
+			const value = this._compute();
+			if (
+				this._flags & HAS_ERROR ||
+				this._value !== value ||
+				this._version === 0
+			) {
+				this._value = value;
+				this._flags &= ~HAS_ERROR;
+				this._version++;
+			}
+		} catch (err) {
+			this._value = err;
+			this._flags |= HAS_ERROR;
+			this._version++;
+		} finally {
+			this._flags &= ~RUNNING;
+			evalContext = prevContext;
+			cleanupSources(this);
+		}
+		return true;
+	};
+
 	Computed.prototype._subscribe = function(node) {
 		if (this._targets === undefined) {
 			this._flags |= STALE | SHOULD_SUBSCRIBE;
@@ -450,74 +522,13 @@ function Computed(this: Computed, compute: () => unknown) {
 	};
 
 	Computed.prototype.peek = function() {
-		this._flags &= ~NOTIFIED;
-
-		if (this._flags & RUNNING) {
+		if (!this._refresh()) {
 			cycleDetected();
 		}
-		this._flags |= RUNNING;
-
-		if (!(this._flags & STALE) && this._targets !== undefined) {
-			return returnComputed(this);
+		if (this._flags & HAS_ERROR) {
+			throw this._value;
 		}
-		this._flags &= ~STALE;
-
-		if (this._globalVersion === globalVersion) {
-			return returnComputed(this);
-		}
-		this._globalVersion = globalVersion;
-
-		if (this._version > 0) {
-			// Check current dependencies for changes. The dependency list is already in
-			// order of use. Therefore if >1 dependencies have changed only the first used one
-			// is re-evaluated at this point.
-			let node = this._sources;
-			while (node !== undefined) {
-				if (node._source._version !== node._version) {
-					break;
-				}
-				try {
-					node._source.peek();
-				} catch {
-					// Failures of current dependencies shouldn't be rethrown here in case the
-					// compute function catches them.
-				}
-				if (node._source._version !== node._version) {
-					break;
-				}
-				node = node._nextSource;
-			}
-			if (node === undefined) {
-				return returnComputed(this);
-			}
-		}
-
-		disposeNestedEffects(this);
-
-		const prevValue = this._value;
-		const prevFlags = this._flags;
-		const prevContext = evalContext;
-		try {
-			evalContext = this;
-			prepareSources(this);
-			this._value = this._compute();
-			this._flags &= ~HAS_ERROR;
-			if (
-				prevFlags & HAS_ERROR ||
-				this._value !== prevValue ||
-				this._version === 0
-			) {
-				this._version++;
-			}
-		} catch (err) {
-			this._value = err;
-			this._flags |= HAS_ERROR;
-			this._version++;
-		} finally {
-			cleanupSources(this);
-			evalContext = prevContext;
-		}
-		return returnComputed(this);
+		return this._value;
 	};
 
 	Object.defineProperty(Computed.prototype, "value", {
