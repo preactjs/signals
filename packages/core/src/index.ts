@@ -395,151 +395,147 @@ function Computed(this: Computed, compute: () => unknown) {
 	this._flags = STALE;
 }
 
-// Do this IIFE wrapping thing instead of deriving directly from Signal, to avoid
-// a performance cliff (at least on on Node.js 18.9.0).
-(function(_Signal: typeof Signal) {
-	Computed.prototype = new _Signal() as Computed;
+Computed.prototype = new Signal() as Computed;
 
-	Computed.prototype._refresh = function() {
-		this._flags &= ~NOTIFIED;
+Computed.prototype._refresh = function() {
+	this._flags &= ~NOTIFIED;
 
-		if (this._flags & RUNNING) {
-			return false;
-		}
+	if (this._flags & RUNNING) {
+		return false;
+	}
 
-		if (!(this._flags & STALE) && this._targets !== undefined) {
-			return true;
-		}
-
-		if (this._globalVersion === globalVersion) {
-			this._flags &= ~STALE;
-			return true;
-		}
-
-		this._flags |= RUNNING;
-		if (this._version > 0) {
-			// Check current dependencies for changes. The dependency list is already in
-			// order of use. Therefore if >1 dependencies have changed only the first used one
-			// is re-evaluated at this point.
-			let node = this._sources;
-			while (node !== undefined) {
-				if (node._source._version !== node._version) {
-					break;
-				}
-				if (!node._source._refresh()) {
-					this._flags &= ~RUNNING;
-					return false;
-				}
-				if (node._source._version !== node._version) {
-					break;
-				}
-				node = node._nextSource;
-			}
-			if (node === undefined) {
-				this._flags &= ~STALE;
-				this._flags &= ~RUNNING;
-				this._globalVersion = globalVersion;
-				return true;
-			}
-		}
-
-		this._flags &= ~STALE;
-		this._globalVersion = globalVersion
-		const prevContext = evalContext;
-		try {
-			prepareSources(this);
-			disposeNestedEffects(this);
-
-			evalContext = this;
-			const value = this._compute();
-			if (
-				this._flags & HAS_ERROR ||
-				this._value !== value ||
-				this._version === 0
-			) {
-				this._value = value;
-				this._flags &= ~HAS_ERROR;
-				this._version++;
-			}
-		} catch (err) {
-			this._value = err;
-			this._flags |= HAS_ERROR;
-			this._version++;
-		} finally {
-			this._flags &= ~RUNNING;
-			evalContext = prevContext;
-			cleanupSources(this);
-		}
+	if (!(this._flags & STALE) && this._targets !== undefined) {
 		return true;
-	};
+	}
 
-	Computed.prototype._subscribe = function(node) {
-		if (this._targets === undefined) {
-			this._flags |= STALE | SHOULD_SUBSCRIBE;
+	if (this._globalVersion === globalVersion) {
+		this._flags &= ~STALE;
+		return true;
+	}
 
-			// A computed signal subscribes lazily to its dependencies when the it
-			// gets its first subscriber.
-			for (
-				let node = this._sources;
-				node !== undefined;
-				node = node._nextSource
-			) {
-				node._source._subscribe(node);
+	this._flags |= RUNNING;
+	if (this._version > 0) {
+		// Check current dependencies for changes. The dependency list is already in
+		// order of use. Therefore if >1 dependencies have changed only the first used one
+		// is re-evaluated at this point.
+		let node = this._sources;
+		while (node !== undefined) {
+			if (node._source._version !== node._version) {
+				break;
 			}
-		}
-		_Signal.prototype._subscribe.call(this, node);
-	};
-
-	Computed.prototype._unsubscribe = function(node) {
-		_Signal.prototype._unsubscribe.call(this, node);
-
-		// Computed signal unsubscribes from its dependencies from it loses its last subscriber.
-		if (this._targets === undefined) {
-			this._flags &= ~SHOULD_SUBSCRIBE;
-
-			for (
-				let node = this._sources;
-				node !== undefined;
-				node = node._nextSource
-			) {
-				node._source._unsubscribe(node);
+			if (!node._source._refresh()) {
+				this._flags &= ~RUNNING;
+				return false;
 			}
-		}
-	};
-
-	Computed.prototype._notify = function() {
-		if (!(this._flags & NOTIFIED)) {
-			this._flags |= STALE | NOTIFIED;
-
-			for (
-				let node = this._targets;
-				node !== undefined;
-				node = node._nextTarget
-			) {
-				node._target._notify();
+			if (node._source._version !== node._version) {
+				break;
 			}
+			node = node._nextSource;
 		}
-	};
+		if (node === undefined) {
+			this._flags &= ~STALE;
+			this._flags &= ~RUNNING;
+			this._globalVersion = globalVersion;
+			return true;
+		}
+	}
 
-	Computed.prototype.peek = function() {
-		if (!this._refresh()) {
+	this._flags &= ~STALE;
+	this._globalVersion = globalVersion
+	const prevContext = evalContext;
+	try {
+		prepareSources(this);
+		disposeNestedEffects(this);
+
+		evalContext = this;
+		const value = this._compute();
+		if (
+			this._flags & HAS_ERROR ||
+			this._value !== value ||
+			this._version === 0
+		) {
+			this._value = value;
+			this._flags &= ~HAS_ERROR;
+			this._version++;
+		}
+	} catch (err) {
+		this._value = err;
+		this._flags |= HAS_ERROR;
+		this._version++;
+	} finally {
+		this._flags &= ~RUNNING;
+		evalContext = prevContext;
+		cleanupSources(this);
+	}
+	return true;
+};
+
+Computed.prototype._subscribe = function(node) {
+	if (this._targets === undefined) {
+		this._flags |= STALE | SHOULD_SUBSCRIBE;
+
+		// A computed signal subscribes lazily to its dependencies when the it
+		// gets its first subscriber.
+		for (
+			let node = this._sources;
+			node !== undefined;
+			node = node._nextSource
+		) {
+			node._source._subscribe(node);
+		}
+	}
+	Signal.prototype._subscribe.call(this, node);
+};
+
+Computed.prototype._unsubscribe = function(node) {
+	Signal.prototype._unsubscribe.call(this, node);
+
+	// Computed signal unsubscribes from its dependencies from it loses its last subscriber.
+	if (this._targets === undefined) {
+		this._flags &= ~SHOULD_SUBSCRIBE;
+
+		for (
+			let node = this._sources;
+			node !== undefined;
+			node = node._nextSource
+		) {
+			node._source._unsubscribe(node);
+		}
+	}
+};
+
+Computed.prototype._notify = function() {
+	if (!(this._flags & NOTIFIED)) {
+		this._flags |= STALE | NOTIFIED;
+
+		for (
+			let node = this._targets;
+			node !== undefined;
+			node = node._nextTarget
+		) {
+			node._target._notify();
+		}
+	}
+};
+
+Computed.prototype.peek = function() {
+	if (!this._refresh()) {
+		cycleDetected();
+	}
+	if (this._flags & HAS_ERROR) {
+		throw this._value;
+	}
+	return this._value;
+};
+
+Object.defineProperty(Computed.prototype, "value", {
+	get() {
+		if (this._flags & RUNNING) {
 			cycleDetected();
 		}
-		if (this._flags & HAS_ERROR) {
-			throw this._value;
-		}
-		return this._value;
-	};
-
-	Object.defineProperty(Computed.prototype, "value", {
-		get() {
-			if (this._flags & RUNNING) {
-				cycleDetected();
-			}
-			return getValue(this);
-		}
-	});
-})(Signal);
+		return getValue(this);
+	}
+});
 
 function computed<T>(compute: () => T): Computed<T> {
 	return new Computed(compute);
