@@ -107,69 +107,64 @@ let batchIteration = 0;
 // computed.peek()/computed.value calls when nothing has changed globally.
 let globalVersion = 0;
 
-function getValue<T>(signal: Signal<T>): T {
-	let node: Node | undefined = undefined;
-	if (evalContext !== undefined) {
-		node = signal._node;
-		if (node === undefined || node._target !== evalContext) {
-			// `signal` is a new dependency. Create a new node dependency node, move it
-			//  to the front of the current context's dependency list.
-			node = {
-				_flags: 0,
-				_version: 0,
-				_source: signal,
-				_prevSource: undefined,
-				_nextSource: evalContext._sources,
-				_target: evalContext,
-				_prevTarget: undefined,
-				_nextTarget: undefined,
-				_rollbackNode: node,
-			};
+function addDependency(signal: Signal): Node | undefined {
+	if (evalContext === undefined) {
+		return undefined;
+	}
+
+	let node = signal._node;
+	if (node === undefined || node._target !== evalContext) {
+		// `signal` is a new dependency. Create a new node dependency node, move it
+		//  to the front of the current context's dependency list.
+		node = {
+			_flags: 0,
+			_version: 0,
+			_source: signal,
+			_prevSource: undefined,
+			_nextSource: evalContext._sources,
+			_target: evalContext,
+			_prevTarget: undefined,
+			_nextTarget: undefined,
+			_rollbackNode: node,
+		};
+		evalContext._sources = node;
+		signal._node = node;
+
+		// Subscribe to change notifications from this dependency if we're in an effect
+		// OR evaluating a computed signal that in turn has subscribers.
+		if (evalContext._flags & SHOULD_SUBSCRIBE) {
+			signal._subscribe(node);
+		}
+		return node;
+	} else if (node._flags & STALE) {
+		// `signal` is an existing dependency from a previous evaluation. Reuse the dependency
+		// node and move it to the front of the evaluation context's dependency list.
+		node._flags &= ~STALE;
+
+		const head = evalContext._sources;
+		if (node !== head) {
+			const prev = node._prevSource;
+			const next = node._nextSource;
+			if (prev !== undefined) {
+				prev._nextSource = next;
+			}
+			if (next !== undefined) {
+				next._prevSource = prev;
+			}
+			if (head !== undefined) {
+				head._prevSource = node;
+			}
+			node._prevSource = undefined;
+			node._nextSource = head;
 			evalContext._sources = node;
-			signal._node = node;
-
-			// Subscribe to change notifications from this dependency if we're in an effect
-			// OR evaluating a computed signal that in turn has subscribers.
-			if (evalContext._flags & SHOULD_SUBSCRIBE) {
-				signal._subscribe(node);
-			}
-		} else if (node._flags & STALE) {
-			// `signal` is an existing dependency from a previous evaluation. Reuse the dependency
-			// node and move it to the front of the evaluation context's dependency list.
-			node._flags &= ~STALE;
-
-			const head = evalContext._sources;
-			if (node !== head) {
-				const prev = node._prevSource;
-				const next = node._nextSource;
-				if (prev !== undefined) {
-					prev._nextSource = next;
-				}
-				if (next !== undefined) {
-					next._prevSource = prev;
-				}
-				if (head !== undefined) {
-					head._prevSource = node;
-				}
-				node._prevSource = undefined;
-				node._nextSource = head;
-				evalContext._sources = node;
-			}
-
-			// We can assume that the currently evaluated effect / computed signal is already
-			// subscribed to change notifications from `signal` if needed.
-		} else {
-			// `signal` is an existing dependency from current evaluation.
-			node = undefined;
 		}
+
+		// We can assume that the currently evaluated effect / computed signal is already
+		// subscribed to change notifications from `signal` if needed.
+		return node;
 	}
-	try {
-		return signal.peek();
-	} finally {
-		if (node !== undefined) {
-			node._version = signal._version;
-		}
-	}
+	return undefined;
+
 }
 
 declare class Signal<T = any> {
@@ -186,6 +181,9 @@ declare class Signal<T = any> {
 	_targets?: Node;
 
 	constructor(value?: T);
+
+	/** @internal */
+	_refresh(): boolean;
 
 	/** @internal */
 	_subscribe(node: Node): void;
@@ -212,6 +210,10 @@ function Signal(this: Signal, value?: unknown) {
 	this._node = undefined;
 	this._targets = undefined;
 }
+
+Signal.prototype._refresh = function() {
+	return true;
+};
 
 Signal.prototype._subscribe = function(node) {
 	if (!(node._flags & SUBSCRIBED)) {
@@ -263,7 +265,11 @@ Signal.prototype.peek = function() {
 
 Object.defineProperty(Signal.prototype, "value", {
 	get() {
-		return getValue(this);
+		const node = addDependency(this);
+		if (node !== undefined) {
+			node._version = this._version;
+		}
+		return this._value;
 	},
 	set(value) {
 		if (value !== this._value) {
@@ -342,14 +348,6 @@ function cleanupSources(target: Computed | Effect) {
 	target._sources = sources;
 }
 
-function returnComputed<T>(computed: Computed<T>): T {
-	computed._flags &= ~RUNNING;
-	if (computed._flags & HAS_ERROR) {
-		throw computed._value;
-	}
-	return computed._value as T;
-}
-
 function disposeNestedEffects(context: Computed | Effect) {
 	let effect = context._effects;
 	if (effect !== undefined) {
@@ -396,76 +394,28 @@ function Computed(this: Computed, compute: () => unknown) {
 	this._flags = STALE;
 }
 
-// Do this IIFE wrapping thing instead of deriving directly from Signal, to avoid
-// a performance cliff (at least on on Node.js 18.9.0).
-(function(_Signal: typeof Signal) {
-	Computed.prototype = new _Signal() as Computed;
+Computed.prototype = new Signal() as Computed;
 
-	Computed.prototype._subscribe = function(node) {
-		if (this._targets === undefined) {
-			this._flags |= STALE | SHOULD_SUBSCRIBE;
+Computed.prototype._refresh = function() {
+	this._flags &= ~NOTIFIED;
 
-			// A computed signal subscribes lazily to its dependencies when the it
-			// gets its first subscriber.
-			for (
-				let node = this._sources;
-				node !== undefined;
-				node = node._nextSource
-			) {
-				node._source._subscribe(node);
-			}
-		}
-		_Signal.prototype._subscribe.call(this, node);
-	};
+	if (this._flags & RUNNING) {
+		return false;
+	}
 
-	Computed.prototype._unsubscribe = function(node) {
-		_Signal.prototype._unsubscribe.call(this, node);
+	if (!(this._flags & STALE) && this._targets !== undefined) {
+		return true;
+	}
+	this._flags &= ~STALE;
 
-		// Computed signal unsubscribes from its dependencies from it loses its last subscriber.
-		if (this._targets === undefined) {
-			this._flags &= ~SHOULD_SUBSCRIBE;
+	if (this._globalVersion === globalVersion) {
+		return true;
+	}
+	this._globalVersion = globalVersion
 
-			for (
-				let node = this._sources;
-				node !== undefined;
-				node = node._nextSource
-			) {
-				node._source._unsubscribe(node);
-			}
-		}
-	};
-
-	Computed.prototype._notify = function() {
-		if (!(this._flags & NOTIFIED)) {
-			this._flags |= STALE | NOTIFIED;
-
-			for (
-				let node = this._targets;
-				node !== undefined;
-				node = node._nextTarget
-			) {
-				node._target._notify();
-			}
-		}
-	};
-
-	Computed.prototype.peek = function() {
-		this._flags &= ~NOTIFIED;
-
-		if (this._flags & RUNNING) {
-			cycleDetected();
-		}
+	const prevContext = evalContext;
+	try {
 		this._flags |= RUNNING;
-
-		if (!(this._flags & STALE) && this._targets !== undefined) {
-			return returnComputed(this);
-		}
-		this._flags &= ~STALE;
-
-		if (this._globalVersion === globalVersion) {
-			return returnComputed(this);
-		}
-		this._globalVersion = globalVersion;
 
 		if (this._version > 0) {
 			// Check current dependencies for changes. The dependency list is already in
@@ -473,62 +423,118 @@ function Computed(this: Computed, compute: () => unknown) {
 			// is re-evaluated at this point.
 			let node = this._sources;
 			while (node !== undefined) {
-				if (node._source._version !== node._version) {
-					break;
-				}
-				try {
-					node._source.peek();
-				} catch {
-					// Failures of current dependencies shouldn't be rethrown here in case the
-					// compute function catches them.
-				}
-				if (node._source._version !== node._version) {
+				if (!node._source._refresh() || node._source._version !== node._version) {
+					// If a dependency has something blocking it refreshing (e.g. a dependency
+					// cycle) or there's a new version of the dependency, then we need to recompute.
 					break;
 				}
 				node = node._nextSource;
 			}
 			if (node === undefined) {
-				return returnComputed(this);
+				return true;
 			}
 		}
 
+		prepareSources(this);
 		disposeNestedEffects(this);
 
-		const prevValue = this._value;
-		const prevFlags = this._flags;
-		const prevContext = evalContext;
-		try {
-			evalContext = this;
-			prepareSources(this);
-			this._value = this._compute();
+		evalContext = this;
+		const value = this._compute();
+		if (
+			this._flags & HAS_ERROR ||
+			this._value !== value ||
+			this._version === 0
+		) {
+			this._value = value;
 			this._flags &= ~HAS_ERROR;
-			if (
-				prevFlags & HAS_ERROR ||
-				this._value !== prevValue ||
-				this._version === 0
-			) {
-				this._version++;
-			}
-		} catch (err) {
-			this._value = err;
-			this._flags |= HAS_ERROR;
 			this._version++;
-		} finally {
-			cleanupSources(this);
-			evalContext = prevContext;
 		}
-		return returnComputed(this);
-	};
+	} catch (err) {
+		this._value = err;
+		this._flags |= HAS_ERROR;
+		this._version++;
+	} finally {
+		evalContext = prevContext;
+		cleanupSources(this);
+		this._flags &= ~RUNNING;
+	}
+	return true;
+};
 
-	Object.defineProperty(Computed.prototype, "value", {
-		get() {
-			if (this._flags & RUNNING) {
-				cycleDetected();
-			}
-			return getValue(this);
+Computed.prototype._subscribe = function(node) {
+	if (this._targets === undefined) {
+		this._flags |= STALE | SHOULD_SUBSCRIBE;
+
+		// A computed signal subscribes lazily to its dependencies when the it
+		// gets its first subscriber.
+		for (
+			let node = this._sources;
+			node !== undefined;
+			node = node._nextSource
+		) {
+			node._source._subscribe(node);
 		}
-	});
-})(Signal);
+	}
+	Signal.prototype._subscribe.call(this, node);
+};
+
+Computed.prototype._unsubscribe = function(node) {
+	Signal.prototype._unsubscribe.call(this, node);
+
+	// Computed signal unsubscribes from its dependencies from it loses its last subscriber.
+	if (this._targets === undefined) {
+		this._flags &= ~SHOULD_SUBSCRIBE;
+
+		for (
+			let node = this._sources;
+			node !== undefined;
+			node = node._nextSource
+		) {
+			node._source._unsubscribe(node);
+		}
+	}
+};
+
+Computed.prototype._notify = function() {
+	if (!(this._flags & NOTIFIED)) {
+		this._flags |= STALE | NOTIFIED;
+
+		for (
+			let node = this._targets;
+			node !== undefined;
+			node = node._nextTarget
+		) {
+			node._target._notify();
+		}
+	}
+};
+
+Computed.prototype.peek = function() {
+	if (!this._refresh()) {
+		cycleDetected();
+	}
+	if (this._flags & HAS_ERROR) {
+		throw this._value;
+	}
+	return this._value;
+};
+
+Object.defineProperty(Computed.prototype, "value", {
+	get() {
+		if (this._flags & RUNNING) {
+			cycleDetected();
+		}
+		const node = addDependency(this);
+		this._refresh();
+		if (node !== undefined) {
+			node._version = this._version;
+		}
+		if (this._flags & HAS_ERROR) {
+			throw this._value;
+		}
+		return this._value;
+	}
+});
 
 function computed<T>(compute: () => T): Computed<T> {
 	return new Computed(compute);
