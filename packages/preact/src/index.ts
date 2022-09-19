@@ -316,17 +316,9 @@ export function useSignalEffect(cb: () => void | (() => void)) {
 	callback.current = cb;
 
 	useEffect(() => {
-		let cleanup: (() => void) | undefined;
 		return effect(() => {
-			if (cleanup) {
-				cleanup();
-				cleanup = undefined
-			}
-			const result = callback.current();
-			if (typeof result == 'function') {
-				cleanup = result
-			}
-		})
+			return callback.current();
+		});
 	}, []);
 }
 
