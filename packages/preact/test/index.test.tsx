@@ -314,5 +314,26 @@ describe("@preact/signals", () => {
 			expect(ariaLabel).not.to.have.been.called;
 			expect(ariaDescription).not.to.have.been.called;
 		});
+
+		it("should set SVG values", async () => {
+			const s = signal("scale(1 1)");
+
+			function App() {
+				return (
+					<svg>
+						<line
+							// @ts-ignore
+							transform={s}
+						/>
+					</svg>
+				);
+			}
+			render(<App />, scratch);
+
+			act(() => {
+				// This should not crash
+				s.value = "scale(1, 2)";
+			});
+		});
 	});
 });

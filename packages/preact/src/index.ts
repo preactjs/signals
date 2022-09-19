@@ -211,7 +211,13 @@ function createPropUpdater(
 	propSignal: Signal,
 	props: Record<string, any>
 ): PropertyUpdater {
-	const setAsProperty = prop in dom;
+	const setAsProperty =
+		prop in dom &&
+		// SVG elements need to go through `setAttribute` because they
+		// expect things like SVGAnimatedTransformList instead of strings.
+		// @ts-ignore
+		dom.ownerSVGElement === undefined;
+
 	const changeSignal = signal(propSignal);
 	return {
 		_update: (newSignal: Signal, newProps: typeof props) => {
