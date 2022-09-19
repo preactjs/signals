@@ -134,6 +134,8 @@ hook(OptionsTypes.DIFF, (old, vnode) => {
 
 /** Set up Updater before rendering a component */
 hook(OptionsTypes.RENDER, (old, vnode) => {
+	setCurrentUpdater();
+
 	let updater;
 
 	let component = vnode.__c;
@@ -172,6 +174,7 @@ hook(OptionsTypes.DIFFED, (old, vnode) => {
 	// so we use this to skip prop subscriptions during SSR.
 	if (typeof vnode.type === "string" && (dom = vnode.__e as Element)) {
 		let props = vnode.__np;
+		let renderedProps = vnode.props;
 		if (props) {
 			let updaters = dom._updaters;
 			if (updaters) {
@@ -191,23 +194,35 @@ hook(OptionsTypes.DIFFED, (old, vnode) => {
 				let updater = updaters[prop];
 				let signal = props[prop];
 				if (updater === undefined) {
-					updater = createPropUpdater(dom, prop, signal);
+					updater = createPropUpdater(dom, prop, signal, renderedProps);
 					updaters[prop] = updater;
+				} else {
+					updater._update(signal, renderedProps);
 				}
-				updater._signal.value = signal;
 			}
 		}
 	}
 	old(vnode);
 });
 
-function createPropUpdater(dom: Element, prop: string, propSignal: Signal): PropertyUpdater {
+function createPropUpdater(
+	dom: Element,
+	prop: string,
+	propSignal: Signal,
+	props: Record<string, any>
+): PropertyUpdater {
 	const setAsProperty = prop in dom;
 	const changeSignal = signal(propSignal);
 	return {
-		_signal: changeSignal,
+		_update: (newSignal: Signal, newProps: typeof props) => {
+			changeSignal.value = newSignal;
+			props = newProps;
+		},
 		_dispose: effect(() => {
 			const value = changeSignal.value.value;
+			// If Preact just rendered this value, don't render it again:
+			if (props[prop] === value) return;
+			props[prop] = value;
 			if (setAsProperty) {
 				// @ts-ignore-next-line silly
 				dom[prop] = value;
@@ -216,7 +231,7 @@ function createPropUpdater(dom: Element, prop: string, propSignal: Signal): Prop
 			} else {
 				dom.removeAttribute(prop);
 			}
-		})
+		}),
 	};
 }
 
@@ -245,7 +260,8 @@ hook(OptionsTypes.UNMOUNT, (old, vnode: VNode) => {
 
 /** Mark components that use hook state so we can skip sCU optimization. */
 hook(OptionsTypes.HOOK, (old, component, index, type) => {
-	if (type < 3) (component as AugmentedComponent)._updateFlags |= HAS_HOOK_STATE;
+	if (type < 3)
+		(component as AugmentedComponent)._updateFlags |= HAS_HOOK_STATE;
 	old(component, index, type);
 });
 
@@ -253,7 +269,11 @@ hook(OptionsTypes.HOOK, (old, component, index, type) => {
  * Auto-memoize components that use Signals/Computeds.
  * Note: Does _not_ optimize components that use hook/class state.
  */
-Component.prototype.shouldComponentUpdate = function (this: AugmentedComponent, props, state) {
+Component.prototype.shouldComponentUpdate = function (
+	this: AugmentedComponent,
+	props,
+	state
+) {
 	// @todo: Once preactjs/preact#3671 lands, this could just use `currentUpdater`:
 	const updater = this._updater;
 	const hasSignals = updater && updater._sources !== undefined;
@@ -317,7 +337,7 @@ export function useSignalEffect(cb: () => void | (() => void)) {
 
 	useEffect(() => {
 		return effect(() => {
-			return callback.current();
+			callback.current();
 		});
 	}, []);
 }

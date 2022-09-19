@@ -9,7 +9,7 @@ export interface Effect {
 }
 
 export interface PropertyUpdater {
-	_signal: Signal<Signal>;
+	_update: (newSignal: Signal, newProps: Record<string, any>) => void;
 	_dispose: () => void;
 }
 
