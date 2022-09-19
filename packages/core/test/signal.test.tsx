@@ -327,6 +327,22 @@ describe("effect()", () => {
 		expect(spy).not.to.be.called;
 	});
 
+	it("should run nested cleanups before their own", () => {
+		const spy1 = sinon.spy();
+		const spy2 = sinon.spy();
+
+		const dispose = effect(() => {
+			effect(() => {
+				return spy1;
+			});
+			return spy2;
+		});
+		expect(spy1).not.to.be.called;
+		expect(spy2).not.to.be.called;
+		dispose();
+		expect(spy2).to.be.calledAfter(spy1);
+	});
+
 	it("should run all cleanups even if some of them fail", () => {
 		const spy1 = sinon.spy();
 		const spy2 = sinon.spy();
