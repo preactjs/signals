@@ -913,6 +913,121 @@ describe("computed()", () => {
 		spy.resetHistory();
 	});
 
+	it("should run the cleanups for nested effects", () => {
+		const spy = sinon.spy();
+		const a = signal(0);
+		const c = computed(() => {
+			a.value;
+
+			if (a.value === 0) {
+				effect(() => {
+					return spy;
+				});
+			}
+		});
+
+		c.value;
+		expect(spy).not.to.be.called;
+
+		a.value++;
+		expect(spy).to.be.calledOnce;
+
+		a.value++;
+		expect(spy).to.be.calledOnce;
+	});
+
+	it("should adopt the failure when an effect cleanup fails before recomputation", () => {
+		const a = signal(0);
+		const spy = sinon.spy();
+		const c = computed(() => {
+			spy();
+
+			a.value;
+
+			effect(() => {
+				return () => {
+					throw new Error("hello");
+				};
+			});
+		});
+
+		c.value;
+		expect(spy).to.be.calledOnce;
+		spy.resetHistory();
+
+		a.value++;
+		expect(() => c.value).to.throw("hello");
+		expect(spy).not.to.be.called;
+
+		expect(() => c.value).to.throw("hello");
+		expect(spy).not.to.be.called;
+	});
+
+	it("should drop all dependencies if an effect cleanup before recomputation fails", () => {
+		const a = signal(0);
+		const b = signal(0);
+		const spy = sinon.spy();
+		const c = computed(() => {
+			spy();
+
+			a.value;
+
+			effect(() => {
+				return () => {
+					throw new Error("hello");
+				};
+			});
+
+			b.value;
+		});
+
+		c.value;
+		expect(spy).to.be.calledOnce;
+		spy.resetHistory();
+
+		a.value++;
+		expect(() => c.value).to.throw("hello");
+		expect(spy).not.to.be.called;
+
+		a.value++;
+		expect(() => c.value).to.throw("hello");
+		expect(spy).not.to.be.called;
+
+		b.value++;
+		expect(() => c.value).to.throw("hello");
+		expect(spy).not.to.be.called;
+	});
+
+	it("should run all cleanups even if some of them fail", () => {
+		const spy1 = sinon.spy();
+		const spy2 = sinon.spy();
+		const a = signal(0);
+		const c = computed(() => {
+			a.value;
+
+			effect(() => {
+				return spy1;
+			});
+
+			effect(() => {
+				return () => {
+					throw new Error("hello");
+				};
+			});
+
+			effect(() => {
+				return spy2;
+			});
+		});
+		c.value;
+		expect(spy1).not.to.be.called;
+		expect(spy2).not.to.be.called;
+		a.value++;
+		expect(() => c.value).to.throw("hello");
+		expect(spy1).to.be.calledOnce;
+		expect(spy2).to.be.calledOnce;
+	});
+
 	describe("graph updates", () => {
 		it("should run computeds once for multiple dep changes", async () => {
 			const a = signal("a");
