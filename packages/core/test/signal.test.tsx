@@ -367,7 +367,7 @@ describe("effect()", () => {
 				};
 			});
 		});
-		expect(dispose).to.throw(/hello (1|2)/)
+		expect(dispose).to.throw(/error (1|2)/)
 	});
 
 	it("should throw on cycles", () => {
@@ -930,9 +930,11 @@ describe("computed()", () => {
 		expect(spy).not.to.be.called;
 
 		a.value++;
+		c.value;
 		expect(spy).to.be.calledOnce;
 
 		a.value++;
+		c.value;
 		expect(spy).to.be.calledOnce;
 	});
 

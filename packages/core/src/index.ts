@@ -9,6 +9,7 @@ const HAS_ERROR = 1 << 3;
 const SHOULD_SUBSCRIBE = 1 << 4;
 const SUBSCRIBED = 1 << 5;
 const DISPOSED = 1 << 6;
+const IS_EFFECT = 1 << 7;
 
 // A linked list node used to track dependencies (sources) and dependents (targets).
 // Also used to remember the source's last version number that the target saw.
@@ -62,7 +63,7 @@ function endBatch() {
 			effect._nextBatchedEffect = undefined;
 			effect._flags &= ~NOTIFIED;
 
-			if (!(effect._flags & DISPOSED)) {
+			if (!(effect._flags & DISPOSED) && (effect._flags & STALE)) {
 				try {
 					effect._callback();
 				} catch (err) {
@@ -348,14 +349,44 @@ function cleanupSources(target: Computed | Effect) {
 	target._sources = sources;
 }
 
-function disposeNestedEffects(context: Computed | Effect) {
-	let effect = context._effects;
-	if (effect !== undefined) {
-		do {
-			effect._dispose();
-			effect = effect._nextNestedEffect;
-		} while (effect !== undefined);
+function cleanupContext(context: Computed | Effect) {
+	let hasError = false;
+	let error: unknown;
+
+	let nested = context._effects;
+	if (nested !== undefined) {
 		context._effects = undefined;
+
+		while (nested !== undefined) {
+			try {
+				nested._dispose();
+			} catch (err) {
+				hasError = true;
+				error = err;
+			}
+			nested = nested._nextNestedEffect;
+		}
+	}
+
+	if (context._flags & IS_EFFECT) {
+		const cleanup = (context as Effect)._cleanup;
+		(context as Effect)._cleanup = undefined;
+
+		if (typeof cleanup === "function") {
+			/*@__INLINE__**/ startBatch();
+			try {
+				cleanup();
+			} catch (err) {
+				hasError = true;
+				error = err;
+				context._flags &= ~RUNNING;
+			}
+			endBatch();
+		}
+	}
+
+	if (hasError) {
+		throw error;
 	}
 }
 
@@ -436,7 +467,7 @@ Computed.prototype._refresh = function() {
 		}
 
 		prepareSources(this);
-		disposeNestedEffects(this);
+		cleanupContext(this);
 
 		evalContext = this;
 		const value = this._compute();
@@ -548,9 +579,9 @@ function disposeEffect(effect: Effect) {
 	) {
 		node._source._unsubscribe(node);
 	}
-	disposeNestedEffects(effect);
 	effect._sources = undefined;
-	effect._flags |= DISPOSED;
+
+	cleanupContext(effect);
 }
 
 function endEffect(this: Effect, prevContext?: Computed | Effect) {
@@ -568,7 +599,8 @@ function endEffect(this: Effect, prevContext?: Computed | Effect) {
 }
 
 declare class Effect {
-	_compute: () => void;
+	_compute: () => unknown;
+	_cleanup?: unknown;
 	_sources?: Node;
 	_effects?: Effect;
 	_nextNestedEffect?: Effect;
@@ -585,11 +617,12 @@ declare class Effect {
 
 function Effect(this: Effect, compute: () => void) {
 	this._compute = compute;
+	this._cleanup = undefined;
 	this._sources = undefined;
 	this._effects = undefined;
 	this._nextNestedEffect = undefined;
 	this._nextBatchedEffect = undefined;
-	this._flags = SHOULD_SUBSCRIBE;
+	this._flags = IS_EFFECT | SHOULD_SUBSCRIBE | STALE;
 
 	if (evalContext !== undefined) {
 		this._nextNestedEffect = evalContext._effects;
@@ -600,7 +633,9 @@ function Effect(this: Effect, compute: () => void) {
 Effect.prototype._callback = function() {
 	const finish = this._start();
 	try {
-		this._compute();
+		if (!(this._flags & DISPOSED)) {
+			this._cleanup = this._compute();
+		}
 	} finally {
 		finish();
 	}
@@ -612,31 +647,33 @@ Effect.prototype._start = function() {
 	}
 	this._flags |= RUNNING;
 	this._flags &= ~DISPOSED;
-	disposeNestedEffects(this);
+	prepareSources(this);
+	cleanupContext(this);
 
 	/*@__INLINE__**/ startBatch();
+	this._flags &= ~STALE;
 	const prevContext = evalContext;
 	evalContext = this;
-
-	prepareSources(this);
 	return endEffect.bind(this, prevContext);
 };
 
 Effect.prototype._notify = function() {
 	if (!(this._flags & NOTIFIED)) {
-		this._flags |= NOTIFIED;
+		this._flags |= NOTIFIED | STALE;
 		this._nextBatchedEffect = batchedEffect;
 		batchedEffect = this;
 	}
 };
 
 Effect.prototype._dispose = function() {
+	this._flags |= DISPOSED;
+
 	if (!(this._flags & RUNNING)) {
 		disposeEffect(this);
 	}
 };
 
-function effect(compute: () => void): () => void {
+function effect(compute: () => unknown): () => void {
 	const effect = new Effect(compute);
 	effect._callback();
 	// Return a bound function instead of a wrapper like `() => effect._dispose()`,
