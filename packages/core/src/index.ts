@@ -402,30 +402,18 @@ function cleanupContext(context: Computed | Effect) {
 }
 
 declare class Computed<T = any> extends Signal<T> {
-	/** @internal */
 	_compute: () => T;
-
-	/** @internal */
 	_sources?: Node;
-
-	/** @internal */
 	_effects?: Effect;
-
-	/** @internal */
 	_globalVersion: number;
-
-	/** @internal */
 	_flags: number;
 
 	constructor(compute: () => T);
 
-	/** @internal */
 	_notify(): void;
-
 	get value(): T;
 }
 
-/** @internal */
 function Computed(this: Computed, compute: () => unknown) {
 	Signal.call(this, undefined);
 
@@ -583,7 +571,11 @@ Object.defineProperty(Computed.prototype, "value", {
 	},
 });
 
-function computed<T>(compute: () => T): Computed<T> {
+interface ReadonlySignal<T = any> extends Signal<T> {
+	readonly value: T;
+}
+
+function computed<T>(compute: () => T): ReadonlySignal<T> {
 	return new Computed(compute);
 }
 
@@ -697,11 +689,4 @@ function effect(compute: () => unknown): () => void {
 	return effect._dispose.bind(effect);
 }
 
-export {
-	signal,
-	computed,
-	effect,
-	batch,
-	Signal,
-	type Computed as ReadonlySignal,
-};
+export { signal, computed, effect, batch, Signal, ReadonlySignal };
