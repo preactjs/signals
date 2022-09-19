@@ -327,6 +327,35 @@ describe("effect()", () => {
 		expect(spy).not.to.be.called;
 	});
 
+	it("should run cleanups outside any evaluation context", () => {
+		const spy = sinon.spy();
+		const a = signal(0);
+		const b = signal(0);
+		const c = computed(() => {
+			if (a.value === 0) {
+				effect(() => {
+					return () => {
+						b.value;
+					};
+				});
+			}
+		});
+
+		effect(() => {
+			spy();
+			c.value;
+		});
+		expect(spy).to.be.calledOnce;
+		spy.resetHistory();
+
+		a.value = 1;
+		expect(spy).to.be.calledOnce;
+		spy.resetHistory();
+
+		b.value = 1;
+		expect(spy).not.to.be.called;
+	});
+
 	it("should run nested cleanups before their own", () => {
 		const spy1 = sinon.spy();
 		const spy2 = sinon.spy();

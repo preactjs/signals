@@ -379,6 +379,11 @@ function cleanupContext(context: Computed | Effect) {
 
 		if (typeof cleanup === "function") {
 			/*@__INLINE__**/ startBatch();
+
+			// Run cleanup functions always outside of any context.
+			const prevContext = evalContext;
+			evalContext = undefined;
+
 			try {
 				cleanup();
 			} catch (err) {
@@ -386,6 +391,8 @@ function cleanupContext(context: Computed | Effect) {
 				error = err;
 				context._flags &= ~RUNNING;
 			}
+
+			evalContext = prevContext;
 			endBatch();
 		}
 	}
