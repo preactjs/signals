@@ -85,6 +85,99 @@ describe("signal", () => {
 			a.value = 2;
 			expect(spy).not.to.be.called;
 		});
+
+		it("should be autodisposed when the surrounding effect is rerun", () => {
+			const spy = sinon.spy();
+			const a = signal(0);
+			const b = signal(0);
+
+			effect(() => {
+				if (b.value === 0) {
+					a.subscribe(() => {
+						spy();
+					});
+				}
+			});
+			expect(spy).to.be.calledOnce;
+			spy.resetHistory();
+
+			b.value = 1;
+			a.value = 1;
+			expect(spy).not.to.be.called;
+		});
+
+		it("should be autodispose effects created inside the callback", () => {
+			const spy = sinon.spy();
+			const a = signal(0);
+
+			const dispose = a.subscribe(() => {
+				effect(() => {
+					return spy;
+				});
+			});
+			expect(spy).not.to.be.called;
+			spy.resetHistory();
+
+			a.value++;
+			expect(spy).to.be.calledOnce;
+
+			dispose();
+			expect(spy).to.be.calledTwice;
+		});
+
+		it("should be autodisposed when the surrounding effect is disposed", () => {
+			const spy = sinon.spy();
+			const a = signal(0);
+			const b = signal(0);
+
+			const dispose = effect(() => {
+				if (b.value === 0) {
+					a.subscribe(() => {
+						spy();
+					});
+				}
+			});
+			expect(spy).to.be.calledOnce;
+			spy.resetHistory();
+
+			dispose();
+			a.value = 1;
+			expect(spy).not.to.be.called;
+		});
+
+		it("should not start triggering on when a signal accessed in the callback changes", () => {
+			const spy = sinon.spy();
+			const a = signal(0);
+			const b = signal(0);
+
+			a.subscribe(() => {
+				b.value;
+				spy();
+			});
+			expect(spy).to.be.calledOnce;
+			spy.resetHistory();
+
+			b.value++;
+			expect(spy).not.to.be.called;
+		});
+
+		it("should not cause surrounding effect subscribe to changes to a signal accessed in the callback", () => {
+			const spy = sinon.spy();
+			const a = signal(0);
+			const b = signal(0);
+
+			effect(() => {
+				a.subscribe(() => {
+					b.value;
+				});
+				spy();
+			});
+			expect(spy).to.be.calledOnce;
+			spy.resetHistory();
+
+			b.value++;
+			expect(spy).not.to.be.called;
+		});
 	});
 });
 
