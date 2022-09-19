@@ -212,7 +212,7 @@ describe("effect()", () => {
 		expect(spy).to.be.calledOnce;
 	});
 
-	it("should run the cleanup in a batch", () => {
+	it("should run the cleanup in an implicit batch", () => {
 		const a = signal(0);
 		const b = signal("a");
 		const c = signal("b");
@@ -258,7 +258,7 @@ describe("effect()", () => {
 		expect(spy).to.be.calledWith(2);
 	});
 
-	it("should run the cleanup if the effect is disposes itself", () => {
+	it("should run the cleanup if the effect disposes itself", () => {
 		const a = signal(0);
 		const spy = sinon.spy();
 
@@ -291,7 +291,7 @@ describe("effect()", () => {
 		expect(spy).to.be.calledOnce;
 	});
 
-	it("should clear the cleanup if the effect throws", () => {
+	it("should reset the cleanup if the effect throws", () => {
 		const a = signal(0);
 		const spy = sinon.spy();
 
@@ -325,6 +325,49 @@ describe("effect()", () => {
 		expect(spy).not.to.be.called;
 		expect(() => a.value++).to.throw("hello");
 		expect(spy).not.to.be.called;
+	});
+
+	it("should run all cleanups even if some of them fail", () => {
+		const spy1 = sinon.spy();
+		const spy2 = sinon.spy();
+
+		const dispose = effect(() => {
+			effect(() => {
+				return spy1;
+			});
+
+			effect(() => {
+				return () => {
+					throw new Error("hello");
+				};
+			});
+
+			effect(() => {
+				return spy2;
+			});
+		});
+		expect(spy1).not.to.be.called;
+		expect(spy2).not.to.be.called;
+		expect(dispose).to.throw("hello");
+		expect(spy1).to.be.calledOnce;
+		expect(spy2).to.be.calledOnce;
+	});
+
+	it("should throw one of the errors thrown by cleanups if multiple cleanups fail", () => {
+		const dispose = effect(() => {
+			effect(() => {
+				return () => {
+					throw new Error("error 1");
+				};
+			});
+
+			effect(() => {
+				return () => {
+					throw new Error("error 2");
+				};
+			});
+		});
+		expect(dispose).to.throw(/hello (1|2)/)
 	});
 
 	it("should throw on cycles", () => {
