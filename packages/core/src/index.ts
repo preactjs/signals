@@ -6,11 +6,9 @@ function cycleDetected(): never {
 const RUNNING = 1 << 0;
 const NOTIFIED = 1 << 1;
 const OUTDATED = 1 << 2;
-const DISPOSED = 1 << 3;
-const HAS_ERROR = 1 << 4;
-const IS_EFFECT = 1 << 5;
-const AUTO_DISPOSE = 1 << 6;
-const AUTO_SUBSCRIBE = 1 << 7;
+const TRACKING = 1 << 3;
+const DISPOSED = 1 << 4;
+const HAS_ERROR = 1 << 5;
 
 // Flags for Nodes.
 const NODE_FREE = 1 << 0;
@@ -138,7 +136,7 @@ function addDependency(signal: Signal): Node | undefined {
 
 		// Subscribe to change notifications from this dependency if we're in an effect
 		// OR evaluating a computed signal that in turn has subscribers.
-		if (evalContext._flags & AUTO_SUBSCRIBE) {
+		if (evalContext._flags & TRACKING) {
 			signal._subscribe(node);
 		}
 		return node;
@@ -353,58 +351,9 @@ function cleanupSources(target: Computed | Effect) {
 	target._sources = sources;
 }
 
-function cleanupContext(context: Computed | Effect) {
-	let hasError = false;
-	let error: unknown;
-
-	let nested = context._effects;
-	if (nested !== undefined) {
-		context._effects = undefined;
-
-		while (nested !== undefined) {
-			try {
-				nested._dispose();
-			} catch (err) {
-				hasError = true;
-				error = err;
-			}
-			nested = nested._nextNestedEffect;
-		}
-	}
-
-	if (context._flags & IS_EFFECT) {
-		const cleanup = (context as Effect)._cleanup;
-		(context as Effect)._cleanup = undefined;
-
-		if (typeof cleanup === "function") {
-			/*@__INLINE__**/ startBatch();
-
-			// Run cleanup functions always outside of any context.
-			const prevContext = evalContext;
-			evalContext = undefined;
-
-			try {
-				cleanup();
-			} catch (err) {
-				hasError = true;
-				error = err;
-				context._flags &= ~RUNNING;
-			}
-
-			evalContext = prevContext;
-			endBatch();
-		}
-	}
-
-	if (hasError) {
-		throw error;
-	}
-}
-
 declare class Computed<T = any> extends Signal<T> {
 	_compute: () => T;
 	_sources?: Node;
-	_effects?: Effect;
 	_globalVersion: number;
 	_flags: number;
 
@@ -419,7 +368,6 @@ function Computed(this: Computed, compute: () => unknown) {
 
 	this._compute = compute;
 	this._sources = undefined;
-	this._effects = undefined;
 	this._globalVersion = globalVersion - 1;
 	this._flags = OUTDATED;
 }
@@ -448,7 +396,6 @@ Computed.prototype._refresh = function () {
 	const prevContext = evalContext;
 	try {
 		this._flags |= RUNNING;
-
 		if (this._version > 0) {
 			// Check current dependencies for changes. The dependency list is already in
 			// order of use. Therefore if >1 dependencies have changed only the first used one
@@ -470,10 +417,8 @@ Computed.prototype._refresh = function () {
 			}
 		}
 
-		prepareSources(this);
-		cleanupContext(this);
-
 		evalContext = this;
+		prepareSources(this);
 		const value = this._compute();
 		if (
 			this._flags & HAS_ERROR ||
@@ -489,8 +434,12 @@ Computed.prototype._refresh = function () {
 		this._flags |= HAS_ERROR;
 		this._version++;
 	} finally {
+		// Run the inverse operation of prepareSources only if the above try-block got far
+		// enough to run it.
+		if (evalContext === this) {
+			cleanupSources(this);
+		}
 		evalContext = prevContext;
-		cleanupSources(this);
 		this._flags &= ~RUNNING;
 	}
 	return true;
@@ -498,7 +447,7 @@ Computed.prototype._refresh = function () {
 
 Computed.prototype._subscribe = function (node) {
 	if (this._targets === undefined) {
-		this._flags |= OUTDATED | AUTO_SUBSCRIBE;
+		this._flags |= OUTDATED | TRACKING;
 
 		// A computed signal subscribes lazily to its dependencies when the it
 		// gets its first subscriber.
@@ -518,7 +467,7 @@ Computed.prototype._unsubscribe = function (node) {
 
 	// Computed signal unsubscribes from its dependencies from it loses its last subscriber.
 	if (this._targets === undefined) {
-		this._flags &= ~AUTO_SUBSCRIBE;
+		this._flags &= ~TRACKING;
 
 		for (
 			let node = this._sources;
@@ -579,6 +528,41 @@ function computed<T>(compute: () => T): ReadonlySignal<T> {
 	return new Computed(compute);
 }
 
+function cleanupEffect(effect: Effect) {
+	let hasError = false;
+	let error: unknown;
+
+	let cleanup = effect._cleanups;
+	if (cleanup !== undefined) {
+		effect._cleanups = undefined;
+
+		/*@__INLINE__**/ startBatch();
+		const prevContext = evalContext;
+		evalContext = undefined;
+
+		while (cleanup !== undefined) {
+			const func = cleanup._func;
+			cleanup = cleanup._next;
+
+			try {
+				func();
+			} catch (err) {
+				hasError = true;
+				error = err;
+			}
+		}
+
+		evalContext = prevContext;
+		endBatch();
+	}
+
+	if (hasError) {
+		effect._flags &= ~RUNNING;
+		disposeEffect(effect);
+		throw error;
+	}
+}
+
 function disposeEffect(effect: Effect) {
 	for (
 		let node = effect._sources;
@@ -589,7 +573,7 @@ function disposeEffect(effect: Effect) {
 	}
 	effect._sources = undefined;
 
-	cleanupContext(effect);
+	cleanupEffect(effect);
 }
 
 function endEffect(this: Effect, prevContext?: Computed | Effect) {
@@ -606,16 +590,30 @@ function endEffect(this: Effect, prevContext?: Computed | Effect) {
 	endBatch();
 }
 
+function cleanupFunc(this: Effect, func: () => void) {
+	if (this._flags & DISPOSED && !(this._flags & RUNNING)) {
+		throw new Error("Effect disposed");
+	}
+	this._cleanups = { _func: func, _next: this._cleanups };
+}
+
+type CleanupItem = {
+	_func: () => void;
+	_next?: CleanupItem;
+};
+
+type CleanupFunc = () => void;
+type CleanupSchedulingFunc = (fn: CleanupFunc) => void;
+
 declare class Effect {
-	_compute: () => unknown;
-	_cleanup?: unknown;
+	_compute: (cleanup: CleanupSchedulingFunc) => void;
+	_onCleanup: CleanupSchedulingFunc;
 	_sources?: Node;
-	_effects?: Effect;
-	_nextNestedEffect?: Effect;
+	_cleanups?: CleanupItem;
 	_nextBatchedEffect?: Effect;
 	_flags: number;
 
-	constructor(compute: () => void, flags: number);
+	constructor(compute: (cleanup: CleanupSchedulingFunc) => void);
 
 	_callback(): void;
 	_start(): () => void;
@@ -623,26 +621,23 @@ declare class Effect {
 	_dispose(): void;
 }
 
-function Effect(this: Effect, compute: () => void, flags: number) {
+function Effect(
+	this: Effect,
+	compute: (cleanup: CleanupSchedulingFunc) => void
+) {
 	this._compute = compute;
-	this._cleanup = undefined;
+	this._onCleanup = cleanupFunc.bind(this);
 	this._sources = undefined;
-	this._effects = undefined;
-	this._nextNestedEffect = undefined;
+	this._cleanups = undefined;
 	this._nextBatchedEffect = undefined;
-	this._flags = IS_EFFECT | OUTDATED | flags;
-
-	if (flags & AUTO_DISPOSE && evalContext !== undefined) {
-		this._nextNestedEffect = evalContext._effects;
-		evalContext._effects = this;
-	}
+	this._flags = OUTDATED | TRACKING;
 }
 
 Effect.prototype._callback = function () {
 	const finish = this._start();
 	try {
 		if (!(this._flags & DISPOSED)) {
-			this._cleanup = this._compute();
+			this._compute(this._onCleanup);
 		}
 	} finally {
 		finish();
@@ -656,7 +651,7 @@ Effect.prototype._start = function () {
 	this._flags |= RUNNING;
 	this._flags &= ~DISPOSED;
 	prepareSources(this);
-	cleanupContext(this);
+	cleanupEffect(this);
 
 	/*@__INLINE__**/ startBatch();
 	this._flags &= ~OUTDATED;
@@ -681,8 +676,8 @@ Effect.prototype._dispose = function () {
 	}
 };
 
-function effect(compute: () => unknown): () => void {
-	const effect = new Effect(compute, AUTO_DISPOSE | AUTO_SUBSCRIBE);
+function effect(compute: (cleanup: CleanupSchedulingFunc) => void): () => void {
+	const effect = new Effect(compute);
 	effect._callback();
 	// Return a bound function instead of a wrapper like `() => effect._dispose()`,
 	// because bound functions seem to be just as fast and take up a lot less memory.

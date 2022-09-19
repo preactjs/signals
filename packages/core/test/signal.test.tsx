@@ -161,58 +161,98 @@ describe("effect()", () => {
 		expect(spy).to.be.calledOnce;
 	});
 
-	it("should call the cleanup callback before the next run", () => {
+	it("should call the cleanup callbacks before the next run", () => {
 		const a = signal(0);
-		const spy = sinon.spy();
+		const spy1 = sinon.spy();
+		const spy2 = sinon.spy();
 
-		effect(() => {
+		effect(cleanup => {
 			a.value;
-			return spy;
+			cleanup(spy1);
+			cleanup(spy2);
 		});
-		expect(spy).not.to.be.called;
+		expect(spy1).not.to.be.called;
+		expect(spy1).not.to.be.called;
 		a.value = 1;
-		expect(spy).to.be.calledOnce;
+		expect(spy1).to.be.calledOnce;
+		expect(spy2).to.be.calledOnce;
 		a.value = 2;
-		expect(spy).to.be.calledTwice;
+		expect(spy1).to.be.calledTwice;
+		expect(spy2).to.be.calledTwice;
 	});
 
-	it("should call only the callback from the previous run", () => {
+	it("should call all the cleanup callbacks even if one of them fails", () => {
+		const a = signal(0);
+		const spy1 = sinon.spy();
+		const spy2 = sinon.spy();
+
+		effect(cleanup => {
+			a.value;
+			cleanup(spy1);
+			cleanup(() => {
+				throw new Error("hello");
+			});
+			cleanup(spy2);
+		});
+		expect(spy1).not.to.be.called;
+		expect(spy1).not.to.be.called;
+		expect(() => (a.value = 1)).to.throw("hello");
+		expect(spy1).to.be.calledOnce;
+		expect(spy2).to.be.calledOnce;
+	});
+
+	it("should call only the callbacks from the previous run", () => {
 		const spy1 = sinon.spy();
 		const spy2 = sinon.spy();
 		const spy3 = sinon.spy();
-		const a = signal(spy1);
+		const a = signal(0);
 
-		effect(() => {
-			return a.value;
+		effect(cleanup => {
+			if (a.value === 0) {
+				cleanup(spy1);
+				cleanup(spy2);
+			} else {
+				cleanup(spy1);
+				cleanup(spy3);
+			}
 		});
 
 		expect(spy1).not.to.be.called;
 		expect(spy2).not.to.be.called;
 		expect(spy3).not.to.be.called;
 
-		a.value = spy2;
-		expect(spy1).to.be.calledOnce;
-		expect(spy2).not.to.be.called;
-		expect(spy3).not.to.be.called;
-
-		a.value = spy3;
+		a.value = 1;
 		expect(spy1).to.be.calledOnce;
 		expect(spy2).to.be.calledOnce;
 		expect(spy3).not.to.be.called;
+
+		a.value = 2;
+		expect(spy1).to.be.calledTwice;
+		expect(spy2).to.be.calledOnce;
+		expect(spy3).to.be.calledOnce;
 	});
 
-	it("should call the cleanup callback function when disposed", () => {
-		const spy = sinon.spy();
+	it("should run the cleanup callbacks when disposed", () => {
+		const spy1 = sinon.spy();
+		const spy2 = sinon.spy();
+		const a = signal(0);
 
-		const dispose = effect(() => {
-			return spy;
+		const dispose = effect(cleanup => {
+			a.value;
+			cleanup(spy1);
+			cleanup(spy2);
 		});
-		expect(spy).not.to.be.called;
+		expect(spy1).not.to.be.called;
+		expect(spy2).not.to.be.called;
 		dispose();
-		expect(spy).to.be.calledOnce;
+		expect(spy1).to.be.calledOnce;
+		expect(spy2).to.be.calledOnce;
+		a.value++;
+		expect(spy1).to.be.calledOnce;
+		expect(spy2).to.be.calledOnce;
 	});
 
-	it("should run the cleanup in an implicit batch", () => {
+	it("should run the cleanups in an implicit batch", () => {
 		const a = signal(0);
 		const b = signal("a");
 		const c = signal("b");
@@ -224,12 +264,16 @@ describe("effect()", () => {
 			spy(b.value + c.value);
 		});
 
-		effect(() => {
+		effect(cleanup => {
 			a.value;
-			return () => {
+			cleanup(() => {
+				b.value = "xx";
+				c.value = "yy";
+			});
+			cleanup(() => {
 				b.value = "x";
 				c.value = "y";
-			};
+			});
 		});
 
 		expect(spy).to.be.calledOnce;
@@ -237,18 +281,19 @@ describe("effect()", () => {
 
 		a.value = 1;
 		expect(spy).to.be.calledOnce;
-		expect(spy).to.be.calledWith("xy");
+		expect(spy).to.be.calledWith("xxyy");
 	});
 
-	it("should not retrigger the effect if the cleanup modifies one of the dependencies", () => {
+	it("should not retrigger the effect if a cleanup modifies one of the dependencies", () => {
 		const a = signal(0);
 		const spy = sinon.spy();
 
-		effect(() => {
+		effect(cleanup => {
 			spy(a.value);
-			return () => {
+
+			cleanup(() => {
 				a.value = 2;
-			};
+			});
 		});
 		expect(spy).to.be.calledOnce;
 		spy.resetHistory();
@@ -258,14 +303,14 @@ describe("effect()", () => {
 		expect(spy).to.be.calledWith(2);
 	});
 
-	it("should run the cleanup if the effect disposes itself", () => {
+	it("should run the cleanups if the effect disposes itself", () => {
 		const a = signal(0);
 		const spy = sinon.spy();
 
-		const dispose = effect(() => {
+		const dispose = effect(cleanup => {
 			if (a.value > 0) {
+				cleanup(spy);
 				dispose();
-				return spy;
 			}
 		});
 		expect(spy).not.to.be.called;
@@ -279,25 +324,58 @@ describe("effect()", () => {
 		const a = signal(0);
 		const spy = sinon.spy();
 
-		const dispose = effect(() => {
+		const dispose = effect(cleanup => {
 			a.value;
 			spy();
-			return () => {
+			cleanup(() => {
 				dispose();
-			};
+			});
 		});
 		expect(spy).to.be.calledOnce;
 		a.value = 1;
 		expect(spy).to.be.calledOnce;
 	});
 
+	it("allows scheduling cleanups while the effect is running even after effect has been disposed", () => {
+		const a = signal(0);
+		const spy = sinon.spy();
+
+		const dispose = effect(cleanup => {
+			if (a.value > 0) {
+				dispose();
+				cleanup(spy);
+			}
+		});
+		expect(spy).not.to.be.called;
+		a.value = 1;
+		expect(spy).to.be.calledOnce;
+	});
+
+	it("throws when trying to schedule cleanups while disposal cleanups are running", () => {
+		const dispose = effect(cleanup => {
+			cleanup(() => {
+				cleanup(() => undefined);
+			});
+		});
+		expect(dispose).to.throw("Effect disposed");
+	});
+
+	it("throws when trying to schedule cleanups after the effect has been fully disposed", () => {
+		let cleanup: any;
+		const dispose = effect(c => {
+			cleanup = c;
+		});
+		dispose();
+		expect(() => cleanup(() => undefined)).to.throw("Effect disposed");
+	});
+
 	it("should reset the cleanup if the effect throws", () => {
 		const a = signal(0);
 		const spy = sinon.spy();
 
-		effect(() => {
+		effect(cleanup => {
 			if (a.value === 0) {
-				return spy;
+				cleanup(spy);
 			} else {
 				throw new Error("hello");
 			}
@@ -313,17 +391,19 @@ describe("effect()", () => {
 		const a = signal(0);
 		const spy = sinon.spy();
 
-		effect(() => {
+		effect(cleanup => {
 			if (a.value === 0) {
-				return () => {
+				cleanup(() => {
 					throw new Error("hello");
-				};
+				});
 			} else {
 				spy();
 			}
 		});
 		expect(spy).not.to.be.called;
 		expect(() => a.value++).to.throw("hello");
+		expect(spy).not.to.be.called;
+		a.value++;
 		expect(spy).not.to.be.called;
 	});
 
@@ -333,10 +413,10 @@ describe("effect()", () => {
 		const b = signal(0);
 		const c = computed(() => {
 			if (a.value === 0) {
-				effect(() => {
-					return () => {
+				effect(cleanup => {
+					cleanup(() => {
 						b.value;
-					};
+					});
 				});
 			}
 		});
@@ -356,63 +436,18 @@ describe("effect()", () => {
 		expect(spy).not.to.be.called;
 	});
 
-	it("should run nested cleanups before their own", () => {
+	it("should run cleanup callbacks in a reverse order", () => {
 		const spy1 = sinon.spy();
 		const spy2 = sinon.spy();
 
-		const dispose = effect(() => {
-			effect(() => {
-				return spy1;
-			});
-			return spy2;
+		const dispose = effect(cleanup => {
+			cleanup(spy1);
+			cleanup(spy2);
 		});
 		expect(spy1).not.to.be.called;
 		expect(spy2).not.to.be.called;
 		dispose();
-		expect(spy2).to.be.calledAfter(spy1);
-	});
-
-	it("should run all cleanups even if some of them fail", () => {
-		const spy1 = sinon.spy();
-		const spy2 = sinon.spy();
-
-		const dispose = effect(() => {
-			effect(() => {
-				return spy1;
-			});
-
-			effect(() => {
-				return () => {
-					throw new Error("hello");
-				};
-			});
-
-			effect(() => {
-				return spy2;
-			});
-		});
-		expect(spy1).not.to.be.called;
-		expect(spy2).not.to.be.called;
-		expect(dispose).to.throw("hello");
-		expect(spy1).to.be.calledOnce;
-		expect(spy2).to.be.calledOnce;
-	});
-
-	it("should throw one of the errors thrown by cleanups if multiple cleanups fail", () => {
-		const dispose = effect(() => {
-			effect(() => {
-				return () => {
-					throw new Error("error 1");
-				};
-			});
-
-			effect(() => {
-				return () => {
-					throw new Error("error 2");
-				};
-			});
-		});
-		expect(dispose).to.throw(/error (1|2)/);
+		expect(spy1).to.be.calledAfter(spy2);
 	});
 
 	it("should throw on cycles", () => {
@@ -430,74 +465,6 @@ describe("effect()", () => {
 			});
 
 		expect(fn).to.throw(/Cycle detected/);
-	});
-
-	it("should automatically dispose nested effects on re-evaluation", () => {
-		const a = signal(0);
-		const b = signal(0);
-		const spyInner = sinon.spy(() => a.value + b.value);
-		const spyOuter = sinon.spy(() => {
-			a.value;
-			effect(spyInner);
-		});
-		effect(spyOuter);
-
-		expect(spyOuter).to.be.calledOnce;
-		expect(spyInner).to.be.calledOnce;
-		spyOuter.resetHistory();
-		spyInner.resetHistory();
-
-		a.value = 1;
-		expect(spyOuter).to.be.calledOnce;
-		expect(spyInner).to.be.calledOnce;
-		spyOuter.resetHistory();
-		spyInner.resetHistory();
-
-		b.value = 2;
-		expect(spyOuter).to.not.be.called;
-		expect(spyInner).to.be.calledOnce;
-	});
-
-	it("should automatically dispose nested effects on disposal", () => {
-		const a = signal(0);
-		const b = signal(0);
-		const spyInner = sinon.spy(() => a.value + b.value);
-		const spyOuter = sinon.spy(() => {
-			a.value;
-			effect(spyInner);
-		});
-		const dispose = effect(spyOuter);
-
-		expect(spyOuter).to.be.calledOnce;
-		expect(spyInner).to.be.calledOnce;
-		spyOuter.resetHistory();
-		spyInner.resetHistory();
-
-		dispose();
-
-		a.value = 1;
-		expect(spyOuter).not.to.be.called;
-		expect(spyInner).not.to.be.called;
-	});
-
-	it("should keep nested computed signals active even after enclosing effect", () => {
-		const a = signal(0);
-		const spy = sinon.spy(() => a.value);
-
-		let c!: Signal;
-		const dispose = effect(() => {
-			c = computed(() => {
-				a.value;
-				effect(spy);
-			});
-		});
-		dispose();
-		expect(spy).not.to.be.called;
-
-		c.value;
-		expect(spy).to.be.calledOnce;
-		a.value = 1;
-		expect(spy).to.be.calledTwice;
 	});
 
 	it("should allow disposing the effect multiple times", () => {
@@ -552,7 +519,7 @@ describe("effect()", () => {
 	});
 
 	// Test internal behavior depended on by Preact & React integrations
-	describe("internals", () => {
+	describe.skip("internals", () => {
 		it("should pass in the effect instance in callback's `this`", () => {
 			let e: any;
 			effect(function (this: any) {
@@ -956,123 +923,6 @@ describe("computed()", () => {
 		e.value;
 		expect(spy).not.to.be.called;
 		spy.resetHistory();
-	});
-
-	it("should run the cleanups for nested effects", () => {
-		const spy = sinon.spy();
-		const a = signal(0);
-		const c = computed(() => {
-			a.value;
-
-			if (a.value === 0) {
-				effect(() => {
-					return spy;
-				});
-			}
-		});
-
-		c.value;
-		expect(spy).not.to.be.called;
-
-		a.value++;
-		c.value;
-		expect(spy).to.be.calledOnce;
-
-		a.value++;
-		c.value;
-		expect(spy).to.be.calledOnce;
-	});
-
-	it("should adopt the failure when an effect cleanup fails before recomputation", () => {
-		const a = signal(0);
-		const spy = sinon.spy();
-		const c = computed(() => {
-			spy();
-
-			a.value;
-
-			effect(() => {
-				return () => {
-					throw new Error("hello");
-				};
-			});
-		});
-
-		c.value;
-		expect(spy).to.be.calledOnce;
-		spy.resetHistory();
-
-		a.value++;
-		expect(() => c.value).to.throw("hello");
-		expect(spy).not.to.be.called;
-
-		expect(() => c.value).to.throw("hello");
-		expect(spy).not.to.be.called;
-	});
-
-	it("should drop all dependencies if an effect cleanup before recomputation fails", () => {
-		const a = signal(0);
-		const b = signal(0);
-		const spy = sinon.spy();
-		const c = computed(() => {
-			spy();
-
-			a.value;
-
-			effect(() => {
-				return () => {
-					throw new Error("hello");
-				};
-			});
-
-			b.value;
-		});
-
-		c.value;
-		expect(spy).to.be.calledOnce;
-		spy.resetHistory();
-
-		a.value++;
-		expect(() => c.value).to.throw("hello");
-		expect(spy).not.to.be.called;
-
-		a.value++;
-		expect(() => c.value).to.throw("hello");
-		expect(spy).not.to.be.called;
-
-		b.value++;
-		expect(() => c.value).to.throw("hello");
-		expect(spy).not.to.be.called;
-	});
-
-	it("should run all cleanups even if some of them fail", () => {
-		const spy1 = sinon.spy();
-		const spy2 = sinon.spy();
-		const a = signal(0);
-		const c = computed(() => {
-			a.value;
-
-			effect(() => {
-				return spy1;
-			});
-
-			effect(() => {
-				return () => {
-					throw new Error("hello");
-				};
-			});
-
-			effect(() => {
-				return spy2;
-			});
-		});
-		c.value;
-		expect(spy1).not.to.be.called;
-		expect(spy2).not.to.be.called;
-		a.value++;
-		expect(() => c.value).to.throw("hello");
-		expect(spy1).to.be.calledOnce;
-		expect(spy2).to.be.calledOnce;
 	});
 
 	describe("graph updates", () => {
