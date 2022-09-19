@@ -597,12 +597,12 @@ function endEffect(this: Effect, prevContext?: Computed | Effect) {
 	}
 	cleanupSources(this);
 	evalContext = prevContext;
-	endBatch();
 
 	this._flags &= ~RUNNING;
 	if (this._flags & DISPOSED) {
 		disposeEffect(this);
 	}
+	endBatch();
 }
 
 declare class Effect {
