@@ -32,6 +32,8 @@ export interface VNode<P = any> extends preact.VNode<P> {
 	__e?: Element | Text;
 	/** Props that had Signal values before diffing (used after diffing to subscribe) */
 	__np?: Record<string, any> | null;
+	/** VNode._depth is a number during CSR, undefined during renderToString() */
+	__b?: number;
 }
 
 export const enum OptionsTypes {
