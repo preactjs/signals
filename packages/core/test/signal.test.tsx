@@ -1080,9 +1080,11 @@ describe("batch/transaction", () => {
 	});
 
 	it("should throw the error raised from the callback", () => {
-		expect(() => batch(() => {
-			throw Error("hello");
-		})).to.throw("hello");
+		expect(() => {
+			batch(() => {
+				throw Error("hello");
+			});
+		}).to.throw("hello");
 	});
 
 	it("should delay writes", () => {
@@ -1239,11 +1241,13 @@ describe("batch/transaction", () => {
 		spy1.resetHistory();
 		spy2.resetHistory();
 
-		expect(() => batch(() => {
-			a.value++;
-			b.value++;
-			throw Error("hello");
-		})).to.throw("hello");
+		expect(() => {
+			batch(() => {
+				a.value++;
+				b.value++;
+				throw Error("hello");
+			});
+		}).to.throw("hello");
 
 		expect(spy1).to.be.calledOnce;
 		expect(spy2).to.be.calledOnce;
@@ -1273,9 +1277,11 @@ describe("batch/transaction", () => {
 		spy1.resetHistory();
 		spy2.resetHistory();
 
-		expect(() => batch(() => {
-			a.value++;
-		})).to.throw("hello");
+		expect(() => {
+			batch(() => {
+				a.value++;
+			});
+		}).to.throw("hello");
 
 		expect(spy1).to.be.calledOnce;
 		expect(spy2).to.be.calledOnce;

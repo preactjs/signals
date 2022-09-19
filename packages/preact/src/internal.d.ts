@@ -44,7 +44,11 @@ export const enum OptionsTypes {
 }
 
 export interface OptionsType {
-	[OptionsTypes.HOOK](component: Component, index: number, type: number): void;
+	[OptionsTypes.HOOK](
+		component: AugmentedComponent,
+		index: number,
+		type: number
+	): void;
 	[OptionsTypes.DIFF](vnode: VNode): void;
 	[OptionsTypes.DIFFED](vnode: VNode): void;
 	[OptionsTypes.RENDER](vnode: VNode): void;

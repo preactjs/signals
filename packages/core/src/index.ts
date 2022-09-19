@@ -212,7 +212,7 @@ function Signal(this: Signal, value?: unknown) {
 	this._targets = undefined;
 }
 
-Signal.prototype._subscribe = function(node) {
+Signal.prototype._subscribe = function (node) {
 	if (!(node._flags & SUBSCRIBED)) {
 		node._flags |= SUBSCRIBED;
 		node._nextTarget = this._targets;
@@ -224,7 +224,7 @@ Signal.prototype._subscribe = function(node) {
 	}
 };
 
-Signal.prototype._unsubscribe = function(node) {
+Signal.prototype._unsubscribe = function (node) {
 	if (node._flags & SUBSCRIBED) {
 		node._flags &= ~SUBSCRIBED;
 
@@ -244,19 +244,19 @@ Signal.prototype._unsubscribe = function(node) {
 	}
 };
 
-Signal.prototype.subscribe = function(fn) {
+Signal.prototype.subscribe = function (fn) {
 	return effect(() => fn(this.value));
 };
 
-Signal.prototype.valueOf = function() {
+Signal.prototype.valueOf = function () {
 	return this.value;
 };
 
-Signal.prototype.toString = function() {
+Signal.prototype.toString = function () {
 	return this.value + "";
 };
 
-Signal.prototype.peek = function() {
+Signal.prototype.peek = function () {
 	return this._value;
 };
 
@@ -287,7 +287,7 @@ Object.defineProperty(Signal.prototype, "value", {
 				endBatch();
 			}
 		}
-	}
+	},
 });
 
 function signal<T>(value: T): Signal<T> {
@@ -396,10 +396,10 @@ function Computed(this: Computed, compute: () => unknown) {
 
 // Do this IIFE wrapping thing instead of deriving directly from Signal, to avoid
 // a performance cliff (at least on on Node.js 18.9.0).
-(function(_Signal: typeof Signal) {
+(function (_Signal: typeof Signal) {
 	Computed.prototype = new _Signal() as Computed;
 
-	Computed.prototype._subscribe = function(node) {
+	Computed.prototype._subscribe = function (node) {
 		if (this._targets === undefined) {
 			this._flags |= STALE | SHOULD_SUBSCRIBE;
 
@@ -416,7 +416,7 @@ function Computed(this: Computed, compute: () => unknown) {
 		_Signal.prototype._subscribe.call(this, node);
 	};
 
-	Computed.prototype._unsubscribe = function(node) {
+	Computed.prototype._unsubscribe = function (node) {
 		_Signal.prototype._unsubscribe.call(this, node);
 
 		// Computed signal unsubscribes from its dependencies from it loses its last subscriber.
@@ -433,7 +433,7 @@ function Computed(this: Computed, compute: () => unknown) {
 		}
 	};
 
-	Computed.prototype._notify = function() {
+	Computed.prototype._notify = function () {
 		if (!(this._flags & NOTIFIED)) {
 			this._flags |= STALE | NOTIFIED;
 
@@ -447,7 +447,7 @@ function Computed(this: Computed, compute: () => unknown) {
 		}
 	};
 
-	Computed.prototype.peek = function() {
+	Computed.prototype.peek = function () {
 		this._flags &= ~NOTIFIED;
 
 		if (this._flags & RUNNING) {
@@ -524,7 +524,7 @@ function Computed(this: Computed, compute: () => unknown) {
 				cycleDetected();
 			}
 			return getValue(this);
-		}
+		},
 	});
 })(Signal);
 
@@ -589,7 +589,7 @@ function Effect(this: Effect, compute: () => void) {
 	}
 }
 
-Effect.prototype._callback = function() {
+Effect.prototype._callback = function () {
 	const finish = this._start();
 	try {
 		this._compute();
@@ -598,7 +598,7 @@ Effect.prototype._callback = function() {
 	}
 };
 
-Effect.prototype._start = function() {
+Effect.prototype._start = function () {
 	if (this._flags & RUNNING) {
 		cycleDetected();
 	}
@@ -614,7 +614,7 @@ Effect.prototype._start = function() {
 	return endEffect.bind(this, prevContext);
 };
 
-Effect.prototype._notify = function() {
+Effect.prototype._notify = function () {
 	if (!(this._flags & NOTIFIED)) {
 		this._flags |= NOTIFIED;
 		this._nextBatchedEffect = batchedEffect;
@@ -622,7 +622,7 @@ Effect.prototype._notify = function() {
 	}
 };
 
-Effect.prototype._dispose = function() {
+Effect.prototype._dispose = function () {
 	if (!(this._flags & RUNNING)) {
 		disposeEffect(this);
 	}
@@ -642,5 +642,5 @@ export {
 	effect,
 	batch,
 	Signal,
-	type Computed as ReadonlySignal
+	type Computed as ReadonlySignal,
 };

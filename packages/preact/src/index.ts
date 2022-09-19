@@ -201,7 +201,11 @@ hook(OptionsTypes.DIFFED, (old, vnode) => {
 	old(vnode);
 });
 
-function createPropUpdater(dom: Element, prop: string, propSignal: Signal): PropertyUpdater {
+function createPropUpdater(
+	dom: Element,
+	prop: string,
+	propSignal: Signal
+): PropertyUpdater {
 	const setAsProperty = prop in dom;
 	const changeSignal = signal(propSignal);
 	return {
@@ -216,7 +220,7 @@ function createPropUpdater(dom: Element, prop: string, propSignal: Signal): Prop
 			} else {
 				dom.removeAttribute(prop);
 			}
-		})
+		}),
 	};
 }
 
@@ -245,7 +249,7 @@ hook(OptionsTypes.UNMOUNT, (old, vnode: VNode) => {
 
 /** Mark components that use hook state so we can skip sCU optimization. */
 hook(OptionsTypes.HOOK, (old, component, index, type) => {
-	if (type < 3) (component as AugmentedComponent)._updateFlags |= HAS_HOOK_STATE;
+	if (type < 3) component._updateFlags |= HAS_HOOK_STATE;
 	old(component, index, type);
 });
 
@@ -253,7 +257,11 @@ hook(OptionsTypes.HOOK, (old, component, index, type) => {
  * Auto-memoize components that use Signals/Computeds.
  * Note: Does _not_ optimize components that use hook/class state.
  */
-Component.prototype.shouldComponentUpdate = function (this: AugmentedComponent, props, state) {
+Component.prototype.shouldComponentUpdate = function (
+	this: AugmentedComponent,
+	props,
+	state
+) {
 	// @todo: Once preactjs/preact#3671 lands, this could just use `currentUpdater`:
 	const updater = this._updater;
 	const hasSignals = updater && updater._sources !== undefined;
@@ -307,7 +315,7 @@ export function useSignal<T>(value: T) {
 export function useComputed<T>(compute: () => T) {
 	const $compute = useRef(compute);
 	$compute.current = compute;
-	(currentComponent as AugmentedComponent)._updateFlags |= HAS_COMPUTEDS;
+	currentComponent!._updateFlags |= HAS_COMPUTEDS;
 	return useMemo(() => computed<T>(() => $compute.current()), []);
 }
 
@@ -320,13 +328,13 @@ export function useSignalEffect(cb: () => void | (() => void)) {
 		return effect(() => {
 			if (cleanup) {
 				cleanup();
-				cleanup = undefined
+				cleanup = undefined;
 			}
 			const result = callback.current();
-			if (typeof result == 'function') {
-				cleanup = result
+			if (typeof result == "function") {
+				cleanup = result;
 			}
-		})
+		});
 	}, []);
 }
 
