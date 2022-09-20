@@ -250,20 +250,6 @@ Signal.prototype._unsubscribe = function (node) {
 	}
 };
 
-Signal.prototype.subscribe = function (fn) {
-	const signal = this;
-	return effect(function (this: Effect) {
-		const value = signal.value;
-		const flag = this._flags & AUTO_SUBSCRIBE;
-		this._flags &= ~AUTO_SUBSCRIBE;
-		try {
-			fn(value);
-		} finally {
-			this._flags |= flag;
-		}
-	});
-};
-
 Signal.prototype.valueOf = function () {
 	return this.value;
 };
