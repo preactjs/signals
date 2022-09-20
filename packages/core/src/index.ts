@@ -8,9 +8,7 @@ const NOTIFIED = 1 << 1;
 const OUTDATED = 1 << 2;
 const DISPOSED = 1 << 3;
 const HAS_ERROR = 1 << 4;
-const IS_EFFECT = 1 << 5;
-const AUTO_DISPOSE = 1 << 6;
-const AUTO_SUBSCRIBE = 1 << 7;
+const AUTO_SUBSCRIBE = 1 << 5;
 
 // Flags for Nodes.
 const NODE_FREE = 1 << 0;
@@ -363,58 +361,9 @@ function cleanupSources(target: Computed | Effect) {
 	target._sources = sources;
 }
 
-function cleanupContext(context: Computed | Effect) {
-	let hasError = false;
-	let error: unknown;
-
-	let nested = context._effects;
-	if (nested !== undefined) {
-		context._effects = undefined;
-
-		while (nested !== undefined) {
-			try {
-				nested._dispose();
-			} catch (err) {
-				hasError = true;
-				error = err;
-			}
-			nested = nested._nextNestedEffect;
-		}
-	}
-
-	if (context._flags & IS_EFFECT) {
-		const cleanup = (context as Effect)._cleanup;
-		(context as Effect)._cleanup = undefined;
-
-		if (typeof cleanup === "function") {
-			/*@__INLINE__**/ startBatch();
-
-			// Run cleanup functions always outside of any context.
-			const prevContext = evalContext;
-			evalContext = undefined;
-
-			try {
-				cleanup();
-			} catch (err) {
-				hasError = true;
-				error = err;
-				context._flags &= ~RUNNING;
-			}
-
-			evalContext = prevContext;
-			endBatch();
-		}
-	}
-
-	if (hasError) {
-		throw error;
-	}
-}
-
 declare class Computed<T = any> extends Signal<T> {
 	_compute: () => T;
 	_sources?: Node;
-	_effects?: Effect;
 	_globalVersion: number;
 	_flags: number;
 
@@ -429,7 +378,6 @@ function Computed(this: Computed, compute: () => unknown) {
 
 	this._compute = compute;
 	this._sources = undefined;
-	this._effects = undefined;
 	this._globalVersion = globalVersion - 1;
 	this._flags = OUTDATED;
 }
@@ -481,7 +429,6 @@ Computed.prototype._refresh = function () {
 		}
 
 		prepareSources(this);
-		cleanupContext(this);
 
 		evalContext = this;
 		const value = this._compute();
@@ -589,6 +536,28 @@ function computed<T>(compute: () => T): ReadonlySignal<T> {
 	return new Computed(compute);
 }
 
+function cleanupEffect(effect: Effect) {
+	const cleanup = effect._cleanup;
+	effect._cleanup = undefined;
+
+	if (typeof cleanup === "function") {
+		/*@__INLINE__**/ startBatch();
+
+		// Run cleanup functions always outside of any context.
+		const prevContext = evalContext;
+		evalContext = undefined;
+		try {
+			cleanup();
+		} catch (err) {
+			effect._flags &= ~RUNNING;
+			throw err;
+		} finally {
+			evalContext = prevContext;
+			endBatch();
+		}
+	}
+}
+
 function disposeEffect(effect: Effect) {
 	for (
 		let node = effect._sources;
@@ -599,7 +568,7 @@ function disposeEffect(effect: Effect) {
 	}
 	effect._sources = undefined;
 
-	cleanupContext(effect);
+	cleanupEffect(effect);
 }
 
 function endEffect(this: Effect, prevContext?: Computed | Effect) {
@@ -620,12 +589,10 @@ declare class Effect {
 	_compute: () => unknown;
 	_cleanup?: unknown;
 	_sources?: Node;
-	_effects?: Effect;
-	_nextNestedEffect?: Effect;
 	_nextBatchedEffect?: Effect;
 	_flags: number;
 
-	constructor(compute: () => void, flags: number);
+	constructor(compute: () => void);
 
 	_callback(): void;
 	_start(): () => void;
@@ -633,19 +600,12 @@ declare class Effect {
 	_dispose(): void;
 }
 
-function Effect(this: Effect, compute: () => void, flags: number) {
+function Effect(this: Effect, compute: () => void) {
 	this._compute = compute;
 	this._cleanup = undefined;
 	this._sources = undefined;
-	this._effects = undefined;
-	this._nextNestedEffect = undefined;
 	this._nextBatchedEffect = undefined;
-	this._flags = IS_EFFECT | OUTDATED | flags;
-
-	if (flags & AUTO_DISPOSE && evalContext !== undefined) {
-		this._nextNestedEffect = evalContext._effects;
-		evalContext._effects = this;
-	}
+	this._flags = OUTDATED | AUTO_SUBSCRIBE;
 }
 
 Effect.prototype._callback = function () {
@@ -666,7 +626,7 @@ Effect.prototype._start = function () {
 	this._flags |= RUNNING;
 	this._flags &= ~DISPOSED;
 	prepareSources(this);
-	cleanupContext(this);
+	cleanupEffect(this);
 
 	/*@__INLINE__**/ startBatch();
 	this._flags &= ~OUTDATED;
@@ -692,7 +652,7 @@ Effect.prototype._dispose = function () {
 };
 
 function effect(compute: () => unknown): () => void {
-	const effect = new Effect(compute, AUTO_DISPOSE | AUTO_SUBSCRIBE);
+	const effect = new Effect(compute);
 	effect._callback();
 	// Return a bound function instead of a wrapper like `() => effect._dispose()`,
 	// because bound functions seem to be just as fast and take up a lot less memory.
