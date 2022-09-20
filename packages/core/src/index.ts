@@ -8,7 +8,7 @@ const NOTIFIED = 1 << 1;
 const OUTDATED = 1 << 2;
 const DISPOSED = 1 << 3;
 const HAS_ERROR = 1 << 4;
-const AUTO_SUBSCRIBE = 1 << 5;
+const TRACKING = 1 << 5;
 
 // Flags for Nodes.
 const NODE_FREE = 1 << 0;
@@ -136,7 +136,7 @@ function addDependency(signal: Signal): Node | undefined {
 
 		// Subscribe to change notifications from this dependency if we're in an effect
 		// OR evaluating a computed signal that in turn has subscribers.
-		if (evalContext._flags & AUTO_SUBSCRIBE) {
+		if (evalContext._flags & TRACKING) {
 			signal._subscribe(node);
 		}
 		return node;
@@ -254,8 +254,8 @@ Signal.prototype.subscribe = function (fn) {
 	const signal = this;
 	return effect(function (this: Effect) {
 		const value = signal.value;
-		const flag = this._flags & AUTO_SUBSCRIBE;
-		this._flags &= ~AUTO_SUBSCRIBE;
+		const flag = this._flags & TRACKING;
+		this._flags &= ~TRACKING;
 		try {
 			fn(value);
 		} finally {
@@ -391,9 +391,10 @@ Computed.prototype._refresh = function () {
 		return false;
 	}
 
-	// Trust the OUTDATED flag only when the computed signal has subscribed
-	// to any notifications from dependencies.
-	if (this._targets !== undefined && !(this._flags & OUTDATED)) {
+	// If this computed signal has subscribed to updates from its dependencies
+	// (TRACKING flag set) and none of them have notified about changes (OUTDATED
+	// flag not set), then the computed value can't have changed.
+	if ((this._flags & (OUTDATED | TRACKING)) === TRACKING) {
 		return true;
 	}
 	this._flags &= ~OUTDATED;
@@ -403,33 +404,33 @@ Computed.prototype._refresh = function () {
 	}
 	this._globalVersion = globalVersion;
 
+	// Mark this computed signal running before checking the dependencies for value
+	// changes, so that the RUNNIN flag can be used to notice cyclical dependencies.
+	this._flags |= RUNNING;
+	if (this._version > 0) {
+		// Check the dependencies for changed values. The dependency list is already
+		// in order of use. Therefore if multiple dependencies have changed values, only
+		// the first used dependency is re-evaluated at this point.
+		let node = this._sources;
+		while (node !== undefined) {
+			// If a dependency has something blocking it from refreshing (e.g. a dependency
+			// cycle) or there's a new version of the dependency, then we need to recompute.
+			if (!node._source._refresh() || node._source._version !== node._version) {
+				break;
+			}
+			node = node._nextSource;
+		}
+		// If none of the dependencies have changed values since last recompute then the
+		// computed value can't have changed.
+		if (node === undefined) {
+			this._flags &= ~RUNNING;
+			return true;
+		}
+	}
+
 	const prevContext = evalContext;
 	try {
-		this._flags |= RUNNING;
-
-		if (this._version > 0) {
-			// Check current dependencies for changes. The dependency list is already in
-			// order of use. Therefore if >1 dependencies have changed only the first used one
-			// is re-evaluated at this point.
-			let node = this._sources;
-			while (node !== undefined) {
-				if (
-					!node._source._refresh() ||
-					node._source._version !== node._version
-				) {
-					// If a dependency has something blocking it refreshing (e.g. a dependency
-					// cycle) or there's a new version of the dependency, then we need to recompute.
-					break;
-				}
-				node = node._nextSource;
-			}
-			if (node === undefined) {
-				return true;
-			}
-		}
-
 		prepareSources(this);
-
 		evalContext = this;
 		const value = this._compute();
 		if (
@@ -445,17 +446,16 @@ Computed.prototype._refresh = function () {
 		this._value = err;
 		this._flags |= HAS_ERROR;
 		this._version++;
-	} finally {
-		evalContext = prevContext;
-		cleanupSources(this);
-		this._flags &= ~RUNNING;
 	}
+	evalContext = prevContext;
+	cleanupSources(this);
+	this._flags &= ~RUNNING;
 	return true;
 };
 
 Computed.prototype._subscribe = function (node) {
 	if (this._targets === undefined) {
-		this._flags |= OUTDATED | AUTO_SUBSCRIBE;
+		this._flags |= OUTDATED | TRACKING;
 
 		// A computed signal subscribes lazily to its dependencies when the it
 		// gets its first subscriber.
@@ -475,7 +475,7 @@ Computed.prototype._unsubscribe = function (node) {
 
 	// Computed signal unsubscribes from its dependencies from it loses its last subscriber.
 	if (this._targets === undefined) {
-		this._flags &= ~AUTO_SUBSCRIBE;
+		this._flags &= ~TRACKING;
 
 		for (
 			let node = this._sources;
@@ -605,7 +605,7 @@ function Effect(this: Effect, compute: () => void) {
 	this._cleanup = undefined;
 	this._sources = undefined;
 	this._nextBatchedEffect = undefined;
-	this._flags = OUTDATED | AUTO_SUBSCRIBE;
+	this._flags = OUTDATED | TRACKING;
 }
 
 Effect.prototype._callback = function () {
