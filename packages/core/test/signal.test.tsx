@@ -11,11 +11,6 @@ describe("signal", () => {
 		expect(signal(0)).to.be.instanceOf(Signal);
 	});
 
-	it("should support .toString()", () => {
-		const s = signal(123);
-		expect(s.toString()).equal("123");
-	});
-
 	it("should support .valueOf()", () => {
 		const s = signal(123);
 		expect(s).to.have.property("valueOf");
