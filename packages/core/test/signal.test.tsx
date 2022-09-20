@@ -64,62 +64,6 @@ describe("signal", () => {
 			expect(b.peek()).to.equal(2);
 		});
 	});
-
-	describe(".subscribe()", () => {
-		it("should subscribe to a signal", () => {
-			const spy = sinon.spy();
-			const a = signal(1);
-
-			a.subscribe(spy);
-			expect(spy).to.be.calledWith(1);
-		});
-
-		it("should unsubscribe from a signal", () => {
-			const spy = sinon.spy();
-			const a = signal(1);
-
-			const dispose = a.subscribe(spy);
-			dispose();
-			spy.resetHistory();
-
-			a.value = 2;
-			expect(spy).not.to.be.called;
-		});
-
-		it("should not start triggering on when a signal accessed in the callback changes", () => {
-			const spy = sinon.spy();
-			const a = signal(0);
-			const b = signal(0);
-
-			a.subscribe(() => {
-				b.value;
-				spy();
-			});
-			expect(spy).to.be.calledOnce;
-			spy.resetHistory();
-
-			b.value++;
-			expect(spy).not.to.be.called;
-		});
-
-		it("should not cause surrounding effect subscribe to changes to a signal accessed in the callback", () => {
-			const spy = sinon.spy();
-			const a = signal(0);
-			const b = signal(0);
-
-			effect(() => {
-				a.subscribe(() => {
-					b.value;
-				});
-				spy();
-			});
-			expect(spy).to.be.calledOnce;
-			spy.resetHistory();
-
-			b.value++;
-			expect(spy).not.to.be.called;
-		});
-	});
 });
 
 describe("effect()", () => {
