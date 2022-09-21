@@ -23,6 +23,7 @@
 	"unpkg": "dist/signals-core.min.js",
 	"types": "dist/signals-core.d.ts",
 	"source": "src/index.ts",
+	"sideEffects": false,
 	"exports": {
 		".": {
 			"types": "./dist/signals-core.d.ts",
