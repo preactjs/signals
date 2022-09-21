@@ -1,5 +1,33 @@
 # @preact/signals
 
+## 1.1.0
+
+### Minor Changes
+
+- [#91](https://github.com/preactjs/signals/pull/91) [`fb74bb9`](https://github.com/preactjs/signals/commit/fb74bb9ce4e44192e1ee7d3d041274cc985db767) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - add the `useSignalEffect` hook
+
+* [#183](https://github.com/preactjs/signals/pull/183) [`79ff1e7`](https://github.com/preactjs/signals/commit/79ff1e794dde9952db2d6d43b22cebfb2accc770) Thanks [@jviide](https://github.com/jviide)! - Add ability to run custom cleanup logic when an effect is disposed.
+
+  ```js
+  effect(() => {
+    console.log("This runs whenever a dependency changes");
+    return () => {
+      console.log("This runs when the effect is disposed");
+    });
+  });
+  ```
+
+### Patch Changes
+
+- [#186](https://github.com/preactjs/signals/pull/186) [`7242bd6`](https://github.com/preactjs/signals/commit/7242bd68cc570c6159600f271ee95977d3970d0f) Thanks [@marvinhagemeister](https://github.com/marvinhagemeister)! - Fix unable to set SVG attribute via Signal
+
+* [#161](https://github.com/preactjs/signals/pull/161) [`6ac6923`](https://github.com/preactjs/signals/commit/6ac6923e5294f8a31ee1a009550b9891c3996cb4) Thanks [@jviide](https://github.com/jviide)! - Remove all usages of `Set`, `Map` and other allocation heavy objects in signals-core. This substaintially increases performance across all measurements.
+
+- [#171](https://github.com/preactjs/signals/pull/171) [`fcbb3f4`](https://github.com/preactjs/signals/commit/fcbb3f4b9077e201badec77b91f75c23623d1a9c) Thanks [@jviide](https://github.com/jviide)! - Reduce size of Preact adapter by replacing `WeakSet`s with bitmasks.
+
+- Updated dependencies [[`b4611cc`](https://github.com/preactjs/signals/commit/b4611cc9dee0ae09f4b378ba293c3203edc32be4), [`9802da5`](https://github.com/preactjs/signals/commit/9802da5274bb45c3cc28dda961b9b2d18535729a), [`6ac6923`](https://github.com/preactjs/signals/commit/6ac6923e5294f8a31ee1a009550b9891c3996cb4), [`79ff1e7`](https://github.com/preactjs/signals/commit/79ff1e794dde9952db2d6d43b22cebfb2accc770), [`3e31aab`](https://github.com/preactjs/signals/commit/3e31aabb812ddb0f7451deba38267f8384eff9d1)]:
+  - @preact/signals-core@1.2.0
+
 ## 1.0.4
 
 ### Patch Changes

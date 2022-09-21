@@ -1,5 +1,30 @@
 # @preact/signals-core
 
+## 1.2.0
+
+### Minor Changes
+
+- [#183](https://github.com/preactjs/signals/pull/183) [`79ff1e7`](https://github.com/preactjs/signals/commit/79ff1e794dde9952db2d6d43b22cebfb2accc770) Thanks [@jviide](https://github.com/jviide)! - Add ability to run custom cleanup logic when an effect is disposed.
+
+  ```js
+  effect(() => {
+    console.log("This runs whenever a dependency changes");
+    return () => {
+      console.log("This runs when the effect is disposed");
+    });
+  });
+  ```
+
+* [#170](https://github.com/preactjs/signals/pull/170) [`3e31aab`](https://github.com/preactjs/signals/commit/3e31aabb812ddb0f7451deba38267f8384eff9d1) Thanks [@jviide](https://github.com/jviide)! - Allow disposing a currently running effect
+
+### Patch Changes
+
+- [#188](https://github.com/preactjs/signals/pull/188) [`b4611cc`](https://github.com/preactjs/signals/commit/b4611cc9dee0ae09f4b378ba293c3203edc32be4) Thanks [@jviide](https://github.com/jviide)! - Fix `.subscribe()` unexpectedly tracking signal access
+
+* [#162](https://github.com/preactjs/signals/pull/162) [`9802da5`](https://github.com/preactjs/signals/commit/9802da5274bb45c3cc28dda961b9b2d18535729a) Thanks [@developit](https://github.com/developit)! - Add support for `Signal.prototype.valueOf`
+
+- [#161](https://github.com/preactjs/signals/pull/161) [`6ac6923`](https://github.com/preactjs/signals/commit/6ac6923e5294f8a31ee1a009550b9891c3996cb4) Thanks [@jviide](https://github.com/jviide)! - Remove all usages of `Set`, `Map` and other allocation heavy objects in signals-core. This substaintially increases performance across all measurements.
+
 ## 1.1.1
 
 ### Patch Changes
