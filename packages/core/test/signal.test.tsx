@@ -434,7 +434,7 @@ describe("effect()", () => {
 	it("should allow disposing the effect multiple times", () => {
 		const dispose = effect(() => undefined);
 		dispose();
-		expect(() => dispose()).to.throw;
+		expect(() => dispose()).not.to.throw();
 	});
 
 	it("should allow disposing a running effect", () => {
