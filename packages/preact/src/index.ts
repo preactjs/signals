@@ -254,13 +254,14 @@ function createPropUpdater(
 hook(OptionsTypes.UNMOUNT, (old, vnode: VNode) => {
 	if (typeof vnode.type === "string") {
 		let dom = vnode.__e as Element;
-
-		let updaters = dom._updaters;
-		if (updaters) {
-			dom._updaters = undefined;
-			for (let prop in updaters) {
-				let updater = updaters[prop];
-				if (updater) updater._dispose();
+		if (dom) {
+			let updaters = dom._updaters;
+			if (updaters) {
+				dom._updaters = undefined;
+				for (let prop in updaters) {
+					let updater = updaters[prop];
+					if (updater) updater._dispose();
+				}
 			}
 		}
 	} else {

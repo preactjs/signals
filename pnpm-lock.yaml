@@ -138,10 +138,12 @@ importers:
     specifiers:
       '@preact/signals-core': workspace:^1.2.0
       preact: 10.9.0
+      preact-render-to-string: ^5.2.4
     dependencies:
       '@preact/signals-core': link:../core
     devDependencies:
       preact: 10.9.0
+      preact-render-to-string: 5.2.4_preact@10.9.0
 
   packages/react:
     specifiers:
@@ -6103,6 +6105,15 @@ packages:
       pretty-format: 3.8.0
     dev: false
 
+  /preact-render-to-string/5.2.4_preact@10.9.0:
+    resolution: {integrity: sha512-iIPHb3BXUQ3Za6KNhkjN/waq11Oh+QWWtAgN3id3LrL+cszH3DYh8TxJPNQ6Aogsbu4JsqdJLBZltwPFpG6N6w==}
+    peerDependencies:
+      preact: '>=10'
+    dependencies:
+      preact: 10.9.0
+      pretty-format: 3.8.0
+    dev: true
+
   /preact/10.9.0:
     resolution: {integrity: sha512-jO6/OvCRL+OT8gst/+Q2ir7dMybZAX8ioP02Zmzh3BkQMHLyqZSujvxbUriXvHi8qmhcHKC2Gwbog6Kt+YTh+Q==}
 
@@ -6147,7 +6158,6 @@ packages:
 
   /pretty-format/3.8.0:
     resolution: {integrity: sha512-WuxUnVtlWL1OfZFQFuqvnvs6MiAGk9UNsBostyBOB0Is9wb5uRESevA6rnl/rkksXaGX3GzZhPup5d6Vp1nFew==}
-    dev: false
 
   /promise.series/0.2.0:
     resolution: {integrity: sha512-VWQJyU2bcDTgZw8kpfBpB/ejZASlCrzwz5f2hjb/zlujOEB4oeiAhHygAWq8ubsX2GVkD4kCU5V2dwOTaCY5EQ==}
