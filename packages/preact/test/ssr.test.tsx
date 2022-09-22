@@ -1,6 +1,5 @@
-import { signal, useComputed } from "@preact/signals";
+import { signal, useSignal, useComputed } from "@preact/signals";
 import { createElement } from "preact";
-// import { act } from "preact/test-utils";
 import { renderToString } from "preact-render-to-string";
 
 const sleep = (ms?: number) => new Promise(r => setTimeout(r, ms));
@@ -56,7 +55,7 @@ describe("@preact/signals", () => {
 			});
 		});
 
-		it("should not subscribe to signals", async () => {
+		it("should not subscribe properties to signals", async () => {
 			const a = signal(0);
 			const b = signal("hi");
 			// @ts-ignore-next-line
@@ -68,6 +67,17 @@ describe("@preact/signals", () => {
 				b.value = "bye";
 			}).not.to.throw();
 			await sleep(10);
+		});
+
+		it("should not subscribe Components to Signals", () => {
+			let s = signal(0);
+			function App() {
+				return <p>{s.value}</p>;
+			}
+			expect(renderToString(<App />)).to.equal(`<p>0</p>`);
+			expect(() => {
+				s.value++;
+			}).not.to.throw();
 		});
 
 		it("should allow re-rendering signals multiple times", () => {
@@ -82,6 +92,60 @@ describe("@preact/signals", () => {
 
 			// @ts-ignore-next-line
 			expect(renderToString(<p id={b}>{a}</p>)).to.equal(`<p id="bye">1</p>`);
+		});
+
+		it("should render computed signals", () => {
+			function App() {
+				const name = useSignal("Bob");
+				const greeting = useComputed(() => `Hello ${name}!`);
+
+				return (
+					<div>
+						{/* @ts-ignore-next-line */}
+						<input value={name} />
+						<h1>{greeting}</h1>
+					</div>
+				);
+			}
+
+			expect(renderToString(<App />)).to.equal(
+				`<div><input value="Bob" /><h1>Hello Bob!</h1></div>`
+			);
+		});
+
+		it("should render updated values for mutated computed signals", () => {
+			function App() {
+				const name = useSignal("Bob");
+				const greeting = useComputed(() => `Hello ${name}!`);
+
+				name.value = "Alice";
+
+				return (
+					<div>
+						{/* @ts-ignore-next-line */}
+						<input value={name} />
+						<h1>{greeting}</h1>
+					</div>
+				);
+			}
+
+			expect(renderToString(<App />)).to.equal(
+				`<div><input value="Alice" /><h1>Hello Alice!</h1></div>`
+			);
+		});
+
+		it("should allow signal mutation during rendering", () => {
+			function App() {
+				const b = useSignal(0);
+				return (
+					<div>
+						{b.value}
+						{++b.value}
+						{++b.value}
+					</div>
+				);
+			}
+			expect(renderToString(<App />)).to.equal(`<div>012</div>`);
 		});
 	});
 });
