@@ -76,7 +76,7 @@ function Text(this: AugmentedComponent, { data }: { data: Signal }) {
 		while ((v = v.__!)) {
 			if (v.__c) {
 				v.__c._updateFlags |= HAS_COMPUTEDS;
-				break;
+				break; 
 			}
 		}
 
@@ -249,7 +249,7 @@ hook(OptionsTypes.UNMOUNT, (old, vnode: VNode) => {
 		updater._dispose();
 	}
 
-	if (typeof vnode.type === "string") {
+	if (typeof vnode.type === "string" && vnode.__e) {
 		const dom = vnode.__e as Element;
 
 		const updaters = dom._updaters;
