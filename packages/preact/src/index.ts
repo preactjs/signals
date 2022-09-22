@@ -253,7 +253,7 @@ hook(OptionsTypes.UNMOUNT, (old, vnode: VNode) => {
 	}
 
 	// vnode._dom is undefined during string rendering
-	let dom = vnode.__e;
+	let dom = vnode.__e as Element | undefined;
 	if (dom) {
 		const updaters = dom._updaters;
 		if (updaters) {
