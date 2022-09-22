@@ -1,4 +1,9 @@
-import { signal, useSignal, useComputed } from "@preact/signals";
+import {
+	signal,
+	useSignal,
+	useComputed,
+	useSignalEffect,
+} from "@preact/signals";
 import { createElement } from "preact";
 import { renderToString } from "preact-render-to-string";
 
@@ -146,6 +151,23 @@ describe("@preact/signals", () => {
 				);
 			}
 			expect(renderToString(<App />)).to.equal(`<div>012</div>`);
+		});
+
+		it("should skip useSignalEffect()", async () => {
+			const spy = sinon.spy();
+			function App() {
+				const b = useSignal(0);
+				useSignalEffect(() => spy(b.value));
+				return (
+					<div>
+						{b.value}
+						{++b.value}
+					</div>
+				);
+			}
+			expect(renderToString(<App />)).to.equal(`<div>01</div>`);
+			await sleep(10);
+			expect(spy).not.to.have.been.called;
 		});
 	});
 });
