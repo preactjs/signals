@@ -90,10 +90,10 @@ function Text(this: AugmentedComponent, { data }: { data: Signal }) {
 	currentSignal.value = data;
 
 	const s = useComputed(() => {
-			let data = currentSignal.value;
-			let s = data.value;
-			return s === 0 ? 0 : s === true ? "" : s || "";
-		});
+		let data = currentSignal.value;
+		let s = data.value;
+		return s === 0 ? 0 : s === true ? "" : s || "";
+	});
 
 	return s.value;
 }
@@ -334,6 +334,9 @@ Component.prototype.shouldComponentUpdate = function (
 
 	// @ts-ignore
 	for (let i in state) return true;
+
+	// if no new props were received, this is a purely Signal component:
+	// if (props === this.props) return false;
 
 	// if any non-Signal props changed, update:
 	for (let i in props) {
