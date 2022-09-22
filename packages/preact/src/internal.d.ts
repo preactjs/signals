@@ -1,11 +1,19 @@
 import { Component } from "preact";
-import { Signal } from "@preact/signals-core";
+import { ReadonlySignal, Signal } from "@preact/signals-core";
 
 export interface Effect {
 	_sources: object | undefined;
+	/** The effect's user-defined callback */
+	_compute(): void;
+	/** Begins an effectful read (returns the end() function) */
 	_start(): () => void;
+	/** Runs the effect */
 	_callback(): void;
 	_dispose(): void;
+}
+
+export interface Computed<T = any> extends ReadonlySignal<T> {
+	_compute: () => T;
 }
 
 export interface PropertyUpdater {
@@ -18,7 +26,12 @@ export interface AugmentedElement extends HTMLElement {
 }
 
 export interface AugmentedComponent extends Component<any, any> {
+	/** Component's most recent owner VNode */
 	__v: VNode;
+	/** _renderCallbacks */
+	__h: (() => void)[];
+	/** "mini-hooks" slots for useSignal/useComputed/useEffect */
+	_slots?: (Signal | Computed | Effect)[];
 	_updater?: Effect;
 	_updateFlags: number;
 }
@@ -44,7 +57,11 @@ export const enum OptionsTypes {
 }
 
 export interface OptionsType {
-	[OptionsTypes.HOOK](component: Component, index: number, type: number): void;
+	[OptionsTypes.HOOK](
+		component: AugmentedComponent,
+		index: number,
+		type: number
+	): void;
 	[OptionsTypes.DIFF](vnode: VNode): void;
 	[OptionsTypes.DIFFED](vnode: VNode): void;
 	[OptionsTypes.RENDER](vnode: VNode): void;
