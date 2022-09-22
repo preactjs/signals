@@ -249,6 +249,7 @@ hook(OptionsTypes.UNMOUNT, (old, vnode: VNode) => {
 		updater._dispose();
 	}
 
+	// vnode._dom is undefined during string rendering
 	if (typeof vnode.type === "string" && vnode.__e) {
 		const dom = vnode.__e as Element;
 
