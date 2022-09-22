@@ -1,5 +1,11 @@
 # @preact/signals
 
+## 1.1.1
+
+### Patch Changes
+
+- [#198](https://github.com/preactjs/signals/pull/198) [`3db7500`](https://github.com/preactjs/signals/commit/3db7500beea4c447f22fbde80af7b5171afa171c) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Fix server-sider-render error when unmounting a signal passed as text into JSX.
+
 ## 1.1.0
 
 ### Minor Changes
