@@ -244,18 +244,20 @@ function createPropUpdater(
 /** Unsubscribe from Signals when unmounting components/vnodes */
 hook(OptionsTypes.UNMOUNT, (old, vnode: VNode) => {
 	let component = vnode.__c;
-	const updater = component && component._updater;
-	if (updater) {
-		updater._dispose();
+	if (component) {
+		const updater = component._updater;
+		if (updater) {
+			component._updater = undefined;
+			updater._dispose();
+		}
 	}
 
 	// vnode._dom is undefined during string rendering
-	if (typeof vnode.type === "string" && vnode.__e) {
-		const dom = vnode.__e as Element;
-
+	let dom = vnode.__e;
+	if (dom) {
 		const updaters = dom._updaters;
 		if (updaters) {
-			dom._updaters = null;
+			dom._updaters = undefined;
 			for (let prop in updaters) {
 				let updater = updaters[prop];
 				if (updater) updater._dispose();
