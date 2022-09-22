@@ -76,7 +76,7 @@ function Text(this: AugmentedComponent, { data }: { data: Signal }) {
 		while ((v = v.__!)) {
 			if (v.__c) {
 				v.__c._updateFlags |= HAS_COMPUTEDS;
-				break; 
+				break;
 			}
 		}
 
