@@ -1,7 +1,6 @@
 import { signal, useComputed } from "@preact/signals";
 import { createElement, render } from "preact";
 import { setupRerender, act } from "preact/test-utils";
-import { renderToString } from "preact-render-to-string";
 
 const sleep = (ms?: number) => new Promise(r => setTimeout(r, ms));
 
@@ -335,17 +334,6 @@ describe("@preact/signals", () => {
 				// This should not crash
 				s.value = "scale(1, 2)";
 			});
-		});
-	});
-
-	describe("SSR", () => {
-		it("should render without erroring", () => {
-			const s = signal(0);
-			function App() {
-				return <p>{s}</p>;
-			}
-
-			expect(() => renderToString(<App />)).not.to.throw();
 		});
 	});
 });
