@@ -66,7 +66,11 @@ function endBatch() {
 			effect._nextBatchedEffect = undefined;
 			effect._flags &= ~NOTIFIED;
 
-			if (!(effect._flags & DISPOSED) && effect._flags & OUTDATED) {
+			if (
+				!(effect._flags & DISPOSED) &&
+				effect._flags & OUTDATED &&
+				needsToRecompute(effect)
+			) {
 				try {
 					effect._callback();
 				} catch (err) {
@@ -314,6 +318,24 @@ function signal<T>(value: T): Signal<T> {
 	return new Signal(value);
 }
 
+function needsToRecompute(target: Computed | Effect): boolean {
+	// Check the dependencies for changed values. The dependency list is already
+	// in order of use. Therefore if multiple dependencies have changed values, only
+	// the first used dependency is re-evaluated at this point.
+	let node = target._sources;
+	while (node !== undefined) {
+		// If a dependency has something blocking it from refreshing (e.g. a dependency
+		// cycle) or there's a new version of the dependency, then we need to recompute.
+		if (!node._source._refresh() || node._source._version !== node._version) {
+			break;
+		}
+		node = node._nextSource;
+	}
+	// If none of the dependencies have changed values since last recompute then the
+	// there's no need to recompute.
+	return node !== undefined;
+}
+
 function prepareSources(target: Computed | Effect) {
 	for (
 		let node = target._sources;
@@ -407,25 +429,9 @@ Computed.prototype._refresh = function () {
 	// Mark this computed signal running before checking the dependencies for value
 	// changes, so that the RUNNIN flag can be used to notice cyclical dependencies.
 	this._flags |= RUNNING;
-	if (this._version > 0) {
-		// Check the dependencies for changed values. The dependency list is already
-		// in order of use. Therefore if multiple dependencies have changed values, only
-		// the first used dependency is re-evaluated at this point.
-		let node = this._sources;
-		while (node !== undefined) {
-			// If a dependency has something blocking it from refreshing (e.g. a dependency
-			// cycle) or there's a new version of the dependency, then we need to recompute.
-			if (!node._source._refresh() || node._source._version !== node._version) {
-				break;
-			}
-			node = node._nextSource;
-		}
-		// If none of the dependencies have changed values since last recompute then the
-		// computed value can't have changed.
-		if (node === undefined) {
-			this._flags &= ~RUNNING;
-			return true;
-		}
+	if (this._version > 0 && !needsToRecompute(this)) {
+		this._flags &= ~RUNNING;
+		return true;
 	}
 
 	const prevContext = evalContext;
