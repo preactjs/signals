@@ -446,6 +446,8 @@ describe("effect()", () => {
 		expect(spy).not.to.be.called;
 		expect(() => a.value++).to.throw("hello");
 		expect(spy).not.to.be.called;
+		a.value++;
+		expect(spy).not.to.be.called;
 	});
 
 	it("should run cleanups outside any evaluation context", () => {
