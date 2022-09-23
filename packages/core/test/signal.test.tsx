@@ -190,7 +190,7 @@ describe("effect()", () => {
 			return cond.value ? a.value : b.value;
 		});
 
-		const c = effect(spy);
+		effect(spy);
 		expect(spy).to.be.calledOnce;
 
 		b.value = "bb";
@@ -268,6 +268,69 @@ describe("effect()", () => {
 		expect(spy).not.to.be.called;
 		dispose();
 		expect(spy).to.be.calledOnce;
+	});
+
+	it("should not recompute if the effect has been notified about changes, but no direct dependency has actually changed", () => {
+		const s = signal(0);
+		const c = computed(() => {
+			s.value;
+			return 0;
+		});
+		const spy = sinon.spy(() => {
+			c.value;
+		});
+		effect(spy);
+		expect(spy).to.be.calledOnce;
+		spy.resetHistory();
+
+		s.value = 1;
+		expect(spy).not.to.be.called;
+	});
+
+	it("should not recompute dependencies out of order", () => {
+		const a = signal(1);
+		const b = signal(1);
+		const c = signal(1);
+
+		const spy = sinon.spy(() => c.value);
+		const d = computed(spy);
+
+		effect(() => {
+			if (a.value > 0) {
+				b.value;
+				d.value;
+			} else {
+				b.value;
+			}
+		});
+		spy.resetHistory();
+
+		batch(() => {
+			a.value = 2;
+			b.value = 2;
+			c.value = 2;
+		});
+		expect(spy).to.be.calledOnce;
+		spy.resetHistory();
+
+		batch(() => {
+			a.value = -1;
+			b.value = -1;
+			c.value = -1;
+		});
+		expect(spy).not.to.be.called;
+		spy.resetHistory();
+	});
+
+	it("should recompute if a dependency changes during computation after becoming a dependency", () => {
+		const a = signal(0);
+		const spy = sinon.spy(() => {
+			if (a.value === 0) {
+				a.value++;
+			}
+		});
+		effect(spy);
+		expect(spy).to.be.calledTwice;
 	});
 
 	it("should run the cleanup in an implicit batch", () => {
@@ -397,6 +460,7 @@ describe("effect()", () => {
 					};
 				});
 			}
+			return a.value;
 		});
 
 		effect(() => {
@@ -710,6 +774,18 @@ describe("computed()", () => {
 		a.value = "a";
 		c.value;
 		expect(spy).to.be.calledOnce;
+	});
+
+	it("should recompute if a dependency changes during computation after becoming a dependency", () => {
+		const a = signal(0);
+		const spy = sinon.spy(() => {
+			a.value++;
+		});
+		const c = computed(spy);
+		c.value;
+		expect(spy).to.be.calledOnce;
+		c.value;
+		expect(spy).to.be.calledTwice;
 	});
 
 	it("should detect simple dependency cycles", () => {
