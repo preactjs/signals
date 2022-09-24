@@ -556,6 +556,8 @@ function cleanupEffect(effect: Effect) {
 			cleanup();
 		} catch (err) {
 			effect._flags &= ~RUNNING;
+			effect._flags |= DISPOSED;
+			disposeEffect(effect);
 			throw err;
 		} finally {
 			evalContext = prevContext;
@@ -631,8 +633,8 @@ Effect.prototype._start = function () {
 	}
 	this._flags |= RUNNING;
 	this._flags &= ~DISPOSED;
-	prepareSources(this);
 	cleanupEffect(this);
+	prepareSources(this);
 
 	/*@__INLINE__**/ startBatch();
 	this._flags &= ~OUTDATED;
