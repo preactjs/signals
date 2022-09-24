@@ -324,9 +324,14 @@ function needsToRecompute(target: Computed | Effect): boolean {
 	// the first used dependency is re-evaluated at this point.
 	let node = target._sources;
 	while (node !== undefined) {
-		// If a dependency has something blocking it from refreshing (e.g. a dependency
-		// cycle) or there's a new version of the dependency, then we need to recompute.
-		if (!node._source._refresh() || node._source._version !== node._version) {
+		// If there's a new version of the dependency before or after refreshing,
+		// or the dependency has something blocking it from refreshing at all (e.g. a
+		// dependency cycle), then we need to recompute.
+		if (
+			node._source._version !== node._version ||
+			!node._source._refresh() ||
+			node._source._version !== node._version
+		) {
 			break;
 		}
 		node = node._nextSource;
