@@ -287,6 +287,28 @@ describe("effect()", () => {
 		expect(spy).not.to.be.called;
 	});
 
+	it("should not recompute dependencies unnecessarily", () => {
+		const spy = sinon.spy();
+		const a = signal(0);
+		const b = signal(0);
+		const c = computed(() => {
+			b.value;
+			spy();
+		});
+		effect(() => {
+			if (a.value === 0) {
+				c.value;
+			}
+		});
+		expect(spy).to.be.calledOnce;
+
+		batch(() => {
+			b.value = 1;
+			a.value = 1;
+		});
+		expect(spy).to.be.calledOnce;
+	});
+
 	it("should not recompute dependencies out of order", () => {
 		const a = signal(1);
 		const b = signal(1);
@@ -888,7 +910,7 @@ describe("computed()", () => {
 		expect(c.value).to.equal("ok");
 	});
 
-	it("should propagate invalidation even right after first subscription", () => {
+	it("should propagate notifications even right after first subscription", () => {
 		const a = signal(0);
 		const b = computed(() => a.value);
 		const c = computed(() => b.value);
@@ -904,6 +926,18 @@ describe("computed()", () => {
 
 		a.value = 1;
 		expect(spy).to.be.calledOnce;
+	});
+
+	it("should get marked as outdated right after first subscription", () => {
+		const s = signal(0);
+		const c = computed(() => s.value);
+		c.value;
+
+		s.value = 1;
+		effect(() => {
+			c.value;
+		});
+		expect(c.value).to.equal(1);
 	});
 
 	it("should not recompute dependencies out of order", () => {
@@ -939,6 +973,30 @@ describe("computed()", () => {
 		e.value;
 		expect(spy).not.to.be.called;
 		spy.resetHistory();
+	});
+
+	it("should not recompute dependencies unnecessarily", () => {
+		const spy = sinon.spy();
+		const a = signal(0);
+		const b = signal(0);
+		const c = computed(() => {
+			b.value;
+			spy();
+		});
+		const d = computed(() => {
+			if (a.value === 0) {
+				c.value;
+			}
+		});
+		d.value;
+		expect(spy).to.be.calledOnce;
+
+		batch(() => {
+			b.value = 1;
+			a.value = 1;
+		});
+		d.value;
+		expect(spy).to.be.calledOnce;
 	});
 
 	describe("graph updates", () => {
