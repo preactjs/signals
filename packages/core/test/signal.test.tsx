@@ -999,6 +999,41 @@ describe("computed()", () => {
 		expect(spy).to.be.calledOnce;
 	});
 
+	describe("garbage collection", function () {
+		// Skip GC tests if window.gc/global.gc is not defined.
+		before(function () {
+			if (typeof gc === "undefined") {
+				this.skip();
+			}
+		});
+
+		it("should be garbage collectable if nothing is listening to its changes", async () => {
+			const s = signal(0);
+			const ref = new WeakRef(computed(() => s.value));
+
+			(gc as () => void)();
+			await new Promise(resolve => setTimeout(resolve, 0));
+			expect(ref.deref()).to.be.undefined;
+		});
+
+		it("should be garbage collectable after it has lost all of its listeners", async () => {
+			const s = signal(0);
+
+			let ref: WeakRef<Signal>;
+			let dispose: () => void;
+			(function () {
+				const c = computed(() => s.value);
+				ref = new WeakRef(c);
+				dispose = effect(() => c.value);
+			})();
+
+			dispose();
+			(gc as () => void)();
+			await new Promise(resolve => setTimeout(resolve, 0));
+			expect(ref.deref()).to.be.undefined;
+		});
+	});
+
 	describe("graph updates", () => {
 		it("should run computeds once for multiple dep changes", async () => {
 			const a = signal("a");
