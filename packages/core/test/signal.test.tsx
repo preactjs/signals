@@ -35,33 +35,38 @@ describe("signal", () => {
 			expect(s.peek()).equal(1);
 		});
 
-		it("should not trigger a read", () => {
+		it("should get the updated value after a value change", () => {
 			const s = signal(1);
+			s.value = 2;
+			expect(s.peek()).equal(2);
+		});
 
+		it("should not make surrounding effect depend on the signal", () => {
+			const s = signal(1);
 			const spy = sinon.spy(() => {
-				// When we trigger a read this would cause an infinite loop
 				s.peek();
 			});
 
 			effect(spy);
+			expect(spy).to.be.calledOnce;
 
 			s.value = 2;
-
 			expect(spy).to.be.calledOnce;
 		});
 
-		it("should refresh value if stale", () => {
-			const a = signal(1);
-			const b = computed(() => a.value);
-
-			const dispose = effect(() => {
-				b.value;
+		it("should not make surrounding computed depend on the signal", () => {
+			const s = signal(1);
+			const spy = sinon.spy(() => {
+				s.peek();
 			});
+			const d = computed(spy);
 
-			dispose();
-			a.value = 2;
+			d.value;
+			expect(spy).to.be.calledOnce;
 
-			expect(b.peek()).to.equal(2);
+			s.value = 2;
+			d.value;
+			expect(spy).to.be.calledOnce;
 		});
 	});
 
@@ -997,6 +1002,86 @@ describe("computed()", () => {
 		});
 		d.value;
 		expect(spy).to.be.calledOnce;
+	});
+
+	describe(".peek()", () => {
+		it("should get value", () => {
+			const s = signal(1);
+			const c = computed(() => s.value);
+			expect(c.peek()).equal(1);
+		});
+
+		it("should refresh value if stale", () => {
+			const a = signal(1);
+			const b = computed(() => a.value);
+			expect(b.peek()).to.equal(1);
+
+			a.value = 2;
+			expect(b.peek()).to.equal(2);
+		});
+
+		it("should not make surrounding effect depend on the computed", () => {
+			const s = signal(1);
+			const c = computed(() => s.value);
+			const spy = sinon.spy(() => {
+				c.peek();
+			});
+
+			effect(spy);
+			expect(spy).to.be.calledOnce;
+
+			s.value = 2;
+			expect(spy).to.be.calledOnce;
+		});
+
+		it("should not make surrounding computed depend on the computed", () => {
+			const s = signal(1);
+			const c = computed(() => s.value);
+
+			const spy = sinon.spy(() => {
+				c.peek();
+			});
+
+			const d = computed(spy);
+			d.value;
+			expect(spy).to.be.calledOnce;
+
+			s.value = 2;
+			d.value;
+			expect(spy).to.be.calledOnce;
+		});
+
+		it("should not make surrounding effect depend on the peeked computed's dependencies", () => {
+			const a = signal(1);
+			const b = computed(() => a.value);
+			const spy = sinon.spy();
+			effect(() => {
+				spy();
+				b.peek();
+			});
+			expect(spy).to.be.calledOnce;
+			spy.resetHistory();
+
+			a.value = 1;
+			expect(spy).not.to.be.called;
+		});
+
+		it("should not subscribe a surrounding computed depend on peeked computed's dependencies", () => {
+			const a = signal(1);
+			const b = computed(() => a.value);
+			const spy = sinon.spy();
+			const d = computed(() => {
+				spy();
+				b.peek();
+			});
+			d.value;
+			expect(spy).to.be.calledOnce;
+			spy.resetHistory();
+
+			a.value = 1;
+			d.value;
+			expect(spy).not.to.be.called;
+		});
 	});
 
 	describe("garbage collection", function () {
