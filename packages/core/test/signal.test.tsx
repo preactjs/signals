@@ -1,4 +1,11 @@
-import { signal, computed, effect, batch, Signal } from "@preact/signals-core";
+import {
+	signal,
+	computed,
+	effect,
+	batch,
+	Signal,
+	reader,
+} from "@preact/signals-core";
 
 describe("signal", () => {
 	it("should return value", () => {
@@ -750,6 +757,98 @@ describe("effect()", () => {
 			e._dispose();
 			expect(e._sources).to.be.undefined;
 		});
+	});
+});
+
+describe("Some new API for Signal that can track multiple fields in a single instance", () => {
+	it("should return value", () => {
+		const g = reader({ foo: "a", bar: "b" });
+
+		expect(g).to.have.property("foo", "a");
+		expect(g).to.have.property("bar", "b");
+		expect(g).to.have.property("_size", 2);
+		expect(g._signals).to.have.lengthOf(1, "should create 1 single signal");
+	});
+	it("should create 1 signal per 31 properties", () => {
+		const obj: Record<number, number> = Object.create(null);
+		const expectedSignalCount = 3;
+
+		/**
+		 * Create a big object with 93 properties
+		 */
+		for (let i = 0; i < 31 * expectedSignalCount; i++) {
+			obj[i] = i;
+		}
+
+		const g = reader(obj);
+
+		/**
+		 * 3 signals are created to watch 93 properties
+		 * - signal 0 -> 31 properties
+		 * - signal 1 -> 31 properties
+		 * - signal 2 -> 31 properties
+		 */
+		expect(g._signals).to.have.lengthOf(expectedSignalCount);
+		expect(g._size).to.equal(93);
+	});
+	it("should be computed only if the field is watched", () => {
+		const g = reader({
+			foo: 1,
+			bar: 2,
+			baz: 3,
+		});
+
+		/**
+		 * Although it's 1 signal, the `computed` should only be called
+		 * when the watched properties of a signal are accessed
+		 */
+		expect(g._signals).to.have.lengthOf(
+			1,
+			"One signal should watch all these 3 properties"
+		);
+
+		const fooSpy = sinon.spy(() => g.foo);
+		const barSpy = sinon.spy(() => g.bar);
+		const bazSpy = sinon.spy(() => g.baz);
+
+		/**
+		 * All these `computed` subscribe to the same signal but watch different fields
+		 * - foo -> ._field = 1 << 0
+		 * - bar -> ._field = 1 << 1
+		 * - baz -> ._field = 1 << 2
+		 */
+		const foo = computed(fooSpy);
+		const bar = computed(barSpy);
+		const baz = computed(bazSpy);
+
+		expect(fooSpy).to.not.be.called;
+		expect(barSpy).to.not.be.called;
+		expect(bazSpy).to.not.be.called;
+
+		foo.value;
+
+		expect(fooSpy).to.have.been.calledOnce;
+		expect(barSpy).to.not.be.called;
+		expect(bazSpy).to.not.be.called;
+
+		bar.value;
+
+		expect(fooSpy).to.have.been.calledOnce;
+		expect(barSpy).to.have.been.calledOnce;
+		expect(bazSpy).to.not.be.called;
+
+		baz.value;
+
+		expect(fooSpy).to.have.been.calledOnce;
+		expect(barSpy).to.have.been.calledOnce;
+		expect(bazSpy).to.have.been.calledOnce;
+
+		g.bar = 123;
+		bar.value;
+
+		expect(fooSpy).to.have.been.calledOnce;
+		expect(barSpy).to.have.been.calledTwice;
+		expect(bazSpy).to.have.been.calledOnce;
 	});
 });
 
