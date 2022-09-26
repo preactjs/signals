@@ -26,6 +26,7 @@ type Node = {
 	_source: Signal;
 	_prevSource?: Node;
 	_nextSource?: Node;
+	_fields: number;
 
 	// A target that depends on the source and should be notified when the source changes.
 	_target: Computed | Effect;
@@ -134,6 +135,7 @@ function addDependency(signal: Signal): Node | undefined {
 			_prevTarget: undefined,
 			_nextTarget: undefined,
 			_rollbackNode: node,
+			_fields: 0,
 		};
 		evalContext._sources = node;
 		signal._node = node;
@@ -176,7 +178,21 @@ function addDependency(signal: Signal): Node | undefined {
 
 declare class Signal<T = any> {
 	/** @internal */
-	_value: unknown;
+	_value: unknown[];
+	0: unknown;
+	1: unknown;
+	2: unknown;
+	3: unknown;
+	4: unknown;
+	5: unknown;
+	6: unknown;
+	7: unknown;
+	8: unknown;
+	9: unknown;
+	10: unknown;
+	11: unknown;
+	// ... up to 👇
+	31: unknown;
 
 	/** @internal */
 	_version: number;
@@ -187,7 +203,7 @@ declare class Signal<T = any> {
 	/** @internal */
 	_targets?: Node;
 
-	constructor(value?: T);
+	constructor(value?: T, ...other: any[]);
 
 	/** @internal */
 	_refresh(): boolean;
@@ -211,8 +227,8 @@ declare class Signal<T = any> {
 }
 
 /** @internal */
-function Signal(this: Signal, value?: unknown) {
-	this._value = value;
+function Signal(this: Signal) {
+	this._value = Array.from(arguments);
 	this._version = 0;
 	this._node = undefined;
 	this._targets = undefined;
@@ -269,33 +285,39 @@ Signal.prototype.subscribe = function (fn) {
 };
 
 Signal.prototype.valueOf = function () {
-	return this.value;
+	return this._value[0];
 };
 
 Signal.prototype.toString = function () {
-	return this.value + "";
+	return this[0] + "";
 };
 
 Signal.prototype.peek = function () {
-	return this._value;
+	return this._value[0];
 };
 
-Object.defineProperty(Signal.prototype, "value", {
-	get() {
-		const node = addDependency(this);
-		if (node !== undefined) {
-			node._version = this._version;
-		}
-		return this._value;
-	},
-	set(value) {
-		if (value !== this._value) {
+for (let i = 0; i < 32; i++) {
+	Object.defineProperty(Signal.prototype, i, {
+		get(this: Signal) {
+			const node = addDependency(this);
+			if (node !== undefined) {
+				node._version = this._version;
+				node._fields |= 1 << i;
+			}
+			return this._value[i];
+		},
+		set(this: Signal, value) {
+			if (i > this._value.length)
+				throw RangeError("Some error here - disallow creating holey arrays");
+			if (value === this._value[i]) return;
+
 			if (batchIteration > 100) {
 				cycleDetected();
 			}
 
-			this._value = value;
+			this._value[i] = value;
 			this._version++;
+
 			globalVersion++;
 
 			/**@__INLINE__*/ startBatch();
@@ -305,17 +327,72 @@ Object.defineProperty(Signal.prototype, "value", {
 					node !== undefined;
 					node = node._nextTarget
 				) {
-					node._target._notify();
+					if (node._fields & (1 << i)) node._target._notify();
 				}
 			} finally {
 				endBatch();
 			}
-		}
-	},
-});
+		},
+	});
+}
+
+Object.defineProperty(
+	Signal.prototype,
+	"value",
+	Object.getOwnPropertyDescriptor(Signal.prototype, 0)!
+);
 
 function signal<T>(value: T): Signal<T> {
 	return new Signal(value);
+}
+
+interface Reader {
+	readonly _signals: Signal[];
+	readonly _size: number;
+}
+function reader<T extends Record<string, any>>(obj: T): T & Reader {
+	const properties = Object.keys(obj);
+
+	let currentSignal = new Signal();
+	const signals = [currentSignal];
+	const reader = Object.create(null);
+
+	for (let i = 0; i < properties.length; i++) {
+		const currentIndex = i % 31;
+		const currentProp = properties[i];
+		const currentValue = obj[currentProp];
+
+		if (currentIndex === 0 && i !== 0) {
+			currentSignal = new Signal();
+			signals.push(currentSignal);
+		}
+
+		currentSignal._value[currentIndex] = currentValue;
+
+		Object.defineProperty(reader, currentProp, {
+			enumerable: true,
+			configurable: false,
+			get() {
+				return currentSignal[currentIndex as keyof Signal];
+			},
+			set(v) {
+				currentSignal[currentIndex as keyof Signal] = v;
+			},
+		});
+	}
+
+	Object.defineProperty(reader, "_signals", {
+		enumerable: false,
+		writable: false,
+		value: Object.freeze(signals),
+	});
+	Object.defineProperty(reader, "_size", {
+		enumerable: false,
+		writable: false,
+		value: properties.length,
+	});
+
+	return reader;
 }
 
 function needsToRecompute(target: Computed | Effect): boolean {
@@ -401,7 +478,7 @@ declare class Computed<T = any> extends Signal<T> {
 }
 
 function Computed(this: Computed, compute: () => unknown) {
-	Signal.call(this, undefined);
+	(Signal.call as any)(this, undefined);
 
 	this._compute = compute;
 	this._sources = undefined;
@@ -446,15 +523,15 @@ Computed.prototype._refresh = function () {
 		const value = this._compute();
 		if (
 			this._flags & HAS_ERROR ||
-			this._value !== value ||
+			this._value[0] !== value ||
 			this._version === 0
 		) {
-			this._value = value;
+			this._value[0] = value;
 			this._flags &= ~HAS_ERROR;
 			this._version++;
 		}
 	} catch (err) {
-		this._value = err;
+		this._value[0] = err;
 		this._flags |= HAS_ERROR;
 		this._version++;
 	}
@@ -517,9 +594,9 @@ Computed.prototype.peek = function () {
 		cycleDetected();
 	}
 	if (this._flags & HAS_ERROR) {
-		throw this._value;
+		throw this._value[0];
 	}
-	return this._value;
+	return this._value[0];
 };
 
 Object.defineProperty(Computed.prototype, "value", {
@@ -533,9 +610,9 @@ Object.defineProperty(Computed.prototype, "value", {
 			node._version = this._version;
 		}
 		if (this._flags & HAS_ERROR) {
-			throw this._value;
+			throw this._value[0];
 		}
-		return this._value;
+		return this._value[0];
 	},
 });
 
@@ -673,4 +750,4 @@ function effect(compute: () => unknown): () => void {
 	return effect._dispose.bind(effect);
 }
 
-export { signal, computed, effect, batch, Signal, ReadonlySignal };
+export { signal, computed, effect, batch, Signal, ReadonlySignal, reader };
