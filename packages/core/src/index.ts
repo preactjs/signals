@@ -579,6 +579,7 @@ function disposeEffect(effect: Effect) {
 	) {
 		node._source._unsubscribe(node);
 	}
+	effect._compute = undefined;
 	effect._sources = undefined;
 
 	cleanupEffect(effect);
@@ -599,7 +600,7 @@ function endEffect(this: Effect, prevContext?: Computed | Effect) {
 }
 
 declare class Effect {
-	_compute: () => unknown;
+	_compute?: () => unknown;
 	_cleanup?: unknown;
 	_sources?: Node;
 	_nextBatchedEffect?: Effect;
@@ -624,7 +625,7 @@ function Effect(this: Effect, compute: () => void) {
 Effect.prototype._callback = function () {
 	const finish = this._start();
 	try {
-		if (!(this._flags & DISPOSED)) {
+		if (!(this._flags & DISPOSED) && this._compute !== undefined) {
 			this._cleanup = this._compute();
 		}
 	} finally {
