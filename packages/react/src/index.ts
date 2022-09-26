@@ -13,11 +13,12 @@ import {
 	batch,
 	effect,
 	Signal,
+	reader,
 	type ReadonlySignal,
 } from "@preact/signals-core";
 import { Effect, ReactOwner, ReactDispatcher } from "./internal";
 
-export { signal, computed, batch, effect, Signal, type ReadonlySignal };
+export { signal, computed, batch, effect, Signal, reader, type ReadonlySignal };
 
 /**
  * Install a middleware into React.createElement to replace any Signals in props with their value.

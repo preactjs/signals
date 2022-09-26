@@ -6,6 +6,7 @@ import {
 	batch,
 	effect,
 	Signal,
+	reader,
 	type ReadonlySignal,
 } from "@preact/signals-core";
 import {
@@ -18,7 +19,7 @@ import {
 	AugmentedElement as Element,
 } from "./internal";
 
-export { signal, computed, batch, effect, Signal, type ReadonlySignal };
+export { signal, computed, batch, effect, reader, Signal, type ReadonlySignal };
 
 const HAS_PENDING_UPDATE = 1 << 0;
 const HAS_HOOK_STATE = 1 << 1;
