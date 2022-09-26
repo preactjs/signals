@@ -1,4 +1,5 @@
 import { signal, computed, effect, batch, Signal } from "@preact/signals-core";
+import fastEqual from "fast-deep-equal/es6";
 
 describe("signal", () => {
 	it("should return value", () => {
@@ -1710,5 +1711,48 @@ describe("batch/transaction", () => {
 			callCount = spy.callCount;
 		});
 		expect(callCount).to.equal(1);
+	});
+
+	it("allows customizing the default shouldUpdate compare method", () => {
+		const mapA = new Map<string, string>();
+		const a = signal(mapA);
+		const spy1 = sinon.spy(() => a.value);
+		effect(spy1);
+
+		// before: re-renders every time, even if the value doesn't change
+		a.value = new Map(a.peek()).set("foo", "bar");
+		a.value = new Map(a.peek()).set("foo", "baz");
+		a.value = new Map(a.peek()).set("foo", "baz");
+		a.value = new Map(a.peek()).set("foo", "baz");
+
+		// should have been called twice but instead re-renders regardless on value pass in (without specifying a custom shouldUpdate method)
+		expect(spy1.callCount).to.equal(5);
+
+		Signal.prototype.shouldUpdate = (oldValue, newValue) => {
+			if (oldValue instanceof Map && newValue instanceof Map) {
+				return fastEqual(oldValue, newValue) === false;
+			}
+			return oldValue !== newValue;
+		};
+
+		function signal2<T>(value: T): Signal<T> {
+			return new Signal(value);
+		}
+
+		const mapB = new Map<string, string>();
+		const b = signal2(mapB);
+		const spy2 = sinon.spy(() => b.value);
+		effect(spy2);
+
+		// after: only re-renders if the value changes (via custom shouldUpdate method)
+		b.value = new Map(b.peek()).set("foo", "bar");
+		b.value = new Map(b.peek()).set("foo", "baz");
+		b.value = new Map(b.peek()).set("foo", "baz");
+		b.value = new Map(b.peek()).set("foo", "baz");
+
+		// setting up the initial empty Map --> update #1
+		// adding foo, bar to empty map --> update #2
+		// updating foo, bar to foo, baz --> update #3
+		expect(spy2.callCount).to.equal(3);
 	});
 });
