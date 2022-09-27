@@ -7,6 +7,7 @@ import {
 	__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED as internals,
 } from "react";
 import React from "react";
+import {useSyncExternalStore} from "use-sync-external-store/shim"
 import {
 	signal,
 	computed,
@@ -75,7 +76,7 @@ function setCurrentUpdater(updater?: Effect) {
  *
  * [1]
  * @see https://reactjs.org/docs/hooks-reference.html#usesyncexternalstore
- * @see https://github.com/reactwg/react-18/discussions/86
+ * @see https://github.com/reactjs/rfcs/blob/main/text/0214-use-sync-external-store.md
  */
 function createEffectStore() {
 	let updater!: Effect;
@@ -140,7 +141,7 @@ Object.defineProperty(internals.ReactCurrentDispatcher, "current", {
 
 			const store = api.useMemo(createEffectStore, Empty);
 
-			api.useSyncExternalStore(
+			useSyncExternalStore(
 				store.subscribe,
 				store.getSnapshot,
 				store.getSnapshot
