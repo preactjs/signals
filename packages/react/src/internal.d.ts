@@ -1,4 +1,5 @@
 import { Signal } from "@preact/signals-core";
+import type { useCallback, useMemo, useSyncExternalStore } from "react"
 
 export interface Effect {
 	_sources: object | undefined;
@@ -8,7 +9,9 @@ export interface Effect {
 }
 
 export interface ReactDispatcher {
-	useCallback(): unknown;
+	useCallback: typeof useCallback;
+	useMemo: typeof useMemo;
+	useSyncExternalStore: typeof useSyncExternalStore;
 }
 
 export type Updater = Signal<unknown>;

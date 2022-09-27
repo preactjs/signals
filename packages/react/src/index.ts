@@ -19,6 +19,8 @@ import { Effect, ReactDispatcher } from "./internal";
 
 export { signal, computed, batch, effect, Signal, type ReadonlySignal };
 
+const Empty = Object.freeze([]);
+
 /**
  * Install a middleware into React.createElement to replace any Signals in props with their value.
  * @todo this likely needs to be duplicated for jsx()...
@@ -55,7 +57,6 @@ function createPropUpdater(props: any, prop: string, signal: Signal) {
 */
 
 let finishUpdate: (() => void) | undefined;
-const updaterForComponent = new WeakMap<() => void, Effect>();
 
 function setCurrentUpdater(updater?: Effect) {
 	// end tracking for the current update:
@@ -64,13 +65,39 @@ function setCurrentUpdater(updater?: Effect) {
 	finishUpdate = updater && updater._start();
 }
 
-function createUpdater(update: () => void) {
+/**
+ * A redux-like store whose store value is a positive 32bit integer (a 'version') to be used with useSyncExternalStore API.
+ * React (current owner) subscribes to this store and gets a snapshot of the current 'version'.
+ * Whenever the 'version' changes, we tell React it's time to update the component (call 'onStoreChange').
+ *
+ * How we achieve this is by creating a binding with an 'effect', when the `effect._callback' is called,
+ * we update our store version and tell React to re-render the component ([1] We don't really care when/how React does it).
+ *
+ * [1]
+ * @see https://reactjs.org/docs/hooks-reference.html#usesyncexternalstore
+ * @see https://github.com/reactwg/react-18/discussions/86
+ */
+function createEffectStore() {
 	let updater!: Effect;
+	let version = 0;
+
 	effect(function (this: Effect) {
 		updater = this;
 	});
-	updater._callback = update;
-	return updater;
+
+	return {
+		updater,
+		subscribe(onStoreChange: () => void) {
+			updater._callback = function () {
+				version = (version + 1) & ~(1 << 31);
+				onStoreChange();
+			};
+			return function _unsubscribe() {};
+		},
+		getSnapshot() {
+			return version;
+		},
+	};
 }
 
 /**
@@ -97,30 +124,31 @@ Object.defineProperties(Signal.prototype, {
 
 // Track the current dispatcher (roughly equiv to current component impl)
 let lock = false;
-const UPDATE = () => ({});
 let currentDispatcher: ReactDispatcher;
+
 Object.defineProperty(internals.ReactCurrentDispatcher, "current", {
 	get() {
 		return currentDispatcher;
 	},
-	set(api) {
+	set(api: ReactDispatcher) {
 		currentDispatcher = api;
 		if (lock) return;
 		if (api && !isInvalidHookAccessor(api)) {
-			// prevent re-injecting useReducer when the Dispatcher
-			// context changes to run the reducer callback:
+			// prevent re-injecting useMemo & useSyncExternalStore when the Dispatcher
+			// context changes.
 			lock = true;
-			const rerender = api.useReducer(UPDATE, {})[1];
+
+			const store = api.useMemo(createEffectStore, Empty);
+
+			api.useSyncExternalStore(
+				store.subscribe,
+				store.getSnapshot,
+				store.getSnapshot
+			);
+
 			lock = false;
 
-			let updater = updaterForComponent.get(rerender);
-			if (!updater) {
-				updater = createUpdater(rerender);
-				updaterForComponent.set(rerender, updater);
-			} else {
-				updater._callback = rerender;
-			}
-			setCurrentUpdater(updater);
+			setCurrentUpdater(store.updater);
 		} else {
 			setCurrentUpdater();
 		}
@@ -141,13 +169,13 @@ function isInvalidHookAccessor(api: ReactDispatcher) {
 }
 
 export function useSignal<T>(value: T) {
-	return useMemo(() => signal<T>(value), []);
+	return useMemo(() => signal<T>(value), Empty);
 }
 
 export function useComputed<T>(compute: () => T) {
 	const $compute = useRef(compute);
 	$compute.current = compute;
-	return useMemo(() => computed<T>(() => $compute.current()), []);
+	return useMemo(() => computed<T>(() => $compute.current()), Empty);
 }
 
 export function useSignalEffect(cb: () => void | (() => void)) {
@@ -158,5 +186,5 @@ export function useSignalEffect(cb: () => void | (() => void)) {
 		return effect(() => {
 			return callback.current();
 		});
-	}, []);
+	}, Empty);
 }
