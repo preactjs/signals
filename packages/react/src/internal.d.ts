@@ -7,10 +7,6 @@ export interface Effect {
 	_dispose(): void;
 }
 
-export interface ReactOwner {
-	_: never;
-}
-
 export interface ReactDispatcher {
 	useCallback(): unknown;
 }

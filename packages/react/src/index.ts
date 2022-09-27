@@ -15,7 +15,7 @@ import {
 	Signal,
 	type ReadonlySignal,
 } from "@preact/signals-core";
-import { Effect, ReactOwner, ReactDispatcher } from "./internal";
+import { Effect, ReactDispatcher } from "./internal";
 
 export { signal, computed, batch, effect, Signal, type ReadonlySignal };
 
@@ -55,7 +55,7 @@ function createPropUpdater(props: any, prop: string, signal: Signal) {
 */
 
 let finishUpdate: (() => void) | undefined;
-const updaterForComponent = new WeakMap<ReactOwner, Effect>();
+const updaterForComponent = new WeakMap<() => void, Effect>();
 
 function setCurrentUpdater(updater?: Effect) {
 	// end tracking for the current update:
@@ -95,19 +95,6 @@ Object.defineProperties(Signal.prototype, {
 	ref: { configurable: true, value: null },
 });
 
-// Track the current owner (roughly equiv to current vnode)
-let lastOwner: ReactOwner | undefined;
-let currentOwner: ReactOwner | null = null;
-Object.defineProperty(internals.ReactCurrentOwner, "current", {
-	get() {
-		return currentOwner;
-	},
-	set(owner) {
-		currentOwner = owner;
-		if (currentOwner) lastOwner = currentOwner;
-	},
-});
-
 // Track the current dispatcher (roughly equiv to current component impl)
 let lock = false;
 const UPDATE = () => ({});
@@ -119,17 +106,17 @@ Object.defineProperty(internals.ReactCurrentDispatcher, "current", {
 	set(api) {
 		currentDispatcher = api;
 		if (lock) return;
-		if (lastOwner && api && !isInvalidHookAccessor(api)) {
+		if (api && !isInvalidHookAccessor(api)) {
 			// prevent re-injecting useReducer when the Dispatcher
 			// context changes to run the reducer callback:
 			lock = true;
 			const rerender = api.useReducer(UPDATE, {})[1];
 			lock = false;
 
-			let updater = updaterForComponent.get(lastOwner);
+			let updater = updaterForComponent.get(rerender);
 			if (!updater) {
 				updater = createUpdater(rerender);
-				updaterForComponent.set(lastOwner, updater);
+				updaterForComponent.set(rerender, updater);
 			} else {
 				updater._callback = rerender;
 			}
@@ -148,8 +135,7 @@ function isInvalidHookAccessor(api: ReactDispatcher) {
 	if (cached !== undefined) return cached;
 	// we only want the real implementation, not the warning ones
 	const invalid =
-		api.useCallback.length < 2 ||
-		/warnInvalidHookAccess/.test(api.useCallback as any);
+		api.useCallback.length < 2 || /Invalid/.test(api.useCallback as any);
 	invalidHookAccessors.set(api, invalid);
 	return invalid;
 }
