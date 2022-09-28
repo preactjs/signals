@@ -20,7 +20,7 @@ import { Effect, ReactDispatcher } from "./internal";
 
 export { signal, computed, batch, effect, Signal, type ReadonlySignal };
 
-const Empty = Object.freeze([]);
+const Empty = [] as const;
 
 /**
  * React uses a different entry-point depending on NODE_ENV env var
@@ -91,7 +91,6 @@ function createEffectStore() {
 	const unsubscribe = effect(function (this: Effect) {
 		updater = this;
 	});
-
 
 	updater._callback = function () {
 		if (!onChangeNotifyReact) {
