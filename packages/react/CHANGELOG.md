@@ -1,5 +1,14 @@
 # @preact/signals-react
 
+## 1.1.1
+
+### Patch Changes
+
+- [#221](https://github.com/preactjs/signals/pull/221) [`7e8d4c2`](https://github.com/preactjs/signals/commit/7e8d4c25dfdc7fa9434b6c2af4aa0e495b9fae55) Thanks [@marvinhagemeister](https://github.com/marvinhagemeister)! - Fix signal not updated in React production build
+
+- Updated dependencies [[`4b73164`](https://github.com/preactjs/signals/commit/4b7316497aee03413f91e9f714cdcf9f553e39d9), [`57fd2e7`](https://github.com/preactjs/signals/commit/57fd2e723528a36cc5d4ebf09ba34178aa84c879), [`49756ae`](https://github.com/preactjs/signals/commit/49756aef28fe12c6ae6b801224bf5ae608ddf562)]:
+  - @preact/signals-core@1.2.1
+
 ## 1.1.0
 
 ### Minor Changes
