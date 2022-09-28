@@ -7,7 +7,7 @@ import {
 	__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED as internals,
 } from "react";
 import React from "react";
-import {useSyncExternalStore} from "use-sync-external-store/shim"
+import { useSyncExternalStore } from "use-sync-external-store/shim";
 import {
 	signal,
 	computed,
@@ -21,6 +21,11 @@ import { Effect, ReactDispatcher } from "./internal";
 export { signal, computed, batch, effect, Signal, type ReadonlySignal };
 
 const Empty = Object.freeze([]);
+
+/**
+ * React uses a different entry-point depending on NODE_ENV env var
+ */
+const __DEV__ = process.env.NODE_ENV !== "production";
 
 /**
  * Install a middleware into React.createElement to replace any Signals in props with their value.
@@ -81,19 +86,43 @@ function setCurrentUpdater(updater?: Effect) {
 function createEffectStore() {
 	let updater!: Effect;
 	let version = 0;
+	let onChangeNotifyReact: (() => void) | undefined;
 
-	effect(function (this: Effect) {
+	const unsubscribe = effect(function (this: Effect) {
 		updater = this;
 	});
+
+
+	updater._callback = function () {
+		if (!onChangeNotifyReact) {
+			/**
+			 * In dev, lazily unsubscribe self if React isn't subscribed to the store,
+			 * in other words, if the component is not mounted anymore.
+			 *
+			 * We do this to deal with StrictMode double rendering React quirks.
+			 * Only one of the renders is actually mounted.
+			 */
+			return void unsubscribe();
+		}
+
+		version = (version + 1) | 0;
+		onChangeNotifyReact();
+	};
 
 	return {
 		updater,
 		subscribe(onStoreChange: () => void) {
-			updater._callback = function () {
-				version = (version + 1) & ~(1 << 31);
-				onStoreChange();
+			onChangeNotifyReact = onStoreChange;
+
+			return function () {
+				/**
+				 * In StrictMode (in dev mode), React will play with subscribe/unsubscribe/subscribe in double renders,
+				 * We don't really want to unsubscribe during React's play-time and can't reliably know which of renders
+				 * will end up actually being mounted, so we defer unsubscribe to the updater._callback.
+				 */
+				if (!__DEV__) unsubscribe();
+				onChangeNotifyReact = undefined;
 			};
-			return function _unsubscribe() {};
 		},
 		getSnapshot() {
 			return version;
