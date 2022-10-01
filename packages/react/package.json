@@ -1,6 +1,6 @@
 {
 	"name": "@preact/signals-react",
-	"version": "1.1.0",
+	"version": "1.1.1",
 	"license": "MIT",
 	"description": "",
 	"keywords": [],
@@ -38,7 +38,7 @@
 		"prepublishOnly": "cd ../.. && pnpm build:react"
 	},
 	"dependencies": {
-		"@preact/signals-core": "workspace:^1.2.0"
+		"@preact/signals-core": "workspace:^1.2.1"
 	},
 	"peerDependencies": {
 		"react": "17.x || 18.x"
