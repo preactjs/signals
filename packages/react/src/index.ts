@@ -36,17 +36,28 @@ const ProxyHandlers = {
 	 * With the native Proxy, all other calls such as access/setting to/of properties will
 	 * be forwarded to the target Component, so we don't need to copy the Component's
 	 * own or inherited properties.
+	 *
+	 * @see https://github.com/facebook/react/blob/2d80a0cd690bb5650b6c8a6c079a87b5dc42bd15/packages/react-reconciler/src/ReactFiberHooks.old.js#L460
 	 */
 	apply(Component: FunctionComponent, thisArg: any, argumentsList: any) {
 		const store = useMemo(createEffectStore, Empty);
 
 		useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
 
-		const ends = store.updater._start();
-		const kids = Component.apply(thisArg, argumentsList);
-		ends();
+		const stop = store.updater._start();
 
-		return kids;
+		try {
+			const children = Component.apply(thisArg, argumentsList);
+			return children;
+		} catch (e) {
+			// Re-throwing promises that'll be handled by suspense
+			// or an actual error.
+			throw e;
+		} finally {
+			// Stop effects in either case before return or throw,
+			// Otherwise the effect will leak.
+			stop();
+		}
 	},
 };
 
@@ -108,10 +119,8 @@ function createEffectStore() {
 		updater = this;
 	});
 	updater._callback = function () {
-		if (!onChangeNotifyReact) return void unsubscribe();
-
 		version = (version + 1) | 0;
-		onChangeNotifyReact!();
+		if (onChangeNotifyReact) onChangeNotifyReact();
 	};
 
 	return {
@@ -121,10 +130,18 @@ function createEffectStore() {
 
 			return function () {
 				/**
-				 * @todo - we may want to unsubscribe here instead?
-				 * Components wrapped in `memo` no longer get updated if we unsubscribe here.
+				 * Rotate to next version when unsubscribing to ensure that components are re-run
+				 * when subscribing again.
+				 *
+				 * In StrictMode, 'memo'-ed components seem to keep a stale snapshot version, so
+				 * don't re-run after subscribing again if the version is the same as last time.
+				 *
+				 * Because we unsubscribe from the effect, the version may not change. We simply
+				 * set a new initial version in case of stale snapshots here.
 				 */
+				version = (version + 1) | 0;
 				onChangeNotifyReact = undefined;
+				unsubscribe();
 			};
 		},
 		getSnapshot() {
@@ -142,7 +159,8 @@ function WrapJsx<T>(jsx: T): T {
 		}
 
 		if (type && typeof type === "object" && type.$$typeof === ReactMemoType) {
-			return jsx.call(jsx, ProxyFunctionalComponent(type.type), props, ...rest);
+			type.type = ProxyFunctionalComponent(type.type);
+			return jsx.call(jsx, type, props, ...rest);
 		}
 
 		if (typeof type === "string" && props) {
