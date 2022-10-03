@@ -2,11 +2,12 @@ import {
 	useRef,
 	useMemo,
 	useEffect,
-	// @ts-ignore-next-line
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED as internals,
+	Component,
+	type FunctionComponent,
 } from "react";
 import React from "react";
+import jsxRuntime from "react/jsx-runtime";
+import jsxRuntimeDev from "react/jsx-dev-runtime";
 import { useSyncExternalStore } from "use-sync-external-store/shim";
 import {
 	signal,
@@ -16,65 +17,80 @@ import {
 	Signal,
 	type ReadonlySignal,
 } from "@preact/signals-core";
-import { Effect, ReactDispatcher } from "./internal";
+import type { Effect, JsxRuntimeModule } from "./internal";
 
 export { signal, computed, batch, effect, Signal, type ReadonlySignal };
 
 const Empty = [] as const;
+const ReactElemType = Symbol.for("react.element"); // https://github.com/facebook/react/blob/346c7d4c43a0717302d446da9e7423a8e28d8996/packages/shared/ReactSymbols.js#L15
+const ReactMemoType = Symbol.for("react.memo"); // https://github.com/facebook/react/blob/346c7d4c43a0717302d446da9e7423a8e28d8996/packages/shared/ReactSymbols.js#L30
+const ProxyInstance = new Map<FunctionComponent<any>, FunctionComponent<any>>();
+const SupportsProxy = typeof Proxy === "function";
 
-/**
- * React uses a different entry-point depending on NODE_ENV env var
- */
-const __DEV__ = process.env.NODE_ENV !== "production";
+const ProxyHandlers = {
+	/**
+	 * This is a function call trap for functional components.
+	 * When this is called, we know it means React did run 'Component()',
+	 * that means we can use any hooks here to setup our effect and store.
+	 *
+	 * With the native Proxy, all other calls such as access/setting to/of properties will
+	 * be forwarded to the target Component, so we don't need to copy the Component's
+	 * own or inherited properties.
+	 */
+	apply(Component: FunctionComponent, thisArg: any, argumentsList: any) {
+		const store = useMemo(createEffectStore, Empty);
 
-/**
- * Install a middleware into React.createElement to replace any Signals in props with their value.
- * @todo this likely needs to be duplicated for jsx()...
- */
-const createElement = React.createElement;
-// @ts-ignore-next-line
-React.createElement = function (type, props) {
-	if (typeof type === "string" && props) {
-		for (let i in props) {
-			let v = props[i];
-			if (i !== "children" && v instanceof Signal) {
-				// createPropUpdater(props, i, v);
-				props[i] = v.value;
-			}
-		}
-	}
-	// @ts-ignore-next-line
-	return createElement.apply(this, arguments);
+		useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
+
+		const ends = store.updater._start();
+		const kids = Component.apply(thisArg, argumentsList);
+		ends();
+
+		return kids;
+	},
 };
 
-/*
-// This breaks React's controlled components implementation
-function createPropUpdater(props: any, prop: string, signal: Signal) {
-	let ref = props.ref;
-	if (!ref) ref = props.ref = React.createRef();
-	effect(() => {
-		if (props) props[prop] = signal.value;
-		let el = ref.current;
-		if (!el) return; // unsubscribe
-		(el as any)[prop] = signal.value;
-	});
-	props = null;
+function ProxyFunctionalComponent(Component: FunctionComponent<any>) {
+	return ProxyInstance.get(Component) || WrapWithProxy(Component);
 }
-*/
+function WrapWithProxy(Component: FunctionComponent<any>) {
+	if (SupportsProxy) {
+		const ProxyComponent = new Proxy(Component, ProxyHandlers);
 
-let finishUpdate: (() => void) | undefined;
+		ProxyInstance.set(Component, ProxyComponent);
+		ProxyInstance.set(ProxyComponent, ProxyComponent);
 
-function setCurrentUpdater(updater?: Effect) {
-	// end tracking for the current update:
-	if (finishUpdate) finishUpdate();
-	// start tracking the new update:
-	finishUpdate = updater && updater._start();
+		return ProxyComponent;
+	}
+
+	/**
+	 * Emulate a Proxy if environment doesn't support it.
+	 *
+	 * @TODO - unlike Proxy, it's not possible to access the type/Component's
+	 * static properties this way. Not sure if we want to copy all statics here.
+	 * Omitting this for now.
+	 *
+	 * @example - works with Proxy, doesn't with wrapped function.
+	 * ```
+	 * const el = <SomeFunctionalComponent />
+	 * el.type.someOwnOrInheritedProperty;
+	 * el.type.defaultProps;
+	 * ```
+	 */
+	const WrappedComponent = function () {
+		return ProxyHandlers.apply(Component, undefined, arguments);
+	};
+	ProxyInstance.set(Component, WrappedComponent);
+	ProxyInstance.set(WrappedComponent, WrappedComponent);
+
+	return WrappedComponent;
 }
 
 /**
- * A redux-like store whose store value is a positive 32bit integer (a 'version') to be used with useSyncExternalStore API.
- * React (current owner) subscribes to this store and gets a snapshot of the current 'version'.
- * Whenever the 'version' changes, we tell React it's time to update the component (call 'onStoreChange').
+ * A redux-like store whose store value is a positive 32bit integer (a 'version').
+ *
+ * React subscribes to this store and gets a snapshot of the current 'version',
+ * whenever the 'version' changes, we tell React it's time to update the component (call 'onStoreChange').
  *
  * How we achieve this is by creating a binding with an 'effect', when the `effect._callback' is called,
  * we update our store version and tell React to re-render the component ([1] We don't really care when/how React does it).
@@ -88,24 +104,14 @@ function createEffectStore() {
 	let version = 0;
 	let onChangeNotifyReact: (() => void) | undefined;
 
-	const unsubscribe = effect(function (this: Effect) {
+	let unsubscribe = effect(function (this: Effect) {
 		updater = this;
 	});
-
 	updater._callback = function () {
-		if (!onChangeNotifyReact) {
-			/**
-			 * In dev, lazily unsubscribe self if React isn't subscribed to the store,
-			 * in other words, if the component is not mounted anymore.
-			 *
-			 * We do this to deal with StrictMode double rendering React quirks.
-			 * Only one of the renders is actually mounted.
-			 */
-			return void unsubscribe();
-		}
+		if (!onChangeNotifyReact) return void unsubscribe();
 
 		version = (version + 1) | 0;
-		onChangeNotifyReact();
+		onChangeNotifyReact!();
 	};
 
 	return {
@@ -115,11 +121,9 @@ function createEffectStore() {
 
 			return function () {
 				/**
-				 * In StrictMode (in dev mode), React will play with subscribe/unsubscribe/subscribe in double renders,
-				 * We don't really want to unsubscribe during React's play-time and can't reliably know which of renders
-				 * will end up actually being mounted, so we defer unsubscribe to the updater._callback.
+				 * @todo - we may want to unsubscribe here instead?
+				 * Components wrapped in `memo` no longer get updated if we unsubscribe here.
 				 */
-				if (!__DEV__) unsubscribe();
 				onChangeNotifyReact = undefined;
 			};
 		},
@@ -129,6 +133,49 @@ function createEffectStore() {
 	};
 }
 
+function WrapJsx<T>(jsx: T): T {
+	if (typeof jsx !== "function") return jsx;
+
+	return function (type: any, props: any, ...rest: any[]) {
+		if (typeof type === "function" && !(type instanceof Component)) {
+			return jsx.call(jsx, ProxyFunctionalComponent(type), props, ...rest);
+		}
+
+		if (type && typeof type === "object" && type.$$typeof === ReactMemoType) {
+			return jsx.call(jsx, ProxyFunctionalComponent(type.type), props, ...rest);
+		}
+
+		if (typeof type === "string" && props) {
+			for (let i in props) {
+				let v = props[i];
+				if (i !== "children" && v instanceof Signal) {
+					props[i] = v.value;
+				}
+			}
+		}
+
+		return jsx.call(jsx, type, props, ...rest);
+	} as any as T;
+}
+
+const JsxPro: JsxRuntimeModule = jsxRuntime;
+const JsxDev: JsxRuntimeModule = jsxRuntimeDev;
+
+/**
+ * createElement _may_ be called by jsx runtime as a fallback in certain cases,
+ * so we need to wrap it regardless.
+ *
+ * The jsx exports depend on the `NODE_ENV` var to ensure the users' bundler doesn't
+ * include both, so one of them will be set with `undefined` values.
+ */
+React.createElement = WrapJsx(React.createElement);
+JsxDev.jsx && /*   */ (JsxDev.jsx = WrapJsx(JsxDev.jsx));
+JsxPro.jsx && /*   */ (JsxPro.jsx = WrapJsx(JsxPro.jsx));
+JsxDev.jsxs && /*  */ (JsxDev.jsxs = WrapJsx(JsxDev.jsxs));
+JsxPro.jsxs && /*  */ (JsxPro.jsxs = WrapJsx(JsxPro.jsxs));
+JsxDev.jsxDEV && /**/ (JsxDev.jsxDEV = WrapJsx(JsxDev.jsxDEV));
+JsxPro.jsxDEV && /**/ (JsxPro.jsxDEV = WrapJsx(JsxPro.jsxDEV));
+
 /**
  * A wrapper component that renders a Signal's value directly as a Text node.
  */
@@ -137,11 +184,9 @@ function Text({ data }: { data: Signal }) {
 }
 
 // Decorate Signals so React renders them as <Text> components.
-//@ts-ignore-next-line
-const $$typeof = createElement("a").$$typeof;
 Object.defineProperties(Signal.prototype, {
-	$$typeof: { configurable: true, value: $$typeof },
-	type: { configurable: true, value: Text },
+	$$typeof: { configurable: true, value: ReactElemType },
+	type: { configurable: true, value: ProxyFunctionalComponent(Text) },
 	props: {
 		configurable: true,
 		get() {
@@ -150,52 +195,6 @@ Object.defineProperties(Signal.prototype, {
 	},
 	ref: { configurable: true, value: null },
 });
-
-// Track the current dispatcher (roughly equiv to current component impl)
-let lock = false;
-let currentDispatcher: ReactDispatcher;
-
-Object.defineProperty(internals.ReactCurrentDispatcher, "current", {
-	get() {
-		return currentDispatcher;
-	},
-	set(api: ReactDispatcher) {
-		currentDispatcher = api;
-		if (lock) return;
-		if (api && !isInvalidHookAccessor(api)) {
-			// prevent re-injecting useMemo & useSyncExternalStore when the Dispatcher
-			// context changes.
-			lock = true;
-
-			const store = api.useMemo(createEffectStore, Empty);
-
-			useSyncExternalStore(
-				store.subscribe,
-				store.getSnapshot,
-				store.getSnapshot
-			);
-
-			lock = false;
-
-			setCurrentUpdater(store.updater);
-		} else {
-			setCurrentUpdater();
-		}
-	},
-});
-
-// We inject a useReducer into every function component via CurrentDispatcher.
-// This prevents injecting into anything other than a function component render.
-const invalidHookAccessors = new Map();
-function isInvalidHookAccessor(api: ReactDispatcher) {
-	const cached = invalidHookAccessors.get(api);
-	if (cached !== undefined) return cached;
-	// we only want the real implementation, not the warning ones
-	const invalid =
-		api.useCallback.length < 2 || /Invalid/.test(api.useCallback as any);
-	invalidHookAccessors.set(api, invalid);
-	return invalid;
-}
 
 export function useSignal<T>(value: T) {
 	return useMemo(() => signal<T>(value), Empty);

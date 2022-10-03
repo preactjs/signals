@@ -1,5 +1,4 @@
 import { Signal } from "@preact/signals-core";
-import type { useCallback, useMemo, useSyncExternalStore } from "react"
 
 export interface Effect {
 	_sources: object | undefined;
@@ -8,10 +7,10 @@ export interface Effect {
 	_dispose(): void;
 }
 
-export interface ReactDispatcher {
-	useCallback: typeof useCallback;
-	useMemo: typeof useMemo;
-	useSyncExternalStore: typeof useSyncExternalStore;
-}
-
 export type Updater = Signal<unknown>;
+
+export interface JsxRuntimeModule {
+	jsx?(type: any, ...rest: any[]): unknown;
+	jsxs?(type: any, ...rest: any[]): unknown;
+	jsxDEV?(type: any, ...rest: any[]): unknown;
+}
