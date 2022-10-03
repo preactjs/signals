@@ -4,6 +4,7 @@ globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 import { signal, useComputed } from "@preact/signals-react";
 import { createElement, useMemo, memo, StrictMode } from "react";
 import { createRoot, Root } from "react-dom/client";
+import { renderToStaticMarkup } from "react-dom/server";
 import { act } from "react-dom/test-utils";
 
 describe("@preact/signals-react", () => {
@@ -162,6 +163,26 @@ describe("@preact/signals-react", () => {
 		it("should consistently rerender in strict mode", async () => {
 			const sig = signal<string>(null!);
 
+			const Test = () => <p>{sig.value}</p>;
+			const App = () => (
+				<StrictMode>
+					<Test />
+				</StrictMode>
+			);
+
+			for (let i = 0; i < 3; i++) {
+				const value = `${i}`;
+
+				act(() => {
+					sig.value = value;
+					render(<App />);
+				});
+				expect(scratch.textContent).to.equal(value);
+			}
+		});
+		it("should consistently rerender in strict mode (with memo)", async () => {
+			const sig = signal<string>(null!);
+
 			const Test = memo(() => <p>{sig.value}</p>);
 			const App = () => (
 				<StrictMode>
@@ -177,6 +198,27 @@ describe("@preact/signals-react", () => {
 					render(<App />);
 				});
 				expect(scratch.textContent).to.equal(value);
+			}
+		});
+		it("should render static markup of a component", async () => {
+			const count = signal(0);
+
+			const Test = () => {
+				return (
+					<pre>
+						{renderToStaticMarkup(<code>{count}</code>)}
+						{renderToStaticMarkup(<code>{count.value}</code>)}
+					</pre>
+				);
+			};
+			for (let i = 0; i < 3; i++) {
+				act(() => {
+					count.value += 1;
+					render(<Test />);
+				});
+				expect(scratch.textContent).to.equal(
+					`<code>${count.value}</code><code>${count.value}</code>`
+				);
 			}
 		});
 	});
