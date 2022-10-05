@@ -1,6 +1,9 @@
 function cycleDetected(): never {
 	throw new Error("Cycle detected");
 }
+function mutationDetected(): never {
+	throw new Error("Computed cannot have side-effects");
+}
 
 // Flags for Computed and Effect.
 const RUNNING = 1 << 0;
@@ -9,6 +12,9 @@ const OUTDATED = 1 << 2;
 const DISPOSED = 1 << 3;
 const HAS_ERROR = 1 << 4;
 const TRACKING = 1 << 5;
+
+// Flags that identify the kind of Signal
+const COMPUTED_KIND = 1 << 6;
 
 // Flags for Nodes.
 const NODE_FREE = 1 << 0;
@@ -284,7 +290,11 @@ Object.defineProperty(Signal.prototype, "value", {
 		}
 		return this._value;
 	},
-	set(value) {
+	set(this: Signal, value) {
+		if (evalContext && evalContext._flags & COMPUTED_KIND) {
+			mutationDetected();
+		}
+
 		if (value !== this._value) {
 			if (batchIteration > 100) {
 				cycleDetected();
@@ -402,7 +412,7 @@ function Computed(this: Computed, compute: () => unknown) {
 	this._compute = compute;
 	this._sources = undefined;
 	this._globalVersion = globalVersion - 1;
-	this._flags = OUTDATED;
+	this._flags = OUTDATED | COMPUTED_KIND;
 }
 
 Computed.prototype = new Signal() as Computed;
@@ -668,4 +678,4 @@ function effect(compute: () => unknown): () => void {
 	return effect._dispose.bind(effect);
 }
 
-export { signal, computed, effect, batch, Signal, ReadonlySignal };
+export { signal, computed, effect, batch, Signal, type ReadonlySignal };
