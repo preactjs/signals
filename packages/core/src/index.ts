@@ -13,9 +13,6 @@ const DISPOSED = 1 << 3;
 const HAS_ERROR = 1 << 4;
 const TRACKING = 1 << 5;
 
-// Flags that identify the kind of Signal
-const COMPUTED_KIND = 1 << 6;
-
 // Flags for Nodes.
 const NODE_FREE = 1 << 0;
 const NODE_SUBSCRIBED = 1 << 1;
@@ -291,7 +288,7 @@ Object.defineProperty(Signal.prototype, "value", {
 		return this._value;
 	},
 	set(this: Signal, value) {
-		if (evalContext && evalContext._flags & COMPUTED_KIND) {
+		if (evalContext instanceof Computed) {
 			mutationDetected();
 		}
 
@@ -412,7 +409,7 @@ function Computed(this: Computed, compute: () => unknown) {
 	this._compute = compute;
 	this._sources = undefined;
 	this._globalVersion = globalVersion - 1;
-	this._flags = OUTDATED | COMPUTED_KIND;
+	this._flags = OUTDATED;
 }
 
 Computed.prototype = new Signal() as Computed;
