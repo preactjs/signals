@@ -12,14 +12,12 @@ const TRACKING = 1 << 5;
 
 // Flags for Nodes.
 const NODE_FREE = 1 << 0;
-const NODE_SUBSCRIBED = 1 << 1;
 
 // A linked list node used to track dependencies (sources) and dependents (targets).
 // Also used to remember the source's last version number that the target saw.
 type Node = {
 	// A node may have the following flags:
 	//  NODE_FREE when it's unclear whether the source is still a dependency of the target
-	//  NODE_SUBSCRIBED when the target has subscribed to listen change notifications from the source
 	_flags: number;
 
 	// A source whose value the target depends on.
@@ -219,10 +217,8 @@ Signal.prototype._refresh = function () {
 };
 
 Signal.prototype._subscribe = function (node) {
-	if (!(node._flags & NODE_SUBSCRIBED)) {
-		node._flags |= NODE_SUBSCRIBED;
+	if (this._targets !== node && node._prevTarget === undefined) {
 		node._nextTarget = this._targets;
-
 		if (this._targets !== undefined) {
 			this._targets._prevTarget = node;
 		}
@@ -231,22 +227,18 @@ Signal.prototype._subscribe = function (node) {
 };
 
 Signal.prototype._unsubscribe = function (node) {
-	if (node._flags & NODE_SUBSCRIBED) {
-		node._flags &= ~NODE_SUBSCRIBED;
-
-		const prev = node._prevTarget;
-		const next = node._nextTarget;
-		if (prev !== undefined) {
-			prev._nextTarget = next;
-			node._prevTarget = undefined;
-		}
-		if (next !== undefined) {
-			next._prevTarget = prev;
-			node._nextTarget = undefined;
-		}
-		if (node === this._targets) {
-			this._targets = next;
-		}
+	const prev = node._prevTarget;
+	const next = node._nextTarget;
+	if (prev !== undefined) {
+		prev._nextTarget = next;
+		node._prevTarget = undefined;
+	}
+	if (next !== undefined) {
+		next._prevTarget = prev;
+		node._nextTarget = undefined;
+	}
+	if (node === this._targets) {
+		this._targets = next;
 	}
 };
 
