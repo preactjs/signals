@@ -66,11 +66,7 @@ function endBatch() {
 			effect._nextBatchedEffect = undefined;
 			effect._flags &= ~NOTIFIED;
 
-			if (
-				!(effect._flags & DISPOSED) &&
-				effect._flags & OUTDATED &&
-				needsToRecompute(effect)
-			) {
+			if (!(effect._flags & DISPOSED) && needsToRecompute(effect)) {
 				try {
 					effect._callback();
 				} catch (err) {
@@ -619,7 +615,7 @@ function Effect(this: Effect, compute: () => void) {
 	this._cleanup = undefined;
 	this._sources = undefined;
 	this._nextBatchedEffect = undefined;
-	this._flags = OUTDATED | TRACKING;
+	this._flags = TRACKING;
 }
 
 Effect.prototype._callback = function () {
@@ -643,7 +639,6 @@ Effect.prototype._start = function () {
 	prepareSources(this);
 
 	/*@__INLINE__**/ startBatch();
-	this._flags &= ~OUTDATED;
 	const prevContext = evalContext;
 	evalContext = this;
 	return endEffect.bind(this, prevContext);
@@ -651,7 +646,7 @@ Effect.prototype._start = function () {
 
 Effect.prototype._notify = function () {
 	if (!(this._flags & NOTIFIED)) {
-		this._flags |= NOTIFIED | OUTDATED;
+		this._flags |= NOTIFIED;
 		this._nextBatchedEffect = batchedEffect;
 		batchedEffect = this;
 	}
