@@ -524,7 +524,7 @@ describe("effect()", () => {
 		expect(fn).to.throw(/Cycle detected/);
 	});
 
-	it("should throw on indirect cycles", () => {
+	it("should throw if a computed tries to set a signal's value", () => {
 		const a = signal(0);
 		let i = 0;
 
@@ -543,7 +543,7 @@ describe("effect()", () => {
 				c.value;
 			});
 
-		expect(fn).to.throw(/Cycle detected/);
+		expect(fn).to.throw(/Computed cannot have side-effects/);
 	});
 
 	it("should allow disposing the effect multiple times", () => {
