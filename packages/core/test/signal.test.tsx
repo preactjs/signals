@@ -524,6 +524,28 @@ describe("effect()", () => {
 		expect(fn).to.throw(/Cycle detected/);
 	});
 
+	it("should throw on indirect cycles", () => {
+		const a = signal(0);
+		let i = 0;
+
+		const c = computed(() => {
+			a.value;
+			a.value = NaN;
+			return NaN;
+		});
+
+		const fn = () =>
+			effect(() => {
+				// Prevent test suite from spinning if limit is not hit
+				if (i++ > 200) {
+					throw new Error("test failed");
+				}
+				c.value;
+			});
+
+		expect(fn).to.throw(/Cycle detected/);
+	});
+
 	it("should allow disposing the effect multiple times", () => {
 		const dispose = effect(() => undefined);
 		dispose();
