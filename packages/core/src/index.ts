@@ -10,16 +10,9 @@ const DISPOSED = 1 << 3;
 const HAS_ERROR = 1 << 4;
 const TRACKING = 1 << 5;
 
-// Flags for Nodes.
-const NODE_FREE = 1 << 0;
-
 // A linked list node used to track dependencies (sources) and dependents (targets).
 // Also used to remember the source's last version number that the target saw.
 type Node = {
-	// A node may have the following flags:
-	//  NODE_FREE when it's unclear whether the source is still a dependency of the target
-	_flags: number;
-
 	// A source whose value the target depends on.
 	_source: Signal;
 	_prevSource?: Node;
@@ -33,6 +26,7 @@ type Node = {
 	// The version number of the source that target has last seen. We use version numbers
 	// instead of storing the source value, because source values can take arbitrary amount
 	// of memory, and computeds could hang on to them forever because they're lazily evaluated.
+	// Use the special value -1 to mark potentially unused but recyclable nodes.
 	_version: number;
 
 	// Used to remember & roll back the source's previous `._node` value when entering &
@@ -119,7 +113,6 @@ function addDependency(signal: Signal): Node | undefined {
 		// `signal` is a new dependency. Create a new node dependency node, move it
 		//  to the front of the current context's dependency list.
 		node = {
-			_flags: 0,
 			_version: 0,
 			_source: signal,
 			_prevSource: undefined,
@@ -138,10 +131,10 @@ function addDependency(signal: Signal): Node | undefined {
 			signal._subscribe(node);
 		}
 		return node;
-	} else if (node._flags & NODE_FREE) {
+	} else if (node._version === -1) {
 		// `signal` is an existing dependency from a previous evaluation. Reuse the dependency
 		// node and move it to the front of the evaluation context's dependency list.
-		node._flags &= ~NODE_FREE;
+		node._version = 0;
 
 		const head = evalContext._sources;
 		if (node !== head) {
@@ -172,7 +165,10 @@ declare class Signal<T = any> {
 	/** @internal */
 	_value: unknown;
 
-	/** @internal */
+	/** @internal
+	 * Version numbers should always be >= 0, because the special value -1 is used
+	 * by Nodes to signify potentially unused but recyclable notes.
+	 */
 	_version: number;
 
 	/** @internal */
@@ -340,7 +336,7 @@ function prepareSources(target: Computed | Effect) {
 			node._rollbackNode = rollbackNode;
 		}
 		node._source._node = node;
-		node._flags |= NODE_FREE;
+		node._version = -1;
 	}
 }
 
@@ -355,7 +351,7 @@ function cleanupSources(target: Computed | Effect) {
 	let sources = undefined;
 	while (node !== undefined) {
 		const next = node._nextSource;
-		if (node._flags & NODE_FREE) {
+		if (node._version === -1) {
 			node._source._unsubscribe(node);
 			node._nextSource = undefined;
 		} else {
