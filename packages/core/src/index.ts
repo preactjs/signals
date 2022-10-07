@@ -306,8 +306,11 @@ function needsToRecompute(target: Computed | Effect): boolean {
 	// Check the dependencies for changed values. The dependency list is already
 	// in order of use. Therefore if multiple dependencies have changed values, only
 	// the first used dependency is re-evaluated at this point.
-	let node = target._sources;
-	while (node !== undefined) {
+	for (
+		let node = target._sources;
+		node !== undefined;
+		node = node._nextSource
+	) {
 		// If there's a new version of the dependency before or after refreshing,
 		// or the dependency has something blocking it from refreshing at all (e.g. a
 		// dependency cycle), then we need to recompute.
@@ -316,13 +319,12 @@ function needsToRecompute(target: Computed | Effect): boolean {
 			!node._source._refresh() ||
 			node._source._version !== node._version
 		) {
-			break;
+			return true;
 		}
-		node = node._nextSource;
 	}
 	// If none of the dependencies have changed values since last recompute then the
 	// there's no need to recompute.
-	return node !== undefined;
+	return false;
 }
 
 function prepareSources(target: Computed | Effect) {
