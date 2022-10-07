@@ -10,18 +10,9 @@ const DISPOSED = 1 << 3;
 const HAS_ERROR = 1 << 4;
 const TRACKING = 1 << 5;
 
-// Flags for Nodes.
-const NODE_FREE = 1 << 0;
-const NODE_SUBSCRIBED = 1 << 1;
-
 // A linked list node used to track dependencies (sources) and dependents (targets).
 // Also used to remember the source's last version number that the target saw.
 type Node = {
-	// A node may have the following flags:
-	//  NODE_FREE when it's unclear whether the source is still a dependency of the target
-	//  NODE_SUBSCRIBED when the target has subscribed to listen change notifications from the source
-	_flags: number;
-
 	// A source whose value the target depends on.
 	_source: Signal;
 	_prevSource?: Node;
@@ -35,6 +26,7 @@ type Node = {
 	// The version number of the source that target has last seen. We use version numbers
 	// instead of storing the source value, because source values can take arbitrary amount
 	// of memory, and computeds could hang on to them forever because they're lazily evaluated.
+	// Use the special value -1 to mark potentially unused but recyclable nodes.
 	_version: number;
 
 	// Used to remember & roll back the source's previous `._node` value when entering &
@@ -121,7 +113,6 @@ function addDependency(signal: Signal): Node | undefined {
 		// `signal` is a new dependency. Create a new node dependency node, move it
 		//  to the front of the current context's dependency list.
 		node = {
-			_flags: 0,
 			_version: 0,
 			_source: signal,
 			_prevSource: undefined,
@@ -140,10 +131,10 @@ function addDependency(signal: Signal): Node | undefined {
 			signal._subscribe(node);
 		}
 		return node;
-	} else if (node._flags & NODE_FREE) {
+	} else if (node._version === -1) {
 		// `signal` is an existing dependency from a previous evaluation. Reuse the dependency
 		// node and move it to the front of the evaluation context's dependency list.
-		node._flags &= ~NODE_FREE;
+		node._version = 0;
 
 		const head = evalContext._sources;
 		if (node !== head) {
@@ -174,7 +165,10 @@ declare class Signal<T = any> {
 	/** @internal */
 	_value: unknown;
 
-	/** @internal */
+	/** @internal
+	 * Version numbers should always be >= 0, because the special value -1 is used
+	 * by Nodes to signify potentially unused but recyclable notes.
+	 */
 	_version: number;
 
 	/** @internal */
@@ -219,10 +213,8 @@ Signal.prototype._refresh = function () {
 };
 
 Signal.prototype._subscribe = function (node) {
-	if (!(node._flags & NODE_SUBSCRIBED)) {
-		node._flags |= NODE_SUBSCRIBED;
+	if (this._targets !== node && node._prevTarget === undefined) {
 		node._nextTarget = this._targets;
-
 		if (this._targets !== undefined) {
 			this._targets._prevTarget = node;
 		}
@@ -231,22 +223,18 @@ Signal.prototype._subscribe = function (node) {
 };
 
 Signal.prototype._unsubscribe = function (node) {
-	if (node._flags & NODE_SUBSCRIBED) {
-		node._flags &= ~NODE_SUBSCRIBED;
-
-		const prev = node._prevTarget;
-		const next = node._nextTarget;
-		if (prev !== undefined) {
-			prev._nextTarget = next;
-			node._prevTarget = undefined;
-		}
-		if (next !== undefined) {
-			next._prevTarget = prev;
-			node._nextTarget = undefined;
-		}
-		if (node === this._targets) {
-			this._targets = next;
-		}
+	const prev = node._prevTarget;
+	const next = node._nextTarget;
+	if (prev !== undefined) {
+		prev._nextTarget = next;
+		node._prevTarget = undefined;
+	}
+	if (next !== undefined) {
+		next._prevTarget = prev;
+		node._nextTarget = undefined;
+	}
+	if (node === this._targets) {
+		this._targets = next;
 	}
 };
 
@@ -318,8 +306,11 @@ function needsToRecompute(target: Computed | Effect): boolean {
 	// Check the dependencies for changed values. The dependency list is already
 	// in order of use. Therefore if multiple dependencies have changed values, only
 	// the first used dependency is re-evaluated at this point.
-	let node = target._sources;
-	while (node !== undefined) {
+	for (
+		let node = target._sources;
+		node !== undefined;
+		node = node._nextSource
+	) {
 		// If there's a new version of the dependency before or after refreshing,
 		// or the dependency has something blocking it from refreshing at all (e.g. a
 		// dependency cycle), then we need to recompute.
@@ -328,13 +319,12 @@ function needsToRecompute(target: Computed | Effect): boolean {
 			!node._source._refresh() ||
 			node._source._version !== node._version
 		) {
-			break;
+			return true;
 		}
-		node = node._nextSource;
 	}
 	// If none of the dependencies have changed values since last recompute then the
 	// there's no need to recompute.
-	return node !== undefined;
+	return false;
 }
 
 function prepareSources(target: Computed | Effect) {
@@ -348,7 +338,7 @@ function prepareSources(target: Computed | Effect) {
 			node._rollbackNode = rollbackNode;
 		}
 		node._source._node = node;
-		node._flags |= NODE_FREE;
+		node._version = -1;
 	}
 }
 
@@ -363,7 +353,7 @@ function cleanupSources(target: Computed | Effect) {
 	let sources = undefined;
 	while (node !== undefined) {
 		const next = node._nextSource;
-		if (node._flags & NODE_FREE) {
+		if (node._version === -1) {
 			node._source._unsubscribe(node);
 			node._nextSource = undefined;
 		} else {
