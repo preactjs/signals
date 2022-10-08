@@ -29,6 +29,28 @@ describe("signal", () => {
 		expect(a + b).to.equal(3);
 	});
 
+	it("should notify other listeners of changes after one listener is disposed", () => {
+		const s = signal(0);
+		const spy1 = sinon.spy(() => s.value);
+		const spy2 = sinon.spy(() => s.value);
+		const spy3 = sinon.spy(() => s.value);
+
+		effect(spy1);
+		const dispose = effect(spy2);
+		effect(spy3);
+
+		expect(spy1).to.be.calledOnce;
+		expect(spy2).to.be.calledOnce;
+		expect(spy3).to.be.calledOnce;
+
+		dispose();
+
+		s.value = 1;
+		expect(spy1).to.be.calledTwice;
+		expect(spy2).to.be.calledOnce;
+		expect(spy3).to.be.calledTwice;
+	});
+
 	describe(".peek()", () => {
 		it("should get value", () => {
 			const s = signal(1);
@@ -998,6 +1020,30 @@ describe("computed()", () => {
 			c.value;
 		});
 		expect(c.value).to.equal(1);
+	});
+
+	it("should propagate notification to other listeners after one listener is disposed", () => {
+		const s = signal(0);
+		const c = computed(() => s.value);
+
+		const spy1 = sinon.spy(() => c.value);
+		const spy2 = sinon.spy(() => c.value);
+		const spy3 = sinon.spy(() => c.value);
+
+		effect(spy1);
+		const dispose = effect(spy2);
+		effect(spy3);
+
+		expect(spy1).to.be.calledOnce;
+		expect(spy2).to.be.calledOnce;
+		expect(spy3).to.be.calledOnce;
+
+		dispose();
+
+		s.value = 1;
+		expect(spy1).to.be.calledTwice;
+		expect(spy2).to.be.calledOnce;
+		expect(spy3).to.be.calledTwice;
 	});
 
 	it("should not recompute dependencies out of order", () => {
