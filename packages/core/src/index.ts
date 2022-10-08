@@ -132,25 +132,21 @@ function addDependency(signal: Signal): Node | undefined {
 		}
 		return node;
 	} else if (node._version === -1) {
-		// `signal` is an existing dependency from a previous evaluation. Reuse the dependency
-		// node and move it to the front of the evaluation context's dependency list.
+		// `signal` is an existing dependency from a previous evaluation. Reuse it.
 		node._version = 0;
 
-		const head = evalContext._sources;
-		if (node !== head) {
-			const prev = node._prevSource;
-			const next = node._nextSource;
-			if (prev !== undefined) {
-				prev._nextSource = next;
-			}
-			if (next !== undefined) {
-				next._prevSource = prev;
-			}
-			if (head !== undefined) {
-				head._prevSource = node;
+		// If `node` is not already the current head of the dependency list (i.e.
+		// there is a previous node in the list), then make `node` the new head.
+		if (node._prevSource !== undefined) {
+			node._prevSource._nextSource = node._nextSource;
+			if (node._nextSource !== undefined) {
+				node._nextSource._prevSource = node._prevSource;
 			}
 			node._prevSource = undefined;
-			node._nextSource = head;
+			node._nextSource = evalContext._sources;
+			// evalCotext._sources must be !== undefined (and !== node), because
+			// `node` was originally pointing to some previous node.
+			evalContext._sources!._prevSource = node;
 			evalContext._sources = node;
 		}
 
