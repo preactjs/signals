@@ -1042,6 +1042,19 @@ describe("computed()", () => {
 			expect(b.peek()).to.equal(2);
 		});
 
+		it("should detect simple dependency cycles", () => {
+			const a: Signal = computed(() => a.peek());
+			expect(() => a.peek()).to.throw(/Cycle detected/);
+		});
+
+		it("should detect deep dependency cycles", () => {
+			const a: Signal = computed(() => b.value);
+			const b: Signal = computed(() => c.value);
+			const c: Signal = computed(() => d.value);
+			const d: Signal = computed(() => a.peek());
+			expect(() => a.peek()).to.throw(/Cycle detected/);
+		});
+
 		it("should not make surrounding effect depend on the computed", () => {
 			const s = signal(1);
 			const c = computed(() => s.value);
