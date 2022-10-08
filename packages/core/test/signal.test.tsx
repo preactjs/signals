@@ -865,7 +865,7 @@ describe("computed()", () => {
 		expect(() => effect(() => a.value)).to.not.throw();
 	});
 
-	it("should store failures and recompute only after a dependency changes", () => {
+	it("should store thrown errors and recompute only after a dependency changes", () => {
 		const a = signal(0);
 		const spy = sinon.spy(() => {
 			a.value;
@@ -877,6 +877,39 @@ describe("computed()", () => {
 		expect(spy).to.be.calledOnce;
 		a.value = 1;
 		expect(() => c.value).to.throw();
+		expect(spy).to.be.calledTwice;
+	});
+
+	it("should store thrown non-errors and recompute only after a dependency changes", () => {
+		const a = signal(0);
+		const spy = sinon.spy();
+		const c = computed(() => {
+			a.value;
+			spy();
+			throw undefined;
+		});
+
+		try {
+			c.value;
+			expect.fail();
+		} catch (err) {
+			expect(err).to.be.undefined;
+		}
+		try {
+			c.value;
+			expect.fail();
+		} catch (err) {
+			expect(err).to.be.undefined;
+		}
+		expect(spy).to.be.calledOnce;
+
+		a.value = 1;
+		try {
+			c.value;
+			expect.fail();
+		} catch (err) {
+			expect(err).to.be.undefined;
+		}
 		expect(spy).to.be.calledTwice;
 	});
 
@@ -1529,12 +1562,23 @@ describe("batch/transaction", () => {
 		expect(batch(() => 1)).to.equal(1);
 	});
 
-	it("should throw the error raised from the callback", () => {
+	it("should throw errors throws from the callback", () => {
 		expect(() =>
 			batch(() => {
 				throw Error("hello");
 			})
 		).to.throw("hello");
+	});
+
+	it("should throw non-errors thrown from the callback", () => {
+		try {
+			batch(() => {
+				throw undefined;
+			});
+			expect.fail();
+		} catch (err) {
+			expect(err).to.be.undefined;
+		}
 	});
 
 	it("should delay writes", () => {
