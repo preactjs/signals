@@ -101,7 +101,7 @@ import { signal } from "@preact/signals";
 const inputValue = signal("foobar");
 
 function Person() {
-	return <input value={inputValue} />;
+	return <input value={inputValue} onInput={...} />;
 }
 ```
 

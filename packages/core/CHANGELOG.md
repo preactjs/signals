@@ -1,5 +1,15 @@
 # @preact/signals-core
 
+## 1.2.1
+
+### Patch Changes
+
+- [#205](https://github.com/preactjs/signals/pull/205) [`4b73164`](https://github.com/preactjs/signals/commit/4b7316497aee03413f91e9f714cdcf9f553e39d9) Thanks [@jviide](https://github.com/jviide)! - Use the same tracking logic for both effects and computeds. This ensures that effects are only called whenever any of their dependencies changes. If they all stay the same, then the effect will not be invoked.
+
+* [#207](https://github.com/preactjs/signals/pull/207) [`57fd2e7`](https://github.com/preactjs/signals/commit/57fd2e723528a36cc5d4ebf09ba34178aa84c879) Thanks [@jviide](https://github.com/jviide)! - Fix effect disposal when cleanup throws
+
+- [#209](https://github.com/preactjs/signals/pull/209) [`49756ae`](https://github.com/preactjs/signals/commit/49756aef28fe12c6ae6b801224bf5ae608ddf562) Thanks [@jviide](https://github.com/jviide)! - Optimize dependency value change checks by allowing earlier exists from the loop
+
 ## 1.2.0
 
 ### Minor Changes
