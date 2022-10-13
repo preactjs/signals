@@ -1,5 +1,13 @@
 # @preact/signals-core
 
+## 1.2.2
+
+### Patch Changes
+
+- [#232](https://github.com/preactjs/signals/pull/232) [`aa4cb7b`](https://github.com/preactjs/signals/commit/aa4cb7bfad744e78952cacc37af5bd4a713f0d3f) Thanks [@jviide](https://github.com/jviide)! - Simplify effect change checking (and make effect cycle detection more accurate as a side-effect)
+
+* [#233](https://github.com/preactjs/signals/pull/233) [`3f652a7`](https://github.com/preactjs/signals/commit/3f652a77d2a125a02a0cfc29fe661c81beeda16d) Thanks [@jviide](https://github.com/jviide)! - Simplify Node book keeping code
+
 ## 1.2.1
 
 ### Patch Changes
