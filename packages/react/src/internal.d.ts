@@ -7,8 +7,10 @@ export interface Effect {
 	_dispose(): void;
 }
 
-export interface ReactDispatcher {
-	useCallback(): unknown;
-}
-
 export type Updater = Signal<unknown>;
+
+export interface JsxRuntimeModule {
+	jsx?(type: any, ...rest: any[]): unknown;
+	jsxs?(type: any, ...rest: any[]): unknown;
+	jsxDEV?(type: any, ...rest: any[]): unknown;
+}
