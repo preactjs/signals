@@ -1,5 +1,11 @@
 # @preact/signals-react
 
+## 1.2.1
+
+### Patch Changes
+
+- [#238](https://github.com/preactjs/signals/pull/238) [`bcf4b0b`](https://github.com/preactjs/signals/commit/bcf4b0b25d774483ddafa29c2fa133c467668b8c) Thanks [@eddyw](https://github.com/eddyw)! - Fix ERR_UNSUPPORTED_DIR_IMPORT error when importing `use-sync-external-store/shim` from ESM build
+
 ## 1.2.0
 
 ### Minor Changes
