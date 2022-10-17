@@ -461,6 +461,19 @@ describe("effect()", () => {
 		expect(spy).to.be.calledOnce;
 	});
 
+	it("should not subscribe to anything if first run throws", () => {
+		const s = signal(0);
+		const spy = sinon.spy(() => {
+			s.value;
+			throw new Error("test");
+		});
+		expect(() => effect(spy)).to.throw("test");
+		expect(spy).to.be.calledOnce;
+
+		s.value++;
+		expect(spy).to.be.calledOnce;
+	});
+
 	it("should reset the cleanup if the effect throws", () => {
 		const a = signal(0);
 		const spy = sinon.spy();

@@ -648,7 +648,12 @@ Effect.prototype._dispose = function () {
 
 function effect(compute: () => unknown): () => void {
 	const effect = new Effect(compute);
-	effect._callback();
+	try {
+		effect._callback();
+	} catch (err) {
+		effect._dispose();
+		throw err;
+	}
 	// Return a bound function instead of a wrapper like `() => effect._dispose()`,
 	// because bound functions seem to be just as fast and take up a lot less memory.
 	return effect._dispose.bind(effect);
