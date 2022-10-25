@@ -143,12 +143,12 @@ function addDependency(signal: Signal): Node | undefined {
 
 		const index = evalContext._index;
 		const sources = evalContext._sources;
-		const prevSource = sources.length > index ? sources[index] : undefined;
+		const prevNode = sources.length > index ? sources[index] : undefined;
 
 		sources[evalContext._index++] = node;
 
-		if (prevSource) {
-			sources[sources.length] = prevSource;
+		if (prevNode) {
+			sources[sources.length] = prevNode;
 		}
 
 		signal._node = node;
