@@ -782,7 +782,7 @@ describe("effect()", () => {
 			effect(function (this: any) {
 				e = this;
 			});
-			expect(e._sources).to.be.undefined;
+			expect(e._sources).to.be.empty;
 
 			const done1 = e._start();
 			try {
@@ -790,11 +790,11 @@ describe("effect()", () => {
 			} finally {
 				done1();
 			}
-			expect(e._sources).not.to.be.undefined;
+			expect(e._sources).not.to.be.empty;
 
 			const done2 = e._start();
 			done2();
-			expect(e._sources).to.be.undefined;
+			expect(e._sources).to.be.empty;
 
 			const done3 = e._start();
 			try {
@@ -802,10 +802,10 @@ describe("effect()", () => {
 			} finally {
 				done3();
 			}
-			expect(e._sources).not.to.be.undefined;
+			expect(e._sources).not.to.be.empty;
 
 			e._dispose();
-			expect(e._sources).to.be.undefined;
+			expect(e._sources).to.be.empty;
 		});
 	});
 });
