@@ -15,8 +15,6 @@ const TRACKING = 1 << 5;
 type Node = {
 	// A source whose value the target depends on.
 	_source: Signal;
-	_prevSource?: Node;
-	_nextSource?: Node;
 
 	// A target that depends on the source and should be notified when the source changes.
 	_target: Computed | Effect;
@@ -108,6 +106,28 @@ function addDependency(signal: Signal): Node | undefined {
 		return undefined;
 	}
 
+	/**
+	 * Assume original sources: [A, B, C]
+	 * Case 1:
+	 * - If prevNode is undefined, then there are more sources than before:
+	 *   [A, B, C    ]
+	 *             ^ index points here (sources.length: 3, index: 3), we do:
+	 *   [A, B, C, node]
+	 *
+	 * Case 2:
+	 * - If prevNode is a node, and it isn't this 'node',
+	 *   we push it at the end of the array and replace the slot:
+	 *   [A, B, C]
+	 *       ^ index points here, and 'node' is not 'B', we do:
+	 *   [A, node, C, B]
+	 *             ^ next index is moved +1
+	 *              'B' is scheduled for clean up
+	 *
+	 * Case 3: Best case scenario!
+	 * - If prevNode is the same as this node, do nothing!
+	 *   and just move the 'index' pointer to the next slot.
+	 */
+
 	let node = signal._node;
 	if (node === undefined || node._target !== evalContext) {
 		// `signal` is a new dependency. Create a new node dependency node, move it
@@ -115,14 +135,22 @@ function addDependency(signal: Signal): Node | undefined {
 		node = {
 			_version: 0,
 			_source: signal,
-			_prevSource: undefined,
-			_nextSource: evalContext._sources,
 			_target: evalContext,
 			_prevTarget: undefined,
 			_nextTarget: undefined,
 			_rollbackNode: node,
 		};
-		evalContext._sources = node;
+
+		const index = evalContext._index;
+		const sources = evalContext._sources;
+		const prevSource = sources.length > index ? sources[index] : undefined;
+
+		sources[evalContext._index++] = node;
+
+		if (prevSource) {
+			sources[sources.length] = prevSource;
+		}
+
 		signal._node = node;
 
 		// Subscribe to change notifications from this dependency if we're in an effect
@@ -135,20 +163,18 @@ function addDependency(signal: Signal): Node | undefined {
 		// `signal` is an existing dependency from a previous evaluation. Reuse it.
 		node._version = 0;
 
-		// If `node` is not already the current head of the dependency list (i.e.
-		// there is a previous node in the list), then make `node` the new head.
-		if (node._prevSource !== undefined) {
-			node._prevSource._nextSource = node._nextSource;
-			if (node._nextSource !== undefined) {
-				node._nextSource._prevSource = node._prevSource;
-			}
-			node._prevSource = undefined;
-			node._nextSource = evalContext._sources;
-			// evalCotext._sources must be !== undefined (and !== node), because
-			// `node` was originally pointing to some previous node.
-			evalContext._sources!._prevSource = node;
-			evalContext._sources = node;
+		const index = evalContext._index;
+		const sources = evalContext._sources;
+		const prevNode = sources.length > index ? sources[index] : undefined;
+
+		if (prevNode === undefined) {
+			sources[index] = node;
+		} else if (prevNode !== node) {
+			sources[index] = node;
+			sources[sources.length] = prevNode;
 		}
+
+		evalContext._index += 1;
 
 		// We can assume that the currently evaluated effect / computed signal is already
 		// subscribed to change notifications from `signal` if needed.
@@ -302,18 +328,18 @@ function needsToRecompute(target: Computed | Effect): boolean {
 	// Check the dependencies for changed values. The dependency list is already
 	// in order of use. Therefore if multiple dependencies have changed values, only
 	// the first used dependency is re-evaluated at this point.
-	for (
-		let node = target._sources;
-		node !== undefined;
-		node = node._nextSource
-	) {
+	const size = target._sources.length;
+
+	for (let i = 0; i < size; i++) {
+		const node = target._sources[i]!;
+		const source = node._source;
 		// If there's a new version of the dependency before or after refreshing,
 		// or the dependency has something blocking it from refreshing at all (e.g. a
 		// dependency cycle), then we need to recompute.
 		if (
-			node._source._version !== node._version ||
-			!node._source._refresh() ||
-			node._source._version !== node._version
+			source._version !== node._version ||
+			!source._refresh() ||
+			source._version !== node._version
 		) {
 			return true;
 		}
@@ -324,55 +350,116 @@ function needsToRecompute(target: Computed | Effect): boolean {
 }
 
 function prepareSources(target: Computed | Effect) {
-	for (
-		let node = target._sources;
-		node !== undefined;
-		node = node._nextSource
-	) {
-		const rollbackNode = node._source._node;
-		if (rollbackNode !== undefined) {
-			node._rollbackNode = rollbackNode;
-		}
+	const size = target._sources.length;
+
+	for (let i = 0; i < size; i++) {
+		const node = target._sources[i]!;
+		const back = node._source._node;
+
+		if (back !== undefined) node._rollbackNode = back;
+
 		node._source._node = node;
 		node._version = -1;
 	}
+
+	/**
+	 * If there are previous sources, e.g: [A, B, C]
+	 *                                      ^ Index is here at 0
+	 * As new deps/sources are added, we'll move or keep the current node at index,
+	 * If sources are unchanged, the resulting array's items won't have changed,
+	 * and the index will be equal to the array's sources length.
+	 */
+	target._index = 0;
 }
 
 function cleanupSources(target: Computed | Effect) {
-	// At this point target._sources is a mishmash of current & former dependencies.
-	// The current dependencies are also in a reverse order of use.
-	// Therefore build a new, reverted list of dependencies containing only the current
-	// dependencies in a proper order of use.
-	// Drop former dependencies from the list and unsubscribe from their change notifications.
+	const size = target._sources.length;
+	const stop = target._index;
 
-	let node = target._sources;
-	let sources = undefined;
-	while (node !== undefined) {
-		const next = node._nextSource;
-		if (node._version === -1) {
-			node._source._unsubscribe(node);
-			node._nextSource = undefined;
-		} else {
-			if (sources !== undefined) {
-				sources._prevSource = node;
-			}
-			node._prevSource = undefined;
-			node._nextSource = sources;
-			sources = node;
-		}
-
+	/**
+	 * Case 1: Best case scenario - source are the same as before. Example:
+	 *
+	 * Prev. sources: [A, B, C, D]
+	 * Next. sources: [A, B, C, D]...] (unchanged)
+	 *                             ↓
+	 *                          _index is length of array (no nodes to clean up)
+	 *
+	 * We only need to rollback to the previous node.
+	 */
+	for (let i = 0; i < stop; i++) {
+		const node = target._sources[i]!;
 		node._source._node = node._rollbackNode;
-		if (node._rollbackNode !== undefined) {
-			node._rollbackNode = undefined;
-		}
-		node = next;
 	}
-	target._sources = sources;
+	/**
+	 * Case 2: Worst case, example:
+	 *
+	 * Prev. sources: [A, B, C, D]
+	 * Next. sources: [A, B, E, F, G, D, C]
+	 *                       │  │  │  ↓
+	 *                       │  │  ↓  _index is here [D, C] are unused sources
+	 *                       │  ↓  3) G replaced prev node C, C moved to end of array -> [A, B, E, F, G, D, C]
+	 *                       ↓  2) F replaced prev node D, D pushed to end of array -> [A, B, E, F, C, D]
+	 *                      1) E replaced prev node C, C moved to end of array -> [A, B, E, D, C]
+	 *
+	 * Unsubscribe from nodes [D, C]
+	 */
+	for (let i = stop; i < size; i++) {
+		const node = target._sources[i]!;
+		node._source._unsubscribe(node);
+	}
+
+	/**
+	 * Shrink the length to get rid of old dependencies which were pushed at the end of the array.
+	 *
+	 * Note: Setting '_sources.length = target._index' is 2x slower (at least in V8) when 'length === target._index'
+	 * That's why we first check if the length should change or not.
+	 */
+	if (target._sources.length !== target._index) {
+		/**
+		 * The JS engine has a backing store with a capacity, when the array grows, the capacity is increased in amortized constant time
+		 * following this formula:
+		 *
+		 *           (old_capacity + 50%) + 16
+		 *
+		 * @see https://github.com/nodejs/node/blob/37b8a603f886634416046e337936e4c586f4ff58/deps/v8/src/objects/js-objects.h#L579-L583
+		 * This means growing the array doesn't allocate new capacity for every item, and most of the time, the new capacity is enough
+		 * to hold all new items. For example, if array has 2 items (capacity 2) and we add a new element, its new capacity will be 19.
+		 * This gives room to add up to 19 items without allocating more capacity.
+		 *
+		 * Setting the length to lower than allocated capacity is fine. If the new length is at least 50% of the original capacity (in V8),
+		 * then it won't shrink the capacity (small array's capacity won't shrink either).
+		 * @see https://github.com/nodejs/node/blob/1930fcd7efaa837f50aef60db78aa735a65f007c/deps/v8/src/objects/elements.cc#L792-L795
+		 *
+		 * In other words, the capacity is the internal allocated space and the 'length' represents the _used_ capacity.
+		 *
+		 * This is why we re-use the same array rather than allocating a new array, because we want to take advantage of already
+		 * allocated capacity. This improves performance on conditionals such as:
+		 *
+		 * ```js
+		 * const c = computed(() => {
+		 *    const cond = a.value;
+		 *
+		 *    if (cond === true) {
+		 *      b.value;
+		 *    } else {
+		 *      c.value;
+		 *      d.value;
+		 *    }
+		 * })
+		 * ```
+		 * In this particular example, the first time the sources are added, the array will already have enough allocated capacity to
+		 * store new sources when the 'cond' becomes 'false' and the capacity will remain the same after it becomes 'true' again
+		 * even though the length has changed.
+		 */
+		target._sources.length = target._index;
+	}
 }
 
 declare class Computed<T = any> extends Signal<T> {
 	_compute: () => T;
-	_sources?: Node;
+	_sources: Node[];
+	_sourcesCleanup?: Node;
+	_index: number;
 	_globalVersion: number;
 	_flags: number;
 
@@ -386,7 +473,9 @@ function Computed(this: Computed, compute: () => unknown) {
 	Signal.call(this, undefined);
 
 	this._compute = compute;
-	this._sources = undefined;
+	this._sources = [];
+	this._sourcesCleanup = undefined;
+	this._index = 0;
 	this._globalVersion = globalVersion - 1;
 	this._flags = OUTDATED;
 }
@@ -448,15 +537,14 @@ Computed.prototype._refresh = function () {
 
 Computed.prototype._subscribe = function (node) {
 	if (this._targets === undefined) {
+		const size = this._sources.length;
+
 		this._flags |= OUTDATED | TRACKING;
 
 		// A computed signal subscribes lazily to its dependencies when the it
 		// gets its first subscriber.
-		for (
-			let node = this._sources;
-			node !== undefined;
-			node = node._nextSource
-		) {
+		for (let i = 0; i < size; i++) {
+			const node = this._sources[i]!;
 			node._source._subscribe(node);
 		}
 	}
@@ -468,13 +556,11 @@ Computed.prototype._unsubscribe = function (node) {
 
 	// Computed signal unsubscribes from its dependencies from it loses its last subscriber.
 	if (this._targets === undefined) {
+		const size = this._sources.length;
 		this._flags &= ~TRACKING;
 
-		for (
-			let node = this._sources;
-			node !== undefined;
-			node = node._nextSource
-		) {
+		for (let i = 0; i < size; i++) {
+			const node = this._sources[i]!;
 			node._source._unsubscribe(node);
 		}
 	}
@@ -554,15 +640,15 @@ function cleanupEffect(effect: Effect) {
 }
 
 function disposeEffect(effect: Effect) {
-	for (
-		let node = effect._sources;
-		node !== undefined;
-		node = node._nextSource
-	) {
+	const size = effect._sources.length;
+
+	for (let i = 0; i < size; i++) {
+		const node = effect._sources[i]!;
 		node._source._unsubscribe(node);
 	}
+
 	effect._compute = undefined;
-	effect._sources = undefined;
+	effect._sources.length = 0;
 
 	cleanupEffect(effect);
 }
@@ -584,7 +670,9 @@ function endEffect(this: Effect, prevContext?: Computed | Effect) {
 declare class Effect {
 	_compute?: () => unknown;
 	_cleanup?: unknown;
-	_sources?: Node;
+	_sources: Node[];
+	_sourcesCleanup?: Node;
+	_index: number;
 	_nextBatchedEffect?: Effect;
 	_flags: number;
 
@@ -599,7 +687,8 @@ declare class Effect {
 function Effect(this: Effect, compute: () => void) {
 	this._compute = compute;
 	this._cleanup = undefined;
-	this._sources = undefined;
+	this._sources = [];
+	this._index = 0;
 	this._nextBatchedEffect = undefined;
 	this._flags = TRACKING;
 }
@@ -659,4 +748,4 @@ function effect(compute: () => unknown): () => void {
 	return effect._dispose.bind(effect);
 }
 
-export { signal, computed, effect, batch, Signal, ReadonlySignal };
+export { signal, computed, effect, batch, Signal, type ReadonlySignal };
