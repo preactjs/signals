@@ -671,7 +671,6 @@ declare class Effect {
 	_compute?: () => unknown;
 	_cleanup?: unknown;
 	_sources: Node[];
-	_sourcesCleanup?: Node;
 	_index: number;
 	_nextBatchedEffect?: Effect;
 	_flags: number;
