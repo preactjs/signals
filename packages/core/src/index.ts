@@ -187,7 +187,8 @@ declare class Signal<T = any> {
 	/** @internal */
 	_value: unknown;
 
-	/** @internal
+	/**
+	 * @internal
 	 * Version numbers should always be >= 0, because the special value -1 is used
 	 * by Nodes to signify potentially unused but recyclable notes.
 	 */
@@ -502,7 +503,7 @@ Computed.prototype._refresh = function () {
 	this._globalVersion = globalVersion;
 
 	// Mark this computed signal running before checking the dependencies for value
-	// changes, so that the RUNNIN flag can be used to notice cyclical dependencies.
+	// changes, so that the RUNNING flag can be used to notice cyclical dependencies.
 	this._flags |= RUNNING;
 	if (this._version > 0 && !needsToRecompute(this)) {
 		this._flags &= ~RUNNING;
