@@ -287,14 +287,14 @@ Signal.prototype.peek = function () {
 };
 
 Object.defineProperty(Signal.prototype, "value", {
-	get() {
+	get(this: Signal) {
 		const node = addDependency(this);
 		if (node !== undefined) {
 			node._version = this._version;
 		}
 		return this._value;
 	},
-	set(value) {
+	set(this: Signal, value) {
 		if (value !== this._value) {
 			if (batchIteration > 100) {
 				cycleDetected();
@@ -405,6 +405,7 @@ function cleanupSources(target: Computed | Effect) {
 	 */
 	for (let i = stop; i < size; i++) {
 		const node = target._sources[i]!;
+		node._source._node = node._rollbackNode;
 		node._source._unsubscribe(node);
 	}
 
@@ -414,7 +415,7 @@ function cleanupSources(target: Computed | Effect) {
 	 * Note: Setting '_sources.length = target._index' is 2x slower (at least in V8) when 'length === target._index'
 	 * That's why we first check if the length should change or not.
 	 */
-	if (target._sources.length !== target._index) {
+	if (size !== target._index) {
 		/**
 		 * The JS engine has a backing store with a capacity, when the array grows, the capacity is increased in amortized constant time
 		 * following this formula:
@@ -458,7 +459,6 @@ function cleanupSources(target: Computed | Effect) {
 declare class Computed<T = any> extends Signal<T> {
 	_compute: () => T;
 	_sources: Node[];
-	_sourcesCleanup?: Node;
 	_index: number;
 	_globalVersion: number;
 	_flags: number;
@@ -474,7 +474,6 @@ function Computed(this: Computed, compute: () => unknown) {
 
 	this._compute = compute;
 	this._sources = [];
-	this._sourcesCleanup = undefined;
 	this._index = 0;
 	this._globalVersion = globalVersion - 1;
 	this._flags = OUTDATED;
@@ -591,7 +590,7 @@ Computed.prototype.peek = function () {
 };
 
 Object.defineProperty(Computed.prototype, "value", {
-	get() {
+	get(this: Computed) {
 		if (this._flags & RUNNING) {
 			cycleDetected();
 		}
