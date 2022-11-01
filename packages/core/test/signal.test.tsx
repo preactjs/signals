@@ -1748,10 +1748,10 @@ describe("batch/transaction", () => {
 		const invokes: number[][] = [];
 		const counter = signal(0);
 		const double = computed(() => counter.value * 2);
-		const tripple = computed(() => counter.value * 3);
+		const triple = computed(() => counter.value * 3);
 
 		effect(() => {
-			invokes.push([double.value, tripple.value]);
+			invokes.push([double.value, triple.value]);
 		});
 
 		expect(invokes).to.deep.equal([[0, 0]]);
@@ -1768,10 +1768,10 @@ describe("batch/transaction", () => {
 		const invokes: number[][] = [];
 		const counter = signal(0);
 		const double = computed(() => counter.value * 2);
-		const tripple = computed(() => counter.value * 3);
+		const triple = computed(() => counter.value * 3);
 
 		effect(() => {
-			invokes.push([double.value, tripple.value]);
+			invokes.push([double.value, triple.value]);
 		});
 
 		expect(invokes).to.deep.equal([[0, 0]]);
