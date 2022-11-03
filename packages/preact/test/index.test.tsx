@@ -1,4 +1,4 @@
-import { signal, useComputed } from "@preact/signals";
+import { signal, useComputed, useWatcher } from "@preact/signals";
 import { createElement, render } from "preact";
 import { setupRerender, act } from "preact/test-utils";
 
@@ -334,6 +334,47 @@ describe("@preact/signals", () => {
 				// This should not crash
 				s.value = "scale(1, 2)";
 			});
+		});
+	});
+
+	describe("use watcher hook", () => {
+		it("should set the initial value of the checked property", () => {
+			function App({ checked = false }) {
+				const $checked = useWatcher(checked);
+				// @ts-ignore
+				return <input checked={$checked} />;
+			}
+
+			render(<App checked={true} />, scratch);
+			expect(scratch.firstChild).to.have.property("checked", true);
+		});
+
+		it("should update the checked property on change", () => {
+			function App({ checked = false }) {
+				const $checked = useWatcher(checked);
+				// @ts-ignore
+				return <input checked={$checked} />;
+			}
+
+			render(<App checked={true} />, scratch);
+			expect(scratch.firstChild).to.have.property("checked", true);
+
+			render(<App checked={false} />, scratch);
+			expect(scratch.firstChild).to.have.property("checked", false);
+		});
+
+		it("should update computed signal", () => {
+			function App({ value = 0 }) {
+				const $value = useWatcher(value);
+				const timesTwo = useComputed(() => $value.value * 2);
+				return <p>{timesTwo}</p>;
+			}
+
+			render(<App value={1} />, scratch);
+			expect(scratch.textContent).to.equal("2");
+
+			render(<App value={4} />, scratch);
+			expect(scratch.textContent).to.equal("8");
 		});
 	});
 });
