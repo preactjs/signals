@@ -353,6 +353,12 @@ export function useSignalEffect(cb: () => void | (() => void)) {
 	}, []);
 }
 
+export function useWatcher<T>(value: T) {
+	const watcher = useSignal(value);
+	watcher.value = value;
+	return watcher as ReadonlySignal<T>;
+}
+
 /**
  * @todo Determine which Reactive implementation we'll be using.
  * @internal

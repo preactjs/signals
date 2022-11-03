@@ -234,3 +234,9 @@ export function useSignalEffect(cb: () => void | (() => void)) {
 		});
 	}, Empty);
 }
+
+export function useWatcher<T>(value: T) {
+	const watcher = useSignal(value);
+	watcher.value;
+	return watcher as ReadonlySignal<T>;
+}
