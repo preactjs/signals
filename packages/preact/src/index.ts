@@ -54,7 +54,7 @@ function createUpdater(update: () => void) {
 // 	if (typeof value !== "object" || value == null) return false;
 // 	if (value instanceof Signal) return true;
 // 	// @TODO: uncomment this when we land Reactive (ideally behind a brand check)
-// 	// for (let i in value) if (value[i] instanceof Signal) return true;
+// 	// for (const i in value) if (value[i] instanceof Signal) return true;
 // 	return false;
 // }
 
@@ -67,10 +67,9 @@ function Text(this: AugmentedComponent, { data }: { data: Signal }) {
 
 	// Store the props.data signal in another signal so that
 	// passing a new signal reference re-runs the text computed:
-	const currentSignal = useSignal(data);
-	currentSignal.value = data;
+	const currentSignal = useWatcher(data);
 
-	const s = useMemo(() => {
+	const $s = useMemo(() => {
 		// mark the parent component as having computeds so it gets optimized
 		let v = this.__v;
 		while ((v = v.__!)) {
@@ -82,17 +81,16 @@ function Text(this: AugmentedComponent, { data }: { data: Signal }) {
 
 		// Replace this component's vdom updater with a direct text one:
 		this._updater!._callback = () => {
-			(this.base as Text).data = s.peek();
+			(this.base as Text).data = $s.peek();
 		};
 
 		return computed(() => {
-			let data = currentSignal.value;
-			let s = data.value;
+			const s = currentSignal.value.value;
 			return s === 0 ? 0 : s === true ? "" : s || "";
 		});
 	}, []);
 
-	return s.value;
+	return $s.value;
 }
 Text.displayName = "_st";
 
@@ -114,13 +112,13 @@ Object.defineProperties(Signal.prototype, {
 /** Inject low-level property/attribute bindings for Signals into Preact's diff */
 hook(OptionsTypes.DIFF, (old, vnode) => {
 	if (typeof vnode.type === "string") {
-		let signalProps: Record<string, any> | undefined;
+		let signalProps: typeof vnode.__np;
 
-		let props = vnode.props;
-		for (let i in props) {
+		const props = vnode.props;
+		for (const i in props) {
 			if (i === "children") continue;
 
-			let value = props[i];
+			const value = props[i];
 			if (value instanceof Signal) {
 				if (!signalProps) vnode.__np = signalProps = {};
 				signalProps[i] = value;
@@ -136,9 +134,9 @@ hook(OptionsTypes.DIFF, (old, vnode) => {
 hook(OptionsTypes.RENDER, (old, vnode) => {
 	setCurrentUpdater();
 
-	let updater;
+	let updater: Effect | undefined;
 
-	let component = vnode.__c;
+	const component = vnode.__c;
 	if (component) {
 		component._updateFlags &= ~HAS_PENDING_UPDATE;
 
@@ -168,18 +166,16 @@ hook(OptionsTypes.DIFFED, (old, vnode) => {
 	setCurrentUpdater();
 	currentComponent = undefined;
 
-	let dom: Element;
-
 	// vnode._dom is undefined during string rendering,
 	// so we use this to skip prop subscriptions during SSR.
-	if (typeof vnode.type === "string" && (dom = vnode.__e as Element)) {
-		let props = vnode.__np;
-		let renderedProps = vnode.props;
-		if (props) {
+	if (typeof vnode.type === "string") {
+		const props = vnode.__np;
+		const dom = vnode.__e as Element | undefined;
+		if (props && dom) {
 			let updaters = dom._updaters;
 			if (updaters) {
-				for (let prop in updaters) {
-					let updater = updaters[prop];
+				for (const prop in updaters) {
+					const updater = updaters[prop];
 					if (updater !== undefined && !(prop in props)) {
 						updater._dispose();
 						// @todo we could just always invoke _dispose() here
@@ -187,15 +183,21 @@ hook(OptionsTypes.DIFFED, (old, vnode) => {
 					}
 				}
 			} else {
-				updaters = {};
-				dom._updaters = updaters;
+				dom._updaters = updaters = {};
 			}
-			for (let prop in props) {
+
+			const renderedProps = vnode.props;
+
+			for (const prop in props) {
 				let updater = updaters[prop];
-				let signal = props[prop];
+				const signal = props[prop];
 				if (updater === undefined) {
-					updater = createPropUpdater(dom, prop, signal, renderedProps);
-					updaters[prop] = updater;
+					updaters[prop] = updater = createPropUpdater(
+						dom,
+						prop,
+						signal,
+						renderedProps
+					);
 				} else {
 					updater._update(signal, renderedProps);
 				}
@@ -244,20 +246,20 @@ function createPropUpdater(
 /** Unsubscribe from Signals when unmounting components/vnodes */
 hook(OptionsTypes.UNMOUNT, (old, vnode: VNode) => {
 	if (typeof vnode.type === "string") {
-		let dom = vnode.__e as Element | undefined;
+		const dom = vnode.__e as Element | undefined;
 		// vnode._dom is undefined during string rendering
 		if (dom) {
 			const updaters = dom._updaters;
 			if (updaters) {
 				dom._updaters = undefined;
-				for (let prop in updaters) {
-					let updater = updaters[prop];
+				for (const prop in updaters) {
+					const updater = updaters[prop];
 					if (updater) updater._dispose();
 				}
 			}
 		}
 	} else {
-		let component = vnode.__c;
+		const component = vnode.__c;
 		if (component) {
 			const updater = component._updater;
 			if (updater) {
@@ -319,13 +321,13 @@ Component.prototype.shouldComponentUpdate = function (
 	if (this._updateFlags & (HAS_PENDING_UPDATE | HAS_HOOK_STATE)) return true;
 
 	// @ts-ignore
-	for (let i in state) return true;
+	for (const i in state) return true;
 
 	// if any non-Signal props changed, update:
-	for (let i in props) {
+	for (const i in props) {
 		if (i !== "__source" && props[i] !== this.props[i]) return true;
 	}
-	for (let i in this.props) if (!(i in props)) return true;
+	for (const i in this.props) if (!(i in props)) return true;
 
 	// this is a purely Signal-driven component, don't update:
 	return false;
@@ -407,7 +409,7 @@ export function update<T extends SignalOrReactive>(
 	if (obj instanceof Signal) {
 		obj.value = peekValue(update);
 	} else {
-		for (let i in update) {
+		for (const i in update) {
 			if (i in obj) {
 				obj[i].value = peekValue(update[i]);
 			} else {
@@ -417,7 +419,7 @@ export function update<T extends SignalOrReactive>(
 			}
 		}
 		if (overwrite) {
-			for (let i in obj) {
+			for (const i in obj) {
 				if (!(i in update)) {
 					obj[i].value = undefined;
 				}
