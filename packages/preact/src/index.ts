@@ -54,7 +54,7 @@ function createUpdater(update: () => void) {
 // 	if (typeof value !== "object" || value == null) return false;
 // 	if (value instanceof Signal) return true;
 // 	// @TODO: uncomment this when we land Reactive (ideally behind a brand check)
-// 	// for (const i in value) if (value[i] instanceof Signal) return true;
+// 	// for (let i in value) if (value[i] instanceof Signal) return true;
 // 	return false;
 // }
 
@@ -114,11 +114,11 @@ hook(OptionsTypes.DIFF, (old, vnode) => {
 	if (typeof vnode.type === "string") {
 		let signalProps: typeof vnode.__np;
 
-		const props = vnode.props;
-		for (const i in props) {
+		let props = vnode.props;
+		for (let i in props) {
 			if (i === "children") continue;
 
-			const value = props[i];
+			let value = props[i];
 			if (value instanceof Signal) {
 				if (!signalProps) vnode.__np = signalProps = {};
 				signalProps[i] = value;
@@ -136,7 +136,7 @@ hook(OptionsTypes.RENDER, (old, vnode) => {
 
 	let updater: Effect | undefined;
 
-	const component = vnode.__c;
+	let component = vnode.__c;
 	if (component) {
 		component._updateFlags &= ~HAS_PENDING_UPDATE;
 
@@ -166,16 +166,18 @@ hook(OptionsTypes.DIFFED, (old, vnode) => {
 	setCurrentUpdater();
 	currentComponent = undefined;
 
+	let dom: Element;
+
 	// vnode._dom is undefined during string rendering,
 	// so we use this to skip prop subscriptions during SSR.
-	if (typeof vnode.type === "string") {
-		const props = vnode.__np;
-		const dom = vnode.__e as Element | undefined;
-		if (props && dom) {
+	if (typeof vnode.type === "string" && (dom = vnode.__e as Element)) {
+		let props = vnode.__np;
+		let renderedProps = vnode.props;
+		if (props) {
 			let updaters = dom._updaters;
 			if (updaters) {
-				for (const prop in updaters) {
-					const updater = updaters[prop];
+				for (let prop in updaters) {
+					let updater = updaters[prop];
 					if (updater !== undefined && !(prop in props)) {
 						updater._dispose();
 						// @todo we could just always invoke _dispose() here
@@ -185,12 +187,9 @@ hook(OptionsTypes.DIFFED, (old, vnode) => {
 			} else {
 				dom._updaters = updaters = {};
 			}
-
-			const renderedProps = vnode.props;
-
-			for (const prop in props) {
+			for (let prop in props) {
 				let updater = updaters[prop];
-				const signal = props[prop];
+				let signal = props[prop];
 				if (updater === undefined) {
 					updaters[prop] = updater = createPropUpdater(
 						dom,
@@ -246,20 +245,20 @@ function createPropUpdater(
 /** Unsubscribe from Signals when unmounting components/vnodes */
 hook(OptionsTypes.UNMOUNT, (old, vnode: VNode) => {
 	if (typeof vnode.type === "string") {
-		const dom = vnode.__e as Element | undefined;
+		let dom = vnode.__e as Element | undefined;
 		// vnode._dom is undefined during string rendering
 		if (dom) {
 			const updaters = dom._updaters;
 			if (updaters) {
 				dom._updaters = undefined;
-				for (const prop in updaters) {
-					const updater = updaters[prop];
+				for (let prop in updaters) {
+					let updater = updaters[prop];
 					if (updater) updater._dispose();
 				}
 			}
 		}
 	} else {
-		const component = vnode.__c;
+		let component = vnode.__c;
 		if (component) {
 			const updater = component._updater;
 			if (updater) {
@@ -321,13 +320,13 @@ Component.prototype.shouldComponentUpdate = function (
 	if (this._updateFlags & (HAS_PENDING_UPDATE | HAS_HOOK_STATE)) return true;
 
 	// @ts-ignore
-	for (const i in state) return true;
+	for (let i in state) return true;
 
 	// if any non-Signal props changed, update:
-	for (const i in props) {
+	for (let i in props) {
 		if (i !== "__source" && props[i] !== this.props[i]) return true;
 	}
-	for (const i in this.props) if (!(i in props)) return true;
+	for (let i in this.props) if (!(i in props)) return true;
 
 	// this is a purely Signal-driven component, don't update:
 	return false;
@@ -409,7 +408,7 @@ export function update<T extends SignalOrReactive>(
 	if (obj instanceof Signal) {
 		obj.value = peekValue(update);
 	} else {
-		for (const i in update) {
+		for (let i in update) {
 			if (i in obj) {
 				obj[i].value = peekValue(update[i]);
 			} else {
@@ -419,7 +418,7 @@ export function update<T extends SignalOrReactive>(
 			}
 		}
 		if (overwrite) {
-			for (const i in obj) {
+			for (let i in obj) {
 				if (!(i in update)) {
 					obj[i].value = undefined;
 				}
