@@ -376,5 +376,20 @@ describe("@preact/signals", () => {
 			render(<App value={4} />, scratch);
 			expect(scratch.textContent).to.equal("8");
 		});
+
+		it("should not cascade rerenders", () => {
+			const spy = sinon.spy();
+			function App({ value = 0 }) {
+				const $value = useWatcher(value);
+				const timesTwo = useComputed(() => $value.value * 2);
+				spy();
+				return <p>{timesTwo.value}</p>;
+			}
+
+			render(<App value={1} />, scratch);
+			render(<App value={4} />, scratch);
+
+			expect(spy).to.be.calledTwice;
+		});
 	});
 });

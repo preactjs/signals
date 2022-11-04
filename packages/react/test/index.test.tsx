@@ -1,7 +1,7 @@
 // @ts-ignore-next-line
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
-import { signal, useComputed } from "@preact/signals-react";
+import { signal, useComputed, useWatcher } from "@preact/signals-react";
 import { createElement, useMemo, memo, StrictMode } from "react";
 import { createRoot, Root } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -220,6 +220,80 @@ describe("@preact/signals-react", () => {
 					`<code>${count.value}</code><code>${count.value}</code>`
 				);
 			}
+		});
+	});
+
+	describe("use watcher hook", () => {
+		it("should set the initial value of the checked property", () => {
+			function App({ value = 0 }) {
+				const $value = useWatcher(value);
+				return <span>{$value}</span>;
+			}
+
+			render(<App value={1} />);
+			expect(scratch.textContent).to.equal("1");
+		});
+
+		it("should update the checked property on change", () => {
+			function App({ value = 0 }) {
+				const $value = useWatcher(value);
+				return <span>{$value}</span>;
+			}
+
+			render(<App value={1} />);
+			expect(scratch.textContent).to.equal("1");
+
+			render(<App value={4} />);
+			expect(scratch.textContent).to.equal("4");
+		});
+
+		it("should update computed signal", () => {
+			function App({ value = 0 }) {
+				const $value = useWatcher(value);
+				const timesTwo = useComputed(() => $value.value * 2);
+				return <span>{timesTwo}</span>;
+			}
+
+			render(<App value={1} />);
+			expect(scratch.textContent).to.equal("2");
+
+			render(<App value={4} />);
+			expect(scratch.textContent).to.equal("8");
+		});
+
+		it("should consistently rerender in strict mode", () => {
+			function Test({ value }: { value: number }) {
+				const $value = useWatcher(value);
+				return <span>{$value}</span>;
+			}
+
+			function App({ value = 0 }) {
+				return (
+					<StrictMode>
+						<Test value={value} />
+					</StrictMode>
+				);
+			}
+
+			for (let i = 0; i < 3; ++i) {
+				render(<App value={i} />);
+				expect(scratch.textContent).is.equal(`${i}`);
+			}
+		});
+
+		it("should not cascade rerenders", () => {
+			const spy = sinon.spy();
+			function App({ value = 0 }) {
+				const $value = useWatcher(value);
+				const timesTwo = useComputed(() => $value.value * 2);
+				spy();
+				return <p>{timesTwo.value}</p>;
+			}
+
+			render(<App value={1} />);
+			render(<App value={4} />);
+
+			expect(spy).to.be.calledTwice;
 		});
 	});
 });
