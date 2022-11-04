@@ -295,5 +295,54 @@ describe("@preact/signals-react", () => {
 
 			expect(spy).to.be.calledTwice;
 		});
+
+		it("should update all silblings", () => {
+			function Test({ value }: { value: number }) {
+				const $value = useWatcher(value);
+				return <span>{$value.value}</span>;
+			}
+
+			function App({ value = 0 }) {
+				return (
+					<div>
+						<Test value={value} />
+						<Test value={value} />
+					</div>
+				);
+			}
+
+			const firstChild = () => scratch.firstChild?.firstChild;
+
+			render(<App value={1} />);
+			expect(firstChild()?.textContent).to.be.equal("1");
+			expect(firstChild()?.nextSibling?.textContent).to.be.equal("1");
+
+			render(<App value={4} />);
+			expect(firstChild()?.textContent).to.be.equal("4");
+			expect(firstChild()?.nextSibling?.textContent).to.be.equal("4");
+		});
+
+		it("should not rerender siblings", () => {
+			const spy = sinon.spy();
+			function Test({ value }: { value: number }) {
+				const $value = useWatcher(value);
+				spy();
+				return <span>{$value.value}</span>;
+			}
+
+			function App({ value = 0 }) {
+				return (
+					<div>
+						<Test value={value} />
+						<Test value={value} />
+					</div>
+				);
+			}
+
+			render(<App value={1} />);
+			render(<App value={4} />);
+
+			expect(spy).to.be.callCount(4);
+		});
 	});
 });
