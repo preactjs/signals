@@ -1,4 +1,4 @@
-import { signal, useComputed } from "@preact/signals";
+import { signal, computed, useComputed, Signal } from "@preact/signals";
 import { createElement, render } from "preact";
 import { setupRerender, act } from "preact/test-utils";
 
@@ -15,6 +15,16 @@ describe("@preact/signals", () => {
 
 	afterEach(() => {
 		render(null, scratch);
+	});
+
+	describe("inheritance", () => {
+		it("should have signals inherit from Signal", () => {
+			expect(signal(0)).to.be.instanceof(Signal);
+		});
+
+		it("should have computed inherit from Signal", () => {
+			expect(computed(() => 0)).to.be.instanceof(Signal);
+		});
 	});
 
 	describe("Text bindings", () => {
