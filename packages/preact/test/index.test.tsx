@@ -1,5 +1,5 @@
-import { signal, useComputed } from "@preact/signals";
-import { createElement, render } from "preact";
+import { signal, useComputed, useSignalEffect } from "@preact/signals";
+import { createElement, createRef, render } from "preact";
 import { setupRerender, act } from "preact/test-utils";
 
 const sleep = (ms?: number) => new Promise(r => setTimeout(r, ms));
@@ -334,6 +334,58 @@ describe("@preact/signals", () => {
 				// This should not crash
 				s.value = "scale(1, 2)";
 			});
+		});
+	});
+
+	describe("useSignalEffect()", () => {
+		it("should be invoked after commit", async () => {
+			const ref = createRef();
+			const sig = signal("foo");
+			const spy = sinon.spy();
+			let count = 0;
+
+			function App() {
+				useSignalEffect(() =>
+					spy(
+						sig.value,
+						ref.current,
+						ref.current.getAttribute("data-render-id")
+					)
+				);
+				return (
+					<p ref={ref} data-render-id={count++}>
+						{sig.value}
+					</p>
+				);
+			}
+
+			render(<App />, scratch);
+			expect(scratch.textContent).to.equal("foo");
+			// expect(spy).not.to.have.been.called;
+			await sleep(1);
+			expect(spy).to.have.been.calledOnceWith(
+				"foo",
+				scratch.firstElementChild,
+				"0"
+			);
+
+			spy.resetHistory();
+
+			sig.value = "bar";
+			rerender();
+
+			expect(scratch.textContent).to.equal("bar");
+			await sleep(1);
+
+			// NOTE: Ideally, call should receive "1" as its third argument!
+			// The "0" indicates that Preact's DOM mutations hadn't yet been performed when the callback ran.
+			// This happens because we do signal-based effect runs after the first, not VDOM.
+			// Perhaps we could find a way to defer the callback when it coincides with a render?
+			expect(spy).to.have.been.calledOnceWith(
+				"bar",
+				scratch.firstElementChild,
+				"0" // ideally "1" - update if we find a nice way to do so!
+			);
 		});
 	});
 });

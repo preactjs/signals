@@ -21,8 +21,7 @@
 	border: 2px solid #f00;
 	border-radius: 50%;
 	transform-origin: 50% 50%;
-	transition: all 250ms ease;
-	transition-property: width, height, margin;
+	transition: transform 250ms ease;
 	pointer-events: none;
 	overflow: hidden;
 	font-size: 9px;
@@ -35,9 +34,7 @@
 	}
 
 	&.big {
-		width: 24px;
-		height: 24px;
-		margin: -13px 0 0 -13px;
+		transform: scale(2);
 	}
 
 	& > .label {

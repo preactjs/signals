@@ -1,5 +1,4 @@
 import { options, Component } from "preact";
-import { useRef, useMemo, useEffect } from "preact/hooks";
 import {
 	signal,
 	computed,
@@ -16,6 +15,7 @@ import {
 	PropertyUpdater,
 	AugmentedComponent,
 	AugmentedElement as Element,
+	Computed,
 } from "./internal";
 
 export { signal, computed, batch, effect, Signal, type ReadonlySignal };
@@ -29,6 +29,10 @@ function hook<T extends OptionsTypes>(hookName: T, hookFn: HookFn<T>) {
 	// @ts-ignore-next-line private options hooks usage
 	options[hookName] = hookFn.bind(null, options[hookName] || (() => {}));
 }
+
+// mini "hook slots" implementation
+let slotIndex = 0;
+let slots: (Signal | Computed | Effect)[] = [];
 
 let currentComponent: AugmentedComponent | undefined;
 let finishUpdate: (() => void) | undefined;
@@ -63,14 +67,8 @@ function createUpdater(update: () => void) {
  * @todo: in Preact 11, just decorate Signal with `type:null`
  */
 function Text(this: AugmentedComponent, { data }: { data: Signal }) {
-	// hasComputeds.add(this);
-
-	// Store the props.data signal in another signal so that
-	// passing a new signal reference re-runs the text computed:
-	const currentSignal = useSignal(data);
-	currentSignal.value = data;
-
-	const s = useMemo(() => {
+	// Run this only the first time this component is rendered:
+	if (this._slots!.length === 0) {
 		// mark the parent component as having computeds so it gets optimized
 		let v = this.__v;
 		while ((v = v.__!)) {
@@ -84,13 +82,18 @@ function Text(this: AugmentedComponent, { data }: { data: Signal }) {
 		this._updater!._callback = () => {
 			(this.base as Text).data = s.peek();
 		};
+	}
 
-		return computed(() => {
-			let data = currentSignal.value;
-			let s = data.value;
-			return s === 0 ? 0 : s === true ? "" : s || "";
-		});
-	}, []);
+	// Store the props.data signal in another signal so that
+	// passing a new signal reference re-runs the text computed:
+	const currentSignal = useSignal(data);
+	currentSignal.value = data;
+
+	const s = useComputed(() => {
+		let data = currentSignal.value;
+		let s = data.value;
+		return s === 0 ? 0 : s === true ? "" : s || "";
+	});
 
 	return s.value;
 }
@@ -140,6 +143,12 @@ hook(OptionsTypes.RENDER, (old, vnode) => {
 
 	let component = vnode.__c;
 	if (component) {
+		slotIndex = 0;
+		slots = component._slots!;
+		if (slots === undefined) {
+			component._slots = slots = [];
+		}
+
 		component._updateFlags &= ~HAS_PENDING_UPDATE;
 
 		updater = component._updater;
@@ -244,10 +253,9 @@ function createPropUpdater(
 /** Unsubscribe from Signals when unmounting components/vnodes */
 hook(OptionsTypes.UNMOUNT, (old, vnode: VNode) => {
 	if (typeof vnode.type === "string") {
-		let dom = vnode.__e as Element | undefined;
-		// vnode._dom is undefined during string rendering
+		let dom = vnode.__e as Element;
 		if (dom) {
-			const updaters = dom._updaters;
+			let updaters = dom._updaters;
 			if (updaters) {
 				dom._updaters = undefined;
 				for (let prop in updaters) {
@@ -259,10 +267,18 @@ hook(OptionsTypes.UNMOUNT, (old, vnode: VNode) => {
 	} else {
 		let component = vnode.__c;
 		if (component) {
-			const updater = component._updater;
+			let updater = component._updater;
 			if (updater) {
 				component._updater = undefined;
 				updater._dispose();
+			}
+			let slots = component._slots;
+			if (slots) {
+				component._slots = undefined;
+				for (let i = slots.length; i--; ) {
+					let slot = slots[i];
+					if ((slot as Effect)._dispose) (slot as Effect)._dispose();
+				}
 			}
 		}
 	}
@@ -271,8 +287,7 @@ hook(OptionsTypes.UNMOUNT, (old, vnode: VNode) => {
 
 /** Mark components that use hook state so we can skip sCU optimization. */
 hook(OptionsTypes.HOOK, (old, component, index, type) => {
-	if (type < 3)
-		(component as AugmentedComponent)._updateFlags |= HAS_HOOK_STATE;
+	if (type < 3) component._updateFlags |= HAS_HOOK_STATE;
 	old(component, index, type);
 });
 
@@ -321,6 +336,9 @@ Component.prototype.shouldComponentUpdate = function (
 	// @ts-ignore
 	for (let i in state) return true;
 
+	// if no new props were received, this is a purely Signal component:
+	// if (props === this.props) return false;
+
 	// if any non-Signal props changed, update:
 	for (let i in props) {
 		if (i !== "__source" && props[i] !== this.props[i]) return true;
@@ -332,25 +350,35 @@ Component.prototype.shouldComponentUpdate = function (
 };
 
 export function useSignal<T>(value: T) {
-	return useMemo(() => signal<T>(value), []);
+	let slot =
+		(slots[slotIndex] as Signal<T>) || (slots[slotIndex] = signal<T>(value));
+	slotIndex++;
+	return slot;
 }
 
 export function useComputed<T>(compute: () => T) {
-	const $compute = useRef(compute);
-	$compute.current = compute;
-	(currentComponent as AugmentedComponent)._updateFlags |= HAS_COMPUTEDS;
-	return useMemo(() => computed<T>(() => $compute.current()), []);
+	currentComponent!._updateFlags |= HAS_COMPUTEDS;
+	const slot =
+		(slots[slotIndex] as Computed<T>) ||
+		(slots[slotIndex] = computed<T>(compute));
+	slot._compute = compute;
+	slotIndex++;
+	return slot;
 }
 
 export function useSignalEffect(cb: () => void | (() => void)) {
-	const callback = useRef(cb);
-	callback.current = cb;
-
-	useEffect(() => {
-		return effect(() => {
-			callback.current();
+	let slot = slots[slotIndex] as Effect;
+	if (slot === undefined) {
+		effect(function (this: Effect) {
+			slot = this;
+			slots[slotIndex] = slot;
+			// register the effect to run on mount:
+			currentComponent!.__h.push(slot._callback.bind(slot));
 		});
-	}, []);
+	}
+	// Update the Effect's callback to the newly-provided one:
+	slot._compute = cb;
+	slotIndex++;
 }
 
 /**
