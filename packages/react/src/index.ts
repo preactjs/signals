@@ -4,6 +4,7 @@ import {
 	useEffect,
 	Component,
 	type FunctionComponent,
+	type ReactElement,
 } from "react";
 import React from "react";
 import jsxRuntime from "react/jsx-runtime";
@@ -193,6 +194,10 @@ JsxDev.jsxs && /*  */ (JsxDev.jsxs = WrapJsx(JsxDev.jsxs));
 JsxPro.jsxs && /*  */ (JsxPro.jsxs = WrapJsx(JsxPro.jsxs));
 JsxDev.jsxDEV && /**/ (JsxDev.jsxDEV = WrapJsx(JsxDev.jsxDEV));
 JsxPro.jsxDEV && /**/ (JsxPro.jsxDEV = WrapJsx(JsxPro.jsxDEV));
+
+declare module "@preact/signals-core" {
+	interface Signal extends ReactElement {}
+}
 
 /**
  * A wrapper component that renders a Signal's value directly as a Text node.
