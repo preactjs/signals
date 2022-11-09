@@ -3,7 +3,7 @@ import {
 	useMemo,
 	useEffect,
 	Component,
-	type FunctionComponent,
+	type FC,
 	type ReactElement,
 } from "react";
 import React from "react";
@@ -25,7 +25,7 @@ export { signal, computed, batch, effect, Signal, type ReadonlySignal };
 const Empty = [] as const;
 const ReactElemType = Symbol.for("react.element"); // https://github.com/facebook/react/blob/346c7d4c43a0717302d446da9e7423a8e28d8996/packages/shared/ReactSymbols.js#L15
 const ReactMemoType = Symbol.for("react.memo"); // https://github.com/facebook/react/blob/346c7d4c43a0717302d446da9e7423a8e28d8996/packages/shared/ReactSymbols.js#L30
-const ProxyInstance = new WeakMap<FunctionComponent<any>, FunctionComponent<any>>();
+const ProxyInstance = new WeakMap<FC<any>, FC<any>>();
 const SupportsProxy = typeof Proxy === "function";
 
 const ProxyHandlers = {
@@ -40,7 +40,7 @@ const ProxyHandlers = {
 	 *
 	 * @see https://github.com/facebook/react/blob/2d80a0cd690bb5650b6c8a6c079a87b5dc42bd15/packages/react-reconciler/src/ReactFiberHooks.old.js#L460
 	 */
-	apply(Component: FunctionComponent, thisArg: any, argumentsList: any) {
+	apply(Component: FC<any>, thisArg: any, argumentsList: Parameters<FC<any>>) {
 		const store = useMemo(createEffectStore, Empty);
 
 		useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
@@ -63,10 +63,11 @@ const ProxyHandlers = {
 	},
 };
 
-function ProxyFunctionalComponent(Component: FunctionComponent<any>) {
+function ProxyFunctionalComponent(Component: FC<any>) {
 	return ProxyInstance.get(Component) || WrapWithProxy(Component);
 }
-function WrapWithProxy(Component: FunctionComponent<any>) {
+
+function WrapWithProxy(Component: FC<any>) {
 	if (SupportsProxy) {
 		const ProxyComponent = new Proxy(Component, ProxyHandlers);
 
@@ -90,9 +91,10 @@ function WrapWithProxy(Component: FunctionComponent<any>) {
 	 * el.type.defaultProps;
 	 * ```
 	 */
-	const WrappedComponent = function () {
-		return ProxyHandlers.apply(Component, undefined, arguments);
+	const WrappedComponent: FC<any> = (...args) => {
+		return ProxyHandlers.apply(Component, undefined, args);
 	};
+
 	ProxyInstance.set(Component, WrappedComponent);
 	ProxyInstance.set(WrappedComponent, WrappedComponent);
 
