@@ -50,6 +50,7 @@ const ProxyHandlers = {
 		try {
 			const children = Component.apply(thisArg, argumentsList);
 			return children;
+			// eslint-disable-next-line no-useless-catch
 		} catch (e) {
 			// Re-throwing promises that'll be handled by suspense
 			// or an actual error.
@@ -196,6 +197,8 @@ JsxDev.jsxDEV && /**/ (JsxDev.jsxDEV = WrapJsx(JsxDev.jsxDEV));
 JsxPro.jsxDEV && /**/ (JsxPro.jsxDEV = WrapJsx(JsxPro.jsxDEV));
 
 declare module "@preact/signals-core" {
+	// @ts-ignore internal Signal is viewed as function
+	// eslint-disable-next-line @typescript-eslint/no-empty-interface
 	interface Signal extends ReactElement {}
 }
 

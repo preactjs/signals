@@ -148,7 +148,7 @@ describe("@preact/signals-react", () => {
 
 			function App() {
 				sig.value;
-				return useMemo(() => <Inner foo={1} />, []);
+				return useMemo(() => <Inner />, []);
 			}
 
 			render(<App />);

@@ -157,11 +157,13 @@ function addDependency(signal: Signal): Node | undefined {
 	return undefined;
 }
 
+// @ts-ignore internal Signal is viewed as a function
 declare class Signal<T = any> {
 	/** @internal */
 	_value: unknown;
 
-	/** @internal
+	/**
+	 * @internal
 	 * Version numbers should always be >= 0, because the special value -1 is used
 	 * by Nodes to signify potentially unused but recyclable notes.
 	 */
@@ -197,6 +199,7 @@ declare class Signal<T = any> {
 }
 
 /** @internal */
+// @ts-ignore internal Signal is viewed as function
 function Signal(this: Signal, value?: unknown) {
 	this._value = value;
 	this._version = 0;
