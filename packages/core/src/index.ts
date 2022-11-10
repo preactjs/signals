@@ -163,7 +163,7 @@ declare class Signal<T = any> {
 
 	/** @internal
 	 * Version numbers should always be >= 0, because the special value -1 is used
-	 * by Nodes to signify potentially unused but recyclable notes.
+	 * by Nodes to signify potentially unused but recyclable nodes.
 	 */
 	_version: number;
 
