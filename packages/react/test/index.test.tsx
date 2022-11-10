@@ -1,7 +1,7 @@
 // @ts-ignore-next-line
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
-import { signal, useComputed } from "@preact/signals-react";
+import { signal, computed, useComputed } from "@preact/signals-react";
 import { createElement, useMemo, memo, StrictMode } from "react";
 import { createRoot, Root } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -38,6 +38,16 @@ describe("@preact/signals-react", () => {
 			expect(span).to.have.property("firstChild").that.is.an.instanceOf(Text);
 			const text = span?.firstChild;
 			expect(text).to.have.property("data", "test");
+		});
+
+		it("should render computed as Text", () => {
+			const sig = signal("test");
+			const comp = computed(() => `${sig} ${sig}`);
+			render(<span>{comp}</span>);
+			const span = scratch.firstChild;
+			expect(span).to.have.property("firstChild").that.is.an.instanceOf(Text);
+			const text = span?.firstChild;
+			expect(text).to.have.property("data", "test test");
 		});
 
 		it("should update Signal-based Text (no parent component)", () => {
