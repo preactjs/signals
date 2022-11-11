@@ -1,25 +1,20 @@
 {
-  "compilerOptions": {
-    "target": "ES2020",
-    "lib": ["ES2021.WeakRef"],
-    "moduleResolution": "node",
-    "esModuleInterop": true,
-    "strict": true,
-    "jsx": "react",
-    "jsxFactory": "createElement",
-    "jsxFragmentFactory": "Fragment",
-    "stripInternal": true,
-    "noUnusedLocals": true,
-    "paths": {
-      "@preact/signals-core": [
-        "./packages/core/src/index.ts"
-      ],
-      "@preact/signals": [
-        "./packages/preact/src/index.ts"
-      ],
-      "@preact/signals-react": [
-        "./packages/react/src/index.ts"
-      ]
-    }
-  }
+	"compilerOptions": {
+		"target": "ES2020",
+		"lib": ["ES2021.WeakRef"],
+		"moduleResolution": "node",
+		"esModuleInterop": true,
+		"strict": true,
+		"jsx": "react",
+		"jsxFactory": "createElement",
+		"jsxFragmentFactory": "Fragment",
+		"stripInternal": true,
+		"noUnusedLocals": true,
+		"paths": {
+			"deepsignal": ["./packages/deepsignal/src/index.ts"],
+			"@preact/signals-core": ["./packages/core/src/index.ts"],
+			"@preact/signals": ["./packages/preact/src/index.ts"],
+			"@preact/signals-react": ["./packages/react/src/index.ts"]
+		}
+	}
 }

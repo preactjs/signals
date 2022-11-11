@@ -1,0 +1,43 @@
+{
+	"name": "deepsignal",
+	"version": "1.0.0",
+	"license": "MIT",
+	"description": "",
+	"keywords": [],
+	"authors": [
+		"@luisherranz"
+	],
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/luisherranz/deepsignal"
+	},
+	"bugs": "https://github.com/luisherranz/deepsignal/issues",
+	"main": "dist/deepsignal.js",
+	"module": "dist/deepsignal.module.js",
+	"unpkg": "dist/deepsignal.min.js",
+	"types": "dist/deepsignal.d.ts",
+	"source": "src/index.ts",
+	"sideEffects": false,
+	"exports": {
+		".": {
+			"types": "./dist/deepsignal.d.ts",
+			"browser": "./dist/deepsignal.module.js",
+			"umd": "./dist/deepsignal.umd.js",
+			"import": "./dist/deepsignal.mjs",
+			"require": "./dist/deepsignal.js"
+		}
+	},
+	"scripts": {
+		"prepublishOnly": "cp ../../README.md . && cd ../.. && pnpm build:deepsignal"
+	},
+	"dependencies": {
+		"@preact/signals-core": "workspace:^1.2.2"
+	},
+	"peerDependencies": {
+		"preact": "10.x"
+	},
+	"devDependencies": {
+		"preact": "10.9.0",
+		"preact-render-to-string": "^5.2.4"
+	}
+}

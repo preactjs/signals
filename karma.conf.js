@@ -60,6 +60,7 @@ function createEsbuildPlugin() {
 
 	const alias = {
 		"@preact/signals-core": subPkgPath("./packages/core"),
+		deepsignal: subPkgPath("./packages/deepsignal"),
 		"@preact/signals": subPkgPath("./packages/preact"),
 		"@preact/signals-react": subPkgPath("./packages/react"),
 	};
