@@ -4,52 +4,21 @@ const proxyToSignals = new WeakMap();
 const objToProxy = new WeakMap();
 const rg = /^\$\$?/;
 
-// type IsFunction<T extends object> = {
-// 	[P in keyof T]: T[P] extends Function ? never : P;
-// }[keyof T];
-
-// interface SignalArray<T> extends Array<T> {
-// 	$length: Signal<number>;
-// 	$$length: number;
-// 	$0: Signal<T>;
-// 	$$0: T;
-// }
-
-// type DeepSignalArray<T> = {
-// 	[P in keyof T]: T[P] extends Array<unknown>
-// 		? DeepSignalArray<T[P]>
-// 		: T[P] extends object
-// 		? DeepSignal<T[P]>
-// 		: T[P];
-// };
-
-// const l: DeepSignalArray<number | object> = [1, { a: 1 }];
-
-// export type DeepSignal<T extends object> = {
-// 	[P in IsFunction<T> & string as `$${P}`]: Signal<T[P]>;
-// } & T;
-
-export type DeepSignal<T extends object> = {
-	[P in keyof T & string as `$${P}`]: T[P] extends object
-		? Signal<DeepSignal<T[P]>>
-		: Signal<T[P]>;
-} & {
-	[P in keyof T & string as `$$${P}`]: T[P];
-} & {
+type DeepSignal<T extends object> = {
 	[P in keyof T]: T[P] extends object ? DeepSignal<T[P]> : T[P];
-};
-
-// & {
-// 	[P in keyof T & string as `$$${P}`]: T[P];
-// }
+} & { $: { [P in keyof T]: Signal<T[P]> } };
 
 export const deepSignal = <T extends object>(obj: T): DeepSignal<T> => {
 	return new Proxy(obj, handlers) as DeepSignal<T>;
 };
 
-const d = deepSignal({ a: 1, b: "2", c: () => {}, d: [], e: { f: 1 } });
+const d = deepSignal({ a: 1, b: "2", c: () => {}, d: [1], e: { f: 1 } });
 
-d.a;
+d.e;
+d.$.e;
+d.e = { f: 2 };
+d.e.f;
+d.e["$"].f;
 
 const handlers = {
 	get(target: object, originalKey: string, receiver: object) {
