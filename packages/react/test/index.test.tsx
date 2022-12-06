@@ -2,7 +2,7 @@
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
 import { signal, useComputed } from "@preact/signals-react";
-import { createElement, useMemo, memo, StrictMode } from "react";
+import { createElement, forwardRef, memo, StrictMode, useMemo } from "react";
 import { createRoot, Root } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { act } from "react-dom/test-utils";
@@ -149,6 +149,26 @@ describe("@preact/signals-react", () => {
 			function App() {
 				sig.value;
 				return useMemo(() => <Inner foo={1} />, []);
+			}
+
+			render(<App />);
+			expect(scratch.textContent).to.equal("foo");
+
+			act(() => {
+				sig.value = "bar";
+			});
+			expect(scratch.textContent).to.equal("bar");
+		});
+
+		it("should update forwardRef'ed component via signals", async () => {
+			const sig = signal("foo");
+
+			const Inner = forwardRef(() => {
+				return <p>{sig.value}</p>;
+			});
+
+			function App() {
+				return <Inner />;
 			}
 
 			render(<App />);
