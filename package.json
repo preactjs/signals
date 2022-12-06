@@ -1,8 +1,5 @@
 {
 	"name": "preact-signals",
-	"version": "1.0.0",
-	"description": "Manage state with style in every framework",
-	"main": "index.js",
 	"private": true,
 	"scripts": {
 		"prebuild": "rimraf packages/core/dist/ packages/preact/dist",
