@@ -1,8 +1,5 @@
 {
 	"name": "preact-signals",
-	"version": "1.0.0",
-	"description": "",
-	"main": "index.js",
 	"private": true,
 	"scripts": {
 		"prebuild": "rimraf packages/core/dist/ packages/preact/dist",
@@ -25,8 +22,9 @@
 		"ci:test": "pnpm lint && pnpm test",
 		"release": "pnpm changeset version && pnpm install && git add -A && git commit -m 'Version Packages' && changeset tag && pnpm publish -r"
 	},
-	"keywords": [],
-	"author": "",
+	"authors": [
+		"The Preact Authors (https://github.com/preactjs/signals/contributors)"
+	],
 	"license": "MIT",
 	"devDependencies": {
 		"@babel/core": "^7.19.1",
