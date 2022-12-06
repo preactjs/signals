@@ -2,7 +2,7 @@
 	"name": "@preact/signals",
 	"version": "1.1.2",
 	"license": "MIT",
-	"description": "",
+	"description": "Manage state with style in every framework",
 	"keywords": [],
 	"authors": [
 		"The Preact Authors (https://github.com/preactjs/signals/contributors)"
