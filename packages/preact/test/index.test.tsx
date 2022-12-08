@@ -375,7 +375,9 @@ describe("@preact/signals", () => {
 				);
 			}
 
-			render(<App />, scratch);
+			act(() => {
+				render(<App />, scratch);
+			});
 			expect(scratch.textContent).to.equal("foo");
 			// expect(spy).not.to.have.been.called;
 			await sleep(1);
@@ -387,8 +389,10 @@ describe("@preact/signals", () => {
 
 			spy.resetHistory();
 
-			sig.value = "bar";
-			rerender();
+			act(() => {
+				sig.value = "bar";
+				rerender();
+			});
 
 			expect(scratch.textContent).to.equal("bar");
 			await sleep(1);
@@ -436,8 +440,10 @@ describe("@preact/signals", () => {
 			);
 			spy.resetHistory();
 
-			sig.value = "bar";
-			rerender();
+			act(() => {
+				sig.value = "bar";
+				rerender();
+			});
 
 			expect(scratch.textContent).to.equal("bar");
 			await sleep(1);

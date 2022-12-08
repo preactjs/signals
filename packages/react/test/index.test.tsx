@@ -1,8 +1,8 @@
 // @ts-ignore-next-line
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
-import { signal, useComputed } from "@preact/signals-react";
-import { createElement, useMemo, memo, StrictMode } from "react";
+import { signal, useComputed, useSignalEffect } from "@preact/signals-react";
+import { createElement, useMemo, memo, StrictMode, createRef } from "react";
 import { createRoot, Root } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { act } from "react-dom/test-utils";
@@ -220,6 +220,137 @@ describe("@preact/signals-react", () => {
 					`<code>${count.value}</code><code>${count.value}</code>`
 				);
 			}
+		});
+	});
+
+	describe("useSignalEffect()", () => {
+		it("should be invoked after commit", async () => {
+			const ref = createRef<HTMLDivElement>();
+			const sig = signal("foo");
+			const spy = sinon.spy();
+			let count = 0;
+
+			function App() {
+				useSignalEffect(() =>
+					spy(
+						sig.value,
+						ref.current,
+						ref.current!.getAttribute("data-render-id")
+					)
+				);
+				return (
+					<p ref={ref} data-render-id={count++}>
+						{sig.value}
+					</p>
+				);
+			}
+
+			render(<App />);
+			expect(scratch.textContent).to.equal("foo");
+
+			expect(spy).to.have.been.calledOnceWith(
+				"foo",
+				scratch.firstElementChild,
+				"0"
+			);
+
+			spy.resetHistory();
+
+			act(() => {
+				sig.value = "bar";
+			});
+
+			expect(scratch.textContent).to.equal("bar");
+
+			// NOTE: Ideally, call should receive "1" as its third argument!
+			// The "0" indicates that Preact's DOM mutations hadn't yet been performed when the callback ran.
+			// This happens because we do signal-based effect runs after the first, not VDOM.
+			// Perhaps we could find a way to defer the callback when it coincides with a render?
+			expect(spy).to.have.been.calledOnceWith(
+				"bar",
+				scratch.firstElementChild,
+				"0" // ideally "1" - update if we find a nice way to do so!
+			);
+		});
+
+		it("should invoke any returned cleanup function for updates", async () => {
+			const ref = createRef<HTMLDivElement>();
+			const sig = signal("foo");
+			const spy = sinon.spy();
+			const cleanup = sinon.spy();
+			let count = 0;
+
+			function App() {
+				useSignalEffect(() => {
+					const id = ref.current!.getAttribute("data-render-id");
+					const value = sig.value;
+					spy(value, ref.current, id);
+					return () => cleanup(value, ref.current, id);
+				});
+				return (
+					<p ref={ref} data-render-id={count++}>
+						{sig.value}
+					</p>
+				);
+			}
+
+			render(<App />);
+
+			expect(cleanup).not.to.have.been.called;
+			expect(spy).to.have.been.calledOnceWith(
+				"foo",
+				scratch.firstElementChild,
+				"0"
+			);
+			spy.resetHistory();
+
+			act(() => {
+				sig.value = "bar";
+			});
+
+			expect(scratch.textContent).to.equal("bar");
+
+			const child = scratch.firstElementChild;
+
+			expect(cleanup).to.have.been.calledOnceWith("foo", child, "0");
+
+			expect(spy).to.have.been.calledOnceWith(
+				"bar",
+				child,
+				"0" // ideally "1" - update if we find a nice way to do so!
+			);
+		});
+
+		it("should invoke any returned cleanup function for unmounts", async () => {
+			const ref = createRef<HTMLDivElement>();
+			const sig = signal("foo");
+			const spy = sinon.spy();
+			const cleanup = sinon.spy();
+
+			function App() {
+				useSignalEffect(() => {
+					const value = sig.value;
+					spy(value, ref.current);
+					return () => cleanup(value, ref.current);
+				});
+				return <p ref={ref}>{sig.value}</p>;
+			}
+
+			render(<App />);
+
+			const child = scratch.firstElementChild;
+
+			expect(cleanup).not.to.have.been.called;
+			expect(spy).to.have.been.calledOnceWith("foo", child);
+			spy.resetHistory();
+
+			render(null);
+
+			expect(spy).not.to.have.been.called;
+			expect(cleanup).to.have.been.calledOnce;
+			// @note: React cleans up the ref eagerly, so it's already null by the time the callback runs.
+			// this is probably worth fixing at some point.
+			expect(cleanup).to.have.been.calledWith("foo", null);
 		});
 	});
 });
