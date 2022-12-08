@@ -468,7 +468,9 @@ describe("@preact/signals", () => {
 				return <p ref={ref}>{sig.value}</p>;
 			}
 
-			render(<App />, scratch);
+			act(() => {
+				render(<App />, scratch);
+			});
 
 			await sleep(1);
 
@@ -478,7 +480,9 @@ describe("@preact/signals", () => {
 			expect(spy).to.have.been.calledOnceWith("foo", child);
 			spy.resetHistory();
 
-			render(null, scratch);
+			act(() => {
+				render(null, scratch);
+			});
 
 			await sleep(1);
 
