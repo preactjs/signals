@@ -190,7 +190,7 @@ declare class Signal<T = any> {
 	/**
 	 * @internal
 	 * Version numbers should always be >= 0, because the special value -1 is used
-	 * by Nodes to signify potentially unused but recyclable notes.
+	 * by Nodes to signify potentially unused but recyclable nodes.
 	 */
 	_version: number;
 
@@ -246,18 +246,21 @@ Signal.prototype._subscribe = function (node) {
 };
 
 Signal.prototype._unsubscribe = function (node) {
-	const prev = node._prevTarget;
-	const next = node._nextTarget;
-	if (prev !== undefined) {
-		prev._nextTarget = next;
-		node._prevTarget = undefined;
-	}
-	if (next !== undefined) {
-		next._prevTarget = prev;
-		node._nextTarget = undefined;
-	}
-	if (node === this._targets) {
-		this._targets = next;
+	// Only run the unsubscribe step if the signal has any subscribers to begin with.
+	if (this._targets !== undefined) {
+		const prev = node._prevTarget;
+		const next = node._nextTarget;
+		if (prev !== undefined) {
+			prev._nextTarget = next;
+			node._prevTarget = undefined;
+		}
+		if (next !== undefined) {
+			next._prevTarget = prev;
+			node._nextTarget = undefined;
+		}
+		if (node === this._targets) {
+			this._targets = next;
+		}
 	}
 };
 
@@ -530,18 +533,22 @@ Computed.prototype._subscribe = function (node) {
 };
 
 Computed.prototype._unsubscribe = function (node) {
-	Signal.prototype._unsubscribe.call(this, node);
+	// Only run the unsubscribe step if the computed signal has any subscribers.
+	if (this._targets !== undefined) {
+		Signal.prototype._unsubscribe.call(this, node);
 
-	// Computed signal unsubscribes from its dependencies from it loses its last subscriber.
-	if (this._targets === undefined) {
-		this._flags &= ~TRACKING;
+		// Computed signal unsubscribes from its dependencies when it loses its last subscriber.
+		// This makes it possible for unreferences subgraphs of computed signals to get garbage collected.
+		if (this._targets === undefined) {
+			this._flags &= ~TRACKING;
 
-		for (
-			let node = this._sources;
-			node !== undefined;
-			node = node._nextSource
-		) {
-			node._source._unsubscribe(node);
+			for (
+				let node = this._sources;
+				node !== undefined;
+				node = node._nextSource
+			) {
+				node._source._unsubscribe(node);
+			}
 		}
 	}
 };

@@ -55,7 +55,7 @@ console.log(counter.value);
 counter.value = 1;
 ```
 
-Writing to a signal is done by setting its `.value` property. Changing a signal's value synchronously updates every [computed](#computed) and [effect](#effect) that depends on that signal, ensuring your app state is always consistent.
+Writing to a signal is done by setting its `.value` property. Changing a signal's value synchronously updates every [computed](#computedfn) and [effect](#effectfn) that depends on that signal, ensuring your app state is always consistent.
 
 #### `signal.peek()`
 
