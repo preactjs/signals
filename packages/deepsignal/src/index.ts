@@ -2,61 +2,41 @@ import { signal, Signal } from "@preact/signals-core";
 
 const proxyToSignals = new WeakMap();
 const objToProxy = new WeakMap();
-const rg = /^\$\$?/;
+const rg = /^\$/;
 
-// type IsFunction<T extends object> = {
-// 	[P in keyof T]: T[P] extends Function ? never : P;
-// }[keyof T];
-
-// interface SignalArray<T> extends Array<T> {
-// 	$length: Signal<number>;
-// 	$$length: number;
-// 	$0: Signal<T>;
-// 	$$0: T;
-// }
-
-// type DeepSignalArray<T> = {
-// 	[P in keyof T]: T[P] extends Array<unknown>
-// 		? DeepSignalArray<T[P]>
-// 		: T[P] extends object
-// 		? DeepSignal<T[P]>
-// 		: T[P];
-// };
-
-// const l: DeepSignalArray<number | object> = [1, { a: 1 }];
-
-// export type DeepSignal<T extends object> = {
-// 	[P in IsFunction<T> & string as `$${P}`]: Signal<T[P]>;
-// } & T;
-
-export type DeepSignal<T extends object> = {
-	[P in keyof T & string as `$${P}`]: T[P] extends object
-		? Signal<DeepSignal<T[P]>>
-		: Signal<T[P]>;
+type DeepSignalObject<T extends object> = {
+	[P in keyof T & string as `$${P}`]?: Signal<T[P]>;
 } & {
-	[P in keyof T & string as `$$${P}`]: T[P];
-} & {
-	[P in keyof T]: T[P] extends object ? DeepSignal<T[P]> : T[P];
+	[P in keyof T]: T[P] extends Array<unknown>
+		? DeepSignalArray<T[P]>
+		: T[P] extends object
+		? DeepSignalObject<T[P]>
+		: T[P];
 };
 
-// & {
-// 	[P in keyof T & string as `$$${P}`]: T[P];
-// }
+type ArrayType<T> = T extends Array<infer Item> ? Item : T;
+type DeepSignalArray<T> = Array<ArrayType<T>> & {
+	[key: number]: DeepSignal<ArrayType<T>>;
+	[key: `$${number}`]: Signal<ArrayType<T>>;
+	length: number;
+	$length?: Signal<number>;
+};
+
+type DeepSignal<T> = T extends Array<unknown>
+	? DeepSignalArray<T>
+	: T extends object
+	? DeepSignalObject<T>
+	: T;
 
 export const deepSignal = <T extends object>(obj: T): DeepSignal<T> => {
 	return new Proxy(obj, handlers) as DeepSignal<T>;
 };
 
-const d = deepSignal({ a: 1, b: "2", c: () => {}, d: [], e: { f: 1 } });
-
-d.a;
-
 const handlers = {
 	get(target: object, originalKey: string, receiver: object) {
-		const retSignal = originalKey[0] === "$";
-		const key = retSignal ? originalKey.replace(rg, "") : originalKey;
+		const returnSignal = originalKey[0] === "$";
+		const key = returnSignal ? originalKey.replace(rg, "") : originalKey;
 		let value = Reflect.get(target, key, receiver);
-		if (originalKey[1] === "$") return value;
 		if (!proxyToSignals.has(receiver)) proxyToSignals.set(receiver, new Map());
 		const signals = proxyToSignals.get(receiver);
 		if (!signals.has(key)) {
@@ -67,7 +47,7 @@ const handlers = {
 			}
 			signals.set(key, signal(value));
 		}
-		return retSignal ? signals.get(key) : signals.get(key).value;
+		return returnSignal ? signals.get(key) : signals.get(key).value;
 	},
 
 	set(target: object, key: string, val: any, receiver: object) {

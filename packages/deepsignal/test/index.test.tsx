@@ -41,13 +41,13 @@ describe("deepsignal", () => {
 		const v = { a: 1, nested, array };
 		const s = deepSignal(v);
 		expect(s.$a).to.be.instanceOf(Signal);
-		expect(s.$a.value).to.equal(1);
+		expect(s.$a!.value).to.equal(1);
 		expect(s.$nested).to.be.instanceOf(Signal);
-		expect(s.$nested.value).to.have.property("b", 2);
+		expect(s.$nested!.value).to.have.property("b", 2);
 		expect(s.nested.$b).to.be.instanceOf(Signal);
-		expect(s.nested.$b.value).to.equal(2);
+		expect(s.nested.$b!.value).to.equal(2);
 		expect(s.$array).to.be.instanceOf(Signal);
-		expect(s.$array.value).to.have.property("0", 3);
+		expect(s.$array!.value).to.have.property("0", 3);
 		expect(s.array.$0).to.be.instanceOf(Signal);
 		expect(s.array.$0.value).to.equal(3);
 		expect(s.array.$1).to.be.instanceOf(Signal);
@@ -58,22 +58,22 @@ describe("deepsignal", () => {
 		expect(s.array.$length.value).to.equal(2);
 	});
 
-	it("should return peek (value) when using $$", () => {
+	it("signal should return peek (value)", () => {
 		const nested = { b: 2 };
 		const array = [3, nested];
 		const v = { a: 1, nested, array };
 		const s = deepSignal(v);
-		expect(s.$$a).to.equal(1);
-		expect(s.$$nested).to.have.property("b", 2);
-		expect(s.$$nested.b).to.equal(2);
-		expect(s.nested.$$b).to.equal(2);
-		expect(s.$$array).to.have.property("0", 3);
-		expect(s.$$array[0]).to.equal(3);
-		expect(s.$$array[1]).to.have.property("b", 2);
-		expect(s.array.$$1.b).to.equal(2);
-		expect(s.array[1].$$b).to.equal(2);
-		expect(s.$$array.length).to.equal(2);
-		expect(s.array.$$length).to.equal(2);
+		expect(s.$a!.peek()).to.equal(1);
+		expect(s.$nested!.peek()).to.have.property("b", 2);
+		expect(s.$nested!.peek().b).to.equal(2);
+		expect(s.nested.$b!.peek()).to.equal(2);
+		expect(s.$array!.peek()).to.have.property("0", 3);
+		expect(s.$array!.peek()[0]).to.equal(3);
+		expect(s.$array!.peek()[1]).to.have.property("b", 2);
+		expect(s.array.$1!.peek().b).to.equal(2);
+		expect(s.array[1].$b!.peek()).to.equal(2);
+		expect(s.$array!.peek().length).to.equal(2);
+		expect(s.array.$length!.peek()).to.equal(2);
 	});
 
 	it("should subscribe to changes", () => {
