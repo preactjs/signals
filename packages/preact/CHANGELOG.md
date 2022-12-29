@@ -1,5 +1,16 @@
 # @preact/signals
 
+## 1.1.3
+
+### Patch Changes
+
+- [`df813ad`](https://github.com/preactjs/signals/commit/df813adc3ed304e326950be08509350cda43f28e) Thanks [@developit](https://github.com/developit)! - Fix rendering of Signals as text in `preact-render-to-string` (#268)
+
+* [#282](https://github.com/preactjs/signals/pull/282) [`cafbdaa`](https://github.com/preactjs/signals/commit/cafbdaabd525a034e38da10b04eee0688c026152) Thanks [@developit](https://github.com/developit)! - Fix a bug that caused cleanup functions returned from a `useSignalEffect()` callback not to be called.
+
+* Updated dependencies [[`7e15d3c`](https://github.com/preactjs/signals/commit/7e15d3cf5f5e66258105e6f27cd7838b52fbbf9f)]:
+  - @preact/signals-core@1.2.3
+
 ## 1.1.2
 
 ### Patch Changes
