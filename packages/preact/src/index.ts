@@ -97,7 +97,7 @@ function Text(this: AugmentedComponent, { data }: { data: Signal }) {
 Text.displayName = "_st";
 
 Object.defineProperties(Signal.prototype, {
-	constructor: { configurable: true },
+	constructor: { configurable: true, value: undefined },
 	type: { configurable: true, value: Text },
 	props: {
 		configurable: true,
@@ -347,9 +347,7 @@ export function useSignalEffect(cb: () => void | (() => void)) {
 	callback.current = cb;
 
 	useEffect(() => {
-		return effect(() => {
-			callback.current();
-		});
+		return effect(() => callback.current());
 	}, []);
 }
 

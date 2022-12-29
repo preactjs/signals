@@ -110,18 +110,32 @@ function addDependency(signal: Signal): Node | undefined {
 
 	let node = signal._node;
 	if (node === undefined || node._target !== evalContext) {
-		// `signal` is a new dependency. Create a new node dependency node, move it
-		//  to the front of the current context's dependency list.
+		/**
+		 * `signal` is a new dependency. Create a new dependency node, and set it
+		 * as the tail of the current context's dependency list. e.g:
+		 *
+		 * { A <-> B       }
+		 *         ↑     ↑
+		 *        tail  node (new)
+		 *               ↓
+		 * { A <-> B <-> C }
+		 *               ↑
+		 *              tail (evalContext._sources)
+		 */
 		node = {
 			_version: 0,
 			_source: signal,
-			_prevSource: undefined,
-			_nextSource: evalContext._sources,
+			_prevSource: evalContext._sources,
+			_nextSource: undefined,
 			_target: evalContext,
 			_prevTarget: undefined,
 			_nextTarget: undefined,
 			_rollbackNode: node,
 		};
+
+		if (evalContext._sources !== undefined) {
+			evalContext._sources._nextSource = node;
+		}
 		evalContext._sources = node;
 		signal._node = node;
 
@@ -135,18 +149,30 @@ function addDependency(signal: Signal): Node | undefined {
 		// `signal` is an existing dependency from a previous evaluation. Reuse it.
 		node._version = 0;
 
-		// If `node` is not already the current head of the dependency list (i.e.
-		// there is a previous node in the list), then make `node` the new head.
-		if (node._prevSource !== undefined) {
-			node._prevSource._nextSource = node._nextSource;
-			if (node._nextSource !== undefined) {
-				node._nextSource._prevSource = node._prevSource;
+		/**
+		 * If `node` is not already the current tail of the dependency list (i.e.
+		 * there is a next node in the list), then make the `node` the new tail. e.g:
+		 *
+		 * { A <-> B <-> C <-> D }
+		 *         ↑           ↑
+		 *        node   ┌─── tail (evalContext._sources)
+		 *         └─────│─────┐
+		 *               ↓     ↓
+		 * { A <-> C <-> D <-> B }
+		 *                     ↑
+		 *                    tail (evalContext._sources)
+		 */
+		if (node._nextSource !== undefined) {
+			node._nextSource._prevSource = node._prevSource;
+
+			if (node._prevSource !== undefined) {
+				node._prevSource._nextSource = node._nextSource;
 			}
-			node._prevSource = undefined;
-			node._nextSource = evalContext._sources;
-			// evalCotext._sources must be !== undefined (and !== node), because
-			// `node` was originally pointing to some previous node.
-			evalContext._sources!._prevSource = node;
+
+			node._prevSource = evalContext._sources;
+			node._nextSource = undefined;
+
+			evalContext._sources!._nextSource = node;
 			evalContext._sources = node;
 		}
 
@@ -161,9 +187,10 @@ declare class Signal<T = any> {
 	/** @internal */
 	_value: unknown;
 
-	/** @internal
+	/**
+	 * @internal
 	 * Version numbers should always be >= 0, because the special value -1 is used
-	 * by Nodes to signify potentially unused but recyclable notes.
+	 * by Nodes to signify potentially unused but recyclable nodes.
 	 */
 	_version: number;
 
@@ -219,18 +246,21 @@ Signal.prototype._subscribe = function (node) {
 };
 
 Signal.prototype._unsubscribe = function (node) {
-	const prev = node._prevTarget;
-	const next = node._nextTarget;
-	if (prev !== undefined) {
-		prev._nextTarget = next;
-		node._prevTarget = undefined;
-	}
-	if (next !== undefined) {
-		next._prevTarget = prev;
-		node._nextTarget = undefined;
-	}
-	if (node === this._targets) {
-		this._targets = next;
+	// Only run the unsubscribe step if the signal has any subscribers to begin with.
+	if (this._targets !== undefined) {
+		const prev = node._prevTarget;
+		const next = node._nextTarget;
+		if (prev !== undefined) {
+			prev._nextTarget = next;
+			node._prevTarget = undefined;
+		}
+		if (next !== undefined) {
+			next._prevTarget = prev;
+			node._nextTarget = undefined;
+		}
+		if (node === this._targets) {
+			this._targets = next;
+		}
 	}
 };
 
@@ -318,12 +348,24 @@ function needsToRecompute(target: Computed | Effect): boolean {
 			return true;
 		}
 	}
-	// If none of the dependencies have changed values since last recompute then the
+	// If none of the dependencies have changed values since last recompute then
 	// there's no need to recompute.
 	return false;
 }
 
 function prepareSources(target: Computed | Effect) {
+	/**
+	 * 1. Mark all current sources as re-usable nodes (version: -1)
+	 * 2. Set a rollback node if the current node is being used in a different context
+	 * 3. Point 'target._sources' to the tail of the doubly-linked list, e.g:
+	 *
+	 *    { undefined <- A <-> B <-> C -> undefined }
+	 *                   ↑           ↑
+	 *                   │           └──────┐
+	 * target._sources = A; (node is head)  │
+	 *                   ↓                  │
+	 * target._sources = C; (node is tail) ─┘
+	 */
 	for (
 		let node = target._sources;
 		node !== undefined;
@@ -335,39 +377,66 @@ function prepareSources(target: Computed | Effect) {
 		}
 		node._source._node = node;
 		node._version = -1;
+
+		if (node._nextSource === undefined) {
+			target._sources = node;
+			break;
+		}
 	}
 }
 
 function cleanupSources(target: Computed | Effect) {
-	// At this point target._sources is a mishmash of current & former dependencies.
-	// The current dependencies are also in a reverse order of use.
-	// Therefore build a new, reverted list of dependencies containing only the current
-	// dependencies in a proper order of use.
-	// Drop former dependencies from the list and unsubscribe from their change notifications.
-
 	let node = target._sources;
-	let sources = undefined;
+	let head = undefined;
+
+	/**
+	 * At this point 'target._sources' points to the tail of the doubly-linked list.
+	 * It contains all existing sources + new sources in order of use.
+	 * Iterate backwards until we find the head node while dropping old dependencies.
+	 */
 	while (node !== undefined) {
-		const next = node._nextSource;
+		const prev = node._prevSource;
+
+		/**
+		 * The node was not re-used, unsubscribe from its change notifications and remove itself
+		 * from the doubly-linked list. e.g:
+		 *
+		 * { A <-> B <-> C }
+		 *         ↓
+		 *    { A <-> C }
+		 */
 		if (node._version === -1) {
 			node._source._unsubscribe(node);
-			node._nextSource = undefined;
-		} else {
-			if (sources !== undefined) {
-				sources._prevSource = node;
+
+			if (prev !== undefined) {
+				prev._nextSource = node._nextSource;
 			}
-			node._prevSource = undefined;
-			node._nextSource = sources;
-			sources = node;
+			if (node._nextSource !== undefined) {
+				node._nextSource._prevSource = prev;
+			}
+		} else {
+			/**
+			 * The new head is the last node seen which wasn't removed/unsubscribed
+			 * from the doubly-linked list. e.g:
+			 *
+			 * { A <-> B <-> C }
+			 *   ↑     ↑     ↑
+			 *   │     │     └ head = node
+			 *   │     └ head = node
+			 *   └ head = node
+			 */
+			head = node;
 		}
 
 		node._source._node = node._rollbackNode;
 		if (node._rollbackNode !== undefined) {
 			node._rollbackNode = undefined;
 		}
-		node = next;
+
+		node = prev;
 	}
-	target._sources = sources;
+
+	target._sources = head;
 }
 
 declare class Computed<T = any> extends Signal<T> {
@@ -414,7 +483,7 @@ Computed.prototype._refresh = function () {
 	this._globalVersion = globalVersion;
 
 	// Mark this computed signal running before checking the dependencies for value
-	// changes, so that the RUNNIN flag can be used to notice cyclical dependencies.
+	// changes, so that the RUNNING flag can be used to notice cyclical dependencies.
 	this._flags |= RUNNING;
 	if (this._version > 0 && !needsToRecompute(this)) {
 		this._flags &= ~RUNNING;
@@ -464,18 +533,22 @@ Computed.prototype._subscribe = function (node) {
 };
 
 Computed.prototype._unsubscribe = function (node) {
-	Signal.prototype._unsubscribe.call(this, node);
+	// Only run the unsubscribe step if the computed signal has any subscribers.
+	if (this._targets !== undefined) {
+		Signal.prototype._unsubscribe.call(this, node);
 
-	// Computed signal unsubscribes from its dependencies from it loses its last subscriber.
-	if (this._targets === undefined) {
-		this._flags &= ~TRACKING;
+		// Computed signal unsubscribes from its dependencies when it loses its last subscriber.
+		// This makes it possible for unreferences subgraphs of computed signals to get garbage collected.
+		if (this._targets === undefined) {
+			this._flags &= ~TRACKING;
 
-		for (
-			let node = this._sources;
-			node !== undefined;
-			node = node._nextSource
-		) {
-			node._source._unsubscribe(node);
+			for (
+				let node = this._sources;
+				node !== undefined;
+				node = node._nextSource
+			) {
+				node._source._unsubscribe(node);
+			}
 		}
 	}
 };
