@@ -282,10 +282,6 @@ Signal.prototype.valueOf = function () {
 	return this.value;
 };
 
-Signal.prototype.toString = function () {
-	return this.value + "";
-};
-
 Signal.prototype.peek = function () {
 	return this._value;
 };
