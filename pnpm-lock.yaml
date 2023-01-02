@@ -134,6 +134,17 @@ importers:
   packages/core:
     specifiers: {}
 
+  packages/deepsignal:
+    specifiers:
+      '@preact/signals-core': workspace:^1.2.2
+      preact: 10.9.0
+      preact-render-to-string: ^5.2.4
+    dependencies:
+      '@preact/signals-core': link:../core
+    devDependencies:
+      preact: 10.9.0
+      preact-render-to-string: 5.2.6_preact@10.9.0
+
   packages/preact:
     specifiers:
       '@preact/signals-core': workspace:^1.2.3
