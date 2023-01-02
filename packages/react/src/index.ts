@@ -15,11 +15,12 @@ import {
 	batch,
 	effect,
 	Signal,
+	reader,
 	type ReadonlySignal,
 } from "@preact/signals-core";
 import type { Effect, JsxRuntimeModule } from "./internal";
 
-export { signal, computed, batch, effect, Signal, type ReadonlySignal };
+export { signal, computed, batch, effect, Signal, reader, type ReadonlySignal };
 
 const Empty = [] as const;
 const ReactElemType = Symbol.for("react.element"); // https://github.com/facebook/react/blob/346c7d4c43a0717302d446da9e7423a8e28d8996/packages/shared/ReactSymbols.js#L15
