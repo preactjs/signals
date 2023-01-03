@@ -1,32 +1,20 @@
 import { deepSignal } from "deepsignal";
-import { Signal, effect, signal } from "@preact/signals-core";
-import { createElement, render } from "preact";
-import { setupRerender, act } from "preact/test-utils";
+import { Signal, effect } from "@preact/signals-core";
 
-const sleep = (ms?: number) => new Promise(r => setTimeout(r, ms));
-
-describe.only("deepsignal", () => {
-	let scratch: HTMLDivElement;
-	let rerender: () => void;
+describe("deepsignal", () => {
 	let nested = { b: 2 };
 	let array = [3, nested];
 	let v = { a: 1, nested, array };
 	let s = deepSignal(v);
 
 	beforeEach(() => {
-		scratch = document.createElement("div");
-		rerender = setupRerender();
 		nested = { b: 2 };
 		array = [3, nested];
 		v = { a: 1, nested, array };
 		s = deepSignal(v);
 	});
 
-	afterEach(() => {
-		render(null, scratch);
-	});
-
-	it.only("should return like plain objects/arrays", () => {
+	it("should return like plain objects/arrays", () => {
 		expect(s.a).to.equal(1);
 		expect(s.nested.b).to.equal(2);
 		expect(s.array[0]).to.equal(3);
@@ -34,7 +22,7 @@ describe.only("deepsignal", () => {
 		expect(s.array.length).to.equal(2);
 	});
 
-	it.only("should update like plain objects/arrays", () => {
+	it("should update like plain objects/arrays", () => {
 		expect(s.a).to.equal(1);
 		expect(s.nested.b).to.equal(2);
 		s.a = 2;
@@ -43,7 +31,7 @@ describe.only("deepsignal", () => {
 		expect(s.nested.b).to.equal(3);
 	});
 
-	it.only("should update array length", () => {
+	it("should update array length", () => {
 		expect(s.array.length).to.equal(2);
 		s.array.push(4);
 		expect(s.array.length).to.equal(3);
@@ -51,7 +39,7 @@ describe.only("deepsignal", () => {
 		expect(s.array.length).to.equal(1);
 	});
 
-	it.only("should return signal instance when using $", () => {
+	it("should return signal instance when using $", () => {
 		expect(s.$a).to.be.instanceOf(Signal);
 		expect(s.$a!.value).to.equal(1);
 		expect(s.$nested).to.be.instanceOf(Signal);
@@ -74,7 +62,7 @@ describe.only("deepsignal", () => {
 		expect(s.array.$length!.value).to.equal(2);
 	});
 
-	it.only("should return peek when using $$", () => {
+	it("should return peek when using $$", () => {
 		expect(s.$$a).to.equal(1);
 		expect(s.$$nested!.b).to.equal(2);
 		expect(s.nested.$$b).to.equal(2);
@@ -86,7 +74,7 @@ describe.only("deepsignal", () => {
 		expect(s.array.$$length).to.equal(2);
 	});
 
-	it.only("should update array $length", () => {
+	it("should update array $length", () => {
 		expect(s.array.$length!.value).to.equal(2);
 		s.array.push(4);
 		expect(s.array.$length!.value).to.equal(3);
@@ -94,11 +82,11 @@ describe.only("deepsignal", () => {
 		expect(s.array.$length!.value).to.equal(1);
 	});
 
-	it.only("should not return signals in plain arrays using $prop", () => {
+	it("should not return signals in plain arrays using $prop", () => {
 		expect((s.array as any).$0).to.be.undefined;
 	});
 
-	it.only("should subscribe to changes", () => {
+	it("should subscribe to changes", () => {
 		const spy1 = sinon.spy(() => s.a);
 		const spy2 = sinon.spy(() => s.nested);
 		const spy3 = sinon.spy(() => s.nested.b);
@@ -192,7 +180,7 @@ describe.only("deepsignal", () => {
 		expect(spy5).callCount(5);
 	});
 
-	it.only("should subscribe to array length", () => {
+	it("should subscribe to array length", () => {
 		const array = [1];
 		const s = deepSignal({ array });
 		const spy1 = sinon.spy(() => s.array.length);
@@ -219,7 +207,7 @@ describe.only("deepsignal", () => {
 		expect(spy2).callCount(4);
 	});
 
-	it.only("should not subscribe to changes when peeking", () => {
+	it("should not subscribe to changes when peeking", () => {
 		const spy1 = sinon.spy(() => s.$$a);
 		const spy2 = sinon.spy(() => s.$$nested);
 		const spy3 = sinon.spy(() => s.$$nested!.b);
@@ -268,14 +256,13 @@ describe.only("deepsignal", () => {
 	});
 
 	it.skip("should preserve object references", () => {
-		const nested = { b: 2 };
-		const array = [3, nested];
-		const obj = { a: 1, nested, array };
-		const s1 = deepSignal(nested);
-		const s2 = deepSignal(array);
-		const s3 = deepSignal(obj);
-
-		const spy1 = sinon.spy(() => s1.b);
-		const spy2 = sinon.spy(() => s3.nested.b);
+		// const nested = { b: 2 };
+		// const array = [3, nested];
+		// const obj = { a: 1, nested, array };
+		// const s1 = deepSignal(nested);
+		// const s2 = deepSignal(array);
+		// const s3 = deepSignal(obj);
+		// const spy1 = sinon.spy(() => s1.b);
+		// const spy2 = sinon.spy(() => s3.nested.b);
 	});
 });

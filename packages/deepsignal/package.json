@@ -31,7 +31,7 @@
 		"prepublishOnly": "cp ../../README.md . && cd ../.. && pnpm build:deepsignal"
 	},
 	"dependencies": {
-		"@preact/signals-core": "workspace:^1.2.2"
+		"@preact/signals-core": "^1.2.3"
 	},
 	"peerDependencies": {
 		"preact": "10.x"

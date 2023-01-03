@@ -1,6 +1,9 @@
 {
 	"$schema": "https://unpkg.com/@changesets/config@2.1.1/schema.json",
-	"changelog": ["@changesets/changelog-github", { "repo": "preactjs/signals" }],
+	"changelog": [
+		"@changesets/changelog-github",
+		{ "repo": "luisherranz/deepsignal" }
+	],
 	"commit": false,
 	"fixed": [],
 	"linked": [],

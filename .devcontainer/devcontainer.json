@@ -1,5 +1,5 @@
 {
-	"name": "preact/signals",
+	"name": "deepsignals",
 	"build": {
 		"dockerfile": "Dockerfile"
 	},

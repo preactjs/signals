@@ -11,10 +11,7 @@
 		"stripInternal": true,
 		"noUnusedLocals": true,
 		"paths": {
-			"deepsignal": ["./packages/deepsignal/src/index.ts"],
-			"@preact/signals-core": ["./packages/core/src/index.ts"],
-			"@preact/signals": ["./packages/preact/src/index.ts"],
-			"@preact/signals-react": ["./packages/react/src/index.ts"]
+			"deepsignal": ["./packages/deepsignal/src/index.ts"]
 		}
 	}
 }
