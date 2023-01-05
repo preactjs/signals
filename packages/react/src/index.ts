@@ -24,7 +24,10 @@ export { signal, computed, batch, effect, Signal, type ReadonlySignal };
 const Empty = [] as const;
 const ReactElemType = Symbol.for("react.element"); // https://github.com/facebook/react/blob/346c7d4c43a0717302d446da9e7423a8e28d8996/packages/shared/ReactSymbols.js#L15
 const ReactMemoType = Symbol.for("react.memo"); // https://github.com/facebook/react/blob/346c7d4c43a0717302d446da9e7423a8e28d8996/packages/shared/ReactSymbols.js#L30
-const ProxyInstance = new WeakMap<FunctionComponent<any>, FunctionComponent<any>>();
+const ProxyInstance = new WeakMap<
+	FunctionComponent<any>,
+	FunctionComponent<any>
+>();
 const SupportsProxy = typeof Proxy === "function";
 
 const ProxyHandlers = {
@@ -245,9 +248,7 @@ export function useSignalEffect(cb: () => void | (() => void)) {
 	callback.current = cb;
 
 	useEffect(() => {
-		return effect(() => {
-			return callback.current();
-		});
+		return effect(() => callback.current());
 	}, Empty);
 }
 

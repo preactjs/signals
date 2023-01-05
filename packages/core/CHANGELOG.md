@@ -1,5 +1,11 @@
 # @preact/signals-core
 
+## 1.2.3
+
+### Patch Changes
+
+- [#245](https://github.com/preactjs/signals/pull/245) [`7e15d3c`](https://github.com/preactjs/signals/commit/7e15d3cf5f5e66258105e6f27cd7838b52fbbf9f) Thanks [@jviide](https://github.com/jviide)! - Fix effect behavior when first run throws
+
 ## 1.2.2
 
 ### Patch Changes
