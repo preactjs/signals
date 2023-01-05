@@ -55,7 +55,7 @@ console.log(counter.value);
 counter.value = 1;
 ```
 
-Writing to a signal is done by setting its `.value` property. Changing a signal's value synchronously updates every [computed](#computed) and [effect](#effect) that depends on that signal, ensuring your app state is always consistent.
+Writing to a signal is done by setting its `.value` property. Changing a signal's value synchronously updates every [computed](#computedfn) and [effect](#effectfn) that depends on that signal, ensuring your app state is always consistent.
 
 #### `signal.peek()`
 
@@ -169,13 +169,13 @@ import { signal, computed, effect, batch } from "@preact/signals-core";
 
 const counter = signal(0);
 const double = computed(() => counter.value * 2);
-const tripple = computed(() => counter.value * 3);
+const triple = computed(() => counter.value * 3);
 
-effect(() => console.log(double.value, tripple.value));
+effect(() => console.log(double.value, triple.value));
 
 batch(() => {
 	counter.value = 1;
-	// Logs: 2, despite being inside batch, but `tripple`
+	// Logs: 2, despite being inside batch, but `triple`
 	// will only update once the callback is complete
 	console.log(double.value);
 });

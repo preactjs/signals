@@ -129,7 +129,7 @@ describe("signal", () => {
 			expect(spy).not.to.be.called;
 		});
 
-		it("should not cause surrounding effect subscribe to changes to a signal accessed in the callback", () => {
+		it("should not cause surrounding effect to subscribe to changes to a signal accessed in the callback", () => {
 			const spy = sinon.spy();
 			const a = signal(0);
 			const b = signal(0);
@@ -663,7 +663,7 @@ describe("effect()", () => {
 			expect(newSpy).to.be.called;
 		});
 
-		it("should returns a function for closing the effect scope from _start", () => {
+		it("should return a function for closing the effect scope from _start", () => {
 			const s = signal(0);
 
 			let e: any;
@@ -749,7 +749,7 @@ describe("effect()", () => {
 			spy.resetHistory();
 
 			e._dispose();
-			s.value = 2;
+			s.value = 3;
 			expect(spy).not.to.be.called;
 		});
 
@@ -849,7 +849,7 @@ describe("computed()", () => {
 		expect(spy).to.be.calledTwice;
 	});
 
-	it("should computed only when dependency has changed at some point", () => {
+	it("should be computed only when a dependency has changed at some point", () => {
 		const a = signal("a");
 		const spy = sinon.spy(() => {
 			return a.value;
@@ -1193,7 +1193,7 @@ describe("computed()", () => {
 			expect(spy).not.to.be.called;
 		});
 
-		it("should not subscribe a surrounding computed depend on peeked computed's dependencies", () => {
+		it("should not make surrounding computed depend on peeked computed's dependencies", () => {
 			const a = signal(1);
 			const b = computed(() => a.value);
 			const spy = sinon.spy();
@@ -1449,7 +1449,7 @@ describe("computed()", () => {
 		});
 
 		it("should only subscribe to signals listened to", () => {
-			// Here both "B" and "C" are active in the beginnning, but
+			// Here both "B" and "C" are active in the beginning, but
 			// "B" becomes inactive later. At that point it should
 			// not receive any updates anymore.
 			//    *A
@@ -1621,7 +1621,7 @@ describe("batch/transaction", () => {
 		expect(batch(() => 1)).to.equal(1);
 	});
 
-	it("should throw errors throws from the callback", () => {
+	it("should throw errors thrown from the callback", () => {
 		expect(() =>
 			batch(() => {
 				throw Error("hello");
@@ -1748,10 +1748,10 @@ describe("batch/transaction", () => {
 		const invokes: number[][] = [];
 		const counter = signal(0);
 		const double = computed(() => counter.value * 2);
-		const tripple = computed(() => counter.value * 3);
+		const triple = computed(() => counter.value * 3);
 
 		effect(() => {
-			invokes.push([double.value, tripple.value]);
+			invokes.push([double.value, triple.value]);
 		});
 
 		expect(invokes).to.deep.equal([[0, 0]]);
@@ -1768,10 +1768,10 @@ describe("batch/transaction", () => {
 		const invokes: number[][] = [];
 		const counter = signal(0);
 		const double = computed(() => counter.value * 2);
-		const tripple = computed(() => counter.value * 3);
+		const triple = computed(() => counter.value * 3);
 
 		effect(() => {
-			invokes.push([double.value, tripple.value]);
+			invokes.push([double.value, triple.value]);
 		});
 
 		expect(invokes).to.deep.equal([[0, 0]]);
