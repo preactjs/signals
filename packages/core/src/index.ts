@@ -655,13 +655,13 @@ function endEffect(this: Effect, prevContext?: Computed | Effect) {
 }
 
 declare class Effect {
-	_compute?: () => unknown;
-	_cleanup?: unknown;
+	_compute?: () => void | (() => void);
+	_cleanup?: () => void;
 	_sources?: Node;
 	_nextBatchedEffect?: Effect;
 	_flags: number;
 
-	constructor(compute: () => void);
+	constructor(compute: () => void | (() => void));
 
 	_callback(): void;
 	_start(): () => void;
@@ -669,7 +669,7 @@ declare class Effect {
 	_dispose(): void;
 }
 
-function Effect(this: Effect, compute: () => void) {
+function Effect(this: Effect, compute: () => void | (() => void)) {
 	this._compute = compute;
 	this._cleanup = undefined;
 	this._sources = undefined;
@@ -680,8 +680,12 @@ function Effect(this: Effect, compute: () => void) {
 Effect.prototype._callback = function () {
 	const finish = this._start();
 	try {
-		if (!(this._flags & DISPOSED) && this._compute !== undefined) {
-			this._cleanup = this._compute();
+		if (this._flags & DISPOSED) return;
+		if (this._compute === undefined) return;
+
+		const cleanup = this._compute();
+		if (typeof cleanup === "function") {
+			this._cleanup = cleanup;
 		}
 	} finally {
 		finish();
@@ -719,7 +723,7 @@ Effect.prototype._dispose = function () {
 	}
 };
 
-function effect(compute: () => unknown): () => void {
+function effect(compute: () => void | (() => void)): () => void {
 	const effect = new Effect(compute);
 	try {
 		effect._callback();
