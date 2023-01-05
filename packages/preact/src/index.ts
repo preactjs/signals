@@ -390,9 +390,9 @@ export function useSignalEffect(cb: () => void | (() => void), options?: EffectO
 		const execute = () => callback.current();
 		const notify = () => {
 			if (mode === 'afterPaint') {
-				afterNextFrame(execute)
+				afterNextFrame(eff.flush)
 			} else {
-				callback.current();
+				eff.flush();
 			}
 		}
 		const eff = createFlusher(execute, notify);
