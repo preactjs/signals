@@ -4,6 +4,7 @@ import {
 	useEffect,
 	Component,
 	type FunctionComponent,
+	type ReactElement,
 } from "react";
 import React from "react";
 import jsxRuntime from "react/jsx-runtime";
@@ -42,7 +43,11 @@ const ProxyHandlers = {
 	 *
 	 * @see https://github.com/facebook/react/blob/2d80a0cd690bb5650b6c8a6c079a87b5dc42bd15/packages/react-reconciler/src/ReactFiberHooks.old.js#L460
 	 */
-	apply(Component: FunctionComponent, thisArg: any, argumentsList: any) {
+	apply(
+		Component: FunctionComponent<any>,
+		thisArg: any,
+		argumentsList: Parameters<FunctionComponent<any>>
+	) {
 		const store = useMemo(createEffectStore, Empty);
 
 		useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
@@ -52,6 +57,7 @@ const ProxyHandlers = {
 		try {
 			const children = Component.apply(thisArg, argumentsList);
 			return children;
+			// eslint-disable-next-line no-useless-catch
 		} catch (e) {
 			// Re-throwing promises that'll be handled by suspense
 			// or an actual error.
@@ -67,6 +73,7 @@ const ProxyHandlers = {
 function ProxyFunctionalComponent(Component: FunctionComponent<any>) {
 	return ProxyInstance.get(Component) || WrapWithProxy(Component);
 }
+
 function WrapWithProxy(Component: FunctionComponent<any>) {
 	if (SupportsProxy) {
 		const ProxyComponent = new Proxy(Component, ProxyHandlers);
@@ -91,9 +98,10 @@ function WrapWithProxy(Component: FunctionComponent<any>) {
 	 * el.type.defaultProps;
 	 * ```
 	 */
-	const WrappedComponent = function () {
-		return ProxyHandlers.apply(Component, undefined, arguments);
+	const WrappedComponent: FunctionComponent<any> = (...args) => {
+		return ProxyHandlers.apply(Component, undefined, args);
 	};
+
 	ProxyInstance.set(Component, WrappedComponent);
 	ProxyInstance.set(WrappedComponent, WrappedComponent);
 
@@ -196,6 +204,12 @@ JsxDev.jsxs && /*  */ (JsxDev.jsxs = WrapJsx(JsxDev.jsxs));
 JsxPro.jsxs && /*  */ (JsxPro.jsxs = WrapJsx(JsxPro.jsxs));
 JsxDev.jsxDEV && /**/ (JsxDev.jsxDEV = WrapJsx(JsxDev.jsxDEV));
 JsxPro.jsxDEV && /**/ (JsxPro.jsxDEV = WrapJsx(JsxPro.jsxDEV));
+
+declare module "@preact/signals-core" {
+	// @ts-ignore internal Signal is viewed as function
+	// eslint-disable-next-line @typescript-eslint/no-empty-interface
+	interface Signal extends ReactElement {}
+}
 
 /**
  * A wrapper component that renders a Signal's value directly as a Text node.
