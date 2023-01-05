@@ -31,7 +31,7 @@ export interface VNode<P = any> extends preact.VNode<P> {
 	/** The DOM node for this VNode */
 	__e?: Element | Text;
 	/** Props that had Signal values before diffing (used after diffing to subscribe) */
-	__np?: Record<string, any> | null;
+	__np?: Record<string, Signal> | null;
 }
 
 export const enum OptionsTypes {

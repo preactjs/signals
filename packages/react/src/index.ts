@@ -100,6 +100,8 @@ function WrapWithProxy(Component: FunctionComponent<any>) {
 	return WrappedComponent;
 }
 
+let renderDepth = 0;
+
 /**
  * A redux-like store whose store value is a positive 32bit integer (a 'version').
  *
@@ -118,10 +120,24 @@ function createEffectStore() {
 	let version = 0;
 	let onChangeNotifyReact: (() => void) | undefined;
 
-	let unsubscribe = effect(function (this: Effect) {
+	const unsubscribe = effect(function (this: Effect) {
 		updater = this;
 	});
+
+	const oldStart = updater._start;
+
+	updater._start = function () {
+		renderDepth++;
+		const finish = oldStart.call(updater);
+		return function () {
+			finish();
+			renderDepth--;
+		};
+	};
+
 	updater._callback = function () {
+		// only notify React of state changes when not rendering in a component
+		if (renderDepth > 0) return;
 		version = (version + 1) | 0;
 		if (onChangeNotifyReact) onChangeNotifyReact();
 	};
@@ -234,4 +250,10 @@ export function useSignalEffect(cb: () => void | (() => void)) {
 	useEffect(() => {
 		return effect(() => callback.current());
 	}, Empty);
+}
+
+export function useWatcher<T>(value: T) {
+	const watcher = useSignal(value);
+	watcher.value = value;
+	return watcher as ReadonlySignal<T>;
 }
