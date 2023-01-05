@@ -49,6 +49,17 @@ function createUpdater(update: () => void) {
 	return updater;
 }
 
+function createFlusher(compute: () => unknown, notify: () => void) {
+	let flush!: () => void;
+	const dispose = effect(function (this: Effect) {
+		flush = this._callback.bind(this);
+		this._compute = compute;
+		this._callback = notify;
+		return compute();
+	});
+	return { flush, dispose };
+}
+
 /** @todo This may be needed for complex prop value detection. */
 // function isSignalValue(value: any): value is Signal {
 // 	if (typeof value !== "object" || value == null) return false;
@@ -342,12 +353,50 @@ export function useComputed<T>(compute: () => T) {
 	return useMemo(() => computed<T>(() => $compute.current()), []);
 }
 
-export function useSignalEffect(cb: () => void | (() => void)) {
+let HAS_RAF = typeof requestAnimationFrame == 'function';
+
+/**
+ * Schedule a callback to be invoked after the browser has a chance to paint a new frame.
+ * Do this by combining requestAnimationFrame (rAF) + setTimeout to invoke a callback after
+ * the next browser frame.
+ *
+ * Also, schedule a timeout in parallel to the the rAF to ensure the callback is invoked
+ * even if RAF doesn't fire (for example if the browser tab is not visible)
+ */
+ function afterNextFrame(callback: () => void) {
+	const done = () => {
+		clearTimeout(timeout);
+		if (HAS_RAF) cancelAnimationFrame(raf);
+		setTimeout(callback);
+	};
+	const timeout = setTimeout(done, 100);
+
+	let raf: number;
+	if (HAS_RAF) {
+		raf = requestAnimationFrame(done);
+	}
+}
+
+type EffectOptions = {
+	mode: 'afterPaint' | 'sync'
+}
+
+export function useSignalEffect(cb: () => void | (() => void), options?: EffectOptions) {
 	const callback = useRef(cb);
 	callback.current = cb;
 
 	useEffect(() => {
-		return effect(() => callback.current());
+		const mode = options?.mode || 'sync'
+		const execute = () => callback.current();
+		const notify = () => {
+			if (mode === 'afterPaint') {
+				afterNextFrame(execute)
+			} else {
+				callback.current();
+			}
+		}
+		const eff = createFlusher(execute, notify);
+		return eff.dispose
 	}, []);
 }
 
