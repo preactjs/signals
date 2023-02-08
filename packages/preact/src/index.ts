@@ -313,7 +313,7 @@ Component.prototype.shouldComponentUpdate = function (
 	// }
 
 	// Ensure context updates propagate through
-	let didHaveContextUpdate = false;
+	let hasContextUpdate = false;
 	const hooks = this.__H && this.__H.__;
 	if (hooks) {
 		for (let h = hooks.length; h--; ) {
@@ -329,11 +329,11 @@ Component.prototype.shouldComponentUpdate = function (
 			const nextVal = context[id].props.value;
 			// note: we never bail out early here, because we need
 			// to ensure _prevValue is updated for all context subscriptions.
-			if (nextVal !== hook._prevValue) didHaveContextUpdate = true;
+			if (nextVal !== hook._prevValue) hasContextUpdate = true;
 			hook._prevValue = nextVal;
 		}
 	}
-	if (didHaveContextUpdate) return true;
+	if (hasContextUpdate) return true;
 
 	// if this component used no signals or computeds, update:
 	if (!hasSignals && !(this._updateFlags & HAS_COMPUTEDS)) return true;
