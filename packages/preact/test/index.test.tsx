@@ -4,8 +4,10 @@ import {
 	useComputed,
 	useSignalEffect,
 	Signal,
+	useSignal,
 } from "@preact/signals";
-import { createElement, createRef, render } from "preact";
+import { createContext, createElement, createRef, render } from "preact";
+import { useContext, useState } from "preact/hooks";
 import { setupRerender, act } from "preact/test-utils";
 
 const sleep = (ms?: number) => new Promise(r => setTimeout(r, ms));
@@ -188,6 +190,49 @@ describe("@preact/signals", () => {
 			sig.value = "bar";
 			rerender();
 			expect(spy).to.be.calledOnce;
+		});
+
+		it("should not block context updates", () => {
+			const sig = signal("foo");
+			const Ctx = createContext("");
+
+			const spy = sinon.spy();
+
+			function Child() {
+				const ctx = useContext(Ctx);
+				const s = useSignal(0);
+				s.value;
+				spy(ctx);
+				return <p>{ctx}</p>;
+			}
+
+			let rerender: (nan: any) => void;
+			function App() {
+				rerender = useState(NaN)[1];
+				return (
+					<Ctx.Provider value={sig.value}>
+						<Child />
+					</Ctx.Provider>
+				);
+			}
+
+			render(<App />, scratch);
+			expect(scratch.textContent).to.equal("foo");
+			expect(spy).to.be.calledOnce;
+
+			act(() => {
+				sig.value = "bar";
+			});
+			expect(spy).to.be.calledTwice;
+			expect(spy).to.be.calledWith("bar");
+
+			expect(scratch.textContent).to.equal("bar");
+
+			spy.resetHistory();
+			act(() => {
+				rerender(NaN);
+			});
+			expect(spy).not.to.have.been.called;
 		});
 	});
 

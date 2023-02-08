@@ -283,7 +283,8 @@ hook(OptionsTypes.HOOK, (old, component, index, type) => {
 Component.prototype.shouldComponentUpdate = function (
 	this: AugmentedComponent,
 	props,
-	state
+	state,
+	context
 ) {
 	// @todo: Once preactjs/preact#3671 lands, this could just use `currentUpdater`:
 	const updater = this._updater;
@@ -310,6 +311,23 @@ Component.prototype.shouldComponentUpdate = function (
 	// 		},
 	// 	});
 	// }
+
+	// Ensure context updates propagate through
+	let didHaveContextUpdate = false;
+	const hooks = this.__H && this.__H.__;
+	if (hooks) {
+		for (let h = hooks.length; h--; ) {
+			const hook = hooks[h];
+			if (!("c" in hook)) continue;
+			const id = hook.c.__c;
+			const nextVal = context[id].props.value;
+			// note: we never bail out early here, because we need
+			// to ensure _pv is updated for all context subscriptions.
+			if (nextVal !== hook._pv) didHaveContextUpdate = true;
+			hook._pv = nextVal;
+		}
+	}
+	if (didHaveContextUpdate) return true;
 
 	// if this component used no signals or computeds, update:
 	if (!hasSignals && !(this._updateFlags & HAS_COMPUTEDS)) return true;

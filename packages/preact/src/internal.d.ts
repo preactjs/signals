@@ -21,6 +21,9 @@ export interface AugmentedComponent extends Component<any, any> {
 	__v: VNode;
 	_updater?: Effect;
 	_updateFlags: number;
+	__H: {
+		__: { c?: any; _pv?: any }[];
+	};
 }
 
 export interface VNode<P = any> extends preact.VNode<P> {
