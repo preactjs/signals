@@ -323,6 +323,9 @@ Component.prototype.shouldComponentUpdate = function (
 			if (!("c" in hook)) continue;
 
 			const id = hook.c.__c;
+			// Nothing to track if no provider is present
+			if (!(id in context)) continue;
+
 			const nextVal = context[id].props.value;
 			// note: we never bail out early here, because we need
 			// to ensure _prevValue is updated for all context subscriptions.

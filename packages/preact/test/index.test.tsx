@@ -192,47 +192,69 @@ describe("@preact/signals", () => {
 			expect(spy).to.be.calledOnce;
 		});
 
-		it("should not block context updates", () => {
-			const sig = signal("foo");
-			const Ctx = createContext("");
+		describe("Context updates", () => {
+			it("should not block context updates", () => {
+				const sig = signal("foo");
+				const Ctx = createContext("");
 
-			const spy = sinon.spy();
+				const spy = sinon.spy();
 
-			function Child() {
-				const ctx = useContext(Ctx);
-				const s = useSignal(0);
-				s.value;
-				spy(ctx);
-				return <p>{ctx}</p>;
-			}
+				function Child() {
+					const ctx = useContext(Ctx);
+					const s = useSignal(0);
+					s.value;
+					spy(ctx);
+					return <p>{ctx}</p>;
+				}
 
-			let rerender: (nan: any) => void;
-			function App() {
-				rerender = useState(NaN)[1];
-				return (
-					<Ctx.Provider value={sig.value}>
-						<Child />
-					</Ctx.Provider>
-				);
-			}
+				let rerender: (nan: any) => void;
+				function App() {
+					rerender = useState(NaN)[1];
+					return (
+						<Ctx.Provider value={sig.value}>
+							<Child />
+						</Ctx.Provider>
+					);
+				}
 
-			render(<App />, scratch);
-			expect(scratch.textContent).to.equal("foo");
-			expect(spy).to.be.calledOnce;
+				render(<App />, scratch);
+				expect(scratch.textContent).to.equal("foo");
+				expect(spy).to.be.calledOnce;
 
-			act(() => {
-				sig.value = "bar";
+				act(() => {
+					sig.value = "bar";
+				});
+				expect(spy).to.be.calledTwice;
+				expect(spy).to.be.calledWith("bar");
+
+				expect(scratch.textContent).to.equal("bar");
+
+				spy.resetHistory();
+				act(() => {
+					rerender(NaN);
+				});
+				expect(spy).not.to.have.been.called;
 			});
-			expect(spy).to.be.calledTwice;
-			expect(spy).to.be.calledWith("bar");
 
-			expect(scratch.textContent).to.equal("bar");
+			it("should not throw when no provider is present", () => {
+				const Ctx = createContext("default");
 
-			spy.resetHistory();
-			act(() => {
-				rerender(NaN);
+				let rerender: (n: number) => void;
+				function App() {
+					rerender = useState(NaN)[1];
+					const ctx = useContext(Ctx);
+					return <p>{ctx}</p>;
+				}
+
+				render(<App />, scratch);
+
+				// This should not throw
+				expect(() =>
+					act(() => {
+						rerender(NaN);
+					})
+				).not.to.throw();
 			});
-			expect(spy).not.to.have.been.called;
 		});
 	});
 
