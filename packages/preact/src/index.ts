@@ -318,13 +318,16 @@ Component.prototype.shouldComponentUpdate = function (
 	if (hooks) {
 		for (let h = hooks.length; h--; ) {
 			const hook = hooks[h];
+
+			// Skip hook if it's not `useContext`
 			if (!("c" in hook)) continue;
+
 			const id = hook.c.__c;
 			const nextVal = context[id].props.value;
 			// note: we never bail out early here, because we need
-			// to ensure _pv is updated for all context subscriptions.
-			if (nextVal !== hook._pv) didHaveContextUpdate = true;
-			hook._pv = nextVal;
+			// to ensure _prevValue is updated for all context subscriptions.
+			if (nextVal !== hook._prevValue) didHaveContextUpdate = true;
+			hook._prevValue = nextVal;
 		}
 	}
 	if (didHaveContextUpdate) return true;

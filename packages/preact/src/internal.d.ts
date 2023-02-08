@@ -22,7 +22,7 @@ export interface AugmentedComponent extends Component<any, any> {
 	_updater?: Effect;
 	_updateFlags: number;
 	__H: {
-		__: { c?: any; _pv?: any }[];
+		__: { c?: any; _prevValue?: any }[];
 	};
 }
 

@@ -61,6 +61,7 @@
       "$_subscribe": "S",
       "$_unsubscribe": "U",
       "preact": "",
+      "$_prevValue": "_pv",
       "$_signal": "s",
       "$_updater": "__$u",
       "$_updateFlags": "__$f",
