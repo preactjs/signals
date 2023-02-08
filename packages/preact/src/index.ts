@@ -326,6 +326,8 @@ Component.prototype.shouldComponentUpdate = function (
 			// Nothing to track if no provider is present
 			if (!(id in context)) continue;
 
+			console.log(id, context[id].props.value, hook._prevValue);
+
 			const nextVal = context[id].props.value;
 			// note: we never bail out early here, because we need
 			// to ensure _prevValue is updated for all context subscriptions.
@@ -333,6 +335,7 @@ Component.prototype.shouldComponentUpdate = function (
 			hook._prevValue = nextVal;
 		}
 	}
+	console.log({ c: this.constructor.name, hasContextUpdate });
 	if (hasContextUpdate) return true;
 
 	// if this component used no signals or computeds, update:

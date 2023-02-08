@@ -7,7 +7,7 @@ import {
 	useSignal,
 } from "@preact/signals";
 import { createContext, createElement, createRef, render } from "preact";
-import { useContext, useState } from "preact/hooks";
+import { useContext, useMemo, useState } from "preact/hooks";
 import { setupRerender, act } from "preact/test-utils";
 
 const sleep = (ms?: number) => new Promise(r => setTimeout(r, ms));
@@ -254,6 +254,61 @@ describe("@preact/signals", () => {
 						rerender(NaN);
 					})
 				).not.to.throw();
+			});
+
+			it.only("should not block context updates", () => {
+				const sig = signal("foo");
+				const Ctx = createContext("");
+
+				const spy = sinon.spy();
+
+				function Child() {
+					console.log("Child");
+					const ctx = useContext(Ctx);
+					const s = useSignal(0);
+					s.value;
+					spy(ctx);
+					return <p>{ctx}</p>;
+				}
+
+				function Middle() {
+					console.log("Middle");
+					return useMemo(() => <Child />, []);
+				}
+
+				let rerender: (nan: any) => void;
+				function App() {
+					console.log("App");
+					rerender = useState(NaN)[1];
+					return (
+						<Ctx.Provider value={sig.value}>
+							<Middle />
+						</Ctx.Provider>
+					);
+				}
+
+				render(<App />, scratch);
+				expect(scratch.textContent).to.equal("foo");
+				expect(spy).to.be.calledOnce;
+
+				spy.resetHistory();
+
+				console.log("============================");
+				act(() => {
+					sig.value = "bar";
+				});
+				expect(scratch.textContent).to.equal("bar");
+				expect(spy).to.be.calledOnce;
+				expect(spy).to.be.calledWith("bar");
+
+				expect(scratch.textContent).to.equal("bar");
+
+				console.log("============================");
+				spy.resetHistory();
+				act(() => {
+					rerender(NaN);
+				});
+				expect(spy).not.to.have.been.called;
 			});
 		});
 	});
