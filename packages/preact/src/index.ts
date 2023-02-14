@@ -332,7 +332,7 @@ Component.prototype.shouldComponentUpdate = function (
 };
 
 export function useSignal<T>(value: T) {
-	return useMemo(() => signal<T>(value), []);
+	return useRef(signal<T>(value)).current;
 }
 
 export function useComputed<T>(compute: () => T) {
