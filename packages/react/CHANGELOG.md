@@ -1,5 +1,16 @@
 # @preact/signals-react
 
+## 1.2.2
+
+### Patch Changes
+
+- [#243](https://github.com/preactjs/signals/pull/243) [`e41b8b1`](https://github.com/preactjs/signals/commit/e41b8b16bf68da7004a3174912fe95a109a453ed) Thanks [@melnikov-s](https://github.com/melnikov-s)! - Replace `Map` useage with `WeakMap`
+
+* [#282](https://github.com/preactjs/signals/pull/282) [`cafbdaa`](https://github.com/preactjs/signals/commit/cafbdaabd525a034e38da10b04eee0688c026152) Thanks [@developit](https://github.com/developit)! - Fix a bug that caused cleanup functions returned from a `useSignalEffect()` callback not to be called.
+
+* Updated dependencies [[`7e15d3c`](https://github.com/preactjs/signals/commit/7e15d3cf5f5e66258105e6f27cd7838b52fbbf9f)]:
+  - @preact/signals-core@1.2.3
+
 ## 1.2.1
 
 ### Patch Changes
