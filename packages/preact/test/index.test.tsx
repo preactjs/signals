@@ -3,6 +3,7 @@ import {
 	computed,
 	useComputed,
 	useSignalEffect,
+	useWatcher,
 	Signal,
 } from "@preact/signals";
 import { createElement, createRef, render } from "preact";
@@ -350,6 +351,111 @@ describe("@preact/signals", () => {
 				// This should not crash
 				s.value = "scale(1, 2)";
 			});
+		});
+	});
+
+	describe("use watcher hook", () => {
+		it("should set the initial value of the checked property", () => {
+			function App({ checked = false }) {
+				const $checked = useWatcher(checked);
+				// @ts-ignore
+				return <input checked={$checked} />;
+			}
+
+			render(<App checked={true} />, scratch);
+			expect(scratch.firstChild).to.have.property("checked", true);
+		});
+
+		it("should update the checked property on change", () => {
+			function App({ checked = false }) {
+				const $checked = useWatcher(checked);
+				// @ts-ignore
+				return <input checked={$checked} />;
+			}
+
+			render(<App checked={true} />, scratch);
+			expect(scratch.firstChild).to.have.property("checked", true);
+
+			render(<App checked={false} />, scratch);
+			expect(scratch.firstChild).to.have.property("checked", false);
+		});
+
+		it("should update computed signal", () => {
+			function App({ value = 0 }) {
+				const $value = useWatcher(value);
+				const timesTwo = useComputed(() => $value.value * 2);
+				return <p>{timesTwo}</p>;
+			}
+
+			render(<App value={1} />, scratch);
+			expect(scratch.textContent).to.equal("2");
+
+			render(<App value={4} />, scratch);
+			expect(scratch.textContent).to.equal("8");
+		});
+
+		it("should not cascade rerenders", () => {
+			const spy = sinon.spy();
+			function App({ value = 0 }) {
+				const $value = useWatcher(value);
+				const timesTwo = useComputed(() => $value.value * 2);
+				spy();
+				return <p>{timesTwo.value}</p>;
+			}
+
+			render(<App value={1} />, scratch);
+			render(<App value={4} />, scratch);
+
+			expect(spy).to.be.calledTwice;
+		});
+
+		it("should update all silblings", () => {
+			function Test({ value }: { value: number }) {
+				const $value = useWatcher(value);
+				return <span>{$value.value}</span>;
+			}
+
+			function App({ value = 0 }) {
+				return (
+					<div>
+						<Test value={value} />
+						<Test value={value} />
+					</div>
+				);
+			}
+
+			const firstChild = () => scratch.firstChild?.firstChild;
+
+			render(<App value={1} />, scratch);
+			expect(firstChild()?.textContent).to.be.equal("1");
+			expect(firstChild()?.nextSibling?.textContent).to.be.equal("1");
+
+			render(<App value={4} />, scratch);
+			expect(firstChild()?.textContent).to.be.equal("4");
+			expect(firstChild()?.nextSibling?.textContent).to.be.equal("4");
+		});
+
+		it("should not rerender siblings", () => {
+			const spy = sinon.spy();
+			function Test({ value }: { value: number }) {
+				const $value = useWatcher(value);
+				spy();
+				return <span>{$value.value}</span>;
+			}
+
+			function App({ value = 0 }) {
+				return (
+					<div>
+						<Test value={value} />
+						<Test value={value} />
+					</div>
+				);
+			}
+
+			render(<App value={1} />, scratch);
+			render(<App value={4} />, scratch);
+
+			expect(spy).to.be.callCount(4);
 		});
 	});
 

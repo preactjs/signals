@@ -67,10 +67,9 @@ function Text(this: AugmentedComponent, { data }: { data: Signal }) {
 
 	// Store the props.data signal in another signal so that
 	// passing a new signal reference re-runs the text computed:
-	const currentSignal = useSignal(data);
-	currentSignal.value = data;
+	const currentSignal = useWatcher(data);
 
-	const s = useMemo(() => {
+	const $s = useMemo(() => {
 		// mark the parent component as having computeds so it gets optimized
 		let v = this.__v;
 		while ((v = v.__!)) {
@@ -82,17 +81,16 @@ function Text(this: AugmentedComponent, { data }: { data: Signal }) {
 
 		// Replace this component's vdom updater with a direct text one:
 		this._updater!._callback = () => {
-			(this.base as Text).data = s.peek();
+			(this.base as Text).data = $s.peek();
 		};
 
 		return computed(() => {
-			let data = currentSignal.value;
-			let s = data.value;
+			const s = currentSignal.value.value;
 			return s === 0 ? 0 : s === true ? "" : s || "";
 		});
 	}, []);
 
-	return s.value;
+	return $s.value;
 }
 Text.displayName = "_st";
 
@@ -114,7 +112,7 @@ Object.defineProperties(Signal.prototype, {
 /** Inject low-level property/attribute bindings for Signals into Preact's diff */
 hook(OptionsTypes.DIFF, (old, vnode) => {
 	if (typeof vnode.type === "string") {
-		let signalProps: Record<string, any> | undefined;
+		let signalProps: typeof vnode.__np;
 
 		let props = vnode.props;
 		for (let i in props) {
@@ -136,7 +134,7 @@ hook(OptionsTypes.DIFF, (old, vnode) => {
 hook(OptionsTypes.RENDER, (old, vnode) => {
 	setCurrentUpdater();
 
-	let updater;
+	let updater: Effect | undefined;
 
 	let component = vnode.__c;
 	if (component) {
@@ -187,15 +185,18 @@ hook(OptionsTypes.DIFFED, (old, vnode) => {
 					}
 				}
 			} else {
-				updaters = {};
-				dom._updaters = updaters;
+				dom._updaters = updaters = {};
 			}
 			for (let prop in props) {
 				let updater = updaters[prop];
 				let signal = props[prop];
 				if (updater === undefined) {
-					updater = createPropUpdater(dom, prop, signal, renderedProps);
-					updaters[prop] = updater;
+					updaters[prop] = updater = createPropUpdater(
+						dom,
+						prop,
+						signal,
+						renderedProps
+					);
 				} else {
 					updater._update(signal, renderedProps);
 				}
@@ -349,6 +350,12 @@ export function useSignalEffect(cb: () => void | (() => void)) {
 	useEffect(() => {
 		return effect(() => callback.current());
 	}, []);
+}
+
+export function useWatcher<T>(value: T) {
+	const watcher = useSignal(value);
+	watcher.value = value;
+	return watcher as ReadonlySignal<T>;
 }
 
 /**
