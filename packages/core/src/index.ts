@@ -217,6 +217,8 @@ declare class Signal<T = any> {
 
 	toString(): string;
 
+	toJSON(): T;
+
 	peek(): T;
 
 	get value(): T;
@@ -284,6 +286,10 @@ Signal.prototype.valueOf = function () {
 
 Signal.prototype.toString = function () {
 	return this.value + "";
+};
+
+Signal.prototype.toJSON = function () {
+	return this.value;
 };
 
 Signal.prototype.peek = function () {
