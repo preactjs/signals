@@ -29,6 +29,28 @@ describe("signal", () => {
 		expect(a + b).to.equal(3);
 	});
 
+	it("should notify other listeners of changes after one listener is disposed", () => {
+		const s = signal(0);
+		const spy1 = sinon.spy(() => s.value);
+		const spy2 = sinon.spy(() => s.value);
+		const spy3 = sinon.spy(() => s.value);
+
+		effect(spy1);
+		const dispose = effect(spy2);
+		effect(spy3);
+
+		expect(spy1).to.be.calledOnce;
+		expect(spy2).to.be.calledOnce;
+		expect(spy3).to.be.calledOnce;
+
+		dispose();
+
+		s.value = 1;
+		expect(spy1).to.be.calledTwice;
+		expect(spy2).to.be.calledOnce;
+		expect(spy3).to.be.calledTwice;
+	});
+
 	describe(".peek()", () => {
 		it("should get value", () => {
 			const s = signal(1);
@@ -107,7 +129,7 @@ describe("signal", () => {
 			expect(spy).not.to.be.called;
 		});
 
-		it("should not cause surrounding effect subscribe to changes to a signal accessed in the callback", () => {
+		it("should not cause surrounding effect to subscribe to changes to a signal accessed in the callback", () => {
 			const spy = sinon.spy();
 			const a = signal(0);
 			const b = signal(0);
@@ -439,6 +461,19 @@ describe("effect()", () => {
 		expect(spy).to.be.calledOnce;
 	});
 
+	it("should not subscribe to anything if first run throws", () => {
+		const s = signal(0);
+		const spy = sinon.spy(() => {
+			s.value;
+			throw new Error("test");
+		});
+		expect(() => effect(spy)).to.throw("test");
+		expect(spy).to.be.calledOnce;
+
+		s.value++;
+		expect(spy).to.be.calledOnce;
+	});
+
 	it("should reset the cleanup if the effect throws", () => {
 		const a = signal(0);
 		const spy = sinon.spy();
@@ -628,7 +663,7 @@ describe("effect()", () => {
 			expect(newSpy).to.be.called;
 		});
 
-		it("should returns a function for closing the effect scope from _start", () => {
+		it("should return a function for closing the effect scope from _start", () => {
 			const s = signal(0);
 
 			let e: any;
@@ -714,7 +749,7 @@ describe("effect()", () => {
 			spy.resetHistory();
 
 			e._dispose();
-			s.value = 2;
+			s.value = 3;
 			expect(spy).not.to.be.called;
 		});
 
@@ -814,7 +849,7 @@ describe("computed()", () => {
 		expect(spy).to.be.calledTwice;
 	});
 
-	it("should computed only when dependency has changed at some point", () => {
+	it("should be computed only when a dependency has changed at some point", () => {
 		const a = signal("a");
 		const spy = sinon.spy(() => {
 			return a.value;
@@ -862,7 +897,7 @@ describe("computed()", () => {
 		expect(() => effect(() => a.value)).to.not.throw();
 	});
 
-	it("should store failures and recompute only after a dependency changes", () => {
+	it("should store thrown errors and recompute only after a dependency changes", () => {
 		const a = signal(0);
 		const spy = sinon.spy(() => {
 			a.value;
@@ -874,6 +909,39 @@ describe("computed()", () => {
 		expect(spy).to.be.calledOnce;
 		a.value = 1;
 		expect(() => c.value).to.throw();
+		expect(spy).to.be.calledTwice;
+	});
+
+	it("should store thrown non-errors and recompute only after a dependency changes", () => {
+		const a = signal(0);
+		const spy = sinon.spy();
+		const c = computed(() => {
+			a.value;
+			spy();
+			throw undefined;
+		});
+
+		try {
+			c.value;
+			expect.fail();
+		} catch (err) {
+			expect(err).to.be.undefined;
+		}
+		try {
+			c.value;
+			expect.fail();
+		} catch (err) {
+			expect(err).to.be.undefined;
+		}
+		expect(spy).to.be.calledOnce;
+
+		a.value = 1;
+		try {
+			c.value;
+			expect.fail();
+		} catch (err) {
+			expect(err).to.be.undefined;
+		}
 		expect(spy).to.be.calledTwice;
 	});
 
@@ -964,6 +1032,30 @@ describe("computed()", () => {
 		expect(c.value).to.equal(1);
 	});
 
+	it("should propagate notification to other listeners after one listener is disposed", () => {
+		const s = signal(0);
+		const c = computed(() => s.value);
+
+		const spy1 = sinon.spy(() => c.value);
+		const spy2 = sinon.spy(() => c.value);
+		const spy3 = sinon.spy(() => c.value);
+
+		effect(spy1);
+		const dispose = effect(spy2);
+		effect(spy3);
+
+		expect(spy1).to.be.calledOnce;
+		expect(spy2).to.be.calledOnce;
+		expect(spy3).to.be.calledOnce;
+
+		dispose();
+
+		s.value = 1;
+		expect(spy1).to.be.calledTwice;
+		expect(spy2).to.be.calledOnce;
+		expect(spy3).to.be.calledTwice;
+	});
+
 	it("should not recompute dependencies out of order", () => {
 		const a = signal(1);
 		const b = signal(1);
@@ -1039,6 +1131,19 @@ describe("computed()", () => {
 			expect(b.peek()).to.equal(2);
 		});
 
+		it("should detect simple dependency cycles", () => {
+			const a: Signal = computed(() => a.peek());
+			expect(() => a.peek()).to.throw(/Cycle detected/);
+		});
+
+		it("should detect deep dependency cycles", () => {
+			const a: Signal = computed(() => b.value);
+			const b: Signal = computed(() => c.value);
+			const c: Signal = computed(() => d.value);
+			const d: Signal = computed(() => a.peek());
+			expect(() => a.peek()).to.throw(/Cycle detected/);
+		});
+
 		it("should not make surrounding effect depend on the computed", () => {
 			const s = signal(1);
 			const c = computed(() => s.value);
@@ -1085,7 +1190,7 @@ describe("computed()", () => {
 			expect(spy).not.to.be.called;
 		});
 
-		it("should not subscribe a surrounding computed depend on peeked computed's dependencies", () => {
+		it("should not make surrounding computed depend on peeked computed's dependencies", () => {
 			const a = signal(1);
 			const b = computed(() => a.value);
 			const spy = sinon.spy();
@@ -1341,7 +1446,7 @@ describe("computed()", () => {
 		});
 
 		it("should only subscribe to signals listened to", () => {
-			// Here both "B" and "C" are active in the beginnning, but
+			// Here both "B" and "C" are active in the beginning, but
 			// "B" becomes inactive later. At that point it should
 			// not receive any updates anymore.
 			//    *A
@@ -1513,12 +1618,23 @@ describe("batch/transaction", () => {
 		expect(batch(() => 1)).to.equal(1);
 	});
 
-	it("should throw the error raised from the callback", () => {
+	it("should throw errors thrown from the callback", () => {
 		expect(() =>
 			batch(() => {
 				throw Error("hello");
 			})
 		).to.throw("hello");
+	});
+
+	it("should throw non-errors thrown from the callback", () => {
+		try {
+			batch(() => {
+				throw undefined;
+			});
+			expect.fail();
+		} catch (err) {
+			expect(err).to.be.undefined;
+		}
 	});
 
 	it("should delay writes", () => {
@@ -1629,10 +1745,10 @@ describe("batch/transaction", () => {
 		const invokes: number[][] = [];
 		const counter = signal(0);
 		const double = computed(() => counter.value * 2);
-		const tripple = computed(() => counter.value * 3);
+		const triple = computed(() => counter.value * 3);
 
 		effect(() => {
-			invokes.push([double.value, tripple.value]);
+			invokes.push([double.value, triple.value]);
 		});
 
 		expect(invokes).to.deep.equal([[0, 0]]);
@@ -1649,10 +1765,10 @@ describe("batch/transaction", () => {
 		const invokes: number[][] = [];
 		const counter = signal(0);
 		const double = computed(() => counter.value * 2);
-		const tripple = computed(() => counter.value * 3);
+		const triple = computed(() => counter.value * 3);
 
 		effect(() => {
-			invokes.push([double.value, tripple.value]);
+			invokes.push([double.value, triple.value]);
 		});
 
 		expect(invokes).to.deep.equal([[0, 0]]);

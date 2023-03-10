@@ -1,5 +1,35 @@
 # @preact/signals-react
 
+## 1.2.2
+
+### Patch Changes
+
+- [#243](https://github.com/preactjs/signals/pull/243) [`e41b8b1`](https://github.com/preactjs/signals/commit/e41b8b16bf68da7004a3174912fe95a109a453ed) Thanks [@melnikov-s](https://github.com/melnikov-s)! - Replace `Map` useage with `WeakMap`
+
+* [#282](https://github.com/preactjs/signals/pull/282) [`cafbdaa`](https://github.com/preactjs/signals/commit/cafbdaabd525a034e38da10b04eee0688c026152) Thanks [@developit](https://github.com/developit)! - Fix a bug that caused cleanup functions returned from a `useSignalEffect()` callback not to be called.
+
+* Updated dependencies [[`7e15d3c`](https://github.com/preactjs/signals/commit/7e15d3cf5f5e66258105e6f27cd7838b52fbbf9f)]:
+  - @preact/signals-core@1.2.3
+
+## 1.2.1
+
+### Patch Changes
+
+- [#238](https://github.com/preactjs/signals/pull/238) [`bcf4b0b`](https://github.com/preactjs/signals/commit/bcf4b0b25d774483ddafa29c2fa133c467668b8c) Thanks [@eddyw](https://github.com/eddyw)! - Fix ERR_UNSUPPORTED_DIR_IMPORT error when importing `use-sync-external-store/shim` from ESM build
+
+## 1.2.0
+
+### Minor Changes
+
+- [#219](https://github.com/preactjs/signals/pull/219) [`0621526`](https://github.com/preactjs/signals/commit/0621526dd59187f674557e6df42c71980b32efab) Thanks [@eddyw](https://github.com/eddyw)! - Replace useReducer with useSyncExternalStore
+
+### Patch Changes
+
+- [#226](https://github.com/preactjs/signals/pull/226) [`ad29826`](https://github.com/preactjs/signals/commit/ad2982606a8894ea8562a0726d7777185987ad60) Thanks [@marvinhagemeister](https://github.com/marvinhagemeister)! - Fix hook names being mangled
+
+- Updated dependencies [[`aa4cb7b`](https://github.com/preactjs/signals/commit/aa4cb7bfad744e78952cacc37af5bd4a713f0d3f), [`3f652a7`](https://github.com/preactjs/signals/commit/3f652a77d2a125a02a0cfc29fe661c81beeda16d)]:
+  - @preact/signals-core@1.2.2
+
 ## 1.1.1
 
 ### Patch Changes
