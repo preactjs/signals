@@ -83,6 +83,8 @@ describe("@preact/signals-react", () => {
 		it("should subscribe to signals", () => {
 			const sig = signal("foo");
 
+			// TODO: this would be solved by looking at sig, rather than
+			// sig.value, we need to find a way to subscribe here...
 			function App() {
 				const value = sig.value;
 				return <p>{value}</p>;
@@ -142,6 +144,7 @@ describe("@preact/signals-react", () => {
 		it("should update memo'ed component via signals", async () => {
 			const sig = signal("foo");
 
+			// Same story as last one...
 			function Inner() {
 				const value = sig.value;
 				return <p>{value}</p>;
@@ -164,6 +167,7 @@ describe("@preact/signals-react", () => {
 		it("should update forwardRef'ed component via signals", async () => {
 			const sig = signal("foo");
 
+			// Again
 			const Inner = forwardRef(() => {
 				return <p>{sig.value}</p>;
 			});
@@ -204,6 +208,7 @@ describe("@preact/signals-react", () => {
 		it("should consistently rerender in strict mode (with memo)", async () => {
 			const sig = signal<string>(null!);
 
+			// Again...
 			const Test = memo(() => <p>{sig.value}</p>);
 			const App = () => (
 				<StrictMode>

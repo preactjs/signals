@@ -155,15 +155,22 @@ function createEffectStore() {
 	};
 }
 
+function hasSignalProp(props: Record<string, unknown>) {
+	return !!Object.keys(props).find(key => props[key] instanceof Signal);
+}
+
 function WrapJsx<T>(jsx: T): T {
 	if (typeof jsx !== "function") return jsx;
 
 	return function (type: any, props: any, ...rest: any[]) {
-		if (typeof type === "function" && !(type instanceof Component)) {
+		const hasSignalChildren = rest.find(x => x);
+		const hasSignalProps = props && hasSignalProp(props);
+
+		if (typeof type === "function" && !(type instanceof Component) && (hasSignalChildren || hasSignalProps)) {
 			return jsx.call(jsx, ProxyFunctionalComponent(type), props, ...rest);
 		}
 
-		if (type && typeof type === "object") {
+		if (type && typeof type === "object" && (hasSignalChildren || hasSignalProps)) {
 			if (type.$$typeof === ReactMemoType) {
 				type.type = ProxyFunctionalComponent(type.type);
 				return jsx.call(jsx, type, props, ...rest);
@@ -173,7 +180,7 @@ function WrapJsx<T>(jsx: T): T {
 			}
 		}
 
-		if (typeof type === "string" && props) {
+		if (typeof type === "string" && props && hasSignalProps) {
 			for (let i in props) {
 				let v = props[i];
 				if (i !== "children" && v instanceof Signal) {
