@@ -220,6 +220,9 @@ declare class Signal<T = any> {
 
 	peek(): T;
 
+	/** if true, triggers an update with the new incoming value */
+	shouldUpdate(oldValue: T, newValue: T): boolean;
+
 	get value(): T;
 	set value(value: T);
 }
@@ -292,6 +295,10 @@ Signal.prototype.peek = function () {
 	return this._value;
 };
 
+Signal.prototype.shouldUpdate = (oldValue, newValue) => {
+	return newValue !== oldValue;
+};
+
 Object.defineProperty(Signal.prototype, "value", {
 	get() {
 		const node = addDependency(this);
@@ -301,7 +308,9 @@ Object.defineProperty(Signal.prototype, "value", {
 		return this._value;
 	},
 	set(value) {
-		if (value !== this._value) {
+		const shouldUpdate = this.shouldUpdate(this._value, value);
+
+		if (shouldUpdate) {
 			if (batchIteration > 100) {
 				cycleDetected();
 			}
