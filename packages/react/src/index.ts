@@ -256,3 +256,64 @@ export function useSignalEffect(cb: () => void | (() => void)) {
 		return effect(() => callback.current());
 	}, Empty);
 }
+
+// TODO: find a way to share these across component boundaries
+const computedsCache = new WeakMap<(() => Promise<any>), Promise<any>>();
+type Result<T> = {
+	error: Signal<Error | null>;
+	pending: Signal<boolean>;
+	data: Signal<T | null>
+}
+
+// An alternative to having useMemo rely on
+export function useAsyncComputed<T = any>(compute: () => Promise<T>) {
+	const error = useSignal(null)
+	const pending = useSignal(false)
+	const data = useSignal<T | null>(null);
+
+	const promise = useRef<Promise<T>>();
+	const state = useRef<Result<T>>({
+		error,
+		pending,
+		data,
+	});
+
+	useEffect(() => {
+		// this relies on compute accessing signals to tell us
+		// whether this is reactive or not.
+		// ideally this would be hooked into the render
+		// cycle by i.e. being like useEffect or useLayoutEffect
+		// even for signal-effect triggers.
+		return effect(() => {
+			let aborted = false;
+			let result = computedsCache.get(compute)
+			if (!result) {
+				result = compute();
+				computedsCache.set(compute, result);
+			}
+			promise.current = result
+			state.current.pending.value = true;
+			result.then((data) => {
+				if (aborted) return;
+				batch(() => {
+					state.current.pending.value = false;
+				state.current.error.value = null;
+				state.current.data.value = data;
+				})
+			}).catch(err => {
+				if (aborted) return;
+				batch(() => {
+					state.current.pending.value = false;
+					state.current.error.value = err;
+					state.current.data.value = null;
+				})
+
+			})
+			return () => {
+				aborted = true;
+			}
+		});
+	}, Empty);
+
+	return state.current;
+}
