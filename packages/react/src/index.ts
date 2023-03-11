@@ -258,7 +258,7 @@ export function useSignalEffect(cb: () => void | (() => void)) {
 }
 
 // TODO: find a way to share these across component boundaries
-const computedsCache = new WeakMap<(() => Promise<any>), Promise<any>>();
+const computedsCache = new Map<string, Promise<any>>();
 type Result<T> = {
 	error: Signal<Error | null>;
 	pending: Signal<boolean>;
@@ -266,7 +266,7 @@ type Result<T> = {
 }
 
 // An alternative to having useMemo rely on
-export function useAsyncComputed<T = any>(compute: () => Promise<T>) {
+export function useAsyncComputed<T = any>(compute: () => Promise<T>, cacheKey: string, suspense?: boolean) {
 	const error = useSignal(null)
 	const pending = useSignal(false)
 	const data = useSignal<T | null>(null);
@@ -286,21 +286,23 @@ export function useAsyncComputed<T = any>(compute: () => Promise<T>) {
 		// even for signal-effect triggers.
 		return effect(() => {
 			let aborted = false;
-			let result = computedsCache.get(compute)
+			let result = computedsCache.get(cacheKey)
 			if (!result) {
 				result = compute();
-				computedsCache.set(compute, result);
+				computedsCache.set(cacheKey, result);
 			}
 			promise.current = result
 			state.current.pending.value = true;
 			result.then((data) => {
+				computedsCache.delete(cacheKey)
 				if (aborted) return;
 				batch(() => {
 					state.current.pending.value = false;
-				state.current.error.value = null;
-				state.current.data.value = data;
+					state.current.error.value = null;
+					state.current.data.value = data;
 				})
 			}).catch(err => {
+				computedsCache.delete(cacheKey)
 				if (aborted) return;
 				batch(() => {
 					state.current.pending.value = false;
@@ -314,6 +316,10 @@ export function useAsyncComputed<T = any>(compute: () => Promise<T>) {
 			}
 		});
 	}, Empty);
+
+	if (suspense && state.current.pending.peek()) {
+		throw promise.current
+	}
 
 	return state.current;
 }
