@@ -1,8 +1,8 @@
 {
 	"name": "@preact/signals-react",
-	"version": "1.0.2",
+	"version": "1.2.2",
 	"license": "MIT",
-	"description": "",
+	"description": "Manage state with style in React",
 	"keywords": [],
 	"authors": [
 		"The Preact Authors (https://github.com/preactjs/signals/contributors)"
@@ -38,15 +38,17 @@
 		"prepublishOnly": "cd ../.. && pnpm build:react"
 	},
 	"dependencies": {
-		"@preact/signals-core": "workspace:^1.1.1"
+		"@preact/signals-core": "workspace:^1.2.3",
+		"use-sync-external-store": "^1.2.0"
 	},
 	"peerDependencies": {
 		"react": "17.x || 18.x"
 	},
 	"devDependencies": {
-		"react": "^18.2.0",
-		"react-dom": "^18.2.0",
 		"@types/react": "^18.0.18",
-		"@types/react-dom": "^18.0.6"
+		"@types/react-dom": "^18.0.6",
+		"@types/use-sync-external-store": "^0.0.3",
+		"react": "^18.2.0",
+		"react-dom": "^18.2.0"
 	}
 }

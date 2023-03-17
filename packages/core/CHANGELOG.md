@@ -1,5 +1,54 @@
 # @preact/signals-core
 
+## 1.2.3
+
+### Patch Changes
+
+- [#245](https://github.com/preactjs/signals/pull/245) [`7e15d3c`](https://github.com/preactjs/signals/commit/7e15d3cf5f5e66258105e6f27cd7838b52fbbf9f) Thanks [@jviide](https://github.com/jviide)! - Fix effect behavior when first run throws
+
+## 1.2.2
+
+### Patch Changes
+
+- [#232](https://github.com/preactjs/signals/pull/232) [`aa4cb7b`](https://github.com/preactjs/signals/commit/aa4cb7bfad744e78952cacc37af5bd4a713f0d3f) Thanks [@jviide](https://github.com/jviide)! - Simplify effect change checking (and make effect cycle detection more accurate as a side-effect)
+
+* [#233](https://github.com/preactjs/signals/pull/233) [`3f652a7`](https://github.com/preactjs/signals/commit/3f652a77d2a125a02a0cfc29fe661c81beeda16d) Thanks [@jviide](https://github.com/jviide)! - Simplify Node book keeping code
+
+## 1.2.1
+
+### Patch Changes
+
+- [#205](https://github.com/preactjs/signals/pull/205) [`4b73164`](https://github.com/preactjs/signals/commit/4b7316497aee03413f91e9f714cdcf9f553e39d9) Thanks [@jviide](https://github.com/jviide)! - Use the same tracking logic for both effects and computeds. This ensures that effects are only called whenever any of their dependencies changes. If they all stay the same, then the effect will not be invoked.
+
+* [#207](https://github.com/preactjs/signals/pull/207) [`57fd2e7`](https://github.com/preactjs/signals/commit/57fd2e723528a36cc5d4ebf09ba34178aa84c879) Thanks [@jviide](https://github.com/jviide)! - Fix effect disposal when cleanup throws
+
+- [#209](https://github.com/preactjs/signals/pull/209) [`49756ae`](https://github.com/preactjs/signals/commit/49756aef28fe12c6ae6b801224bf5ae608ddf562) Thanks [@jviide](https://github.com/jviide)! - Optimize dependency value change checks by allowing earlier exists from the loop
+
+## 1.2.0
+
+### Minor Changes
+
+- [#183](https://github.com/preactjs/signals/pull/183) [`79ff1e7`](https://github.com/preactjs/signals/commit/79ff1e794dde9952db2d6d43b22cebfb2accc770) Thanks [@jviide](https://github.com/jviide)! - Add ability to run custom cleanup logic when an effect is disposed.
+
+  ```js
+  effect(() => {
+    console.log("This runs whenever a dependency changes");
+    return () => {
+      console.log("This runs when the effect is disposed");
+    });
+  });
+  ```
+
+* [#170](https://github.com/preactjs/signals/pull/170) [`3e31aab`](https://github.com/preactjs/signals/commit/3e31aabb812ddb0f7451deba38267f8384eff9d1) Thanks [@jviide](https://github.com/jviide)! - Allow disposing a currently running effect
+
+### Patch Changes
+
+- [#188](https://github.com/preactjs/signals/pull/188) [`b4611cc`](https://github.com/preactjs/signals/commit/b4611cc9dee0ae09f4b378ba293c3203edc32be4) Thanks [@jviide](https://github.com/jviide)! - Fix `.subscribe()` unexpectedly tracking signal access
+
+* [#162](https://github.com/preactjs/signals/pull/162) [`9802da5`](https://github.com/preactjs/signals/commit/9802da5274bb45c3cc28dda961b9b2d18535729a) Thanks [@developit](https://github.com/developit)! - Add support for `Signal.prototype.valueOf`
+
+- [#161](https://github.com/preactjs/signals/pull/161) [`6ac6923`](https://github.com/preactjs/signals/commit/6ac6923e5294f8a31ee1a009550b9891c3996cb4) Thanks [@jviide](https://github.com/jviide)! - Remove all usages of `Set`, `Map` and other allocation heavy objects in signals-core. This substaintially increases performance across all measurements.
+
 ## 1.1.1
 
 ### Patch Changes

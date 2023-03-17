@@ -5,6 +5,11 @@
   },
   "minify": {
     "mangle": {
+      "reserved": [
+        "useSignal",
+        "useComputed",
+        "useSignalEffect"
+      ],
       "keep_classnames": true,
       "properties": {
         "regex": "^_[^_]",
@@ -19,7 +24,6 @@
     },
     "compress": {
       "conditionals": false,
-      "evaluate": false,
       "loops": false,
       "sequences": false
     }
@@ -36,6 +40,7 @@
       "$_nextTarget": "x",
       "$_rollbackNode": "r",
       "core: Signal": "",
+      "$_refresh": "h",
       "$_value": "v",
       "$_node": "n",
       "$_targets": "t",
@@ -56,6 +61,9 @@
       "$_subscribe": "S",
       "$_unsubscribe": "U",
       "preact": "",
+      "$_signal": "s",
+      "$_updater": "__$u",
+      "$_updateFlags": "__$f",
       "$_updaters": "U"
     }
   }

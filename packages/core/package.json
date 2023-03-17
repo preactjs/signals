@@ -1,8 +1,8 @@
 {
 	"name": "@preact/signals-core",
-	"version": "1.1.1",
+	"version": "1.2.3",
 	"license": "MIT",
-	"description": "",
+	"description": "Manage state with style in every framework",
 	"keywords": [],
 	"authors": [
 		"The Preact Authors (https://github.com/preactjs/signals/contributors)"
@@ -23,6 +23,7 @@
 	"unpkg": "dist/signals-core.min.js",
 	"types": "dist/signals-core.d.ts",
 	"source": "src/index.ts",
+	"sideEffects": false,
 	"exports": {
 		".": {
 			"types": "./dist/signals-core.d.ts",
