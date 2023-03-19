@@ -1,6 +1,9 @@
 function cycleDetected(): never {
 	throw new Error("Cycle detected");
 }
+function mutationDetected(): never {
+	throw new Error("Computed cannot have side-effects");
+}
 
 // Flags for Computed and Effect.
 const RUNNING = 1 << 0;
@@ -183,6 +186,7 @@ function addDependency(signal: Signal): Node | undefined {
 	return undefined;
 }
 
+// @ts-ignore internal Signal is viewed as a function
 declare class Signal<T = any> {
 	/** @internal */
 	_value: unknown;
@@ -226,6 +230,7 @@ declare class Signal<T = any> {
 }
 
 /** @internal */
+// @ts-ignore internal Signal is viewed as function
 function Signal(this: Signal, value?: unknown) {
 	this._value = value;
 	this._version = 0;
@@ -304,7 +309,11 @@ Object.defineProperty(Signal.prototype, "value", {
 		}
 		return this._value;
 	},
-	set(value) {
+	set(this: Signal, value) {
+		if (evalContext instanceof Computed) {
+			mutationDetected();
+		}
+
 		if (value !== this._value) {
 			if (batchIteration > 100) {
 				cycleDetected();
@@ -742,4 +751,4 @@ function effect(compute: () => void | (() => void)): () => void {
 	return effect._dispose.bind(effect);
 }
 
-export { signal, computed, effect, batch, Signal, ReadonlySignal };
+export { signal, computed, effect, batch, Signal, type ReadonlySignal };

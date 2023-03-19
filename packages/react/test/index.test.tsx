@@ -1,7 +1,7 @@
 // @ts-ignore-next-line
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
-import { signal, useComputed, useSignalEffect } from "@preact/signals-react";
+import { signal, computed, useComputed, useSignalEffect } from "@preact/signals-react";
 import { createElement, forwardRef, useMemo, memo, StrictMode, createRef } from "react";
 
 import { createRoot, Root } from "react-dom/client";
@@ -39,6 +39,16 @@ describe("@preact/signals-react", () => {
 			expect(span).to.have.property("firstChild").that.is.an.instanceOf(Text);
 			const text = span?.firstChild;
 			expect(text).to.have.property("data", "test");
+		});
+
+		it("should render computed as Text", () => {
+			const sig = signal("test");
+			const comp = computed(() => `${sig} ${sig}`);
+			render(<span>{comp}</span>);
+			const span = scratch.firstChild;
+			expect(span).to.have.property("firstChild").that.is.an.instanceOf(Text);
+			const text = span?.firstChild;
+			expect(text).to.have.property("data", "test test");
 		});
 
 		it("should update Signal-based Text (no parent component)", () => {
@@ -149,7 +159,7 @@ describe("@preact/signals-react", () => {
 
 			function App() {
 				sig.value;
-				return useMemo(() => <Inner foo={1} />, []);
+				return useMemo(() => <Inner />, []);
 			}
 
 			render(<App />);
