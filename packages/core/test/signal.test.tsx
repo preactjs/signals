@@ -147,6 +147,20 @@ describe("signal", () => {
 			expect(spy).not.to.be.called;
 		});
 	});
+
+	describe(".set()", () => {
+		it("should notify subscribers after set", () => {
+			const spy = sinon.spy();
+			const a = signal(1);
+
+			a.subscribe(spy);
+			expect(spy).to.be.calledWith(1);
+
+			a.set(2)
+			expect(spy).to.be.calledWith(2);
+			expect(a.peek()).to.equal(2);
+		});
+	});
 });
 
 describe("effect()", () => {

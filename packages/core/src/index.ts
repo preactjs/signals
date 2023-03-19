@@ -217,6 +217,8 @@ declare class Signal<T = any> {
 
 	subscribe(fn: (value: T) => void): () => void;
 
+	set(value: T): void;
+
 	valueOf(): T;
 
 	toString(): string;
@@ -281,6 +283,35 @@ Signal.prototype.subscribe = function (fn) {
 			this._flags |= flag;
 		}
 	});
+};
+
+Signal.prototype.set = function (value) {
+	const signal = this;
+	if (evalContext instanceof Computed) {
+		mutationDetected();
+	}
+	if (value !== signal._value) {
+		if (batchIteration > 100) {
+			cycleDetected();
+		}
+
+		signal._value = value;
+		signal._version++;
+		globalVersion++;
+
+		/**@__INLINE__*/ startBatch();
+		try {
+			for (
+				let node = signal._targets;
+				node !== undefined;
+				node = node._nextTarget
+			) {
+				node._target._notify();
+			}
+		} finally {
+			endBatch();
+		}
+	}
 };
 
 Signal.prototype.valueOf = function () {
