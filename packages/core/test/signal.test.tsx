@@ -16,6 +16,16 @@ describe("signal", () => {
 		expect(s.toString()).equal("123");
 	});
 
+	it("should support .toJSON()", () => {
+		const s = signal(123);
+		expect(s.toJSON()).equal(123);
+	});
+
+	it("should support JSON.Stringify()", () => {
+		const s = signal(123);
+		expect(JSON.stringify({ s })).equal(JSON.stringify({ s: 123}));
+	});
+
 	it("should support .valueOf()", () => {
 		const s = signal(123);
 		expect(s).to.have.property("valueOf");
