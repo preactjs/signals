@@ -286,32 +286,7 @@ Signal.prototype.subscribe = function (fn) {
 };
 
 Signal.prototype.set = function (value) {
-	const signal = this;
-	if (evalContext instanceof Computed) {
-		mutationDetected();
-	}
-	if (value !== signal._value) {
-		if (batchIteration > 100) {
-			cycleDetected();
-		}
-
-		signal._value = value;
-		signal._version++;
-		globalVersion++;
-
-		/**@__INLINE__*/ startBatch();
-		try {
-			for (
-				let node = signal._targets;
-				node !== undefined;
-				node = node._nextTarget
-			) {
-				node._target._notify();
-			}
-		} finally {
-			endBatch();
-		}
-	}
+	this.value = value
 };
 
 Signal.prototype.valueOf = function () {
