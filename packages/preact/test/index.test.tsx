@@ -6,7 +6,9 @@ import {
 	signal,
 } from "@preact/signals";
 import { createElement, createRef, render, createContext } from "preact";
+import type { FunctionComponent } from "preact";
 import { useContext, useState } from "preact/hooks";
+import type { StateUpdater } from "preact/hooks";
 import { setupRerender, act } from "preact/test-utils";
 
 const sleep = (ms?: number) => new Promise(r => setTimeout(r, ms));
@@ -268,6 +270,71 @@ describe("@preact/signals", () => {
 			sig.value = "bar";
 			rerender();
 			expect(spy).to.be.calledOnce;
+		});
+
+		it.only("should not subscribe to write-only signals", () => {
+			const location = signal<URL | null>(null);
+			const origin = computed(() => location.value?.origin);
+			const pathname = computed(() => location.value?.pathname);
+			const search = computed(() => location.value?.search);
+
+			const Origin = sinon.spy<FunctionComponent>(function Origin() {
+				// Manually read signal value so we can watch whether component rerenders
+				return <p>{origin.value}</p>;
+			});
+
+			const Pathname = sinon.spy<FunctionComponent>(function Pathname() {
+				// Manually read signal value so we can watch whether component rerenders
+				return <p>{pathname.value}</p>;
+			});
+
+			const Search = sinon.spy<FunctionComponent>(function Search() {
+				// Manually read signal value so we can watch whether component rerenders
+				return <p>{search.value}</p>;
+			});
+
+			let setLocation: StateUpdater<URL> = () => {};
+			const LocationProvider = sinon.spy<FunctionComponent>(
+				function SignalProvider({ children }) {
+					const [value, setValue] = useState(
+						new URL("https://domain.com/test?a=1")
+					);
+					setLocation = setValue;
+
+					location.value = value;
+					return children as any;
+				}
+			);
+
+			function App() {
+				return (
+					<LocationProvider>
+						<Origin />
+						<Pathname />
+						<Search />
+					</LocationProvider>
+				);
+			}
+
+			render(<App />, scratch);
+
+			expect(scratch.textContent).to.equal("https://domain.com/test?a=1");
+			expect(LocationProvider).to.be.calledOnce;
+			expect(Origin).to.be.calledOnce;
+			expect(Pathname).to.be.calledOnce;
+			expect(Search).to.be.calledOnce;
+
+			setLocation(u => {
+				u.search = "?a=2";
+				return new URL(u);
+			});
+			rerender();
+
+			expect(scratch.textContent).to.equal("https://domain.com/test?a=2");
+			expect(LocationProvider).to.be.calledTwice;
+			expect(Origin).to.be.calledOnce;
+			expect(Pathname).to.be.calledOnce;
+			expect(Search).to.be.calledTwice;
 		});
 
 		it("should not subscribe to computed signals only created and not used", () => {
