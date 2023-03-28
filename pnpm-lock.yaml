@@ -1,12 +1,12 @@
 lockfileVersion: 5.4
 
 patchedDependencies:
-  microbundle@0.15.1:
-    hash: yvstdq4ikeml4yz3a6bi3bgrvu
-    path: patches/microbundle@0.15.1.patch
   '@babel/plugin-transform-typescript@7.19.1':
     hash: tiqrfntt5y3ned567j2lekmz2i
     path: patches/@babel__plugin-transform-typescript@7.19.1.patch
+  microbundle@0.15.1:
+    hash: yvstdq4ikeml4yz3a6bi3bgrvu
+    path: patches/microbundle@0.15.1.patch
 
 importers:
 
@@ -153,6 +153,7 @@ importers:
       '@types/use-sync-external-store': ^0.0.3
       react: ^18.2.0
       react-dom: ^18.2.0
+      react-router-dom: ^6.9.0
       use-sync-external-store: ^1.2.0
     dependencies:
       '@preact/signals-core': link:../core
@@ -163,6 +164,7 @@ importers:
       '@types/use-sync-external-store': 0.0.3
       react: 18.2.0
       react-dom: 18.2.0_react@18.2.0
+      react-router-dom: 6.10.0_biqbaboplfbrettd7655fr4n2y
 
 packages:
 
@@ -2059,6 +2061,11 @@ packages:
       vite: 3.0.7
     transitivePeerDependencies:
       - supports-color
+    dev: true
+
+  /@remix-run/router/1.5.0:
+    resolution: {integrity: sha512-bkUDCp8o1MvFO+qxkODcbhSqRa6P2GXgrGZVpt0dCXNW2HCSCqYI0ZoAqEOSAjRWmmlKcYgFvN4B4S+zo/f8kg==}
+    engines: {node: '>=14'}
     dev: true
 
   /@rollup/plugin-alias/3.1.9_rollup@2.77.2:
@@ -6231,6 +6238,29 @@ packages:
       loose-envify: 1.4.0
       react: 18.2.0
       scheduler: 0.23.0
+
+  /react-router-dom/6.10.0_biqbaboplfbrettd7655fr4n2y:
+    resolution: {integrity: sha512-E5dfxRPuXKJqzwSe/qGcqdwa18QiWC6f3H3cWXM24qj4N0/beCIf/CWTipop2xm7mR0RCS99NnaqPNjHtrAzCg==}
+    engines: {node: '>=14'}
+    peerDependencies:
+      react: '>=16.8'
+      react-dom: '>=16.8'
+    dependencies:
+      '@remix-run/router': 1.5.0
+      react: 18.2.0
+      react-dom: 18.2.0_react@18.2.0
+      react-router: 6.10.0_react@18.2.0
+    dev: true
+
+  /react-router/6.10.0_react@18.2.0:
+    resolution: {integrity: sha512-Nrg0BWpQqrC3ZFFkyewrflCud9dio9ME3ojHCF/WLsprJVzkq3q3UeEhMCAW1dobjeGbWgjNn/PVF6m46ANxXQ==}
+    engines: {node: '>=14'}
+    peerDependencies:
+      react: '>=16.8'
+    dependencies:
+      '@remix-run/router': 1.5.0
+      react: 18.2.0
+    dev: true
 
   /react/18.2.0:
     resolution: {integrity: sha512-/3IjMdb2L9QbBdWiW5e3P2/npwMBaU9mHCSCUzNln0ZCYbcfTsGbTJrU/kGemdH2IWmB2ioZ+zkxtmq6g09fGQ==}

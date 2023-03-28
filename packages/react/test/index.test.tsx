@@ -18,39 +18,15 @@ import {
 
 import { createRoot, Root } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
-import { act as realAct } from "react-dom/test-utils";
-
-// When testing using react's production build, we can't use act (React
-// explicitly throws an error in this situation). So instead we'll fake act by
-// just waiting 10ms for React's concurrent rerendering to flush. We'll throw a
-// helpful error in afterEach if we detect that act() was called but not
-// awaited.
-const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
-
-let acting = false;
-async function prodAct(cb: () => void | Promise<void>): Promise<void> {
-	acting = true;
-	await cb();
-	await delay(10);
-	acting = false;
-}
+import { act, checkHangingAct } from "./utils";
 
 describe("@preact/signals-react", () => {
 	let scratch: HTMLDivElement;
 	let root: Root;
-	let act: typeof realAct;
 
 	async function render(element: Parameters<Root["render"]>[0]) {
 		await act(() => root.render(element));
 	}
-
-	before(async () => {
-		if (process.env.NODE_ENV === "production") {
-			act = prodAct as typeof realAct;
-		} else {
-			act = realAct;
-		}
-	});
 
 	beforeEach(() => {
 		scratch = document.createElement("div");
@@ -58,12 +34,7 @@ describe("@preact/signals-react", () => {
 	});
 
 	afterEach(async () => {
-		if (acting) {
-			throw new Error(
-				"Test finished while still acting. Did you await all act() and render() calls?"
-			);
-		}
-
+		checkHangingAct();
 		await act(() => root.unmount());
 	});
 
