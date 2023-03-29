@@ -2,14 +2,16 @@ import {
 	useRef,
 	useMemo,
 	useEffect,
-	Component,
-	type FunctionComponent,
+	// @ts-ignore-next-line
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+	__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED as ReactInternals,
 	type ReactElement,
+	type useCallback,
+	type useReducer,
 } from "react";
 import React from "react";
 import jsxRuntime from "react/jsx-runtime";
 import jsxRuntimeDev from "react/jsx-dev-runtime";
-import { useSyncExternalStore } from "use-sync-external-store/shim/index.js";
 import {
 	signal,
 	computed,
@@ -24,12 +26,6 @@ export { signal, computed, batch, effect, Signal, type ReadonlySignal };
 
 const Empty = [] as const;
 const ReactElemType = Symbol.for("react.element"); // https://github.com/facebook/react/blob/346c7d4c43a0717302d446da9e7423a8e28d8996/packages/shared/ReactSymbols.js#L15
-const ReactMemoType = Symbol.for("react.memo"); // https://github.com/facebook/react/blob/346c7d4c43a0717302d446da9e7423a8e28d8996/packages/shared/ReactSymbols.js#L30
-const ReactForwardRefType = Symbol.for("react.forward_ref"); // https://github.com/facebook/react/blob/346c7d4c43a0717302d446da9e7423a8e28d8996/packages/shared/ReactSymbols.js#L25
-const ProxyInstance = new WeakMap<
-	FunctionComponent<any>,
-	FunctionComponent<any>
->();
 
 // Idea:
 // - For Function components: Use CurrentDispatcher to add the signal effect
@@ -73,157 +69,149 @@ const ProxyInstance = new WeakMap<
 //        - Definitely cache all seen dispatchers in a WeakMap to speed look up
 //          on rerenders
 // - For class components: Use CurrentOwner to mimic the above behavior
+//
+// TODO (tests):
+// - Test on react.dev and react.production.min.js.
+// - Test on a component that uses useReducer (to trigger the edge case where
+//   dispatcher changes during render)
 
-const SupportsProxy = typeof Proxy === "function";
-
-const ProxyHandlers = {
-	/**
-	 * This is a function call trap for functional components.
-	 * When this is called, we know it means React did run 'Component()',
-	 * that means we can use any hooks here to setup our effect and store.
-	 *
-	 * With the native Proxy, all other calls such as access/setting to/of properties will
-	 * be forwarded to the target Component, so we don't need to copy the Component's
-	 * own or inherited properties.
-	 *
-	 * @see https://github.com/facebook/react/blob/2d80a0cd690bb5650b6c8a6c079a87b5dc42bd15/packages/react-reconciler/src/ReactFiberHooks.old.js#L460
-	 */
-	apply(
-		Component: FunctionComponent<any>,
-		thisArg: any,
-		argumentsList: Parameters<FunctionComponent<any>>
-	) {
-		const store = useMemo(createEffectStore, Empty);
-
-		useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
-
-		const stop = store.updater._start();
-
-		try {
-			const children = Component.apply(thisArg, argumentsList);
-			return children;
-			// eslint-disable-next-line no-useless-catch
-		} catch (e) {
-			// Re-throwing promises that'll be handled by suspense
-			// or an actual error.
-			throw e;
-		} finally {
-			// Stop effects in either case before return or throw,
-			// Otherwise the effect will leak.
-			stop();
-		}
-	},
-};
-
-function ProxyFunctionalComponent(Component: FunctionComponent<any>) {
-	return ProxyInstance.get(Component) || WrapWithProxy(Component);
+interface ReactDispatcher {
+	useCallback: typeof useCallback;
+	useReducer: typeof useReducer;
 }
 
-function WrapWithProxy(Component: FunctionComponent<any>) {
-	if (SupportsProxy) {
-		const ProxyComponent = new Proxy(Component, ProxyHandlers);
+let finishUpdate: (() => void) | undefined;
+const updaterForComponent = new WeakMap<object, Effect>();
 
-		ProxyInstance.set(Component, ProxyComponent);
-		ProxyInstance.set(ProxyComponent, ProxyComponent);
-
-		return ProxyComponent;
-	}
-
-	/**
-	 * Emulate a Proxy if environment doesn't support it.
-	 *
-	 * @TODO - unlike Proxy, it's not possible to access the type/Component's
-	 * static properties this way. Not sure if we want to copy all statics here.
-	 * Omitting this for now.
-	 *
-	 * @example - works with Proxy, doesn't with wrapped function.
-	 * ```
-	 * const el = <SomeFunctionalComponent />
-	 * el.type.someOwnOrInheritedProperty;
-	 * el.type.defaultProps;
-	 * ```
-	 */
-	const WrappedComponent: FunctionComponent<any> = (...args) => {
-		return ProxyHandlers.apply(Component, undefined, args);
-	};
-
-	ProxyInstance.set(Component, WrappedComponent);
-	ProxyInstance.set(WrappedComponent, WrappedComponent);
-
-	return WrappedComponent;
+function setCurrentUpdater(updater?: Effect) {
+	// end tracking for the current update:
+	if (finishUpdate) finishUpdate();
+	// start tracking the new update:
+	finishUpdate = updater && updater._start();
 }
 
-/**
- * A redux-like store whose store value is a positive 32bit integer (a 'version').
- *
- * React subscribes to this store and gets a snapshot of the current 'version',
- * whenever the 'version' changes, we tell React it's time to update the component (call 'onStoreChange').
- *
- * How we achieve this is by creating a binding with an 'effect', when the `effect._callback' is called,
- * we update our store version and tell React to re-render the component ([1] We don't really care when/how React does it).
- *
- * [1]
- * @see https://reactjs.org/docs/hooks-reference.html#usesyncexternalstore
- * @see https://github.com/reactjs/rfcs/blob/main/text/0214-use-sync-external-store.md
- */
-function createEffectStore() {
+function createUpdater(rerender: () => void): Effect {
 	let updater!: Effect;
-	let version = 0;
-	let onChangeNotifyReact: (() => void) | undefined;
-
-	let unsubscribe = effect(function (this: Effect) {
+	effect(function (this: Effect) {
 		updater = this;
 	});
-	updater._callback = function () {
-		version = (version + 1) | 0;
-		if (onChangeNotifyReact) onChangeNotifyReact();
-	};
+	updater._callback = rerender;
+	return updater;
+}
 
-	return {
-		updater,
-		subscribe(onStoreChange: () => void) {
-			onChangeNotifyReact = onStoreChange;
+// To track when we are entering and exiting a component render (i.e. before and
+// after React renders a component), we track how the dispatcher changes.
+// Outside of a component rendering, the dispatcher is set to an instance that
+// errors or warns when any hooks are called (this is too prevent hooks from
+// being used outside of components). Right before React renders a component,
+// the dispatcher is set to a valid one. Right after React finishes rendering a
+// component, the dispatcher is set to an erroring one again.
+//
+// So, we use this getter and setter to monitor the changes to the current
+// ReactDispatcher. When the dispatcher changes from an erroring one to a valid
+// dispatcher, we assume we are entering a component render. At this point, we
+// setup our auto-subscriptions for any signals used in the component. We do
+// this by creating an effect and manually starting the effect. We use
+// `useReducer` to get access to a `rerender` function that we can use to
+// manually trigger a rerender when a signal we've subscribed changes.
+//
+// When the dispatcher changes from a valid dispatcher to an erroring one, we
+// assume we are exiting a component render. At this point we stop the effect.
+//
+// Some edge cases to be aware of:
+// - In development, useReducer changes the dispatcher to an erroring dispatcher
+//   before invoking the reducer and resets it right after. We need to ensure
+//   this doesn't trigger our effect logic when we invoke useReducer. We use a
+//   boolean to track whether we are currently in our useReducer call.
+//
+//   Subsequent calls to useReducer will also change the dispatcher, but by
+//   storing the updater in a WeakMap keyed by the rerender function, we can
+//   ensure we don't create a new updater for each call to useReducer.
+//
+//   TODO: Does the above logic actually work? I think it might not because we
+//   have to invoke useReducer to get the rerender function which only works if
+//   we always invoke it in the same order. Consider removing the
+//   `/warnInvalidHookAccess/` check so only the ContextOnlyDispatcher is
+//   triggers exiting.
+//
+// - The `use` hook will change the dispatcher to from a valid update dispatcher
+//   to a valid mount dispatcher in some cases. So just changing the dispatcher
+//   isn't enough to know if we are exiting a component render. We need to check
+//   if we are currently in a valid dispatcher and the next one is a erroring
+//   one to exit.
+let lock = false;
+const FORCE_UPDATE = () => ({});
+let currentDispatcher: ReactDispatcher | null = null;
+Object.defineProperty(ReactInternals.ReactCurrentDispatcher, "current", {
+	get() {
+		return currentDispatcher;
+	},
+	set(nextDispatcher: ReactDispatcher) {
+		if (lock) {
+			currentDispatcher = nextDispatcher;
+			return;
+		}
 
-			return function () {
-				/**
-				 * Rotate to next version when unsubscribing to ensure that components are re-run
-				 * when subscribing again.
-				 *
-				 * In StrictMode, 'memo'-ed components seem to keep a stale snapshot version, so
-				 * don't re-run after subscribing again if the version is the same as last time.
-				 *
-				 * Because we unsubscribe from the effect, the version may not change. We simply
-				 * set a new initial version in case of stale snapshots here.
-				 */
-				version = (version + 1) | 0;
-				onChangeNotifyReact = undefined;
-				unsubscribe();
-			};
-		},
-		getSnapshot() {
-			return version;
-		},
-	};
+		// TODO: Comment these two lines and describe how `use` hook changes the
+		// dispatcher from a valid one to a different valid one is some situations
+		const isEnteringComponentRender =
+			isErroringDispatcher(currentDispatcher) &&
+			!isErroringDispatcher(nextDispatcher);
+
+		// TODO: Will this incorrectly be true if a component uses useReducer? using
+		// the WeakMap made it not matter... Perhaps we can use the rerender
+		// function as the key instead of the ReactCurrentOwner into the
+		// updaterForComponent WeakMap?
+		const isExitingComponentRender =
+			!isErroringDispatcher(currentDispatcher) &&
+			isErroringDispatcher(nextDispatcher);
+
+		if (isEnteringComponentRender) {
+			// useReducer changes the dispatcher to a throwing one while useReducer is
+			// running in dev mode, so lock our CurrentDispatcher setter to not run
+			// while our useReducer is running.
+			lock = true;
+			// TODO: Consider switching to useSyncExternalStore
+			const rerender = nextDispatcher.useReducer(FORCE_UPDATE, {})[1];
+			lock = false;
+
+			let updater = updaterForComponent.get(rerender);
+			if (!updater) {
+				updater = createUpdater(rerender);
+				updaterForComponent.set(rerender, updater);
+			}
+
+			setCurrentUpdater(updater);
+		} else if (isExitingComponentRender) {
+			setCurrentUpdater();
+		}
+
+		currentDispatcher = nextDispatcher;
+	},
+});
+
+// We inject a useReducer into every function component via CurrentDispatcher.
+// This prevents injecting into anything other than a function component render.
+const invalidHookAccessors = new Map();
+function isErroringDispatcher(dispatcher: ReactDispatcher | null) {
+	// Treat null as the invalid/erroring dispatcher
+	if (!dispatcher) return true;
+
+	const cached = invalidHookAccessors.get(dispatcher);
+	if (cached !== undefined) return cached;
+
+	// we only want the real implementation, not the erroring or warning ones
+	const invalid =
+		dispatcher.useCallback.length < 2 ||
+		/warnInvalidHookAccess/.test(dispatcher.useCallback as any);
+	invalidHookAccessors.set(dispatcher, invalid);
+	return invalid;
 }
 
 function WrapJsx<T>(jsx: T): T {
 	if (typeof jsx !== "function") return jsx;
 
 	return function (type: any, props: any, ...rest: any[]) {
-		if (typeof type === "function" && !(type instanceof Component)) {
-			return jsx.call(jsx, ProxyFunctionalComponent(type), props, ...rest);
-		}
-
-		if (type && typeof type === "object") {
-			if (type.$$typeof === ReactMemoType) {
-				type.type = ProxyFunctionalComponent(type.type);
-				return jsx.call(jsx, type, props, ...rest);
-			} else if (type.$$typeof === ReactForwardRefType) {
-				type.render = ProxyFunctionalComponent(type.render);
-				return jsx.call(jsx, type, props, ...rest);
-			}
-		}
-
 		if (typeof type === "string" && props) {
 			for (let i in props) {
 				let v = props[i];
@@ -271,7 +259,7 @@ function Text({ data }: { data: Signal }) {
 // Decorate Signals so React renders them as <Text> components.
 Object.defineProperties(Signal.prototype, {
 	$$typeof: { configurable: true, value: ReactElemType },
-	type: { configurable: true, value: ProxyFunctionalComponent(Text) },
+	type: { configurable: true, value: Text },
 	props: {
 		configurable: true,
 		get() {
