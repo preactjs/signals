@@ -31,6 +31,49 @@ const ProxyInstance = new WeakMap<
 	FunctionComponent<any>
 >();
 
+// Idea:
+// - For Function components: Use CurrentDispatcher to add the signal effect
+//   store to every component (kinda expensive?).
+//    - Actually we could probably skip using useSyncExternalStore and just use
+//      the effect instance directly... Ideally that'd means components that
+//      don't use any signals incur no persistent memory cost, outside of an
+//      empty call to useReducer to generate a rerender function.
+//
+//      Though maybe useSyncExternalStore makes it more concurrent mode safe? It
+//      seems that useSyncExternalStore may be efficient enough if we don't
+//      allocate more objects (aka the store). Though the
+//      `pushStoreConsistencyCheck` function would have a object per
+//      component... and then it'd have to loop through all of them to check if
+//      a store changed while rendering (if doing non-blocking work? So
+//      something concurrent related?). useSyncExternalStore probably isn't
+//      intended to be used on EVERY component.
+//
+//      Conclusion: Let's avoid useSyncExternalStore for now, and bring it if we
+//      find bugs.
+//
+//    - When it is set to a valid dispatcher (not the invalid one), start a
+//      preact/signal effect
+//    - When it is set to the invalid dispatcher (one that throws), stop the
+//      effect
+//    - Note: If a component throws, the CurrentDispatcher is reset so we should
+//      be able to clear our state
+//    - We need to store the created updater (aka Effect) for each component to
+//      track which signals are mounted/updated between rerenders (I think)? We
+//      should just store this in our useReducer instead of a WeakMap?
+//    - Check if a dispatcher is invalid by checking if the implementation of
+//      useCallback.length < 2 or if the text of the function contains
+//      `"warnInvalidHookAccess"`
+//    - Additional edge cases to be aware of:
+//        - In dev, React will change the dispatcher inside of useReducer before
+//          invoking the reducer (solve by using the locking mechanism in
+//          Jason's prototype?)
+//        - Some hooks will change the dispatcher (like `use`) while rendering.
+//          We need to handle this. Perhaps if changing from a valid dispatcher
+//          to a valid dispatcher, don't reset the effect?
+//        - Definitely cache all seen dispatchers in a WeakMap to speed look up
+//          on rerenders
+// - For class components: Use CurrentOwner to mimic the above behavior
+
 const SupportsProxy = typeof Proxy === "function";
 
 const ProxyHandlers = {
