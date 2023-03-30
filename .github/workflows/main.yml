@@ -50,3 +50,6 @@ jobs:
 
       - name: Test production build
         run: pnpm test:minify
+
+      - name: Test react production build
+        run: pnpm test:prod
