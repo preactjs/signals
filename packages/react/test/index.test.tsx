@@ -212,7 +212,7 @@ describe("@preact/signals-react", () => {
 		});
 
 		it("should consistently rerender in strict mode", async () => {
-			const sig = signal<string>(null!);
+			const sig = signal(-1);
 
 			const Test = () => <p>{sig.value}</p>;
 			const App = () => (
@@ -221,18 +221,19 @@ describe("@preact/signals-react", () => {
 				</StrictMode>
 			);
 
-			for (let i = 0; i < 3; i++) {
-				const value = `${i}`;
+			await render(<App />);
+			expect(scratch.textContent).to.equal("-1");
 
+			for (let i = 0; i < 3; i++) {
 				await act(async () => {
-					sig.value = value;
-					await render(<App />);
+					sig.value = i;
 				});
-				expect(scratch.textContent).to.equal(value);
+				expect(scratch.textContent).to.equal("" + i);
 			}
 		});
+
 		it("should consistently rerender in strict mode (with memo)", async () => {
-			const sig = signal<string>(null!);
+			const sig = signal(-1);
 
 			const Test = memo(() => <p>{sig.value}</p>);
 			const App = () => (
@@ -241,16 +242,17 @@ describe("@preact/signals-react", () => {
 				</StrictMode>
 			);
 
-			for (let i = 0; i < 3; i++) {
-				const value = `${i}`;
+			await render(<App />);
+			expect(scratch.textContent).to.equal("-1");
 
+			for (let i = 0; i < 3; i++) {
 				await act(async () => {
-					sig.value = value;
-					await render(<App />);
+					sig.value = i;
 				});
-				expect(scratch.textContent).to.equal(value);
+				expect(scratch.textContent).to.equal("" + i);
 			}
 		});
+
 		it("should render static markup of a component", async () => {
 			const count = signal(0);
 
@@ -262,10 +264,13 @@ describe("@preact/signals-react", () => {
 					</pre>
 				);
 			};
+
+			await render(<Test />);
+			expect(scratch.textContent).to.equal("<code>0</code><code>0</code>");
+
 			for (let i = 0; i < 3; i++) {
 				await act(async () => {
 					count.value += 1;
-					await render(<Test />);
 				});
 				expect(scratch.textContent).to.equal(
 					`<code>${count.value}</code><code>${count.value}</code>`
@@ -282,7 +287,7 @@ describe("@preact/signals-react", () => {
 					(state: number, action: number) => {
 						return state + action;
 					},
-					1
+					-2
 				);
 
 				increment = () => dispatch(1);
@@ -295,23 +300,25 @@ describe("@preact/signals-react", () => {
 				);
 			};
 
-			let state = 1;
+			await render(<Test />);
+			expect(scratch.innerHTML).to.equal(
+				"<pre><code>-2</code><code>0</code></pre>"
+			);
+
 			for (let i = 0; i < 3; i++) {
 				await act(async () => {
 					count.value += 1;
-					await render(<Test />);
 				});
 				expect(scratch.innerHTML).to.equal(
-					`<pre><code>${state}</code><code>${count.value}</code></pre>`
+					`<pre><code>-2</code><code>${count.value}</code></pre>`
 				);
 			}
 
 			await act(() => {
 				increment();
-				state += 1;
 			});
 			expect(scratch.innerHTML).to.equal(
-				`<pre><code>${state}</code><code>${count.value}</code></pre>`
+				`<pre><code>-1</code><code>${count.value}</code></pre>`
 			);
 		});
 	});
