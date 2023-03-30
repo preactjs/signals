@@ -6,6 +6,8 @@ import {
 	computed,
 	useComputed,
 	useSignalEffect,
+	useSignal,
+	Signal,
 } from "@preact/signals-react";
 import {
 	createElement,
@@ -311,6 +313,28 @@ describe("@preact/signals-react", () => {
 			expect(scratch.innerHTML).to.equal(
 				`<pre><code>${state}</code><code>${count.value}</code></pre>`
 			);
+		});
+	});
+
+	describe("useSignal()", () => {
+		it("should create a signal from a primitive value", async () => {
+			function App() {
+				const count = useSignal(1);
+				return (
+					<div>
+						{count}
+						<button onClick={() => count.value++}>Increment</button>
+					</div>
+				);
+			}
+
+			await render(<App />);
+			expect(scratch.textContent).to.equal("1Increment");
+
+			await act(() => {
+				scratch.querySelector("button")!.click();
+			});
+			expect(scratch.textContent).to.equal("2Increment");
 		});
 	});
 
