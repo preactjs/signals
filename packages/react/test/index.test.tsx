@@ -7,7 +7,6 @@ import {
 	useComputed,
 	useSignalEffect,
 	useSignal,
-	Signal,
 } from "@preact/signals-react";
 import {
 	createElement,
@@ -19,9 +18,8 @@ import {
 	createRef,
 } from "react";
 
-import { createRoot, Root } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
-import { act, checkHangingAct } from "./utils";
+import { createRoot, Root, act, checkHangingAct } from "./utils";
 
 describe("@preact/signals-react", () => {
 	let scratch: HTMLDivElement;
@@ -31,14 +29,16 @@ describe("@preact/signals-react", () => {
 		await act(() => root.render(element));
 	}
 
-	beforeEach(() => {
+	beforeEach(async () => {
 		scratch = document.createElement("div");
-		root = createRoot(scratch);
+		document.body.appendChild(scratch);
+		root = await createRoot(scratch);
 	});
 
 	afterEach(async () => {
 		checkHangingAct();
 		await act(() => root.unmount());
+		scratch.remove();
 	});
 
 	describe("Text bindings", () => {
@@ -455,12 +455,14 @@ describe("@preact/signals-react", () => {
 
 			const child = scratch.firstElementChild;
 
+			expect(scratch.innerHTML).to.equal("<p>foo</p>");
 			expect(cleanup).not.to.have.been.called;
 			expect(spy).to.have.been.calledOnceWith("foo", child);
 			spy.resetHistory();
 
 			await render(null);
 
+			expect(scratch.innerHTML).to.equal("");
 			expect(spy).not.to.have.been.called;
 			expect(cleanup).to.have.been.calledOnce;
 			// @note: React cleans up the ref eagerly, so it's already null by the time the callback runs.

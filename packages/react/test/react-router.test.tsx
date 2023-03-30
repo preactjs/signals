@@ -5,8 +5,7 @@ import { signal } from "@preact/signals-react";
 import { createElement } from "react";
 import { Route, Routes, MemoryRouter } from "react-router-dom";
 
-import { createRoot, Root } from "react-dom/client";
-import { act, checkHangingAct } from "./utils";
+import { act, checkHangingAct, createRoot, Root } from "./utils";
 
 describe("@preact/signals-react", () => {
 	let scratch: HTMLDivElement;
@@ -15,14 +14,16 @@ describe("@preact/signals-react", () => {
 		await act(() => root.render(element));
 	}
 
-	beforeEach(() => {
+	beforeEach(async () => {
 		scratch = document.createElement("div");
-		root = createRoot(scratch);
+		document.body.appendChild(scratch);
+		root = await createRoot(scratch);
 	});
 
 	afterEach(async () => {
 		checkHangingAct();
 		await act(() => root.unmount());
+		scratch.remove();
 	});
 
 	describe("react-router-dom", () => {
