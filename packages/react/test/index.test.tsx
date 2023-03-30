@@ -11,7 +11,6 @@ import {
 	createElement,
 	forwardRef,
 	useMemo,
-	useReducer,
 	memo,
 	StrictMode,
 	createRef,
@@ -23,11 +22,17 @@ import { act as realAct } from "react-dom/test-utils";
 
 // When testing using react's production build, we can't use act (React
 // explicitly throws an error in this situation). So instead we'll fake act by
-// just waiting 10ms for React's concurrent rerendering to flush
+// just waiting 10ms for React's concurrent rerendering to flush. We'll throw a
+// helpful error in afterEach if we detect that act() was called but not
+// awaited.
 const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
+
+let acting = false;
 async function prodAct(cb: () => void | Promise<void>): Promise<void> {
+	acting = true;
 	await cb();
 	await delay(10);
+	acting = false;
 }
 
 describe("@preact/signals-react", () => {
@@ -53,6 +58,12 @@ describe("@preact/signals-react", () => {
 	});
 
 	afterEach(async () => {
+		if (acting) {
+			throw new Error(
+				"Test finished while still acting. Did you await all act() and render() calls?"
+			);
+		}
+
 		await act(() => root.unmount());
 	});
 
