@@ -20,6 +20,7 @@ import {
 	Signal,
 	type ReadonlySignal,
 } from "@preact/signals-core";
+import { useSyncExternalStore } from "use-sync-external-store/shim/index";
 import type { Effect, JsxRuntimeModule } from "./internal";
 
 export { signal, computed, batch, effect, Signal, type ReadonlySignal };
@@ -27,35 +28,14 @@ export { signal, computed, batch, effect, Signal, type ReadonlySignal };
 const Empty = [] as const;
 const ReactElemType = Symbol.for("react.element"); // https://github.com/facebook/react/blob/346c7d4c43a0717302d446da9e7423a8e28d8996/packages/shared/ReactSymbols.js#L15
 
-// Idea:
-// - For Function components: Use CurrentDispatcher to add the signal effect
-//   store to every component (kinda expensive?).
-//    - Actually we could probably skip using useSyncExternalStore and just use
-//      the effect instance directly... Ideally that'd means components that
-//      don't use any signals incur no persistent memory cost, outside of an
-//      empty call to useReducer to generate a rerender function.
-//
-//      Though maybe useSyncExternalStore makes it more concurrent mode safe? It
-//      seems that useSyncExternalStore may be efficient enough if we don't
-//      allocate more objects (aka the store). Though the
-//      `pushStoreConsistencyCheck` function would have a object per
-//      component... and then it'd have to loop through all of them to check if
-//      a store changed while rendering (if doing non-blocking work? So
-//      something concurrent related?). useSyncExternalStore probably isn't
-//      intended to be used on EVERY component.
-//
-//      Conclusion: Let's avoid useSyncExternalStore for now, and bring it if we
-//      find bugs.
-//
-// - For class components: Use CurrentOwner to mimic the above behavior
-
 interface ReactDispatcher {
+	useRef: typeof useRef;
 	useCallback: typeof useCallback;
 	useReducer: typeof useReducer;
+	useSyncExternalStore: typeof useSyncExternalStore;
 }
 
 let finishUpdate: (() => void) | undefined;
-const updaterForComponent = new WeakMap<object, Effect>();
 
 function setCurrentUpdater(updater?: Effect) {
 	// end tracking for the current update:
@@ -64,13 +44,63 @@ function setCurrentUpdater(updater?: Effect) {
 	finishUpdate = updater && updater._start();
 }
 
-function createUpdater(rerender: () => void): Effect {
+interface EffectStore {
+	updater: Effect;
+	subscribe(onStoreChange: () => void): () => void;
+	getSnapshot(): number;
+}
+
+/**
+ * A redux-like store whose store value is a positive 32bit integer (a 'version').
+ *
+ * React subscribes to this store and gets a snapshot of the current 'version',
+ * whenever the 'version' changes, we tell React it's time to update the component (call 'onStoreChange').
+ *
+ * How we achieve this is by creating a binding with an 'effect', when the `effect._callback' is called,
+ * we update our store version and tell React to re-render the component ([1] We don't really care when/how React does it).
+ *
+ * [1]
+ * @see https://reactjs.org/docs/hooks-reference.html#usesyncexternalstore
+ * @see https://github.com/reactjs/rfcs/blob/main/text/0214-use-sync-external-store.md
+ */
+function createEffectStore(): EffectStore {
 	let updater!: Effect;
-	effect(function (this: Effect) {
+	let version = 0;
+	let onChangeNotifyReact: (() => void) | undefined;
+
+	let unsubscribe = effect(function (this: Effect) {
 		updater = this;
 	});
-	updater._callback = rerender;
-	return updater;
+	updater._callback = function () {
+		version = (version + 1) | 0;
+		if (onChangeNotifyReact) onChangeNotifyReact();
+	};
+
+	return {
+		updater,
+		subscribe(onStoreChange) {
+			onChangeNotifyReact = onStoreChange;
+
+			return function () {
+				/**
+				 * Rotate to next version when unsubscribing to ensure that components are re-run
+				 * when subscribing again.
+				 *
+				 * In StrictMode, 'memo'-ed components seem to keep a stale snapshot version, so
+				 * don't re-run after subscribing again if the version is the same as last time.
+				 *
+				 * Because we unsubscribe from the effect, the version may not change. We simply
+				 * set a new initial version in case of stale snapshots here.
+				 */
+				version = (version + 1) | 0;
+				onChangeNotifyReact = undefined;
+				unsubscribe();
+			};
+		},
+		getSnapshot() {
+			return version;
+		},
+	};
 }
 
 // To track when we are entering and exiting a component render (i.e. before and
@@ -99,9 +129,11 @@ function createUpdater(rerender: () => void): Effect {
 //   a different erroring dispatcher before invoking the reducer and resets it
 //   right after.
 //
-//   When we invoke our own useReducer while entering a component render, we
-//   need to prevent this change from re-triggering our logic. We do this by
-//   using a lock to prevent the setter from running while we are in the setter.
+//   The useSyncExternalStore shim will use some of these hooks when we invoke
+//   it while entering a component render. We need to prevent this dispatcher
+//   change caused by these hooks from re-triggering our entering logic (it
+//   would cause an infinite loop if we did not). We do this by using a lock to
+//   prevent the setter from running while we are in the setter.
 //
 //   When a Component's function body invokes useReducer, useState, or useMemo,
 //   this change in dispatcher should not signal that we are exiting a component
@@ -114,7 +146,6 @@ function createUpdater(rerender: () => void): Effect {
 //   during this change. Because these other dispatchers do not pass the
 //   ContextOnlyDispatcher check, they do not affect our logic.
 let lock = false;
-const FORCE_UPDATE = () => ({});
 let currentDispatcher: ReactDispatcher | null = null;
 Object.defineProperty(ReactInternals.ReactCurrentDispatcher, "current", {
 	get() {
@@ -134,29 +165,34 @@ Object.defineProperty(ReactInternals.ReactCurrentDispatcher, "current", {
 			!isContextOnlyDispatcher(currentDispatcher) &&
 			isContextOnlyDispatcher(nextDispatcher);
 
+		// Update the current dispatcher now so the hooks inside of the
+		// useSyncExternalStore shim get the right dispatcher.
+		currentDispatcher = nextDispatcher;
 		if (isEnteringComponentRender) {
 			lock = true;
-			// TODO: Consider switching to useSyncExternalStore
-			const rerender = nextDispatcher.useReducer(FORCE_UPDATE, {})[1];
-			lock = false;
-
-			let updater = updaterForComponent.get(rerender);
-			if (!updater) {
-				updater = createUpdater(rerender);
-				updaterForComponent.set(rerender, updater);
+			const storeRef = nextDispatcher.useRef<EffectStore>();
+			if (storeRef.current == null) {
+				storeRef.current = createEffectStore();
 			}
 
-			setCurrentUpdater(updater);
+			const store = storeRef.current;
+			useSyncExternalStore(
+				store.subscribe,
+				store.getSnapshot,
+				store.getSnapshot
+			);
+			lock = false;
+
+			setCurrentUpdater(store.updater);
 		} else if (isExitingComponentRender) {
 			setCurrentUpdater();
 		}
-
-		currentDispatcher = nextDispatcher;
 	},
 });
 
-// We inject a useReducer into every function component via CurrentDispatcher.
-// This prevents injecting into anything other than a function component render.
+// We inject a useSyncExternalStore into every function component via
+// CurrentDispatcher. This prevents injecting into anything other than a
+// function component render.
 const dispatcherTypeCache = new Map();
 function isContextOnlyDispatcher(dispatcher: ReactDispatcher | null) {
 	// Treat null the same as the ContextOnlyDispatcher.
