@@ -103,6 +103,22 @@ function createEffectStore(): EffectStore {
 	};
 }
 
+/**
+ * Custom hook to create the effect to track signals used during render and
+ * subscribe to changes to rerender the component when the signals change
+ */
+function usePreactSignalStore(nextDispatcher: ReactDispatcher): EffectStore {
+	const storeRef = nextDispatcher.useRef<EffectStore>();
+	if (storeRef.current == null) {
+		storeRef.current = createEffectStore();
+	}
+
+	const store = storeRef.current;
+	useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
+
+	return store;
+}
+
 // To track when we are entering and exiting a component render (i.e. before and
 // after React renders a component), we track how the dispatcher changes.
 // Outside of a component rendering, the dispatcher is set to an instance that
@@ -178,17 +194,7 @@ Object.defineProperty(ReactInternals.ReactCurrentDispatcher, "current", {
 		currentDispatcher = nextDispatcher;
 		if (isEnteringComponentRender) {
 			lock = true;
-			const storeRef = nextDispatcher.useRef<EffectStore>();
-			if (storeRef.current == null) {
-				storeRef.current = createEffectStore();
-			}
-
-			const store = storeRef.current;
-			useSyncExternalStore(
-				store.subscribe,
-				store.getSnapshot,
-				store.getSnapshot
-			);
+			const store = usePreactSignalStore(nextDispatcher);
 			lock = false;
 
 			setCurrentUpdater(store.updater);
