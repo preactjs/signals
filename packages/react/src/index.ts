@@ -106,19 +106,20 @@ function createEffectStore(): EffectStore {
 // To track when we are entering and exiting a component render (i.e. before and
 // after React renders a component), we track how the dispatcher changes.
 // Outside of a component rendering, the dispatcher is set to an instance that
-// errors or warns when any hooks are called (this is too prevent hooks from
-// being used outside of components). Right before React renders a component,
-// the dispatcher is set to a valid one. Right after React finishes rendering a
-// component, the dispatcher is set to an erroring one again. This erroring
-// dispatcher is called `ContextOnlyDispatcher` in React's source.
+// errors or warns when any hooks are called. This behavior is prevents hooks
+// from being used outside of components. Right before React renders a
+// component, the dispatcher is set to a valid one. Right after React finishes
+// rendering a component, the dispatcher is set to an erroring one again. This
+// erroring dispatcher is called the `ContextOnlyDispatcher` in React's source.
 //
-// So, we use this getter and setter to monitor the changes to the current
-// ReactDispatcher. When the dispatcher changes from the ContextOnlyDispatcher
-// to a valid dispatcher, we assume we are entering a component render. At this
-// point, we setup our auto-subscriptions for any signals used in the component.
-// We do this by creating an effect and manually starting the effect. We use
-// `useReducer` to get access to a `rerender` function that we can use to
-// manually trigger a rerender when a signal we've subscribed changes.
+// So, we watch the getter and setter on `ReactCurrentDispatcher.current` to
+// monitor the changes to the current ReactDispatcher. When the dispatcher
+// changes from the ContextOnlyDispatcher to a valid dispatcher, we assume we
+// are entering a component render. At this point, we setup our
+// auto-subscriptions for any signals used in the component. We do this by
+// creating an effect and manually starting the effect. We use
+// `useSyncExternalStore` to trigger rerenders on the component when any signals
+// it uses changes.
 //
 // When the dispatcher changes from a valid dispatcher back to the
 // ContextOnlyDispatcher, we assume we are exiting a component render. At this
@@ -137,13 +138,13 @@ function createEffectStore(): EffectStore {
 //
 //   When a Component's function body invokes useReducer, useState, or useMemo,
 //   this change in dispatcher should not signal that we are exiting a component
-//   render. We ignore this change cuz this erroring dispatcher does not pass
-//   the ContextOnlyDispatcher check and so does not affect our logic.
+//   render. We ignore this change by detecting these dispatchers as different
+//   from ContextOnlyDispatcher and other valid dispatchers.
 //
 // - The `use` hook will change the dispatcher to from a valid update dispatcher
 //   to a valid mount dispatcher in some cases. Similarly to useReducer
 //   mentioned above, we should not signal that we are exiting a component
-//   during this change. Because these other dispatchers do not pass the
+//   during this change. Because these other valid dispatchers do not pass the
 //   ContextOnlyDispatcher check, they do not affect our logic.
 let lock = false;
 let currentDispatcher: ReactDispatcher | null = null;
@@ -157,13 +158,20 @@ Object.defineProperty(ReactInternals.ReactCurrentDispatcher, "current", {
 			return;
 		}
 
-		const isEnteringComponentRender =
-			isContextOnlyDispatcher(currentDispatcher) &&
-			!isContextOnlyDispatcher(nextDispatcher);
+		const currentDispatcherType = getDispatcherType(currentDispatcher);
+		const nextDispatcherType = getDispatcherType(nextDispatcher);
 
+		// We are entering a component render if the current dispatcher is the
+		// ContextOnlyDispatcher and the next dispatcher is a valid dispatcher.
+		const isEnteringComponentRender =
+			currentDispatcherType === ContextOnlyDispatcherType &&
+			nextDispatcherType === ValidDispatcherType;
+
+		// We are exiting a component render if the current dispatcher is a valid
+		// dispatcher and the next dispatcher is the ContextOnlyDispatcher.
 		const isExitingComponentRender =
-			!isContextOnlyDispatcher(currentDispatcher) &&
-			isContextOnlyDispatcher(nextDispatcher);
+			currentDispatcherType === ValidDispatcherType &&
+			nextDispatcherType === ContextOnlyDispatcherType;
 
 		// Update the current dispatcher now so the hooks inside of the
 		// useSyncExternalStore shim get the right dispatcher.
@@ -190,13 +198,17 @@ Object.defineProperty(ReactInternals.ReactCurrentDispatcher, "current", {
 	},
 });
 
+const ValidDispatcherType = 0;
+const ContextOnlyDispatcherType = 1;
+const ErroringDispatcherType = 2;
+
 // We inject a useSyncExternalStore into every function component via
 // CurrentDispatcher. This prevents injecting into anything other than a
 // function component render.
-const dispatcherTypeCache = new Map();
-function isContextOnlyDispatcher(dispatcher: ReactDispatcher | null) {
+const dispatcherTypeCache = new Map<ReactDispatcher, number>();
+function getDispatcherType(dispatcher: ReactDispatcher | null): number {
 	// Treat null the same as the ContextOnlyDispatcher.
-	if (!dispatcher) return true;
+	if (!dispatcher) return ContextOnlyDispatcherType;
 
 	const cached = dispatcherTypeCache.get(dispatcher);
 	if (cached !== undefined) return cached;
@@ -206,9 +218,17 @@ function isContextOnlyDispatcher(dispatcher: ReactDispatcher | null) {
 	// for this dispatcher's useCallback implementation to determine if it is a
 	// ContextOnlyDispatcher. All other dispatchers, erroring or not, define
 	// functions with arguments and so fail this check.
-	const isContextOnlyDispatcher = dispatcher.useCallback.length < 2;
-	dispatcherTypeCache.set(dispatcher, isContextOnlyDispatcher);
-	return isContextOnlyDispatcher;
+	let type: number;
+	if (dispatcher.useCallback.length < 2) {
+		type = ContextOnlyDispatcherType;
+	} else if (/Invalid/.test(dispatcher.useCallback as any)) {
+		type = ErroringDispatcherType;
+	} else {
+		type = ValidDispatcherType;
+	}
+
+	dispatcherTypeCache.set(dispatcher, type);
+	return type;
 }
 
 function WrapJsx<T>(jsx: T): T {
