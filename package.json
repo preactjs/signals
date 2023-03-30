@@ -15,6 +15,8 @@
 		"test": "cross-env COVERAGE=true karma start karma.conf.js --single-run",
 		"test:minify": "cross-env COVERAGE=true MINIFY=true karma start karma.conf.js --single-run",
 		"test:watch": "karma start karma.conf.js --no-single-run",
+		"test:prod": "cross-env MINIFY=true NODE_ENV=production karma start karma.conf.js --single-run",
+		"test:prod:watch": "cross-env NODE_ENV=production karma start karma.conf.js --no-single-run",
 		"docs:start": "cd docs && pnpm start",
 		"docs:build": "cd docs && pnpm build",
 		"docs:preview": "cd docs && pnpm preview",

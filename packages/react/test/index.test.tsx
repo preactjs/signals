@@ -1,19 +1,48 @@
 // @ts-ignore-next-line
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
-import { signal, computed, useComputed, useSignalEffect } from "@preact/signals-react";
-import { createElement, forwardRef, useMemo, memo, StrictMode, createRef } from "react";
+import {
+	signal,
+	computed,
+	useComputed,
+	useSignalEffect,
+} from "@preact/signals-react";
+import {
+	createElement,
+	forwardRef,
+	useMemo,
+	useReducer,
+	memo,
+	StrictMode,
+	createRef,
+} from "react";
 
 import { createRoot, Root } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
-import { act } from "react-dom/test-utils";
+import { act as realAct } from "react-dom/test-utils";
+
+const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
+async function prodAct(cb: () => void | Promise<void>): Promise<void> {
+	await cb();
+	await delay(10);
+}
 
 describe("@preact/signals-react", () => {
 	let scratch: HTMLDivElement;
 	let root: Root;
-	function render(element: Parameters<Root["render"]>[0]) {
-		act(() => root.render(element));
+	let act: typeof realAct;
+
+	async function render(element: Parameters<Root["render"]>[0]) {
+		await act(() => root.render(element));
 	}
+
+	before(async () => {
+		if (process.env.NODE_ENV === "production") {
+			act = prodAct as typeof realAct;
+		} else {
+			act = realAct;
+		}
+	});
 
 	beforeEach(() => {
 		scratch = document.createElement("div");
@@ -25,40 +54,40 @@ describe("@preact/signals-react", () => {
 	});
 
 	describe("Text bindings", () => {
-		it("should render text without signals", () => {
-			render(<span>test</span>);
+		it("should render text without signals", async () => {
+			await render(<span>test</span>);
 			const span = scratch.firstChild;
 			const text = span?.firstChild;
 			expect(text).to.have.property("data", "test");
 		});
 
-		it("should render Signals as Text", () => {
+		it("should render Signals as Text", async () => {
 			const sig = signal("test");
-			render(<span>{sig}</span>);
+			await render(<span>{sig}</span>);
 			const span = scratch.firstChild;
 			expect(span).to.have.property("firstChild").that.is.an.instanceOf(Text);
 			const text = span?.firstChild;
 			expect(text).to.have.property("data", "test");
 		});
 
-		it("should render computed as Text", () => {
+		it("should render computed as Text", async () => {
 			const sig = signal("test");
 			const comp = computed(() => `${sig} ${sig}`);
-			render(<span>{comp}</span>);
+			await render(<span>{comp}</span>);
 			const span = scratch.firstChild;
 			expect(span).to.have.property("firstChild").that.is.an.instanceOf(Text);
 			const text = span?.firstChild;
 			expect(text).to.have.property("data", "test test");
 		});
 
-		it("should update Signal-based Text (no parent component)", () => {
+		it("should update Signal-based Text (no parent component)", async () => {
 			const sig = signal("test");
-			render(<span>{sig}</span>);
+			await render(<span>{sig}</span>);
 
 			const text = scratch.firstChild!.firstChild!;
 			expect(text).to.have.property("data", "test");
 
-			act(() => {
+			await act(() => {
 				sig.value = "changed";
 			});
 
@@ -68,17 +97,17 @@ describe("@preact/signals-react", () => {
 			expect(text).to.have.property("data", "changed");
 		});
 
-		it("should update Signal-based Text (in a parent component)", () => {
+		it("should update Signal-based Text (in a parent component)", async () => {
 			const sig = signal("test");
 			function App({ x }: { x: typeof sig }) {
 				return <span>{x}</span>;
 			}
-			render(<App x={sig} />);
+			await render(<App x={sig} />);
 
 			const text = scratch.firstChild!.firstChild!;
 			expect(text).to.have.property("data", "test");
 
-			act(() => {
+			await act(() => {
 				sig.value = "changed";
 			});
 
@@ -90,7 +119,7 @@ describe("@preact/signals-react", () => {
 	});
 
 	describe("Component bindings", () => {
-		it("should subscribe to signals", () => {
+		it("should subscribe to signals", async () => {
 			const sig = signal("foo");
 
 			function App() {
@@ -98,16 +127,16 @@ describe("@preact/signals-react", () => {
 				return <p>{value}</p>;
 			}
 
-			render(<App />);
+			await render(<App />);
 			expect(scratch.textContent).to.equal("foo");
 
-			act(() => {
+			await act(() => {
 				sig.value = "bar";
 			});
 			expect(scratch.textContent).to.equal("bar");
 		});
 
-		it("should activate signal accessed in render", () => {
+		it("should activate signal accessed in render", async () => {
 			const sig = signal(null);
 
 			function App() {
@@ -126,7 +155,7 @@ describe("@preact/signals-react", () => {
 			expect(fn).not.to.throw;
 		});
 
-		it("should not subscribe to child signals", () => {
+		it("should not subscribe to child signals", async () => {
 			const sig = signal("foo");
 
 			function Child() {
@@ -140,10 +169,10 @@ describe("@preact/signals-react", () => {
 				return <Child />;
 			}
 
-			render(<App />);
+			await render(<App />);
 			expect(scratch.textContent).to.equal("foo");
 
-			act(() => {
+			await act(() => {
 				sig.value = "bar";
 			});
 			expect(spy).to.be.calledOnce;
@@ -162,10 +191,10 @@ describe("@preact/signals-react", () => {
 				return useMemo(() => <Inner />, []);
 			}
 
-			render(<App />);
+			await render(<App />);
 			expect(scratch.textContent).to.equal("foo");
 
-			act(() => {
+			await act(() => {
 				sig.value = "bar";
 			});
 			expect(scratch.textContent).to.equal("bar");
@@ -182,10 +211,10 @@ describe("@preact/signals-react", () => {
 				return <Inner />;
 			}
 
-			render(<App />);
+			await render(<App />);
 			expect(scratch.textContent).to.equal("foo");
 
-			act(() => {
+			await act(() => {
 				sig.value = "bar";
 			});
 			expect(scratch.textContent).to.equal("bar");
@@ -204,9 +233,9 @@ describe("@preact/signals-react", () => {
 			for (let i = 0; i < 3; i++) {
 				const value = `${i}`;
 
-				act(() => {
+				await act(async () => {
 					sig.value = value;
-					render(<App />);
+					await render(<App />);
 				});
 				expect(scratch.textContent).to.equal(value);
 			}
@@ -224,9 +253,9 @@ describe("@preact/signals-react", () => {
 			for (let i = 0; i < 3; i++) {
 				const value = `${i}`;
 
-				act(() => {
+				await act(async () => {
 					sig.value = value;
-					render(<App />);
+					await render(<App />);
 				});
 				expect(scratch.textContent).to.equal(value);
 			}
@@ -243,9 +272,9 @@ describe("@preact/signals-react", () => {
 				);
 			};
 			for (let i = 0; i < 3; i++) {
-				act(() => {
+				await act(async () => {
 					count.value += 1;
-					render(<Test />);
+					await render(<Test />);
 				});
 				expect(scratch.textContent).to.equal(
 					`<code>${count.value}</code><code>${count.value}</code>`
@@ -276,7 +305,7 @@ describe("@preact/signals-react", () => {
 				);
 			}
 
-			render(<App />);
+			await render(<App />);
 			expect(scratch.textContent).to.equal("foo");
 
 			expect(spy).to.have.been.calledOnceWith(
@@ -287,7 +316,7 @@ describe("@preact/signals-react", () => {
 
 			spy.resetHistory();
 
-			act(() => {
+			await act(() => {
 				sig.value = "bar";
 			});
 
@@ -325,7 +354,7 @@ describe("@preact/signals-react", () => {
 				);
 			}
 
-			render(<App />);
+			await render(<App />);
 
 			expect(cleanup).not.to.have.been.called;
 			expect(spy).to.have.been.calledOnceWith(
@@ -335,7 +364,7 @@ describe("@preact/signals-react", () => {
 			);
 			spy.resetHistory();
 
-			act(() => {
+			await act(() => {
 				sig.value = "bar";
 			});
 
@@ -367,7 +396,7 @@ describe("@preact/signals-react", () => {
 				return <p ref={ref}>{sig.value}</p>;
 			}
 
-			render(<App />);
+			await render(<App />);
 
 			const child = scratch.firstElementChild;
 
@@ -375,7 +404,7 @@ describe("@preact/signals-react", () => {
 			expect(spy).to.have.been.calledOnceWith("foo", child);
 			spy.resetHistory();
 
-			render(null);
+			await render(null);
 
 			expect(spy).not.to.have.been.called;
 			expect(cleanup).to.have.been.calledOnce;
