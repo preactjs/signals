@@ -47,33 +47,7 @@ const ReactElemType = Symbol.for("react.element"); // https://github.com/faceboo
 //      Conclusion: Let's avoid useSyncExternalStore for now, and bring it if we
 //      find bugs.
 //
-//    - When it is set to a valid dispatcher (not the invalid one), start a
-//      preact/signal effect
-//    - When it is set to the invalid dispatcher (one that throws), stop the
-//      effect
-//    - Note: If a component throws, the CurrentDispatcher is reset so we should
-//      be able to clear our state
-//    - We need to store the created updater (aka Effect) for each component to
-//      track which signals are mounted/updated between rerenders (I think)? We
-//      should just store this in our useReducer instead of a WeakMap?
-//    - Check if a dispatcher is invalid by checking if the implementation of
-//      useCallback.length < 2 or if the text of the function contains
-//      `"warnInvalidHookAccess"`
-//    - Additional edge cases to be aware of:
-//        - In dev, React will change the dispatcher inside of useReducer before
-//          invoking the reducer (solve by using the locking mechanism in
-//          Jason's prototype?)
-//        - Some hooks will change the dispatcher (like `use`) while rendering.
-//          We need to handle this. Perhaps if changing from a valid dispatcher
-//          to a valid dispatcher, don't reset the effect?
-//        - Definitely cache all seen dispatchers in a WeakMap to speed look up
-//          on rerenders
 // - For class components: Use CurrentOwner to mimic the above behavior
-//
-// TODO (tests):
-// - Test on react.dev and react.production.min.js.
-// - Test on a component that uses useReducer (to trigger the edge case where
-//   dispatcher changes during render)
 
 interface ReactDispatcher {
 	useCallback: typeof useCallback;
@@ -105,40 +79,40 @@ function createUpdater(rerender: () => void): Effect {
 // errors or warns when any hooks are called (this is too prevent hooks from
 // being used outside of components). Right before React renders a component,
 // the dispatcher is set to a valid one. Right after React finishes rendering a
-// component, the dispatcher is set to an erroring one again.
+// component, the dispatcher is set to an erroring one again. This erroring
+// dispatcher is called `ContextOnlyDispatcher` in React's source.
 //
 // So, we use this getter and setter to monitor the changes to the current
-// ReactDispatcher. When the dispatcher changes from an erroring one to a valid
-// dispatcher, we assume we are entering a component render. At this point, we
-// setup our auto-subscriptions for any signals used in the component. We do
-// this by creating an effect and manually starting the effect. We use
+// ReactDispatcher. When the dispatcher changes from the ContextOnlyDispatcher
+// to a valid dispatcher, we assume we are entering a component render. At this
+// point, we setup our auto-subscriptions for any signals used in the component.
+// We do this by creating an effect and manually starting the effect. We use
 // `useReducer` to get access to a `rerender` function that we can use to
 // manually trigger a rerender when a signal we've subscribed changes.
 //
-// When the dispatcher changes from a valid dispatcher to an erroring one, we
-// assume we are exiting a component render. At this point we stop the effect.
+// When the dispatcher changes from a valid dispatcher back to the
+// ContextOnlyDispatcher, we assume we are exiting a component render. At this
+// point we stop the effect.
 //
 // Some edge cases to be aware of:
-// - In development, useReducer changes the dispatcher to an erroring dispatcher
-//   before invoking the reducer and resets it right after. We need to ensure
-//   this doesn't trigger our effect logic when we invoke useReducer. We use a
-//   boolean to track whether we are currently in our useReducer call.
+// - In development, useReducer, useState, and useMemo changes the dispatcher to
+//   a different erroring dispatcher before invoking the reducer and resets it
+//   right after.
 //
-//   Subsequent calls to useReducer will also change the dispatcher, but by
-//   storing the updater in a WeakMap keyed by the rerender function, we can
-//   ensure we don't create a new updater for each call to useReducer.
+//   When we invoke our own useReducer while entering a component render, we
+//   need to prevent this change from re-triggering our logic. We do this by
+//   using a lock to prevent the setter from running while we are in the setter.
 //
-//   TODO: Does the above logic actually work? I think it might not because we
-//   have to invoke useReducer to get the rerender function which only works if
-//   we always invoke it in the same order. Consider removing the
-//   `/warnInvalidHookAccess/` check so only the ContextOnlyDispatcher is
-//   triggers exiting.
+//   When a Component's function body invokes useReducer, useState, or useMemo,
+//   this change in dispatcher should not signal that we are exiting a component
+//   render. We ignore this change cuz this erroring dispatcher does not pass
+//   the ContextOnlyDispatcher check and so does not affect our logic.
 //
 // - The `use` hook will change the dispatcher to from a valid update dispatcher
-//   to a valid mount dispatcher in some cases. So just changing the dispatcher
-//   isn't enough to know if we are exiting a component render. We need to check
-//   if we are currently in a valid dispatcher and the next one is a erroring
-//   one to exit.
+//   to a valid mount dispatcher in some cases. Similarly to useReducer
+//   mentioned above, we should not signal that we are exiting a component
+//   during this change. Because these other dispatchers do not pass the
+//   ContextOnlyDispatcher check, they do not affect our logic.
 let lock = false;
 const FORCE_UPDATE = () => ({});
 let currentDispatcher: ReactDispatcher | null = null;
@@ -152,24 +126,15 @@ Object.defineProperty(ReactInternals.ReactCurrentDispatcher, "current", {
 			return;
 		}
 
-		// TODO: Comment these two lines and describe how `use` hook changes the
-		// dispatcher from a valid one to a different valid one is some situations
 		const isEnteringComponentRender =
-			isErroringDispatcher(currentDispatcher) &&
-			!isErroringDispatcher(nextDispatcher);
+			isContextOnlyDispatcher(currentDispatcher) &&
+			!isContextOnlyDispatcher(nextDispatcher);
 
-		// TODO: Will this incorrectly be true if a component uses useReducer? using
-		// the WeakMap made it not matter... Perhaps we can use the rerender
-		// function as the key instead of the ReactCurrentOwner into the
-		// updaterForComponent WeakMap?
 		const isExitingComponentRender =
-			!isErroringDispatcher(currentDispatcher) &&
-			isErroringDispatcher(nextDispatcher);
+			!isContextOnlyDispatcher(currentDispatcher) &&
+			isContextOnlyDispatcher(nextDispatcher);
 
 		if (isEnteringComponentRender) {
-			// useReducer changes the dispatcher to a throwing one while useReducer is
-			// running in dev mode, so lock our CurrentDispatcher setter to not run
-			// while our useReducer is running.
 			lock = true;
 			// TODO: Consider switching to useSyncExternalStore
 			const rerender = nextDispatcher.useReducer(FORCE_UPDATE, {})[1];
@@ -192,20 +157,22 @@ Object.defineProperty(ReactInternals.ReactCurrentDispatcher, "current", {
 
 // We inject a useReducer into every function component via CurrentDispatcher.
 // This prevents injecting into anything other than a function component render.
-const invalidHookAccessors = new Map();
-function isErroringDispatcher(dispatcher: ReactDispatcher | null) {
-	// Treat null as the invalid/erroring dispatcher
+const dispatcherTypeCache = new Map();
+function isContextOnlyDispatcher(dispatcher: ReactDispatcher | null) {
+	// Treat null the same as the ContextOnlyDispatcher.
 	if (!dispatcher) return true;
 
-	const cached = invalidHookAccessors.get(dispatcher);
+	const cached = dispatcherTypeCache.get(dispatcher);
 	if (cached !== undefined) return cached;
 
-	// we only want the real implementation, not the erroring or warning ones
-	const invalid =
-		dispatcher.useCallback.length < 2 ||
-		/warnInvalidHookAccess/.test(dispatcher.useCallback as any);
-	invalidHookAccessors.set(dispatcher, invalid);
-	return invalid;
+	// The ContextOnlyDispatcher sets all the hook implementations to a function
+	// that takes no arguments and throws and error. Check the number of arguments
+	// for this dispatcher's useCallback implementation to determine if it is a
+	// ContextOnlyDispatcher. All other dispatchers, erroring or not, define
+	// functions with arguments and so fail this check.
+	const isContextOnlyDispatcher = dispatcher.useCallback.length < 2;
+	dispatcherTypeCache.set(dispatcher, isContextOnlyDispatcher);
+	return isContextOnlyDispatcher;
 }
 
 function WrapJsx<T>(jsx: T): T {
