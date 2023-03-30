@@ -21,6 +21,9 @@ import { createRoot, Root } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { act as realAct } from "react-dom/test-utils";
 
+// When testing using react's production build, we can't use act (React
+// explicitly throws an error in this situation). So instead we'll fake act by
+// just waiting 10ms for React's concurrent rerendering to flush
 const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
 async function prodAct(cb: () => void | Promise<void>): Promise<void> {
 	await cb();
@@ -49,8 +52,8 @@ describe("@preact/signals-react", () => {
 		root = createRoot(scratch);
 	});
 
-	afterEach(() => {
-		act(() => root.unmount());
+	afterEach(async () => {
+		await act(() => root.unmount());
 	});
 
 	describe("Text bindings", () => {
@@ -151,8 +154,11 @@ describe("@preact/signals-react", () => {
 				return <p>{str}</p>;
 			}
 
-			const fn = () => render(<App />);
-			expect(fn).not.to.throw;
+			try {
+				await render(<App />);
+			} catch (e: any) {
+				expect.fail(e.stack);
+			}
 		});
 
 		it("should not subscribe to child signals", async () => {
