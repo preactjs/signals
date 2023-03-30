@@ -11,6 +11,7 @@ import {
 	createElement,
 	forwardRef,
 	useMemo,
+	useReducer,
 	memo,
 	StrictMode,
 	createRef,
@@ -268,6 +269,48 @@ describe("@preact/signals-react", () => {
 					`<code>${count.value}</code><code>${count.value}</code>`
 				);
 			}
+		});
+
+		it("should correctly render components that have useReducer()", async () => {
+			const count = signal(0);
+
+			let increment: () => void;
+			const Test = () => {
+				const [state, dispatch] = useReducer(
+					(state: number, action: number) => {
+						return state + action;
+					},
+					1
+				);
+
+				increment = () => dispatch(1);
+
+				return (
+					<pre>
+						<code>{state}</code>
+						<code>{count}</code>
+					</pre>
+				);
+			};
+
+			let state = 1;
+			for (let i = 0; i < 3; i++) {
+				await act(async () => {
+					count.value += 1;
+					await render(<Test />);
+				});
+				expect(scratch.innerHTML).to.equal(
+					`<pre><code>${state}</code><code>${count.value}</code></pre>`
+				);
+			}
+
+			await act(() => {
+				increment();
+				state += 1;
+			});
+			expect(scratch.innerHTML).to.equal(
+				`<pre><code>${state}</code><code>${count.value}</code></pre>`
+			);
 		});
 	});
 
