@@ -292,10 +292,12 @@ describe("@preact/signals-react", () => {
 
 				increment = () => dispatch(1);
 
+				const doubled = count.value * 2;
+
 				return (
 					<pre>
 						<code>{state}</code>
-						<code>{count}</code>
+						<code>{doubled}</code>
 					</pre>
 				);
 			};
@@ -310,7 +312,7 @@ describe("@preact/signals-react", () => {
 					count.value += 1;
 				});
 				expect(scratch.innerHTML).to.equal(
-					`<pre><code>-2</code><code>${count.value}</code></pre>`
+					`<pre><code>-2</code><code>${count.value * 2}</code></pre>`
 				);
 			}
 
@@ -318,7 +320,7 @@ describe("@preact/signals-react", () => {
 				increment();
 			});
 			expect(scratch.innerHTML).to.equal(
-				`<pre><code>-1</code><code>${count.value}</code></pre>`
+				`<pre><code>-1</code><code>${count.value * 2}</code></pre>`
 			);
 		});
 	});
