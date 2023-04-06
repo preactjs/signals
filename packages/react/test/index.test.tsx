@@ -6,65 +6,39 @@ import {
 	computed,
 	useComputed,
 	useSignalEffect,
+	useSignal,
 } from "@preact/signals-react";
 import {
 	createElement,
 	forwardRef,
 	useMemo,
+	useReducer,
 	memo,
 	StrictMode,
 	createRef,
 } from "react";
 
-import { createRoot, Root } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
-import { act as realAct } from "react-dom/test-utils";
-
-// When testing using react's production build, we can't use act (React
-// explicitly throws an error in this situation). So instead we'll fake act by
-// just waiting 10ms for React's concurrent rerendering to flush. We'll throw a
-// helpful error in afterEach if we detect that act() was called but not
-// awaited.
-const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
-
-let acting = false;
-async function prodAct(cb: () => void | Promise<void>): Promise<void> {
-	acting = true;
-	await cb();
-	await delay(10);
-	acting = false;
-}
+import { createRoot, Root, act, checkHangingAct } from "./utils";
 
 describe("@preact/signals-react", () => {
 	let scratch: HTMLDivElement;
 	let root: Root;
-	let act: typeof realAct;
 
 	async function render(element: Parameters<Root["render"]>[0]) {
 		await act(() => root.render(element));
 	}
 
-	before(async () => {
-		if (process.env.NODE_ENV === "production") {
-			act = prodAct as typeof realAct;
-		} else {
-			act = realAct;
-		}
-	});
-
-	beforeEach(() => {
+	beforeEach(async () => {
 		scratch = document.createElement("div");
-		root = createRoot(scratch);
+		document.body.appendChild(scratch);
+		root = await createRoot(scratch);
 	});
 
 	afterEach(async () => {
-		if (acting) {
-			throw new Error(
-				"Test finished while still acting. Did you await all act() and render() calls?"
-			);
-		}
-
+		checkHangingAct();
 		await act(() => root.unmount());
+		scratch.remove();
 	});
 
 	describe("Text bindings", () => {
@@ -238,7 +212,7 @@ describe("@preact/signals-react", () => {
 		});
 
 		it("should consistently rerender in strict mode", async () => {
-			const sig = signal<string>(null!);
+			const sig = signal(-1);
 
 			const Test = () => <p>{sig.value}</p>;
 			const App = () => (
@@ -247,18 +221,19 @@ describe("@preact/signals-react", () => {
 				</StrictMode>
 			);
 
-			for (let i = 0; i < 3; i++) {
-				const value = `${i}`;
+			await render(<App />);
+			expect(scratch.textContent).to.equal("-1");
 
+			for (let i = 0; i < 3; i++) {
 				await act(async () => {
-					sig.value = value;
-					await render(<App />);
+					sig.value = i;
 				});
-				expect(scratch.textContent).to.equal(value);
+				expect(scratch.textContent).to.equal("" + i);
 			}
 		});
+
 		it("should consistently rerender in strict mode (with memo)", async () => {
-			const sig = signal<string>(null!);
+			const sig = signal(-1);
 
 			const Test = memo(() => <p>{sig.value}</p>);
 			const App = () => (
@@ -267,16 +242,17 @@ describe("@preact/signals-react", () => {
 				</StrictMode>
 			);
 
-			for (let i = 0; i < 3; i++) {
-				const value = `${i}`;
+			await render(<App />);
+			expect(scratch.textContent).to.equal("-1");
 
+			for (let i = 0; i < 3; i++) {
 				await act(async () => {
-					sig.value = value;
-					await render(<App />);
+					sig.value = i;
 				});
-				expect(scratch.textContent).to.equal(value);
+				expect(scratch.textContent).to.equal("" + i);
 			}
 		});
+
 		it("should render static markup of a component", async () => {
 			const count = signal(0);
 
@@ -288,15 +264,86 @@ describe("@preact/signals-react", () => {
 					</pre>
 				);
 			};
+
+			await render(<Test />);
+			expect(scratch.textContent).to.equal("<code>0</code><code>0</code>");
+
 			for (let i = 0; i < 3; i++) {
 				await act(async () => {
 					count.value += 1;
-					await render(<Test />);
 				});
 				expect(scratch.textContent).to.equal(
 					`<code>${count.value}</code><code>${count.value}</code>`
 				);
 			}
+		});
+
+		it("should correctly render components that have useReducer()", async () => {
+			const count = signal(0);
+
+			let increment: () => void;
+			const Test = () => {
+				const [state, dispatch] = useReducer(
+					(state: number, action: number) => {
+						return state + action;
+					},
+					-2
+				);
+
+				increment = () => dispatch(1);
+
+				const doubled = count.value * 2;
+
+				return (
+					<pre>
+						<code>{state}</code>
+						<code>{doubled}</code>
+					</pre>
+				);
+			};
+
+			await render(<Test />);
+			expect(scratch.innerHTML).to.equal(
+				"<pre><code>-2</code><code>0</code></pre>"
+			);
+
+			for (let i = 0; i < 3; i++) {
+				await act(async () => {
+					count.value += 1;
+				});
+				expect(scratch.innerHTML).to.equal(
+					`<pre><code>-2</code><code>${count.value * 2}</code></pre>`
+				);
+			}
+
+			await act(() => {
+				increment();
+			});
+			expect(scratch.innerHTML).to.equal(
+				`<pre><code>-1</code><code>${count.value * 2}</code></pre>`
+			);
+		});
+	});
+
+	describe("useSignal()", () => {
+		it("should create a signal from a primitive value", async () => {
+			function App() {
+				const count = useSignal(1);
+				return (
+					<div>
+						{count}
+						<button onClick={() => count.value++}>Increment</button>
+					</div>
+				);
+			}
+
+			await render(<App />);
+			expect(scratch.textContent).to.equal("1Increment");
+
+			await act(() => {
+				scratch.querySelector("button")!.click();
+			});
+			expect(scratch.textContent).to.equal("2Increment");
 		});
 	});
 
@@ -417,12 +464,14 @@ describe("@preact/signals-react", () => {
 
 			const child = scratch.firstElementChild;
 
+			expect(scratch.innerHTML).to.equal("<p>foo</p>");
 			expect(cleanup).not.to.have.been.called;
 			expect(spy).to.have.been.calledOnceWith("foo", child);
 			spy.resetHistory();
 
 			await render(null);
 
+			expect(scratch.innerHTML).to.equal("");
 			expect(spy).not.to.have.been.called;
 			expect(cleanup).to.have.been.calledOnce;
 			// @note: React cleans up the ref eagerly, so it's already null by the time the callback runs.
