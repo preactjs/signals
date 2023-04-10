@@ -24,6 +24,7 @@ export { signal, computed, batch, effect, Signal, type ReadonlySignal };
 const Empty = [] as const;
 const ReactElemType = Symbol.for("react.element"); // https://github.com/facebook/react/blob/346c7d4c43a0717302d446da9e7423a8e28d8996/packages/shared/ReactSymbols.js#L15
 const ReactMemoType = Symbol.for("react.memo"); // https://github.com/facebook/react/blob/346c7d4c43a0717302d446da9e7423a8e28d8996/packages/shared/ReactSymbols.js#L30
+const ReactLazyType = Symbol.for("react.lazy"); // https://github.com/facebook/react/blob/346c7d4c43a0717302d446da9e7423a8e28d8996/packages/shared/ReactSymbols.js#L31
 const ProxyInstance = new WeakMap<
 	FunctionComponent<any>,
 	FunctionComponent<any>
@@ -164,6 +165,10 @@ function WrapJsx<T>(jsx: T): T {
 		if (type && typeof type === "object" && type.$$typeof === ReactMemoType) {
 			type.type = ProxyFunctionalComponent(type.type);
 			return jsx.call(jsx, type, props, ...rest);
+		}
+
+		if (type && typeof type === "object" && type.$$typeof === ReactLazyType) {
+			return jsx.call(jsx, ProxyFunctionalComponent(type._init(type._payload)), props, ...rest);
 		}
 
 		if (typeof type === "string" && props) {
