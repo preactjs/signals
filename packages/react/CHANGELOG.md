@@ -1,5 +1,22 @@
 # @preact/signals-react
 
+## 1.3.0
+
+### Minor Changes
+
+- [#335](https://github.com/preactjs/signals/pull/335) [`5fd438d`](https://github.com/preactjs/signals/commit/5fd438db9793d73343403e8926b9b69b03fb26f9) Thanks [@andrewiggins](https://github.com/andrewiggins)! - Revert react integration to tracking current dispatcher
+
+### Patch Changes
+
+- [#271](https://github.com/preactjs/signals/pull/271) [`0135d60`](https://github.com/preactjs/signals/commit/0135d60b6de1325ee2b027a25cd60cc379f9c198) Thanks [@billybimbob](https://github.com/billybimbob)! - type Signal as a React Element
+
+* [#334](https://github.com/preactjs/signals/pull/334) [`0a58566`](https://github.com/preactjs/signals/commit/0a585660e141f3d92fb8789c234e69d5a1da8a86) Thanks [@andrewiggins](https://github.com/andrewiggins)! - Run test suite agains React's production build
+
+- [#246](https://github.com/preactjs/signals/pull/246) [`ad5a485`](https://github.com/preactjs/signals/commit/ad5a485e4fe3cfc1d1f60a57a30e50e88f7b1281) Thanks [@Shu-Ji](https://github.com/Shu-Ji)! - Support forwardRef in @preact/signals-react
+
+- Updated dependencies [[`862d9d6`](https://github.com/preactjs/signals/commit/862d9d6538b94e0a110213e98f2a0cabb14b8ad8), [`8b70764`](https://github.com/preactjs/signals/commit/8b7076436ce6d912f17d57da8ecd1bdfca852183), [`8e726ed`](https://github.com/preactjs/signals/commit/8e726ed1df6c90b85a93484f275baa7f013c799a)]:
+  - @preact/signals-core@1.3.0
+
 ## 1.2.2
 
 ### Patch Changes

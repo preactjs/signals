@@ -1,5 +1,17 @@
 # @preact/signals-core
 
+## 1.3.0
+
+### Minor Changes
+
+- [#231](https://github.com/preactjs/signals/pull/231) [`862d9d6`](https://github.com/preactjs/signals/commit/862d9d6538b94e0a110213e98f2a0cabb14b8ad8) Thanks [@eddyw](https://github.com/eddyw)! - Disallow side-effects in computed
+
+* [#320](https://github.com/preactjs/signals/pull/320) [`8b70764`](https://github.com/preactjs/signals/commit/8b7076436ce6d912f17d57da8ecd1bdfca852183) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Support `toJSON` on a `Signal`
+
+### Patch Changes
+
+- [#249](https://github.com/preactjs/signals/pull/249) [`8e726ed`](https://github.com/preactjs/signals/commit/8e726ed1df6c90b85a93484f275baa7f013c799a) Thanks [@billybimbob](https://github.com/billybimbob)! - Add typing for effect cleanup
+
 ## 1.2.3
 
 ### Patch Changes
