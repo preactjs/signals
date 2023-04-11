@@ -33,6 +33,13 @@
     }
   },
   "mangle": "../../mangle.json",
+  "files": [
+    "src",
+    "dist",
+    "CHANGELOG.md",
+    "LICENSE",
+    "README.md"
+  ],
   "scripts": {
     "prepublishOnly": "cd ../.. && pnpm build:preact"
   },

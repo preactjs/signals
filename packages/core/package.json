@@ -35,5 +35,12 @@
   "mangle": "../../mangle.json",
   "scripts": {
     "prepublishOnly": "cp ../../README.md . && cd ../.. && pnpm build:core"
-  }
+  },
+  "files": [
+    "src",
+    "dist",
+    "CHANGELOG.md",
+    "LICENSE",
+    "README.md"
+  ]
 }
