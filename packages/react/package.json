@@ -42,7 +42,7 @@
 		"use-sync-external-store": "^1.2.0"
 	},
 	"peerDependencies": {
-		"react": "17.x || 18.x"
+		"react": "^16.14.0 || 17.x || 18.x"
 	},
 	"devDependencies": {
 		"@types/react": "^18.0.18",
