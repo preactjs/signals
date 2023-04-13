@@ -1,5 +1,11 @@
 # @preact/signals-react
 
+## 1.3.1
+
+### Patch Changes
+
+- [#344](https://github.com/preactjs/signals/pull/344) [`acdead6`](https://github.com/preactjs/signals/commit/acdead6a8631d7198d8a55d6cbde7713b5776d6b) Thanks [@andrewiggins](https://github.com/andrewiggins)! - Allow React ^16.14.0 as a peer dependency
+
 ## 1.3.0
 
 ### Minor Changes
