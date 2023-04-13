@@ -60,7 +60,7 @@ interface EffectStore {
  * we update our store version and tell React to re-render the component ([1] We don't really care when/how React does it).
  *
  * [1]
- * @see https://reactjs.org/docs/hooks-reference.html#usesyncexternalstore
+ * @see https://react.dev/reference/react/useSyncExternalStore
  * @see https://github.com/reactjs/rfcs/blob/main/text/0214-use-sync-external-store.md
  */
 function createEffectStore(): EffectStore {
