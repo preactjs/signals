@@ -242,8 +242,8 @@ function WrapJsx<T>(jsx: T): T {
 
 	return function (type: any, props: any, ...rest: any[]) {
 		if (typeof type === "string" && props) {
-			for (let i in props) {
-				let v = props[i];
+			for (const i in props) {
+				const v = props[i];
 				if (i !== "children" && v instanceof Signal) {
 					props[i] = v.value;
 				}
