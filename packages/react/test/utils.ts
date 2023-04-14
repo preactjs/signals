@@ -69,3 +69,13 @@ export const act =
 	process.env.NODE_ENV === "production"
 		? (prodActShim as typeof realAct)
 		: realAct;
+
+/**
+ * `console.log` supports formatting strings with `%s` for string substitutions.
+ * This function accepts a string and additional arguments of values and returns
+ * a string with the values substituted in.
+ */
+export function consoleFormat(str: string, ...values: unknown[]): string {
+	let idx = 0;
+	return str.replace(/%s/g, () => String(values[idx++]));
+}

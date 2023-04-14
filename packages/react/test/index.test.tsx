@@ -16,6 +16,7 @@ import {
 	memo,
 	StrictMode,
 	createRef,
+	useState,
 } from "react";
 
 import { renderToStaticMarkup } from "react-dom/server";
@@ -26,11 +27,13 @@ import {
 	checkHangingAct,
 	isReact16,
 	isProd,
+	consoleFormat,
 } from "./utils";
 
 describe("@preact/signals-react", () => {
 	let scratch: HTMLDivElement;
 	let root: Root;
+	let errorSpy = sinon.spy(console, "error");
 
 	async function render(element: Parameters<Root["render"]>[0]) {
 		await act(() => root.render(element));
@@ -40,12 +43,26 @@ describe("@preact/signals-react", () => {
 		scratch = document.createElement("div");
 		document.body.appendChild(scratch);
 		root = await createRoot(scratch);
+		errorSpy.resetHistory();
 	});
 
 	afterEach(async () => {
 		checkHangingAct();
 		await act(() => root.unmount());
 		scratch.remove();
+
+		if (errorSpy.called) {
+			let message: string;
+			if (errorSpy.firstCall.args[0].toString().includes("%s")) {
+				message = consoleFormat(...errorSpy.firstCall.args);
+			} else {
+				message = errorSpy.firstCall.args.join(" ");
+			}
+
+			expect.fail(
+				`Console.error was unexpectedly called with this message: \n${message}`
+			);
+		}
 	});
 
 	describe("Text bindings", () => {
@@ -329,6 +346,20 @@ describe("@preact/signals-react", () => {
 			expect(scratch.innerHTML).to.equal(
 				`<pre><code>-1</code><code>${count.value * 2}</code></pre>`
 			);
+		});
+
+		it("should not fail when a component calls setState while rendering", async () => {
+			function App() {
+				const [state, setState] = useState(0);
+				if (state == 0) {
+					setState(1);
+				}
+
+				return <div>{state}</div>;
+			}
+
+			await render(<App />);
+			expect(scratch.innerHTML).to.equal("<div>1</div>");
 		});
 	});
 
