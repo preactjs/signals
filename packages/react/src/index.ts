@@ -143,8 +143,8 @@ function usePreactSignalStore(nextDispatcher: ReactDispatcher): EffectStore {
 //
 // Some edge cases to be aware of:
 // - In development, useReducer, useState, and useMemo changes the dispatcher to
-//   a different erroring dispatcher before invoking the reducer and resets it
-//   right after.
+//   a different warning dispatcher (not ContextOnlyDispatcher) before invoking
+//   the reducer and resets it right after.
 //
 //   The useSyncExternalStore shim will use some of these hooks when we invoke
 //   it while entering a component render. We need to prevent this dispatcher
@@ -195,7 +195,7 @@ Object.defineProperty(ReactInternals.ReactCurrentDispatcher, "current", {
 });
 
 const ContextOnlyDispatcherType = 1 << 0;
-const ErroringDispatcherType = 1 << 1;
+const WarningDispatcherType = 1 << 1;
 const MountDispatcherType = 1 << 2;
 const UpdateDispatcherType = 1 << 3;
 const RerenderDispatcherType = 1 << 4;
@@ -203,7 +203,7 @@ const ValidDispatcherType =
 	MountDispatcherType | UpdateDispatcherType | RerenderDispatcherType;
 type DispatcherType =
 	| typeof ContextOnlyDispatcherType
-	| typeof ErroringDispatcherType
+	| typeof WarningDispatcherType
 	| typeof MountDispatcherType
 	| typeof UpdateDispatcherType
 	| typeof ValidDispatcherType;
@@ -222,7 +222,7 @@ function getDispatcherType(dispatcher: ReactDispatcher | null): DispatcherType {
 	// The ContextOnlyDispatcher sets all the hook implementations to a function
 	// that takes no arguments and throws and error. Check the number of arguments
 	// for this dispatcher's useCallback implementation to determine if it is a
-	// ContextOnlyDispatcher. All other dispatchers, erroring or not, define
+	// ContextOnlyDispatcher. All other dispatchers, warning or not, define
 	// functions with arguments and so fail this check. For these dispatchers, we
 	// check the implementation for signifiers indicating what kind of dispatcher
 	// it is.
@@ -231,8 +231,11 @@ function getDispatcherType(dispatcher: ReactDispatcher | null): DispatcherType {
 	if (dispatcher.useCallback.length < 2) {
 		type = ContextOnlyDispatcherType;
 	} else if (/Invalid/.test(useCallbackImpl)) {
-		type = ErroringDispatcherType;
-	} else if (/\[0\]/.test(useCallbackImpl) && /\[1\]/.test(useCallbackImpl)) {
+		type = WarningDispatcherType;
+	} else if (
+		/updateCallback/.test(useCallbackImpl) ||
+		(/\[0\]/.test(useCallbackImpl) && /\[1\]/.test(useCallbackImpl))
+	) {
 		// The mount and update dispatchers have a different implementation for the
 		// useCallback hook. The mount dispatcher stores the arguments to
 		// useCallback as an array on the state of the Fiber. The update dispatcher
@@ -244,7 +247,10 @@ function getDispatcherType(dispatcher: ReactDispatcher | null): DispatcherType {
 		// useReducer. We'll check it's implementation to determine if this is the
 		// rerender or update dispatcher.
 		let useReducerImpl = dispatcher.useReducer.toString();
-		if (/return\s*\[[a-z]+,/.test(useReducerImpl)) {
+		if (
+			/rerenderReducer/.test(useReducerImpl) ||
+			/return\s*\[[a-z]+,/.test(useReducerImpl)
+		) {
 			type = RerenderDispatcherType;
 		} else {
 			type = UpdateDispatcherType;
@@ -265,11 +271,22 @@ function isEnteringComponentRender(
 		currentDispatcherType & ContextOnlyDispatcherType &&
 		nextDispatcherType & ValidDispatcherType
 	) {
-		// ## First mount or update (ContextOnlyDispatcher -> ValidDispatcher (Mount or Update))
+		// ## Mount or update (ContextOnlyDispatcher -> ValidDispatcher (Mount or Update))
 		//
 		// If the current dispatcher is the ContextOnlyDispatcher and the next
 		// dispatcher is a valid dispatcher, we are entering a component render.
 		return true;
+	} else if (
+		currentDispatcherType & WarningDispatcherType ||
+		nextDispatcherType & WarningDispatcherType
+	) {
+		// ## Warning dispatcher
+		//
+		// If the current dispatcher or next dispatcher is an warning dispatcher,
+		// we are not entering a component render. The current warning dispatchers
+		// are used to warn when hooks are nested improperly and do not indicate
+		// entering a new component render.
+		return false;
 	} else if (nextDispatcherType & RerenderDispatcherType) {
 		// Any transition into the rerender dispatcher is a rerender is the
 		// beginning of a component render, so we should invoke our hooks. Details
@@ -302,8 +319,6 @@ function isEnteringComponentRender(
 		// - HooksDispatcherOnMount  -> HooksDispatcherOnMount
 		// - HooksDispatcherOnMount  -> HooksDispatcherOnUpdate
 		// - HooksDispatcherOnUpdate -> HooksDispatcherOnUpdate
-		// - Any transition in and out of invalid dispatchers does not indicate a
-		//   new component render.
 		return false;
 	}
 }
