@@ -59,9 +59,12 @@ describe("@preact/signals-react", () => {
 				message = errorSpy.firstCall.args.join(" ");
 			}
 
-			expect.fail(
-				`Console.error was unexpectedly called with this message: \n${message}`
-			);
+			// Ignore errors for timeouts of tests that often happen while debugging
+			if (!message.includes("async tests and hooks,")) {
+				expect.fail(
+					`Console.error was unexpectedly called with this message: \n${message}`
+				);
+			}
 		}
 	});
 
