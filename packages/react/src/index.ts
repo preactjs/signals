@@ -177,42 +177,40 @@ Object.defineProperty(ReactInternals.ReactCurrentDispatcher, "current", {
 		const currentDispatcherType = getDispatcherType(currentDispatcher);
 		const nextDispatcherType = getDispatcherType(nextDispatcher);
 
-		// We are entering a component render if the current dispatcher is the
-		// ContextOnlyDispatcher and the next dispatcher is a valid dispatcher.
-		const isEnteringComponentRender =
-			currentDispatcherType === ContextOnlyDispatcherType &&
-			nextDispatcherType === ValidDispatcherType;
-
-		// We are exiting a component render if the current dispatcher is a valid
-		// dispatcher and the next dispatcher is the ContextOnlyDispatcher.
-		const isExitingComponentRender =
-			currentDispatcherType === ValidDispatcherType &&
-			nextDispatcherType === ContextOnlyDispatcherType;
-
 		// Update the current dispatcher now so the hooks inside of the
 		// useSyncExternalStore shim get the right dispatcher.
 		currentDispatcher = nextDispatcher;
-		if (isEnteringComponentRender) {
+		if (isEnteringComponentRender(currentDispatcherType, nextDispatcherType)) {
 			lock = true;
 			const store = usePreactSignalStore(nextDispatcher);
 			lock = false;
 
 			setCurrentUpdater(store.updater);
-		} else if (isExitingComponentRender) {
+		} else if (
+			isExitingComponentRender(currentDispatcherType, nextDispatcherType)
+		) {
 			setCurrentUpdater();
 		}
 	},
 });
 
-const ValidDispatcherType = 0;
-const ContextOnlyDispatcherType = 1;
-const ErroringDispatcherType = 2;
+const ContextOnlyDispatcherType = 1 << 0;
+const ErroringDispatcherType = 1 << 1;
+const MountDispatcherType = 1 << 2;
+const UpdateDispatcherType = 1 << 3;
+const ValidDispatcherType = MountDispatcherType | UpdateDispatcherType;
+type DispatcherType =
+	| typeof ContextOnlyDispatcherType
+	| typeof ErroringDispatcherType
+	| typeof MountDispatcherType
+	| typeof UpdateDispatcherType
+	| typeof ValidDispatcherType;
 
 // We inject a useSyncExternalStore into every function component via
 // CurrentDispatcher. This prevents injecting into anything other than a
 // function component render.
-const dispatcherTypeCache = new Map<ReactDispatcher, number>();
-function getDispatcherType(dispatcher: ReactDispatcher | null): number {
+const dispatcherTypeCache = new Map<ReactDispatcher, DispatcherType>();
+function getDispatcherType(dispatcher: ReactDispatcher | null): DispatcherType {
 	// Treat null the same as the ContextOnlyDispatcher.
 	if (!dispatcher) return ContextOnlyDispatcherType;
 
@@ -223,18 +221,106 @@ function getDispatcherType(dispatcher: ReactDispatcher | null): number {
 	// that takes no arguments and throws and error. Check the number of arguments
 	// for this dispatcher's useCallback implementation to determine if it is a
 	// ContextOnlyDispatcher. All other dispatchers, erroring or not, define
-	// functions with arguments and so fail this check.
-	let type: number;
+	// functions with arguments and so fail this check. For these dispatchers, we
+	// check the implementation for signifiers indicating what kind of dispatcher
+	// it is.
+	let type: DispatcherType;
+	const useCallbackImpl = dispatcher.useCallback.toString();
 	if (dispatcher.useCallback.length < 2) {
 		type = ContextOnlyDispatcherType;
-	} else if (/Invalid/.test(dispatcher.useCallback as any)) {
+	} else if (/Invalid/.test(useCallbackImpl)) {
 		type = ErroringDispatcherType;
+	} else if (/\[0\]/.test(useCallbackImpl) && /\[1\]/.test(useCallbackImpl)) {
+		// The mount and update dispatchers have a different implementation for the
+		// useCallback hook. The mount dispatcher stores the arguments to
+		// useCallback as an array on the state of the Fiber. The update dispatcher
+		// reads the values of the array using array indices (e.g. `[0]` and `[1]`).
+		// So we'll check for those indices to determine which dispatcher we are
+		// using.
+		type = UpdateDispatcherType;
 	} else {
-		type = ValidDispatcherType;
+		type = MountDispatcherType;
 	}
 
 	dispatcherTypeCache.set(dispatcher, type);
 	return type;
+}
+
+function isEnteringComponentRender(
+	currentDispatcherType: DispatcherType,
+	nextDispatcherType: DispatcherType
+): boolean {
+	if (
+		currentDispatcherType & ContextOnlyDispatcherType &&
+		nextDispatcherType & ValidDispatcherType
+	) {
+		// ## First mount or update (ContextOnlyDispatcher -> ValidDispatcher (Mount or Update))
+		//
+		// If the current dispatcher is the ContextOnlyDispatcher and the next
+		// dispatcher is a valid dispatcher, we are entering a component render.
+		return true;
+	} else if (
+		(currentDispatcherType & MountDispatcherType &&
+			nextDispatcherType & UpdateDispatcherType) ||
+		(currentDispatcherType & UpdateDispatcherType &&
+			nextDispatcherType & UpdateDispatcherType)
+	) {
+		// ## Sync rerendering on mount (Mount -> Update)
+		//
+		// If we are transitioning from the mount dispatcher to an update
+		// dispatcher (i.e. HooksDispatcherOnMount to HooksDispatcherOnRerender),
+		// then this component is rerendering due to calling setState inside of
+		// its function body. We are re-entering a component's render method and
+		// so we should re-invoke our hooks.
+		//
+		// There is no known transition from HooksDispatcherOnMount to
+		// HooksDispatcherOnUpdate so the assumption that going from Mount to
+		// Update is a sync rerender is okay.
+		//
+		// ## Sync rerendering on update (Update -> Update)
+		//
+		// If we are transitioning from an update dispatcher to another update
+		// dispatcher (e.g. could be from HooksDispatcherOnUpdate to
+		// HooksDispatcherOnRerender or from HooksDispatcherOnRerender to
+		// HooksDispatcherOnRerender again), then this component is rerendering
+		// due to calling setState inside of its function body. We are re-entering
+		// a component's render method and so we should re-invoke our hooks.
+		//
+		// There is no known transition from HooksDispatcherOnUpdate to
+		// HooksDispatcherOnUpdate so the assumption that going from Update to
+		// Update is a sync rerender is okay.
+		return true;
+	} else {
+		// ## Resuming suspended mount edge case (Update -> Mount)
+		//
+		// If we are transitioning from the update dispatcher to the mount
+		// dispatcher, then this component is using the `use` hook and is resuming
+		// from a mount. We should not re-invoke our hooks in this situation since
+		// we are not entering a new component render, but instead continuing a
+		// previous render.
+		//
+		// ## Other transitions (Mount -> Mount, any transition in and out of invalid dispatchers)
+		//
+		// There is no known transition from HooksDispatcherOnMount to another mount
+		// dispatcher so we default to not triggering a re-enter of the component.
+		// Further transition in and out of invalid dispatchers does not indicate a
+		// new component render.
+		return false;
+	}
+}
+
+/**
+ * We are exiting a component render if the current dispatcher is a valid
+ * dispatcher and the next dispatcher is the ContextOnlyDispatcher.
+ */
+function isExitingComponentRender(
+	currentDispatcherType: DispatcherType,
+	nextDispatcherType: DispatcherType
+): boolean {
+	return Boolean(
+		currentDispatcherType & ValidDispatcherType &&
+			nextDispatcherType & ContextOnlyDispatcherType
+	);
 }
 
 function WrapJsx<T>(jsx: T): T {
