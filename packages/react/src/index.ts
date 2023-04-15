@@ -198,7 +198,9 @@ const ContextOnlyDispatcherType = 1 << 0;
 const ErroringDispatcherType = 1 << 1;
 const MountDispatcherType = 1 << 2;
 const UpdateDispatcherType = 1 << 3;
-const ValidDispatcherType = MountDispatcherType | UpdateDispatcherType;
+const RerenderDispatcherType = 1 << 4;
+const ValidDispatcherType =
+	MountDispatcherType | UpdateDispatcherType | RerenderDispatcherType;
 type DispatcherType =
 	| typeof ContextOnlyDispatcherType
 	| typeof ErroringDispatcherType
@@ -235,9 +237,18 @@ function getDispatcherType(dispatcher: ReactDispatcher | null): DispatcherType {
 		// useCallback hook. The mount dispatcher stores the arguments to
 		// useCallback as an array on the state of the Fiber. The update dispatcher
 		// reads the values of the array using array indices (e.g. `[0]` and `[1]`).
-		// So we'll check for those indices to determine which dispatcher we are
-		// using.
-		type = UpdateDispatcherType;
+		// So we'll check for those indices to determine if we are in a mount or
+		// update-like dispatcher.
+
+		// The update and rerender dispatchers have different implementations for
+		// useReducer. We'll check it's implementation to determine if this is the
+		// rerender or update dispatcher.
+		let useReducerImpl = dispatcher.useReducer.toString();
+		if (/return\s*\[[a-z]+,/.test(useReducerImpl)) {
+			type = RerenderDispatcherType;
+		} else {
+			type = UpdateDispatcherType;
+		}
 	} else {
 		type = MountDispatcherType;
 	}
@@ -259,36 +270,18 @@ function isEnteringComponentRender(
 		// If the current dispatcher is the ContextOnlyDispatcher and the next
 		// dispatcher is a valid dispatcher, we are entering a component render.
 		return true;
-	} else if (
-		(currentDispatcherType & MountDispatcherType &&
-			nextDispatcherType & UpdateDispatcherType) ||
-		(currentDispatcherType & UpdateDispatcherType &&
-			nextDispatcherType & UpdateDispatcherType)
-	) {
-		// ## Sync rerendering on mount (Mount -> Update)
+	} else if (nextDispatcherType & RerenderDispatcherType) {
+		// Any transition into the rerender dispatcher is a rerender is the
+		// beginning of a component render, so we should invoke our hooks. Details
+		// below.
 		//
-		// If we are transitioning from the mount dispatcher to an update
-		// dispatcher (i.e. HooksDispatcherOnMount to HooksDispatcherOnRerender),
-		// then this component is rerendering due to calling setState inside of
-		// its function body. We are re-entering a component's render method and
-		// so we should re-invoke our hooks.
+		// ## In-place rerendering on mount (Mount -> Rerender)
 		//
-		// There is no known transition from HooksDispatcherOnMount to
-		// HooksDispatcherOnUpdate so the assumption that going from Mount to
-		// Update is a sync rerender is okay.
-		//
-		// ## Sync rerendering on update (Update -> Update)
-		//
-		// If we are transitioning from an update dispatcher to another update
-		// dispatcher (e.g. could be from HooksDispatcherOnUpdate to
-		// HooksDispatcherOnRerender or from HooksDispatcherOnRerender to
-		// HooksDispatcherOnRerender again), then this component is rerendering
-		// due to calling setState inside of its function body. We are re-entering
-		// a component's render method and so we should re-invoke our hooks.
-		//
-		// There is no known transition from HooksDispatcherOnUpdate to
-		// HooksDispatcherOnUpdate so the assumption that going from Update to
-		// Update is a sync rerender is okay.
+		// If we are transitioning from the mount, update, or rerender dispatcher to the rerender
+		// dispatcher (e.g. HooksDispatcherOnMount to HooksDispatcherOnRerender),
+		// then this component is rerendering due to calling setState inside of its
+		// function body. We are re-entering a component's render method and so we
+		// should re-invoke our hooks.
 		return true;
 	} else {
 		// ## Resuming suspended mount edge case (Update -> Mount)
@@ -299,12 +292,18 @@ function isEnteringComponentRender(
 		// we are not entering a new component render, but instead continuing a
 		// previous render.
 		//
-		// ## Other transitions (Mount -> Mount, any transition in and out of invalid dispatchers)
+		// ## Other transitions
 		//
-		// There is no known transition from HooksDispatcherOnMount to another mount
-		// dispatcher so we default to not triggering a re-enter of the component.
-		// Further transition in and out of invalid dispatchers does not indicate a
-		// new component render.
+		// For example, Mount -> Mount, Update -> Update, Mount -> Update, any
+		// transition in and out of invalid dispatchers.
+		//
+		// There is no known transition for the following transitions so we default
+		// to not triggering a re-enter of the component.
+		// - HooksDispatcherOnMount  -> HooksDispatcherOnMount
+		// - HooksDispatcherOnMount  -> HooksDispatcherOnUpdate
+		// - HooksDispatcherOnUpdate -> HooksDispatcherOnUpdate
+		// - Any transition in and out of invalid dispatchers does not indicate a
+		//   new component render.
 		return false;
 	}
 }
