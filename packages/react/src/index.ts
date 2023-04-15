@@ -119,6 +119,64 @@ function usePreactSignalStore(nextDispatcher: ReactDispatcher): EffectStore {
 	return store;
 }
 
+/*
+PROD ReactCurrentDispatcher transition diagram (does not include dev time
+warning dispatchers which are just always ignored):
+
+```js
+// Paste this into https://stately.ai/viz to visualize the state machine.
+import { createMachine } from "xstate";
+
+// ENTER, EXIT, NOOP suffixes indicates whether this ReactCurrentDispatcher
+// transition signals we are entering or exiting a component render, or
+// if it doesn't signal a change in the component rendering lifecyle (NOOP).
+
+const dispatcherMachinePROD = createMachine({
+  id: "ReactCurrentDispatcher_PROD",
+  initial: "null",
+  states: {
+    null: {
+      on: {
+        pushDispatcher: "ContextOnlyDispatcher",
+      },
+    },
+    ContextOnlyDispatcher: {
+      on: {
+        renderWithHooks_Mount_ENTER: "HooksDispatcherOnMount",
+        renderWithHooks_Update_ENTER: "HooksDispatcherOnUpdate",
+        pushDispatcher_NOOP: "ContextOnlyDispatcher",
+        popDispatcher_NOOP: "ContextOnlyDispatcher",
+      },
+    },
+    HooksDispatcherOnMount: {
+      on: {
+        renderWithHooksAgain_ENTER: "HooksDispatcherOnRerender",
+        resetHooksAfterThrow_EXIT: "ContextOnlyDispatcher",
+        finishRenderingHooks_EXIT: "ContextOnlyDispatcher",
+      },
+    },
+    HooksDispatcherOnUpdate: {
+      on: {
+        renderWithHooksAgain_ENTER: "HooksDispatcherOnRerender",
+        resetHooksAfterThrow_EXIT: "ContextOnlyDispatcher",
+        finishRenderingHooks_EXIT: "ContextOnlyDispatcher",
+        use_ResumeSuspensedMount_NOOP: "HooksDispatcherOnMount",
+      },
+    },
+    HooksDispatcherOnRerender: {
+      on: {
+        renderWithHooksAgain_ENTER: "HooksDispatcherOnRerender",
+        resetHooksAfterThrow_EXIT: "ContextOnlyDispatcher",
+        finishRenderingHooks_EXIT: "ContextOnlyDispatcher",
+      },
+    },
+  },
+});
+```
+*/
+
+// TODO: Update.
+//
 // To track when we are entering and exiting a component render (i.e. before and
 // after React renders a component), we track how the dispatcher changes.
 // Outside of a component rendering, the dispatcher is set to an instance that
