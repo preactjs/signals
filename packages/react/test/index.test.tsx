@@ -510,7 +510,9 @@ describe("@preact/signals-react", () => {
 			expect(spy).to.have.been.calledOnceWith("foo", child);
 			spy.resetHistory();
 
-			await render(null);
+			await act(() => {
+				root.unmount();
+			});
 
 			expect(scratch.innerHTML).to.equal("");
 			expect(spy).not.to.have.been.called;
