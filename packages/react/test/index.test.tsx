@@ -280,7 +280,7 @@ describe("@preact/signals-react", () => {
 			}
 		});
 
-		it.skip("should render static markup of a component", async () => {
+		it("should render static markup of a component", async () => {
 			const count = signal(0);
 
 			const Test = () => {
