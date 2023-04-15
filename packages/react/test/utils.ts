@@ -41,17 +41,19 @@ export async function createRoot(container: Element): Promise<Root> {
 
 // When testing using react's production build, we can't use act (React
 // explicitly throws an error in this situation). So instead we'll fake act by
-// just waiting 10ms for React's concurrent rerendering to flush. We'll make a
-// best effort to throw a helpful error in afterEach if we detect that act() was
-// called but not awaited.
-const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
+// waiting for a requestAnimationFrame and then 10ms for React's concurrent
+// rerendering and any effects to flush. We'll make a best effort to throw a
+// helpful error in afterEach if we detect that act() was called but not
+// awaited.
+const afterFrame = (ms: number) =>
+	new Promise(r => requestAnimationFrame(() => setTimeout(r, ms)));
 
 let acting = 0;
 async function prodActShim(cb: () => void | Promise<void>): Promise<void> {
 	acting++;
 	try {
 		await cb();
-		await delay(10);
+		await afterFrame(10);
 	} finally {
 		acting--;
 	}
