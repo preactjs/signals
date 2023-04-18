@@ -5,7 +5,7 @@ import { signal } from "@preact/signals-react";
 import { createElement } from "react";
 import * as ReactRouter from "react-router-dom";
 
-import { act, checkHangingAct, createRoot, Root } from "./utils";
+import { act, checkHangingAct, createRoot, Root } from "../utils";
 
 const MemoryRouter = ReactRouter.MemoryRouter;
 const Routes = ReactRouter.Routes

@@ -28,7 +28,7 @@ import {
 	isReact16,
 	isProd,
 	consoleFormat,
-} from "./utils";
+} from "../utils";
 
 describe("@preact/signals-react", () => {
 	let scratch: HTMLDivElement;
