@@ -21,7 +21,6 @@
 		"test:karma:prod": "cross-env MINIFY=true NODE_ENV=production karma start karma.conf.js --single-run",
 		"test:karma:prod:watch": "cross-env NODE_ENV=production karma start karma.conf.js --no-single-run",
 		"test:mocha": "cross-env COVERAGE=true mocha --require packages/react/test/node/setup.js --recursive packages/react/test/node/**.test.tsx",
-		"test:mocha:minify": "cross-env COVERAGE=true MINIFY=true mocha --recursive packages/react/test/node/**.test.js",
 		"docs:start": "cd docs && pnpm start",
 		"docs:build": "cd docs && pnpm build",
 		"docs:preview": "cd docs && pnpm preview",

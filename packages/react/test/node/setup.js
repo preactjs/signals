@@ -2,17 +2,6 @@
 const register = require("@babel/register").default;
 
 const coverage = String(process.env.COVERAGE) === "true";
-const minify = String(process.env.MINIFY) === "true";
-
-const rename = {};
-const mangle = require("../../../../mangle.json");
-for (let prop in mangle.props.props) {
-	let name = prop;
-	if (name[0] === "$") {
-		name = name.slice(1);
-	}
-	rename[name] = mangle.props.props[prop];
-}
 
 // @babel/register doesn't hook into the experimental NodeJS ESM loader API so
 // we need all test files to run as CommonJS modules in Node
@@ -44,13 +33,6 @@ const ts = [
 	},
 ];
 
-const renamePlugin = [
-	"babel-plugin-transform-rename-properties",
-	{
-		rename,
-	},
-];
-
 register({
 	extensions: [".js", ".mjs", ".ts", ".tsx", ".mts", ".mtsx"],
 	cache: true,
@@ -61,9 +43,10 @@ register({
 		coverage && [
 			"istanbul",
 			{
-				include: minify ? "**/dist/**/*.js" : "**/src/**/*.{ts,js}",
+				// TODO: Currently NodeJS tests always run against dist files. Should we
+				// change this?
+				// include: minify ? "**/dist/**/*.js" : "**/src/**/*.{js,jsx,ts,tsx}",
 			},
 		],
-		minify && renamePlugin,
 	].filter(Boolean),
 });
