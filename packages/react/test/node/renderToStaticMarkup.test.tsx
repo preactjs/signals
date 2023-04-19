@@ -7,7 +7,18 @@ console.log(signal);
 
 describe("renderToStaticMarkup", () => {
 	it("should render a simple component", () => {
-		const element = <div>Hello World</div>;
-		expect(renderToStaticMarkup(element)).to.equal("<div>Hello World</div>");
+		function App() {
+			return <div>Hello World</div>;
+		}
+		expect(renderToStaticMarkup(<App />)).to.equal("<div>Hello World</div>");
+	});
+
+	it("should render a component with a signal as text", () => {
+		const name = signal("World");
+		function App() {
+			return <div>Hello {name}</div>;
+		}
+
+		expect(renderToStaticMarkup(<App />)).to.equal("<div>Hello World</div>");
 	});
 });

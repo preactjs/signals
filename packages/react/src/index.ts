@@ -6,8 +6,6 @@ import {
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED as ReactInternals,
 	type ReactElement,
-	type useCallback,
-	type useReducer,
 } from "react";
 import React from "react";
 import jsxRuntime from "react/jsx-runtime";
@@ -29,10 +27,12 @@ const Empty = [] as const;
 const ReactElemType = Symbol.for("react.element"); // https://github.com/facebook/react/blob/346c7d4c43a0717302d446da9e7423a8e28d8996/packages/shared/ReactSymbols.js#L15
 
 interface ReactDispatcher {
-	useRef: typeof useRef;
-	useCallback: typeof useCallback;
-	useReducer: typeof useReducer;
-	useSyncExternalStore: typeof useSyncExternalStore;
+	useRef: typeof React.useRef;
+	useCallback: typeof React.useCallback;
+	useReducer: typeof React.useReducer;
+	useSyncExternalStore: typeof React.useSyncExternalStore;
+	useEffect: typeof React.useEffect;
+	useImperativeHandle: typeof React.useImperativeHandle;
 }
 
 let finishUpdate: (() => void) | undefined;
@@ -258,7 +258,8 @@ const WarningDispatcherType = 1 << 1;
 const MountDispatcherType = 1 << 2;
 const UpdateDispatcherType = 1 << 3;
 const RerenderDispatcherType = 1 << 4;
-const ValidDispatcherType =
+const ServerDispatcherType = 1 << 5;
+const BrowserClientDispatcherType =
 	MountDispatcherType | UpdateDispatcherType | RerenderDispatcherType;
 
 // We inject a useSyncExternalStore into every function component via
@@ -290,8 +291,13 @@ function getDispatcherType(dispatcher: ReactDispatcher | null): DispatcherType {
 	// it is.
 	let type: DispatcherType;
 	const useCallbackImpl = dispatcher.useCallback.toString();
-	if (dispatcher.useCallback.length < 2) {
+	if (dispatcher.useReducer === dispatcher.useEffect) {
 		type = ContextOnlyDispatcherType;
+
+		// @ts-expect-error Only in server renderers is this true which the types
+		// will never represent.
+	} else if (dispatcher.useEffect === dispatcher.useImperativeHandle) {
+		type = ServerDispatcherType;
 	} else if (/Invalid/.test(useCallbackImpl)) {
 		// We first check for warning dispatchers because they would also pass some
 		// of the checks below.
@@ -341,7 +347,7 @@ function isEnteringComponentRender(
 ): boolean {
 	if (
 		currentDispatcherType & ContextOnlyDispatcherType &&
-		nextDispatcherType & ValidDispatcherType
+		nextDispatcherType & BrowserClientDispatcherType
 	) {
 		// ## Mount or update (ContextOnlyDispatcher -> ValidDispatcher (Mount or Update))
 		//
@@ -404,7 +410,7 @@ function isExitingComponentRender(
 	nextDispatcherType: DispatcherType
 ): boolean {
 	return Boolean(
-		currentDispatcherType & ValidDispatcherType &&
+		currentDispatcherType & BrowserClientDispatcherType &&
 			nextDispatcherType & ContextOnlyDispatcherType
 	);
 }
