@@ -20,7 +20,7 @@ import {
 	Signal,
 	type ReadonlySignal,
 } from "@preact/signals-core";
-import { useSyncExternalStore } from "use-sync-external-store/shim/index";
+import { useSyncExternalStore } from "use-sync-external-store/shim/index.js";
 import type { Effect, JsxRuntimeModule } from "./internal";
 
 export { signal, computed, batch, effect, Signal, type ReadonlySignal };
