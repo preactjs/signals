@@ -28,12 +28,13 @@ import {
 	isReact16,
 	isProd,
 	consoleFormat,
-} from "../utils";
+	getConsoleErrorSpy,
+} from "../shared/utils";
 
-describe("@preact/signals-react", () => {
+describe("@preact/signals-react updating", () => {
 	let scratch: HTMLDivElement;
 	let root: Root;
-	let errorSpy = sinon.spy(console, "error");
+	const errorSpy = getConsoleErrorSpy();
 
 	async function render(element: Parameters<Root["render"]>[0]) {
 		await act(() => root.render(element));
