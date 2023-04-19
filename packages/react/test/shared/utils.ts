@@ -97,3 +97,22 @@ export function getConsoleErrorSpy(): sinon.SinonSpy {
 
 	return errorSpy!;
 }
+
+export function checkConsoleErrorLogs(): void {
+	const errorSpy = getConsoleErrorSpy();
+	if (errorSpy.called) {
+		let message: string;
+		if (errorSpy.firstCall.args[0].toString().includes("%s")) {
+			message = consoleFormat(...errorSpy.firstCall.args);
+		} else {
+			message = errorSpy.firstCall.args.join(" ");
+		}
+
+		// Ignore errors for timeouts of tests that often happen while debugging
+		if (!message.includes("async tests and hooks,")) {
+			expect.fail(
+				`Console.error was unexpectedly called with this message: \n${message}`
+			);
+		}
+	}
+}

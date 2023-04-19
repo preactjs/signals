@@ -10,33 +10,17 @@ import {
 import { expect } from "chai";
 import { createElement, useReducer, StrictMode, useState } from "react";
 
-import { consoleFormat, getConsoleErrorSpy } from "./utils";
+import { getConsoleErrorSpy, checkConsoleErrorLogs } from "./utils";
 
 export function mountSignalsTests(
 	render: (element: JSX.Element) => string | Promise<string>
 ) {
-	let errorSpy = getConsoleErrorSpy();
-
 	beforeEach(async () => {
-		errorSpy.resetHistory();
+		getConsoleErrorSpy().resetHistory();
 	});
 
 	afterEach(async () => {
-		if (errorSpy.called) {
-			let message: string;
-			if (errorSpy.firstCall.args[0].toString().includes("%s")) {
-				message = consoleFormat(...errorSpy.firstCall.args);
-			} else {
-				message = errorSpy.firstCall.args.join(" ");
-			}
-
-			// Ignore errors for timeouts of tests that often happen while debugging
-			if (!message.includes("async tests and hooks,")) {
-				expect.fail(
-					`Console.error was unexpectedly called with this message: \n${message}`
-				);
-			}
-		}
+		checkConsoleErrorLogs();
 	});
 
 	describe("mount text bindings", () => {

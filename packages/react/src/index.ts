@@ -327,7 +327,7 @@ function getDispatcherType(dispatcher: ReactDispatcher | null): DispatcherType {
 			// return statement in the implementation of useReducer to differentiate
 			// between the two.
 			/rerenderReducer/.test(useReducerImpl) ||
-			/return\s*\[[a-z]+,/.test(useReducerImpl)
+			/return\s*\[\w+,/.test(useReducerImpl)
 		) {
 			type = RerenderDispatcherType;
 		} else {

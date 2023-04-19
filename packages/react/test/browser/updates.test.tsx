@@ -27,14 +27,13 @@ import {
 	checkHangingAct,
 	isReact16,
 	isProd,
-	consoleFormat,
 	getConsoleErrorSpy,
+	checkConsoleErrorLogs,
 } from "../shared/utils";
 
 describe("@preact/signals-react updating", () => {
 	let scratch: HTMLDivElement;
 	let root: Root;
-	const errorSpy = getConsoleErrorSpy();
 
 	async function render(element: Parameters<Root["render"]>[0]) {
 		await act(() => root.render(element));
@@ -44,29 +43,15 @@ describe("@preact/signals-react updating", () => {
 		scratch = document.createElement("div");
 		document.body.appendChild(scratch);
 		root = await createRoot(scratch);
-		errorSpy.resetHistory();
+		getConsoleErrorSpy().resetHistory();
 	});
 
 	afterEach(async () => {
-		checkHangingAct();
 		await act(() => root.unmount());
 		scratch.remove();
 
-		if (errorSpy.called) {
-			let message: string;
-			if (errorSpy.firstCall.args[0].toString().includes("%s")) {
-				message = consoleFormat(...errorSpy.firstCall.args);
-			} else {
-				message = errorSpy.firstCall.args.join(" ");
-			}
-
-			// Ignore errors for timeouts of tests that often happen while debugging
-			if (!message.includes("async tests and hooks,")) {
-				expect.fail(
-					`Console.error was unexpectedly called with this message: \n${message}`
-				);
-			}
-		}
+		checkConsoleErrorLogs();
+		checkHangingAct();
 	});
 
 	describe("Text bindings", () => {

@@ -1,5 +1,11 @@
 import { mountSignalsTests } from "../shared/mounting";
-import { Root, createRoot, act } from "../shared/utils";
+import {
+	Root,
+	createRoot,
+	act,
+	getConsoleErrorSpy,
+	checkConsoleErrorLogs,
+} from "../shared/utils";
 
 describe("@preact/signals-react mounting", () => {
 	let scratch: HTMLDivElement;
@@ -14,6 +20,12 @@ describe("@preact/signals-react mounting", () => {
 		scratch = document.createElement("div");
 		document.body.appendChild(scratch);
 		root = await createRoot(scratch);
+		getConsoleErrorSpy().resetHistory();
+	});
+
+	afterEach(async () => {
+		scratch.remove();
+		checkConsoleErrorLogs();
 	});
 
 	mountSignalsTests(render);
