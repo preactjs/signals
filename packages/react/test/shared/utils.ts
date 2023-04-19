@@ -98,6 +98,13 @@ export function getConsoleErrorSpy(): sinon.SinonSpy {
 	return errorSpy!;
 }
 
+const messagesToIgnore = [
+	// Ignore errors for timeouts of tests that often happen while debugging
+	/async tests and hooks,/,
+	// Ignore React 16 warnings about awaiting `act` calls (warning removed in React 18)
+	/Do not await the result of calling act/,
+];
+
 export function checkConsoleErrorLogs(): void {
 	const errorSpy = getConsoleErrorSpy();
 	if (errorSpy.called) {
@@ -108,8 +115,7 @@ export function checkConsoleErrorLogs(): void {
 			message = errorSpy.firstCall.args.join(" ");
 		}
 
-		// Ignore errors for timeouts of tests that often happen while debugging
-		if (!message.includes("async tests and hooks,")) {
+		if (messagesToIgnore.every(re => re.test(message) === false)) {
 			expect.fail(
 				`Console.error was unexpectedly called with this message: \n${message}`
 			);
