@@ -252,6 +252,7 @@ Object.defineProperty(ReactInternals.ReactCurrentDispatcher, "current", {
 	},
 });
 
+type DispatcherType = number;
 const ContextOnlyDispatcherType = 1 << 0;
 const WarningDispatcherType = 1 << 1;
 const MountDispatcherType = 1 << 2;
@@ -259,12 +260,6 @@ const UpdateDispatcherType = 1 << 3;
 const RerenderDispatcherType = 1 << 4;
 const ValidDispatcherType =
 	MountDispatcherType | UpdateDispatcherType | RerenderDispatcherType;
-type DispatcherType =
-	| typeof ContextOnlyDispatcherType
-	| typeof WarningDispatcherType
-	| typeof MountDispatcherType
-	| typeof UpdateDispatcherType
-	| typeof ValidDispatcherType;
 
 // We inject a useSyncExternalStore into every function component via
 // CurrentDispatcher. This prevents injecting into anything other than a
@@ -276,6 +271,15 @@ function getDispatcherType(dispatcher: ReactDispatcher | null): DispatcherType {
 
 	const cached = dispatcherTypeCache.get(dispatcher);
 	if (cached !== undefined) return cached;
+
+	// TODO: Explore using something like `useReducer === useCallback` to detect
+	// ContextOnlyDispatcher.
+
+	// TODO: Consider adding tests for the situation where the dispatcher starts
+	// out as HooksDispatcherOnMountInDEV and then changes to
+	// HooksDispatcherOnMountWithHookTypesInDEV. I believe this is possible if a
+	// component only uses state-less hooks such as useContext which give a fiber
+	// hook types in DEV but do not give it a memoized state.
 
 	// The ContextOnlyDispatcher sets all the hook implementations to a function
 	// that takes no arguments and throws and error. Check the number of arguments
@@ -289,23 +293,33 @@ function getDispatcherType(dispatcher: ReactDispatcher | null): DispatcherType {
 	if (dispatcher.useCallback.length < 2) {
 		type = ContextOnlyDispatcherType;
 	} else if (/Invalid/.test(useCallbackImpl)) {
+		// We first check for warning dispatchers because they would also pass some
+		// of the checks below.
 		type = WarningDispatcherType;
 	} else if (
+		// The development mount dispatcher invokes a function called
+		// `mountCallback` whereas the development update/re-render dispatcher
+		// invokes a function called `updateCallback`. Use that to determine if we
+		// are in a mount or update-like dispatcher in development. The production
+		// mount dispatcher defines an array of the form [callback, deps] whereas
+		// update/re-render dispatchers read the array using array indices (e.g.
+		// `[0]` and `[1]`). Use those differences to determine if we are in a mount
+		// or update-like dispatcher in production.
 		/updateCallback/.test(useCallbackImpl) ||
 		(/\[0\]/.test(useCallbackImpl) && /\[1\]/.test(useCallbackImpl))
 	) {
-		// The mount and update dispatchers have a different implementation for the
-		// useCallback hook. The mount dispatcher stores the arguments to
-		// useCallback as an array on the state of the Fiber. The update dispatcher
-		// reads the values of the array using array indices (e.g. `[0]` and `[1]`).
-		// So we'll check for those indices to determine if we are in a mount or
-		// update-like dispatcher.
-
 		// The update and rerender dispatchers have different implementations for
 		// useReducer. We'll check it's implementation to determine if this is the
 		// rerender or update dispatcher.
 		let useReducerImpl = dispatcher.useReducer.toString();
 		if (
+			// The development rerender dispatcher invokes a function called
+			// `rerenderReducer` whereas the update dispatcher invokes a function
+			// called `updateReducer`. The production rerender dispatcher returns an
+			// array of the form `[state, dispatch]` whereas the update dispatcher
+			// returns an array of `[fiber.memoizedState, dispatch]` so we check the
+			// return statement in the implementation of useReducer to differentiate
+			// between the two.
 			/rerenderReducer/.test(useReducerImpl) ||
 			/return\s*\[[a-z]+,/.test(useReducerImpl)
 		) {
