@@ -114,7 +114,7 @@ export function mountSignalsTests(
 			expect(html).to.equal("<pre><code>-2</code><code>0</code></pre>");
 		});
 
-		it("should not fail when a component calls setState while rendering", async () => {
+		it("should not fail when a component calls setState while mounting", async () => {
 			function App() {
 				const [state, setState] = useState(0);
 				if (state == 0) {
@@ -126,6 +126,20 @@ export function mountSignalsTests(
 
 			const html = await render(<App />);
 			expect(html).to.equal("<div>1</div>");
+		});
+
+		it("should not fail when a component calls setState multiple times while mounting", async () => {
+			function App() {
+				const [state, setState] = useState(0);
+				if (state < 5) {
+					setState(state + 1);
+				}
+
+				return <div>{state}</div>;
+			}
+
+			const html = await render(<App />);
+			expect(html).to.equal("<div>5</div>");
 		});
 	});
 

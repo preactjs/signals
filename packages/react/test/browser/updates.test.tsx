@@ -338,17 +338,47 @@ describe("@preact/signals-react updating", () => {
 		});
 
 		it("should not fail when a component calls setState while rendering", async () => {
+			let increment: () => void;
 			function App() {
 				const [state, setState] = useState(0);
-				if (state == 0) {
-					setState(1);
+				increment = () => setState(state + 1);
+
+				if (state > 0 && state < 2) {
+					setState(state + 1);
 				}
 
 				return <div>{state}</div>;
 			}
 
 			await render(<App />);
-			expect(scratch.innerHTML).to.equal("<div>1</div>");
+			expect(scratch.innerHTML).to.equal("<div>0</div>");
+
+			await act(() => {
+				increment();
+			});
+			expect(scratch.innerHTML).to.equal("<div>2</div>");
+		});
+
+		it("should not fail when a component calls setState multiple times while rendering", async () => {
+			let increment: () => void;
+			function App() {
+				const [state, setState] = useState(0);
+				increment = () => setState(state + 1);
+
+				if (state > 0 && state < 5) {
+					setState(state + 1);
+				}
+
+				return <div>{state}</div>;
+			}
+
+			await render(<App />);
+			expect(scratch.innerHTML).to.equal("<div>0</div>");
+
+			await act(() => {
+				increment();
+			});
+			expect(scratch.innerHTML).to.equal("<div>5</div>");
 		});
 	});
 
