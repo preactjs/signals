@@ -13,7 +13,7 @@
 		"postbuild": "node ./scripts/node-13-exports.js",
 		"lint": "eslint 'packages/**/*.{ts,tsx,js,jsx}'",
 		"test": "pnpm test:karma && pnpm test:mocha",
-		"test:minify": "pnpm test:karma:minify",
+		"test:minify": "pnpm test:karma:minify && pnpm test:mocha",
 		"test:prod": "pnpm test:karma:prod && pnpm test:mocha:prod",
 		"test:karma": "cross-env COVERAGE=true karma start karma.conf.js --single-run",
 		"test:karma:minify": "cross-env COVERAGE=true MINIFY=true karma start karma.conf.js --single-run",
