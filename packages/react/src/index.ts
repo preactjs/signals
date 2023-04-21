@@ -188,8 +188,13 @@ function usePreactSignalStore(nextDispatcher: ReactDispatcher): EffectStore {
 //   value.
 
 /*
-PROD ReactCurrentDispatcher transition diagram (does not include dev time
-warning dispatchers which are just always ignored):
+Below is a state machine definition for transitions between the various
+dispatchers in React's prod build. (It does not include dev time warning
+dispatchers which are just always ignored).
+
+ENTER and EXIT suffixes indicates whether this ReactCurrentDispatcher transition
+signals we are entering or exiting a component render, or if it doesn't signal a
+change in the component rendering lifecyle (NOOP).
 
 ```js
 // Paste this into https://stately.ai/viz to visualize the state machine.
