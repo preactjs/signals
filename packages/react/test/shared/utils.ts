@@ -103,6 +103,8 @@ const messagesToIgnore = [
 	/async tests and hooks,/,
 	// Ignore React 16 warnings about awaiting `act` calls (warning removed in React 18)
 	/Do not await the result of calling act/,
+	// Ignore how chai or mocha uses `console.error` to print out errors
+	/AssertionError/,
 ];
 
 export function checkConsoleErrorLogs(): void {

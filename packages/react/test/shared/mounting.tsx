@@ -158,5 +158,27 @@ export function mountSignalsTests(
 			const html = await render(<App />);
 			expect(html).to.equal("<div>1<button>Increment</button></div>");
 		});
+
+		it("should properly update signal values changed during mount", async () => {
+			function App() {
+				const count = useSignal(0);
+				if (count.value == 0) {
+					count.value++;
+				}
+
+				return (
+					<div>
+						{count}
+						<button onClick={() => count.value++}>Increment</button>
+					</div>
+				);
+			}
+
+			const html = await render(<App />);
+			expect(html).to.equal("<div>1<button>Increment</button></div>");
+
+			const html2 = await render(<App />);
+			expect(html2).to.equal("<div>1<button>Increment</button></div>");
+		});
 	});
 }
