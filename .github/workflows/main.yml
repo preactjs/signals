@@ -42,11 +42,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Tests
-        run: pnpm test
-
       - name: Build
         run: pnpm build
+
+      - name: Tests
+        run: pnpm test
 
       - name: Test production build
         run: pnpm test:minify
