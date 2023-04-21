@@ -1,9 +1,13 @@
+import React from "react";
 import { act as realAct } from "react-dom/test-utils";
 
 export interface Root {
 	render(element: JSX.Element | null): void;
 	unmount(): void;
 }
+
+export const isProd = process.env.NODE_ENV === "production";
+export const isReact16 = React.version.startsWith("16.");
 
 // We need to use createRoot() if it's available, but it's only available in
 // React 18. To enable local testing with React 16 & 17, we'll create a fake
