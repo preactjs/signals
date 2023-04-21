@@ -17,6 +17,8 @@ import {
 	StrictMode,
 	createRef,
 	useState,
+	useContext,
+	createContext,
 } from "react";
 
 import { renderToStaticMarkup } from "react-dom/server";
@@ -379,6 +381,58 @@ describe("@preact/signals-react updating", () => {
 				increment();
 			});
 			expect(scratch.innerHTML).to.equal("<div>5</div>");
+		});
+
+		it("should not fail when a component only uses state-less hooks", async () => {
+			// This test is suppose to trigger a condition in React where the
+			// HooksDispatcherOnMountWithHookTypesInDEV is used. This dispatcher is
+			// used in the development build of React if a component has hook types
+			// defined but no memoizedState, meaning no stateful hooks (e.g. useState)
+			// are used. `useContext` is an example of a state-less hook because it
+			// does not mount any hook state onto the fiber's memoizedState field.
+			//
+			// However, as of writing, because our react adapter inserts a
+			// useSyncExternalStore into all components, all components have memoized
+			// state and so this condition is never hit. However, I'm leaving the test
+			// to capture this unique behavior to hopefully catch any errors caused by
+			// not understanding or handling this in the future.
+
+			const sig = signal(0);
+			const MyContext = createContext(0);
+
+			function Child() {
+				const value = useContext(MyContext);
+				return (
+					<div>
+						{sig} {value}
+					</div>
+				);
+			}
+
+			let updateContext: () => void;
+			function App() {
+				const [value, setValue] = useState(0);
+				updateContext = () => setValue(value + 1);
+
+				return (
+					<MyContext.Provider value={value}>
+						<Child />
+					</MyContext.Provider>
+				);
+			}
+
+			await render(<App />);
+			expect(scratch.innerHTML).to.equal("<div>0 0</div>");
+
+			await act(() => {
+				sig.value++;
+			});
+			expect(scratch.innerHTML).to.equal("<div>1 0</div>");
+
+			await act(() => {
+				updateContext();
+			});
+			expect(scratch.innerHTML).to.equal("<div>1 1</div>");
 		});
 	});
 

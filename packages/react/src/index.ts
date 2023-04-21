@@ -273,15 +273,6 @@ function getDispatcherType(dispatcher: ReactDispatcher | null): DispatcherType {
 	const cached = dispatcherTypeCache.get(dispatcher);
 	if (cached !== undefined) return cached;
 
-	// TODO: Explore using something like `useReducer === useCallback` to detect
-	// ContextOnlyDispatcher.
-
-	// TODO: Consider adding tests for the situation where the dispatcher starts
-	// out as HooksDispatcherOnMountInDEV and then changes to
-	// HooksDispatcherOnMountWithHookTypesInDEV. I believe this is possible if a
-	// component only uses state-less hooks such as useContext which give a fiber
-	// hook types in DEV but do not give it a memoized state.
-
 	// The ContextOnlyDispatcher sets all the hook implementations to a function
 	// that takes no arguments and throws and error. Check the number of arguments
 	// for this dispatcher's useCallback implementation to determine if it is a
