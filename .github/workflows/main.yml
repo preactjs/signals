@@ -53,3 +53,10 @@ jobs:
 
       - name: Test react production build
         run: pnpm test:prod
+
+      - name: Test React 16
+        working-directory: packages/react
+        run: |
+          pnpm i react@16 react-dom@16 react-router-dom@5
+          pnpm -w test:minify
+          pnpm -w test:prod

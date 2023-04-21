@@ -19,7 +19,14 @@ import {
 } from "react";
 
 import { renderToStaticMarkup } from "react-dom/server";
-import { createRoot, Root, act, checkHangingAct } from "./utils";
+import {
+	createRoot,
+	Root,
+	act,
+	checkHangingAct,
+	isReact16,
+	isProd,
+} from "./utils";
 
 describe("@preact/signals-react", () => {
 	let scratch: HTMLDivElement;
@@ -386,14 +393,17 @@ describe("@preact/signals-react", () => {
 
 			expect(scratch.textContent).to.equal("bar");
 
-			// NOTE: Ideally, call should receive "1" as its third argument!
-			// The "0" indicates that Preact's DOM mutations hadn't yet been performed when the callback ran.
-			// This happens because we do signal-based effect runs after the first, not VDOM.
-			// Perhaps we could find a way to defer the callback when it coincides with a render?
+			// NOTE: Ideally, call should receive "1" as its third argument! The "0"
+			// indicates that React's DOM mutations hadn't yet been performed when the
+			// callback ran. This happens because we do signal-based effect runs after
+			// the first, not VDOM. Perhaps we could find a way to defer the callback
+			// when it coincides with a render? In React 16 when running in production
+			// however, we do see "1" as expected, likely because we are using a fake
+			// act() implementation which completes after the DOM has been updated.
 			expect(spy).to.have.been.calledOnceWith(
 				"bar",
 				scratch.firstElementChild,
-				"0" // ideally "1" - update if we find a nice way to do so!
+				isReact16 && isProd ? "1" : "0" // ideally always "1" - update if we find a nice way to do so!
 			);
 		});
 
@@ -441,7 +451,7 @@ describe("@preact/signals-react", () => {
 			expect(spy).to.have.been.calledOnceWith(
 				"bar",
 				child,
-				"0" // ideally "1" - update if we find a nice way to do so!
+				isReact16 && isProd ? "1" : "0" // ideally always "1" - update if we find a nice way to do so!
 			);
 		});
 
@@ -474,9 +484,9 @@ describe("@preact/signals-react", () => {
 			expect(scratch.innerHTML).to.equal("");
 			expect(spy).not.to.have.been.called;
 			expect(cleanup).to.have.been.calledOnce;
-			// @note: React cleans up the ref eagerly, so it's already null by the time the callback runs.
-			// this is probably worth fixing at some point.
-			expect(cleanup).to.have.been.calledWith("foo", null);
+			// @note: React v18 cleans up the ref eagerly, so it's already null by the
+			// time the callback runs. this is probably worth fixing at some point.
+			expect(cleanup).to.have.been.calledWith("foo", isReact16 ? child : null);
 		});
 	});
 });
