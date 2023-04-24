@@ -1,4 +1,5 @@
 import React from "react";
+import sinon from "sinon";
 import { act as realAct } from "react-dom/test-utils";
 
 export interface Root {
@@ -41,17 +42,19 @@ export async function createRoot(container: Element): Promise<Root> {
 
 // When testing using react's production build, we can't use act (React
 // explicitly throws an error in this situation). So instead we'll fake act by
-// just waiting 10ms for React's concurrent rerendering to flush. We'll make a
-// best effort to throw a helpful error in afterEach if we detect that act() was
-// called but not awaited.
-const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
+// waiting for a requestAnimationFrame and then 10ms for React's concurrent
+// rerendering and any effects to flush. We'll make a best effort to throw a
+// helpful error in afterEach if we detect that act() was called but not
+// awaited.
+const afterFrame = (ms: number) =>
+	new Promise(r => requestAnimationFrame(() => setTimeout(r, ms)));
 
 let acting = 0;
 async function prodActShim(cb: () => void | Promise<void>): Promise<void> {
 	acting++;
 	try {
 		await cb();
-		await delay(10);
+		await afterFrame(10);
 	} finally {
 		acting--;
 	}
@@ -69,3 +72,55 @@ export const act =
 	process.env.NODE_ENV === "production"
 		? (prodActShim as typeof realAct)
 		: realAct;
+
+/**
+ * `console.log` supports formatting strings with `%s` for string substitutions.
+ * This function accepts a string and additional arguments of values and returns
+ * a string with the values substituted in.
+ */
+export function consoleFormat(str: string, ...values: unknown[]): string {
+	let idx = 0;
+	return str.replace(/%s/g, () => String(values[idx++]));
+}
+
+declare global {
+	let errorSpy: sinon.SinonSpy | undefined;
+}
+
+// Only one spy can be active on an object at a time and since all tests share
+// the same console object we need to make sure we're only spying on it once.
+// We'll use this method to share the spy across all tests.
+export function getConsoleErrorSpy(): sinon.SinonSpy {
+	if (typeof errorSpy === "undefined") {
+		(globalThis as any).errorSpy = sinon.spy(console, "error");
+	}
+
+	return errorSpy!;
+}
+
+const messagesToIgnore = [
+	// Ignore errors for timeouts of tests that often happen while debugging
+	/async tests and hooks,/,
+	// Ignore React 16 warnings about awaiting `act` calls (warning removed in React 18)
+	/Do not await the result of calling act/,
+	// Ignore how chai or mocha uses `console.error` to print out errors
+	/AssertionError/,
+];
+
+export function checkConsoleErrorLogs(): void {
+	const errorSpy = getConsoleErrorSpy();
+	if (errorSpy.called) {
+		let message: string;
+		if (errorSpy.firstCall.args[0].toString().includes("%s")) {
+			message = consoleFormat(...errorSpy.firstCall.args);
+		} else {
+			message = errorSpy.firstCall.args.join(" ");
+		}
+
+		if (messagesToIgnore.every(re => re.test(message) === false)) {
+			expect.fail(
+				`Console.error was unexpectedly called with this message: \n${message}`
+			);
+		}
+	}
+}

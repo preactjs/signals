@@ -6,8 +6,6 @@ import {
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED as ReactInternals,
 	type ReactElement,
-	type useCallback,
-	type useReducer,
 } from "react";
 import React from "react";
 import jsxRuntime from "react/jsx-runtime";
@@ -29,10 +27,12 @@ const Empty = [] as const;
 const ReactElemType = Symbol.for("react.element"); // https://github.com/facebook/react/blob/346c7d4c43a0717302d446da9e7423a8e28d8996/packages/shared/ReactSymbols.js#L15
 
 interface ReactDispatcher {
-	useRef: typeof useRef;
-	useCallback: typeof useCallback;
-	useReducer: typeof useReducer;
-	useSyncExternalStore: typeof useSyncExternalStore;
+	useRef: typeof React.useRef;
+	useCallback: typeof React.useCallback;
+	useReducer: typeof React.useReducer;
+	useSyncExternalStore: typeof React.useSyncExternalStore;
+	useEffect: typeof React.useEffect;
+	useImperativeHandle: typeof React.useImperativeHandle;
 }
 
 let finishUpdate: (() => void) | undefined;
@@ -119,21 +119,27 @@ function usePreactSignalStore(nextDispatcher: ReactDispatcher): EffectStore {
 	return store;
 }
 
+// In order for signals to work in React, we need to observe what signals a
+// component uses while rendering. To do this, we need to know when a component
+// is rendering. To do this, we watch the transition of the
+// ReactCurrentDispatcher to know when a component is rerendering.
+//
 // To track when we are entering and exiting a component render (i.e. before and
 // after React renders a component), we track how the dispatcher changes.
 // Outside of a component rendering, the dispatcher is set to an instance that
 // errors or warns when any hooks are called. This behavior is prevents hooks
 // from being used outside of components. Right before React renders a
-// component, the dispatcher is set to a valid one. Right after React finishes
-// rendering a component, the dispatcher is set to an erroring one again. This
+// component, the dispatcher is set to an instance that doesn't warn or error
+// and contains the implementations of all hooks. Right after React finishes
+// rendering a component, the dispatcher is set to the erroring one again. This
 // erroring dispatcher is called the `ContextOnlyDispatcher` in React's source.
 //
 // So, we watch the getter and setter on `ReactCurrentDispatcher.current` to
 // monitor the changes to the current ReactDispatcher. When the dispatcher
-// changes from the ContextOnlyDispatcher to a valid dispatcher, we assume we
+// changes from the ContextOnlyDispatcher to a "valid" dispatcher, we assume we
 // are entering a component render. At this point, we setup our
 // auto-subscriptions for any signals used in the component. We do this by
-// creating an effect and manually starting the effect. We use
+// creating an Signal effect and manually starting the Signal effect. We use
 // `useSyncExternalStore` to trigger rerenders on the component when any signals
 // it uses changes.
 //
@@ -141,10 +147,16 @@ function usePreactSignalStore(nextDispatcher: ReactDispatcher): EffectStore {
 // ContextOnlyDispatcher, we assume we are exiting a component render. At this
 // point we stop the effect.
 //
-// Some edge cases to be aware of:
-// - In development, useReducer, useState, and useMemo changes the dispatcher to
-//   a different erroring dispatcher before invoking the reducer and resets it
-//   right after.
+// Some additional complexities to be aware of:
+// - If a component calls `setState` while rendering, React will re-render the
+//   component immediately. Before triggering the re-render, React will change
+//   the dispatcher to the HooksDispatcherOnRerender. When we transition to this
+//   rerendering adapter, we need to re-trigger our hooks to keep the order of
+//   hooks the same for every render of a component.
+//
+// - In development, useReducer, useState, and useMemo change the dispatcher to
+//   a different warning dispatcher (not ContextOnlyDispatcher) before invoking
+//   the reducer and resets it right after.
 //
 //   The useSyncExternalStore shim will use some of these hooks when we invoke
 //   it while entering a component render. We need to prevent this dispatcher
@@ -153,15 +165,89 @@ function usePreactSignalStore(nextDispatcher: ReactDispatcher): EffectStore {
 //   prevent the setter from running while we are in the setter.
 //
 //   When a Component's function body invokes useReducer, useState, or useMemo,
-//   this change in dispatcher should not signal that we are exiting a component
-//   render. We ignore this change by detecting these dispatchers as different
-//   from ContextOnlyDispatcher and other valid dispatchers.
+//   this change in dispatcher should not signal that we are entering or exiting
+//   a component render. We ignore this change by detecting these dispatchers as
+//   different from ContextOnlyDispatcher and other valid dispatchers.
 //
 // - The `use` hook will change the dispatcher to from a valid update dispatcher
 //   to a valid mount dispatcher in some cases. Similarly to useReducer
 //   mentioned above, we should not signal that we are exiting a component
 //   during this change. Because these other valid dispatchers do not pass the
 //   ContextOnlyDispatcher check, they do not affect our logic.
+//
+// - When server rendering, React does not change the dispatcher before and
+//   after each component render. It sets it once for before the first render
+//   and once for after the last render. This means that we will not be able to
+//   detect when we are entering or exiting a component render. This is fine
+//   because we don't need to detect this for server rendering. A component
+//   can't trigger async rerenders in SSR so we don't need to track signals.
+//
+//   If a component updates a signal value while rendering during SSR, we will
+//   not rerender the component because the signal value will synchronously
+//   change so all reads of the signal further down the tree will see the new
+//   value.
+
+/*
+Below is a state machine definition for transitions between the various
+dispatchers in React's prod build. (It does not include dev time warning
+dispatchers which are just always ignored).
+
+ENTER and EXIT suffixes indicates whether this ReactCurrentDispatcher transition
+signals we are entering or exiting a component render, or if it doesn't signal a
+change in the component rendering lifecyle (NOOP).
+
+```js
+// Paste this into https://stately.ai/viz to visualize the state machine.
+import { createMachine } from "xstate";
+
+// ENTER, EXIT, NOOP suffixes indicates whether this ReactCurrentDispatcher
+// transition signals we are entering or exiting a component render, or
+// if it doesn't signal a change in the component rendering lifecyle (NOOP).
+
+const dispatcherMachinePROD = createMachine({
+  id: "ReactCurrentDispatcher_PROD",
+  initial: "null",
+  states: {
+    null: {
+      on: {
+        pushDispatcher: "ContextOnlyDispatcher",
+      },
+    },
+    ContextOnlyDispatcher: {
+      on: {
+        renderWithHooks_Mount_ENTER: "HooksDispatcherOnMount",
+        renderWithHooks_Update_ENTER: "HooksDispatcherOnUpdate",
+        pushDispatcher_NOOP: "ContextOnlyDispatcher",
+        popDispatcher_NOOP: "ContextOnlyDispatcher",
+      },
+    },
+    HooksDispatcherOnMount: {
+      on: {
+        renderWithHooksAgain_ENTER: "HooksDispatcherOnRerender",
+        resetHooksAfterThrow_EXIT: "ContextOnlyDispatcher",
+        finishRenderingHooks_EXIT: "ContextOnlyDispatcher",
+      },
+    },
+    HooksDispatcherOnUpdate: {
+      on: {
+        renderWithHooksAgain_ENTER: "HooksDispatcherOnRerender",
+        resetHooksAfterThrow_EXIT: "ContextOnlyDispatcher",
+        finishRenderingHooks_EXIT: "ContextOnlyDispatcher",
+        use_ResumeSuspensedMount_NOOP: "HooksDispatcherOnMount",
+      },
+    },
+    HooksDispatcherOnRerender: {
+      on: {
+        renderWithHooksAgain_ENTER: "HooksDispatcherOnRerender",
+        resetHooksAfterThrow_EXIT: "ContextOnlyDispatcher",
+        finishRenderingHooks_EXIT: "ContextOnlyDispatcher",
+      },
+    },
+  },
+});
+```
+*/
+
 let lock = false;
 let currentDispatcher: ReactDispatcher | null = null;
 Object.defineProperty(ReactInternals.ReactCurrentDispatcher, "current", {
@@ -177,42 +263,35 @@ Object.defineProperty(ReactInternals.ReactCurrentDispatcher, "current", {
 		const currentDispatcherType = getDispatcherType(currentDispatcher);
 		const nextDispatcherType = getDispatcherType(nextDispatcher);
 
-		// We are entering a component render if the current dispatcher is the
-		// ContextOnlyDispatcher and the next dispatcher is a valid dispatcher.
-		const isEnteringComponentRender =
-			currentDispatcherType === ContextOnlyDispatcherType &&
-			nextDispatcherType === ValidDispatcherType;
-
-		// We are exiting a component render if the current dispatcher is a valid
-		// dispatcher and the next dispatcher is the ContextOnlyDispatcher.
-		const isExitingComponentRender =
-			currentDispatcherType === ValidDispatcherType &&
-			nextDispatcherType === ContextOnlyDispatcherType;
-
 		// Update the current dispatcher now so the hooks inside of the
 		// useSyncExternalStore shim get the right dispatcher.
 		currentDispatcher = nextDispatcher;
-		if (isEnteringComponentRender) {
+		if (isEnteringComponentRender(currentDispatcherType, nextDispatcherType)) {
 			lock = true;
 			const store = usePreactSignalStore(nextDispatcher);
 			lock = false;
 
 			setCurrentUpdater(store.updater);
-		} else if (isExitingComponentRender) {
+		} else if (
+			isExitingComponentRender(currentDispatcherType, nextDispatcherType)
+		) {
 			setCurrentUpdater();
 		}
 	},
 });
 
-const ValidDispatcherType = 0;
-const ContextOnlyDispatcherType = 1;
-const ErroringDispatcherType = 2;
+type DispatcherType = number;
+const ContextOnlyDispatcherType = 1 << 0;
+const WarningDispatcherType = 1 << 1;
+const MountDispatcherType = 1 << 2;
+const UpdateDispatcherType = 1 << 3;
+const RerenderDispatcherType = 1 << 4;
+const ServerDispatcherType = 1 << 5;
+const BrowserClientDispatcherType =
+	MountDispatcherType | UpdateDispatcherType | RerenderDispatcherType;
 
-// We inject a useSyncExternalStore into every function component via
-// CurrentDispatcher. This prevents injecting into anything other than a
-// function component render.
-const dispatcherTypeCache = new Map<ReactDispatcher, number>();
-function getDispatcherType(dispatcher: ReactDispatcher | null): number {
+const dispatcherTypeCache = new Map<ReactDispatcher, DispatcherType>();
+function getDispatcherType(dispatcher: ReactDispatcher | null): DispatcherType {
 	// Treat null the same as the ContextOnlyDispatcher.
 	if (!dispatcher) return ContextOnlyDispatcherType;
 
@@ -220,21 +299,132 @@ function getDispatcherType(dispatcher: ReactDispatcher | null): number {
 	if (cached !== undefined) return cached;
 
 	// The ContextOnlyDispatcher sets all the hook implementations to a function
-	// that takes no arguments and throws and error. Check the number of arguments
-	// for this dispatcher's useCallback implementation to determine if it is a
-	// ContextOnlyDispatcher. All other dispatchers, erroring or not, define
-	// functions with arguments and so fail this check.
-	let type: number;
-	if (dispatcher.useCallback.length < 2) {
+	// that takes no arguments and throws and error. This dispatcher is the only
+	// dispatcher where useReducer and useEffect will have the same
+	// implementation.
+	let type: DispatcherType;
+	const useCallbackImpl = dispatcher.useCallback.toString();
+	if (dispatcher.useReducer === dispatcher.useEffect) {
 		type = ContextOnlyDispatcherType;
-	} else if (/Invalid/.test(dispatcher.useCallback as any)) {
-		type = ErroringDispatcherType;
+
+		// @ts-expect-error When server rendering, useEffect and useImperativeHandle
+		// are both set to noop functions and so have the same implementation.
+	} else if (dispatcher.useEffect === dispatcher.useImperativeHandle) {
+		type = ServerDispatcherType;
+	} else if (/Invalid/.test(useCallbackImpl)) {
+		// We first check for warning dispatchers because they would also pass some
+		// of the checks below.
+		type = WarningDispatcherType;
+	} else if (
+		// The development mount dispatcher invokes a function called
+		// `mountCallback` whereas the development update/re-render dispatcher
+		// invokes a function called `updateCallback`. Use that difference to
+		// determine if we are in a mount or update-like dispatcher in development.
+		// The production mount dispatcher defines an array of the form [callback,
+		// deps] whereas update/re-render dispatchers read the array using array
+		// indices (e.g. `[0]` and `[1]`). Use those differences to determine if we
+		// are in a mount or update-like dispatcher in production.
+		/updateCallback/.test(useCallbackImpl) ||
+		(/\[0\]/.test(useCallbackImpl) && /\[1\]/.test(useCallbackImpl))
+	) {
+		// The update and rerender dispatchers have different implementations for
+		// useReducer. We'll check it's implementation to determine if this is the
+		// rerender or update dispatcher.
+		let useReducerImpl = dispatcher.useReducer.toString();
+		if (
+			// The development rerender dispatcher invokes a function called
+			// `rerenderReducer` whereas the update dispatcher invokes a function
+			// called `updateReducer`. The production rerender dispatcher returns an
+			// array of the form `[state, dispatch]` whereas the update dispatcher
+			// returns an array of `[fiber.memoizedState, dispatch]` so we check the
+			// return statement in the implementation of useReducer to differentiate
+			// between the two.
+			/rerenderReducer/.test(useReducerImpl) ||
+			/return\s*\[\w+,/.test(useReducerImpl)
+		) {
+			type = RerenderDispatcherType;
+		} else {
+			type = UpdateDispatcherType;
+		}
 	} else {
-		type = ValidDispatcherType;
+		type = MountDispatcherType;
 	}
 
 	dispatcherTypeCache.set(dispatcher, type);
 	return type;
+}
+
+function isEnteringComponentRender(
+	currentDispatcherType: DispatcherType,
+	nextDispatcherType: DispatcherType
+): boolean {
+	if (
+		currentDispatcherType & ContextOnlyDispatcherType &&
+		nextDispatcherType & BrowserClientDispatcherType
+	) {
+		// ## Mount or update (ContextOnlyDispatcher -> ValidDispatcher (Mount or Update))
+		//
+		// If the current dispatcher is the ContextOnlyDispatcher and the next
+		// dispatcher is a valid dispatcher, we are entering a component render.
+		return true;
+	} else if (
+		currentDispatcherType & WarningDispatcherType ||
+		nextDispatcherType & WarningDispatcherType
+	) {
+		// ## Warning dispatcher
+		//
+		// If the current dispatcher or next dispatcher is an warning dispatcher,
+		// we are not entering a component render. The current warning dispatchers
+		// are used to warn when hooks are nested improperly and do not indicate
+		// entering a new component render.
+		return false;
+	} else if (nextDispatcherType & RerenderDispatcherType) {
+		// Any transition into the rerender dispatcher is the beginning of a
+		// component render, so we should invoke our hooks. Details below.
+		//
+		// ## In-place rerendering (e.g. Mount -> Rerender)
+		//
+		// If we are transitioning from the mount, update, or rerender dispatcher to
+		// the rerender dispatcher (e.g. HooksDispatcherOnMount to
+		// HooksDispatcherOnRerender), then this component is rerendering due to
+		// calling setState inside of its function body. We are re-entering a
+		// component's render method and so we should re-invoke our hooks.
+		return true;
+	} else {
+		// ## Resuming suspended mount edge case (Update -> Mount)
+		//
+		// If we are transitioning from the update dispatcher to the mount
+		// dispatcher, then this component is using the `use` hook and is resuming
+		// from a mount. We should not re-invoke our hooks in this situation since
+		// we are not entering a new component render, but instead continuing a
+		// previous render.
+		//
+		// ## Other transitions
+		//
+		// For example, Mount -> Mount, Update -> Update, Mount -> Update, any
+		// transition in and out of invalid dispatchers.
+		//
+		// There is no known transition for the following transitions so we default
+		// to not triggering a re-enter of the component.
+		// - HooksDispatcherOnMount  -> HooksDispatcherOnMount
+		// - HooksDispatcherOnMount  -> HooksDispatcherOnUpdate
+		// - HooksDispatcherOnUpdate -> HooksDispatcherOnUpdate
+		return false;
+	}
+}
+
+/**
+ * We are exiting a component render if the current dispatcher is a valid
+ * dispatcher and the next dispatcher is the ContextOnlyDispatcher.
+ */
+function isExitingComponentRender(
+	currentDispatcherType: DispatcherType,
+	nextDispatcherType: DispatcherType
+): boolean {
+	return Boolean(
+		currentDispatcherType & BrowserClientDispatcherType &&
+			nextDispatcherType & ContextOnlyDispatcherType
+	);
 }
 
 function WrapJsx<T>(jsx: T): T {

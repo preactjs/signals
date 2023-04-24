@@ -16,6 +16,9 @@ import {
 	memo,
 	StrictMode,
 	createRef,
+	useState,
+	useContext,
+	createContext,
 } from "react";
 
 import { renderToStaticMarkup } from "react-dom/server";
@@ -26,9 +29,11 @@ import {
 	checkHangingAct,
 	isReact16,
 	isProd,
-} from "./utils";
+	getConsoleErrorSpy,
+	checkConsoleErrorLogs,
+} from "../shared/utils";
 
-describe("@preact/signals-react", () => {
+describe("@preact/signals-react updating", () => {
 	let scratch: HTMLDivElement;
 	let root: Root;
 
@@ -40,12 +45,15 @@ describe("@preact/signals-react", () => {
 		scratch = document.createElement("div");
 		document.body.appendChild(scratch);
 		root = await createRoot(scratch);
+		getConsoleErrorSpy().resetHistory();
 	});
 
 	afterEach(async () => {
-		checkHangingAct();
 		await act(() => root.unmount());
 		scratch.remove();
+
+		checkConsoleErrorLogs();
+		checkHangingAct();
 	});
 
 	describe("Text bindings", () => {
@@ -330,6 +338,102 @@ describe("@preact/signals-react", () => {
 				`<pre><code>-1</code><code>${count.value * 2}</code></pre>`
 			);
 		});
+
+		it("should not fail when a component calls setState while rendering", async () => {
+			let increment: () => void;
+			function App() {
+				const [state, setState] = useState(0);
+				increment = () => setState(state + 1);
+
+				if (state > 0 && state < 2) {
+					setState(state + 1);
+				}
+
+				return <div>{state}</div>;
+			}
+
+			await render(<App />);
+			expect(scratch.innerHTML).to.equal("<div>0</div>");
+
+			await act(() => {
+				increment();
+			});
+			expect(scratch.innerHTML).to.equal("<div>2</div>");
+		});
+
+		it("should not fail when a component calls setState multiple times while rendering", async () => {
+			let increment: () => void;
+			function App() {
+				const [state, setState] = useState(0);
+				increment = () => setState(state + 1);
+
+				if (state > 0 && state < 5) {
+					setState(state + 1);
+				}
+
+				return <div>{state}</div>;
+			}
+
+			await render(<App />);
+			expect(scratch.innerHTML).to.equal("<div>0</div>");
+
+			await act(() => {
+				increment();
+			});
+			expect(scratch.innerHTML).to.equal("<div>5</div>");
+		});
+
+		it("should not fail when a component only uses state-less hooks", async () => {
+			// This test is suppose to trigger a condition in React where the
+			// HooksDispatcherOnMountWithHookTypesInDEV is used. This dispatcher is
+			// used in the development build of React if a component has hook types
+			// defined but no memoizedState, meaning no stateful hooks (e.g. useState)
+			// are used. `useContext` is an example of a state-less hook because it
+			// does not mount any hook state onto the fiber's memoizedState field.
+			//
+			// However, as of writing, because our react adapter inserts a
+			// useSyncExternalStore into all components, all components have memoized
+			// state and so this condition is never hit. However, I'm leaving the test
+			// to capture this unique behavior to hopefully catch any errors caused by
+			// not understanding or handling this in the future.
+
+			const sig = signal(0);
+			const MyContext = createContext(0);
+
+			function Child() {
+				const value = useContext(MyContext);
+				return (
+					<div>
+						{sig} {value}
+					</div>
+				);
+			}
+
+			let updateContext: () => void;
+			function App() {
+				const [value, setValue] = useState(0);
+				updateContext = () => setValue(value + 1);
+
+				return (
+					<MyContext.Provider value={value}>
+						<Child />
+					</MyContext.Provider>
+				);
+			}
+
+			await render(<App />);
+			expect(scratch.innerHTML).to.equal("<div>0 0</div>");
+
+			await act(() => {
+				sig.value++;
+			});
+			expect(scratch.innerHTML).to.equal("<div>1 0</div>");
+
+			await act(() => {
+				updateContext();
+			});
+			expect(scratch.innerHTML).to.equal("<div>1 1</div>");
+		});
 	});
 
 	describe("useSignal()", () => {
@@ -479,7 +583,9 @@ describe("@preact/signals-react", () => {
 			expect(spy).to.have.been.calledOnceWith("foo", child);
 			spy.resetHistory();
 
-			await render(null);
+			await act(() => {
+				root.unmount();
+			});
 
 			expect(scratch.innerHTML).to.equal("");
 			expect(spy).not.to.have.been.called;
