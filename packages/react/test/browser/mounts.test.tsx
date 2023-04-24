@@ -1,11 +1,9 @@
-import { mountSignalsTests } from "../shared/mounting";
-import {
-	Root,
-	createRoot,
-	act,
-	getConsoleErrorSpy,
-	checkConsoleErrorLogs,
-} from "../shared/utils";
+import React, { createElement } from "react";
+import * as signalsReact from "@preact/signals-react";
+import { mountSignalsTests } from "../../../../test/shared/mounting";
+import { Root, createRoot, act } from "../shared/utils";
+
+const { signal } = signalsReact;
 
 describe("@preact/signals-react mounting", () => {
 	let scratch: HTMLDivElement;
@@ -20,13 +18,25 @@ describe("@preact/signals-react mounting", () => {
 		scratch = document.createElement("div");
 		document.body.appendChild(scratch);
 		root = await createRoot(scratch);
-		getConsoleErrorSpy().resetHistory();
 	});
 
 	afterEach(async () => {
 		scratch.remove();
-		checkConsoleErrorLogs();
 	});
 
-	mountSignalsTests(render);
+	mountSignalsTests(React, signalsReact, render);
+
+	it("should properly mount in strict mode", async () => {
+		const sig = signal(-1);
+
+		const Test = () => <p>{sig.value}</p>;
+		const App = () => (
+			<React.StrictMode>
+				<Test />
+			</React.StrictMode>
+		);
+
+		const html = await render(<App />);
+		expect(html).to.equal("<p>-1</p>");
+	});
 });

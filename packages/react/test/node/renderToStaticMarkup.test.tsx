@@ -1,12 +1,14 @@
-import { signal, useSignalEffect } from "@preact/signals-react";
+import * as signalsReact from "@preact/signals-react";
 import { expect } from "chai";
-import { createElement } from "react";
+import React, { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import sinon from "sinon";
-import { mountSignalsTests } from "../shared/mounting";
+import { mountSignalsTests } from "../../../../test/shared/mounting";
 
 describe("renderToStaticMarkup", () => {
-	mountSignalsTests(renderToStaticMarkup);
+	const { signal, useSignalEffect } = signalsReact;
+
+	mountSignalsTests(React, signalsReact, renderToStaticMarkup);
 
 	it("should not invoke useSignalEffect", async () => {
 		const spy = sinon.spy();

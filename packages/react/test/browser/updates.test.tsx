@@ -23,14 +23,16 @@ import {
 
 import { renderToStaticMarkup } from "react-dom/server";
 import {
+	getConsoleErrorSpy,
+	checkConsoleErrorLogs,
+} from "../../../../test/utils";
+import {
 	createRoot,
 	Root,
 	act,
 	checkHangingAct,
 	isReact16,
 	isProd,
-	getConsoleErrorSpy,
-	checkConsoleErrorLogs,
 } from "../shared/utils";
 
 describe("@preact/signals-react updating", () => {

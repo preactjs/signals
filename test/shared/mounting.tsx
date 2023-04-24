@@ -1,20 +1,18 @@
 // @ts-ignore-next-line
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
-import {
-	signal,
-	computed,
-	useComputed,
-	useSignal,
-} from "@preact/signals-react";
 import { expect } from "chai";
-import { createElement, useReducer, StrictMode, useState } from "react";
-
-import { getConsoleErrorSpy, checkConsoleErrorLogs } from "./utils";
+import { getConsoleErrorSpy, checkConsoleErrorLogs } from "../utils";
+import { SignalLibrary, VDomLibrary } from "../types";
 
 export function mountSignalsTests(
+	vdomLibrary: VDomLibrary,
+	signalLibrary: SignalLibrary,
 	render: (element: JSX.Element) => string | Promise<string>
 ) {
+	const { createElement, useReducer, useState } = vdomLibrary;
+	const { signal, computed, useComputed, useSignal } = signalLibrary;
+
 	beforeEach(async () => {
 		getConsoleErrorSpy().resetHistory();
 	});
@@ -76,20 +74,6 @@ export function mountSignalsTests(
 			} catch (e: any) {
 				expect.fail(e.stack);
 			}
-		});
-
-		it("should properly mount in strict mode", async () => {
-			const sig = signal(-1);
-
-			const Test = () => <p>{sig.value}</p>;
-			const App = () => (
-				<StrictMode>
-					<Test />
-				</StrictMode>
-			);
-
-			const html = await render(<App />);
-			expect(html).to.equal("<p>-1</p>");
 		});
 
 		it("should correctly mount components that have useReducer()", async () => {
