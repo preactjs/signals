@@ -142,12 +142,12 @@ importers:
     specifiers:
       '@preact/signals-core': workspace:^1.2.3
       preact: 10.9.0
-      preact-render-to-string: ^5.2.5
+      preact-render-to-string: ^6.0.2
     dependencies:
       '@preact/signals-core': link:../core
     devDependencies:
       preact: 10.9.0
-      preact-render-to-string: 5.2.6_preact@10.9.0
+      preact-render-to-string: 6.0.2_preact@10.9.0
 
   packages/react:
     specifiers:
@@ -6215,8 +6215,8 @@ packages:
       pretty-format: 3.8.0
     dev: false
 
-  /preact-render-to-string/5.2.6_preact@10.9.0:
-    resolution: {integrity: sha512-JyhErpYOvBV1hEPwIxc/fHWXPfnEGdRKxc8gFdAZ7XV4tlzyzG847XAyEZqoDnynP88akM4eaHcSOzNcLWFguw==}
+  /preact-render-to-string/6.0.2_preact@10.9.0:
+    resolution: {integrity: sha512-/dls6xmcFc8PvnCVke5Hu5ll70pZZu+jZuvw3i/ya2CNu6B0ev9F937+oFyzdlNKVp68III89oYMbE6dcmuyRA==}
     peerDependencies:
       preact: '>=10'
     dependencies:

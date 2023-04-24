@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import sinon from "sinon";
 import { mountSignalsTests } from "../../../../test/shared/mounting";
 
-describe("renderToStaticMarkup", () => {
+describe("@preact/signals-react renderToStaticMarkup", () => {
 	const { signal, useSignalEffect } = signalsReact;
 
 	mountSignalsTests(React, signalsReact, renderToStaticMarkup);
