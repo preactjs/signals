@@ -10,6 +10,14 @@ describe("@preact/signals-react renderToStaticMarkup", () => {
 
 	mountSignalsTests(React, signalsReact, renderToStaticMarkup);
 
+	it("should encode HTML entities", async () => {
+		const sig = signal(`hello & " <p>world!</p>`);
+		const html = renderToStaticMarkup(<p>{sig}</p>);
+		expect(html).to.equal(
+			`<p>hello &amp; &quot; &lt;p&gt;world!&lt;/p&gt;</p>`
+		);
+	});
+
 	it("should not invoke useSignalEffect", async () => {
 		const spy = sinon.spy();
 		const sig = signal("foo");

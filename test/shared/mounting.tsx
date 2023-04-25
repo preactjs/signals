@@ -39,6 +39,24 @@ export function mountSignalsTests(
 			const html = await render(<span>{comp}</span>);
 			expect(html).to.equal("<span>test test</span>");
 		});
+
+		it("should render numbers as text", async () => {
+			const sig = signal(0);
+			const html = await render(<p>{sig}</p>);
+			expect(html).to.equal("<p>0</p>");
+		});
+
+		it("should not render booleans", async () => {
+			const a = signal(true);
+			const b = signal(false);
+			const html = await render(
+				<div>
+					<p>{a}</p>
+					<p>{b}</p>
+				</div>
+			);
+			expect(html).to.equal("<div><p></p><p></p></div>");
+		});
 	});
 
 	describe("mount component bindings", () => {
@@ -163,6 +181,46 @@ export function mountSignalsTests(
 
 			const html2 = await render(<App />);
 			expect(html2).to.equal("<div>1<button>Increment</button></div>");
+		});
+	});
+
+	describe("useComputed()", () => {
+		it("should render computed signals", async () => {
+			function App() {
+				const name = useSignal("Bob");
+				const greeting = useComputed(() => `Hello ${name}!`);
+
+				return (
+					<div>
+						<p>{name}</p>
+						<h1>{greeting}</h1>
+					</div>
+				);
+			}
+
+			expect(await render(<App />)).to.equal(
+				`<div><p>Bob</p><h1>Hello Bob!</h1></div>`
+			);
+		});
+
+		it("should render updated values for mutated computed signals", async () => {
+			function App() {
+				const name = useSignal("Bob");
+				const greeting = useComputed(() => `Hello ${name}!`);
+
+				name.value = "Alice";
+
+				return (
+					<div>
+						<p>{name}</p>
+						<h1>{greeting}</h1>
+					</div>
+				);
+			}
+
+			expect(await render(<App />)).to.equal(
+				`<div><p>Alice</p><h1>Hello Alice!</h1></div>`
+			);
 		});
 	});
 }
