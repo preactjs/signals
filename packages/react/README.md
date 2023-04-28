@@ -1,4 +1,3 @@
-
 # Signals
 
 Signals is a performant state management library with two primary goals:
@@ -15,16 +14,18 @@ npm install @preact/signals-react
 ```
 
 - [Guide / API](../../README.md#guide--api)
-	- [`signal(initialValue)`](../../README.md#signalinitialvalue)
-		- [`signal.peek()`](../../README.md#signalpeek)
-	- [`computed(fn)`](../../README.md#computedfn)
-	- [`effect(fn)`](../../README.md#effectfn)
-	- [`batch(fn)`](../../README.md#batchfn)
+  - [`signal(initialValue)`](../../README.md#signalinitialvalue)
+    - [`signal.peek()`](../../README.md#signalpeek)
+  - [`computed(fn)`](../../README.md#computedfn)
+  - [`effect(fn)`](../../README.md#effectfn)
+  - [`batch(fn)`](../../README.md#batchfn)
 - [React Integration](#react-integration)
-	- [Hooks](#hooks)
+  - [Hooks](#hooks)
 - [License](#license)
 
 ## React Integration
+
+> Note: The React integration plugs into some React internals and may break unexpectedly in future versions of React. If you are using Signals with React and encounter errors such as "Rendered more hooks than during previous render", "Should have a queue. This is likely a bug in React." or "Cannot redefine property: createElement" please open an issue here.
 
 The React integration can be installed via:
 
@@ -68,4 +69,3 @@ function Counter() {
 ## License
 
 `MIT`, see the [LICENSE](../../LICENSE) file.
-
