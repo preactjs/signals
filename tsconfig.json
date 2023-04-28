@@ -10,10 +10,17 @@
     "jsxFragmentFactory": "Fragment",
     "stripInternal": true,
     "noUnusedLocals": true,
+    "noEmit": true,
     "paths": {
       "@preact/signals-core": ["./packages/core/src/index.ts"],
       "@preact/signals": ["./packages/preact/src/index.ts"],
       "@preact/signals-react": ["./packages/react/src/index.ts"]
     }
-  }
+  },
+  "include": [
+    "packages/*/src/**/*",
+    "packages/*/test/**/*",
+    "test/**/*",
+    "global.d.ts"
+  ]
 }
