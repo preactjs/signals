@@ -23,7 +23,7 @@ describe("signal", () => {
 
 	it("should support JSON.Stringify()", () => {
 		const s = signal(123);
-		expect(JSON.stringify({ s })).equal(JSON.stringify({ s: 123}));
+		expect(JSON.stringify({ s })).equal(JSON.stringify({ s: 123 }));
 	});
 
 	it("should support .valueOf()", () => {
