@@ -17,10 +17,5 @@
       "@preact/signals-react": ["./packages/react/src/index.ts"]
     }
   },
-  "include": [
-    "packages/*/src/**/*",
-    "packages/*/test/**/*",
-    "test/**/*",
-    "global.d.ts"
-  ]
+  "exclude": ["docs", "packages/*/dist/**"]
 }

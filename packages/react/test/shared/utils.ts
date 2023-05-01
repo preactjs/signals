@@ -112,7 +112,8 @@ export function checkConsoleErrorLogs(): void {
 	if (errorSpy.called) {
 		let message: string;
 		if (errorSpy.firstCall.args[0].toString().includes("%s")) {
-			message = consoleFormat(...errorSpy.firstCall.args);
+			const firstArg = errorSpy.firstCall.args[0];
+			message = consoleFormat(firstArg, ...errorSpy.firstCall.args.slice(1));
 		} else {
 			message = errorSpy.firstCall.args.join(" ");
 		}

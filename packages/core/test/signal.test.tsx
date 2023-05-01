@@ -873,7 +873,7 @@ describe("computed()", () => {
 	});
 
 	it("should disallow setting signal's value", () => {
-		const v: number = 123;
+		const v = 123;
 		const a: Signal = signal(v);
 		const c: Signal = computed(() => a.value++);
 
