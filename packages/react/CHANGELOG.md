@@ -1,5 +1,15 @@
 # @preact/signals-react
 
+## 1.3.2
+
+### Patch Changes
+
+- [#358](https://github.com/preactjs/signals/pull/358) [`08ed3a0`](https://github.com/preactjs/signals/commit/08ed3a02a2291ad1e18389674d8ac20678064723) Thanks [@andrewiggins](https://github.com/andrewiggins)! - Add note to Readme about tradeoffs in current React integration
+
+* [#355](https://github.com/preactjs/signals/pull/355) [`21c8ee9`](https://github.com/preactjs/signals/commit/21c8ee98070a8bda05095dc91b64d2fe54042fb3) Thanks [@andrewiggins](https://github.com/andrewiggins)! - Fix React adapter in SSR and when rerendering
+
+- [#352](https://github.com/preactjs/signals/pull/352) [`a2b7320`](https://github.com/preactjs/signals/commit/a2b7320ee5829f58efaee5f7b20d993f35f09d2a) Thanks [@rschristian](https://github.com/rschristian)! - Uses full file path on useSyncExternalStore import, fixing a possible resolution issue in some build tools.
+
 ## 1.3.1
 
 ### Patch Changes
