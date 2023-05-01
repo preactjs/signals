@@ -1,17 +1,17 @@
 {
-	"name": "preact/signals",
-	"build": {
-		"dockerfile": "Dockerfile"
-	},
-	"customizations": {
-		"vscode": {
-			"settings": {
-				"editor.defaultFormatter": "esbenp.prettier-vscode",
-				"explorer.excludeGitIgnore": true
-			},
-			"extensions": ["dbaeumer.vscode-eslint", "esbenp.prettier-vscode"]
-		}
-	},
-	"postCreateCommand": "pnpm i",
-	"remoteUser": "node"
+  "name": "preact/signals",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "explorer.excludeGitIgnore": true
+      },
+      "extensions": ["dbaeumer.vscode-eslint", "esbenp.prettier-vscode"]
+    }
+  },
+  "postCreateCommand": "pnpm i",
+  "remoteUser": "node"
 }

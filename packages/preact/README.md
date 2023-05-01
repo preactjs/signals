@@ -1,4 +1,3 @@
-
 # Signals
 
 Signals is a performant state management library with two primary goals:
@@ -15,15 +14,15 @@ npm install @preact/signals
 ```
 
 - [Guide / API](../../README.md#guide--api)
-	- [`signal(initialValue)`](../../README.md#signalinitialvalue)
-		- [`signal.peek()`](../../README.md#signalpeek)
-	- [`computed(fn)`](../../README.md#computedfn)
-	- [`effect(fn)`](../../README.md#effectfn)
-	- [`batch(fn)`](../../README.md#batchfn)
+  - [`signal(initialValue)`](../../README.md#signalinitialvalue)
+    - [`signal.peek()`](../../README.md#signalpeek)
+  - [`computed(fn)`](../../README.md#computedfn)
+  - [`effect(fn)`](../../README.md#effectfn)
+  - [`batch(fn)`](../../README.md#batchfn)
 - [Preact Integration](#preact-integration)
-	- [Hooks](#hooks)
-	- [Rendering optimizations](#rendering-optimizations)
-		- [Attribute optimization (experimental)](#attribute-optimization-experimental)
+  - [Hooks](#hooks)
+  - [Rendering optimizations](#rendering-optimizations)
+    - [Attribute optimization (experimental)](#attribute-optimization-experimental)
 - [License](#license)
 
 ## Preact Integration

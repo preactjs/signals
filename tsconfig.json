@@ -11,15 +11,9 @@
     "stripInternal": true,
     "noUnusedLocals": true,
     "paths": {
-      "@preact/signals-core": [
-        "./packages/core/src/index.ts"
-      ],
-      "@preact/signals": [
-        "./packages/preact/src/index.ts"
-      ],
-      "@preact/signals-react": [
-        "./packages/react/src/index.ts"
-      ]
+      "@preact/signals-core": ["./packages/core/src/index.ts"],
+      "@preact/signals": ["./packages/preact/src/index.ts"],
+      "@preact/signals-react": ["./packages/react/src/index.ts"]
     }
   }
 }

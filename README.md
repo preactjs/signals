@@ -1,4 +1,3 @@
-
 # Signals
 
 Signals is a performant state management library with two primary goals:
@@ -22,17 +21,17 @@ npm install @preact/signals-core
 ```
 
 - [Guide / API](#guide--api)
-	- [`signal(initialValue)`](#signalinitialvalue)
-		- [`signal.peek()`](#signalpeek)
-	- [`computed(fn)`](#computedfn)
-	- [`effect(fn)`](#effectfn)
-	- [`batch(fn)`](#batchfn)
+  - [`signal(initialValue)`](#signalinitialvalue)
+    - [`signal.peek()`](#signalpeek)
+  - [`computed(fn)`](#computedfn)
+  - [`effect(fn)`](#effectfn)
+  - [`batch(fn)`](#batchfn)
 - [Preact Integration](./packages/preact/README.md#preact-integration)
-	- [Hooks](./packages/preact/README.md#hooks)
-	- [Rendering optimizations](./packages/preact/README.md#rendering-optimizations)
-		- [Attribute optimization (experimental)](./packages/preact/README.md#attribute-optimization-experimental)
+  - [Hooks](./packages/preact/README.md#hooks)
+  - [Rendering optimizations](./packages/preact/README.md#rendering-optimizations)
+    - [Attribute optimization (experimental)](./packages/preact/README.md#attribute-optimization-experimental)
 - [React Integration](./packages/react/README.md#react-integration)
-	- [Hooks](./packages/react/README.md#hooks)
+  - [Hooks](./packages/react/README.md#hooks)
 - [License](#license)
 
 ## Guide / API

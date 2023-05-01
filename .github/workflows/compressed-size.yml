@@ -19,7 +19,6 @@ jobs:
       - name: compressed-size-action
         uses: preactjs/compressed-size-action@v2
         with:
-          pattern: '{packages/*/dist/!(*.module|*.min).{js,mjs},docs/dist/**/*.{js,css}}'
-          build-script: 'ci:build'
+          pattern: "{packages/*/dist/!(*.module|*.min).{js,mjs},docs/dist/**/*.{js,css}}"
+          build-script: "ci:build"
           strip-hash: "[.-](\\w{8,9})\\.(?:js|css)$"
-
