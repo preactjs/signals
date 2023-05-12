@@ -139,6 +139,24 @@ describe("@preact/signals-react updating", () => {
 			expect(scratch.textContent).to.equal("bar");
 		});
 
+		it("should subscribe to signals passed as props to DOM elements", async () => {
+			const className = signal("foo");
+			function App() {
+				// @ts-expect-error React types don't allow signals on DOM elements :/
+				return <div className={className} />;
+			}
+
+			await render(<App />);
+
+			expect(scratch.innerHTML).to.equal('<div class="foo"></div>');
+
+			await act(() => {
+				className.value = "bar";
+			});
+
+			expect(scratch.innerHTML).to.equal('<div class="bar"></div>');
+		});
+
 		it("should activate signal accessed in render", async () => {
 			const sig = signal(null);
 
