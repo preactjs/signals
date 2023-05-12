@@ -4,5 +4,6 @@
     "jsx": "react-jsx",
     "jsxImportSource": "preact",
     "module": "esnext"
-  }
+  },
+  "exclude": ["node_modules", "dist"]
 }

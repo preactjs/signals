@@ -1,8 +1,6 @@
 import { signal, useSignalEffect } from "@preact/signals-react";
-import { expect } from "chai";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import sinon from "sinon";
 import { mountSignalsTests } from "../shared/mounting";
 
 describe("renderToStaticMarkup", () => {

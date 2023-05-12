@@ -1,5 +1,13 @@
 // import register from "@babel/register";
 const register = require("@babel/register").default;
+const chai = require("chai");
+const sinon = require("sinon");
+const sinonChai = require("sinon-chai");
+
+globalThis.expect = chai.expect;
+// @ts-expect-error Not sure why TS isn't picking up the declared sinon global from karma-chai-sinon
+globalThis.sinon = sinon;
+chai.use(sinonChai);
 
 const coverage = String(process.env.COVERAGE) === "true";
 
