@@ -352,6 +352,17 @@ export function useSignalEffect(cb: () => void | (() => void)) {
 }
 
 /**
+ * This hook is used for instances where a signal input can change across renders
+ * useSignal(), but rerendering with a different value arg updates the signal.
+ * Useful for: const a = useLiveSignal(props.a)
+ */
+export function useLiveSignal<T>(value: Signal<T>): Signal<Signal<T>> {
+	const s = useSignal(value);
+	if (s.peek() !== value) s.value = value;
+	return s;
+  }
+
+/**
  * @todo Determine which Reactive implementation we'll be using.
  * @internal
  */

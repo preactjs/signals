@@ -67,6 +67,38 @@ function Counter() {
 }
 ```
 
+#### Signal references
+
+When you are passing signals to components and you change the reference then the `useComputed` or `useSignalEfect`
+relying on these won't notice the difference, for that we have `useLiveSignal`.
+
+```js
+import { useComputed, useLiveSignal, useSignal } from '@preact/signals';
+
+// The signal representing props.date can change
+// when i.e. someone presses a butotn
+function Todo({ date }) {
+  const liveDateSignal = useLiveSignal(date);
+  const formattedDate = useComputed(() => formatDate(liveDateSignal.value.value));
+  return <span>{formattedDate}</span>;
+}
+
+function App() {
+  const dateA = useSignal(0);
+  const dateB = useSignal(1);
+  const [on, setOn] = useState(true);
+
+  return (
+    <main>
+      <button onClick={() => setDisplayed(!on)}>
+        Toggle
+      </button>
+    	<Todo date={on ? dateA : dateB} />
+    </main>
+  );
+}
+```
+
 ### Rendering optimizations
 
 The Preact adapter ships with several optimizations it can apply out of the box to skip virtual-dom rendering entirely. If you pass a signal directly into JSX, it will bind directly to the DOM `Text` node that is created and update that whenever the signal changes.
