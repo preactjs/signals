@@ -1,59 +1,131 @@
-import type {
+import {
 	types as BabelTypes,
 	template as BabelTemplate,
 	PluginObj,
+	PluginPass,
+	NodePath,
+	template,
 } from "@babel/core";
+import { isModule, addNamed, addNamespace } from "@babel/helper-module-imports";
 
 interface PluginArgs {
 	types: typeof BabelTypes;
 	template: typeof BabelTemplate;
 }
 
+const importSource = "@preact/signals-react/runtime";
+const importName = "useSignals";
+const getHookIdentifier = "getHookIdentifier";
+
+const get = (pass: PluginPass, name: any) =>
+	pass.get(`@preact/signals-react-transform/${name}`);
+const set = (pass: PluginPass, name: string, v: any) =>
+	pass.set(`@preact/signals-react-transform/${name}`, v);
+
+type FunctionLikeNodePath =
+	| NodePath<BabelTypes.ArrowFunctionExpression>
+	| NodePath<BabelTypes.FunctionDeclaration>;
+
+function isReactComponent(path: FunctionLikeNodePath): boolean {
+	if (path.node.type === "ArrowFunctionExpression") {
+		return (
+			path.parentPath.node.type === "VariableDeclarator" &&
+			path.parentPath.node.id.type === "Identifier" &&
+			path.parentPath.node.id.name.match(/^[A-Z]/) !== null
+		);
+	} else if (path.node.type === "FunctionDeclaration") {
+		return path.node.id?.name?.match(/^[A-Z]/) !== null;
+	} else {
+		return false;
+	}
+}
+
+const tryCatchTemplate = template`var STOP_TRACKING_IDENTIFIER = HOOK_IDENTIFIER();
+try {
+	BODY
+} finally {
+	STOP_TRACKING_IDENTIFIER();
+}`;
+
 export default function signalsTransform({ types: t }: PluginArgs): PluginObj {
 	return {
 		name: "@preact/signals-transform",
 		visitor: {
-			ArrowFunctionExpression(path) {
-				const parentNode = path.parentPath.node;
+			Program: {
+				enter(path, state) {
+					// TODO: Comment why we do this.
+					set(
+						state,
+						getHookIdentifier,
+						createImportLazily(t, state, path, importName, importSource)
+					);
+				},
+			},
+			ArrowFunctionExpression(path, state) {
+				if (isReactComponent(path)) {
+					const stopTrackingIdentifier =
+						path.scope.generateUidIdentifier("stopTracking");
 
-				// Check if the arrow function is a React component.
-				// This is a simplification, actual check might be more involved.
-				if (
-					t.isVariableDeclarator(parentNode) &&
-					t.isIdentifier(parentNode.id) &&
-					parentNode.id.name.match(/^[A-Z]/)
-				) {
-					const tryStatement = t.blockStatement([
-						t.tryStatement(
-							t.isBlockStatement(path.node.body)
-								? path.node.body // Preserve existing blocks from arrow function.
-								: // An arrow functions whose body is an expression (i.e. () =>
-								  // <div />) implicit returns the expression value. Since we are wrapping the
-								  // function body in a try/catch, we need to explicitly return the expression body.
-								  t.blockStatement([t.returnStatement(path.node.body)]),
-							null,
-							t.blockStatement([])
-						),
-					]);
-
-					path.node.body = tryStatement;
+					// TODO: Should I use replaceWith() instead?
+					path.node.body = t.blockStatement(
+						tryCatchTemplate({
+							STOP_TRACKING_IDENTIFIER: stopTrackingIdentifier,
+							HOOK_IDENTIFIER: get(state, getHookIdentifier)(),
+							BODY: t.isBlockStatement(path.node.body)
+								? path.node.body.body // TODO: Is it okay to elide the block statement here?
+								: t.returnStatement(path.node.body),
+						}) as BabelTypes.BlockStatement[]
+					);
 				}
 			},
 
-			FunctionDeclaration(path) {
-				const functionName = path.node.id?.name;
+			FunctionDeclaration(path, state) {
+				if (isReactComponent(path)) {
+					const stopTrackingIdentifier =
+						path.scope.generateUidIdentifier("stopTracking");
 
-				// Check if the function is a React component.
-				if (functionName?.match(/^[A-Z]/)) {
-					const tryStatement = t.tryStatement(
-						t.blockStatement(path.node.body.body),
-						null,
-						t.blockStatement([])
+					// TODO: Should I use replaceWith() instead?
+					path.node.body = t.blockStatement(
+						tryCatchTemplate({
+							STOP_TRACKING_IDENTIFIER: stopTrackingIdentifier,
+							HOOK_IDENTIFIER: get(state, getHookIdentifier)(),
+							BODY: path.node.body.body, // TODO: Is it okay to elide the block statement here?,
+						}) as BabelTypes.BlockStatement[]
 					);
-
-					path.node.body = t.blockStatement([tryStatement]);
 				}
 			},
 		},
+	};
+}
+
+function createImportLazily(
+	types: typeof BabelTypes,
+	pass: PluginPass,
+	path: NodePath<BabelTypes.Program>,
+	importName: string,
+	source: string
+) {
+	return () => {
+		if (isModule(path)) {
+			let reference = get(pass, `imports/${importName}`);
+			if (reference) return types.cloneNode(reference);
+			reference = addNamed(path, importName, source, {
+				importedInterop: "uncompiled",
+				importPosition: "after",
+			});
+			set(pass, `imports/${importName}`, reference);
+			return reference;
+		} else {
+			let reference = get(pass, `requires/${source}`);
+			if (reference) {
+				reference = types.cloneNode(reference);
+			} else {
+				reference = addNamespace(path, source, {
+					importedInterop: "uncompiled",
+				});
+				set(pass, `requires/${source}`, reference);
+			}
+			return types.memberExpression(reference, types.identifier(importName));
+		}
 	};
 }

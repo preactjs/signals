@@ -54,10 +54,14 @@ describe("React Signals Babel Transform", () => {
 		`;
 
 		const expectedOutput = `
+			import { useSignals as _useSignals } from "@preact/signals-react/runtime";
 			const MyComponent = () => {
+			var _stopTracking = _useSignals();
 			try {
 				return <div>Hello World</div>;
-			} finally {}
+			} finally {
+				_stopTracking();
+			}
 			};
 		`;
 
@@ -70,10 +74,14 @@ describe("React Signals Babel Transform", () => {
 		`;
 
 		const expectedOutput = `
+			import { useSignals as _useSignals } from "@preact/signals-react/runtime";
 			const MyComponent = () => {
+			var _stopTracking = _useSignals();
 			try {
 				return <div>Hello World</div>;
-			} finally {}
+			} finally {
+				_stopTracking();
+			}
 			};
 		`;
 
@@ -88,10 +96,14 @@ describe("React Signals Babel Transform", () => {
 		`;
 
 		const expectedOutput = `
+			import { useSignals as _useSignals } from "@preact/signals-react/runtime";
 			function MyComponent() {
+			var _stopTracking = _useSignals();
 			try {
 				return <div>Hello World</div>;
-			} finally {}
+			} finally {
+				_stopTracking();
+			}
 			}
 		`;
 
