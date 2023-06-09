@@ -254,7 +254,8 @@ module.exports = function (config) {
 
 		files: [
 			{
-				pattern: process.env.TESTS || "packages/*/test/**/*.test.tsx",
+				pattern:
+					process.env.TESTS || "packages/*/test/{,browser,shared}/*.test.tsx",
 				watched: false,
 				type: "js",
 			},
