@@ -189,6 +189,70 @@ describe("@preact/signals", () => {
 			rerender();
 			expect(spy).to.be.calledOnce;
 		});
+
+		it("should not subscribe to computed signals only created and not used", () => {
+			const sig = signal(0);
+			const childSpy = sinon.spy();
+			const parentSpy = sinon.spy();
+
+			function Child({ num }: { num: Signal<number> }) {
+				childSpy();
+				return <p>{num.value}</p>;
+			}
+
+			function Parent({ num }: { num: Signal<number> }) {
+				parentSpy();
+				const sig2 = useComputed(() => num.value + 1);
+				return <Child num={sig2} />;
+			}
+
+			render(<Parent num={sig} />, scratch);
+			expect(scratch.innerHTML).to.equal("<p>1</p>");
+			expect(parentSpy).to.be.calledOnce;
+			expect(childSpy).to.be.calledOnce;
+
+			sig.value += 1;
+			rerender();
+			expect(scratch.innerHTML).to.equal("<p>2</p>");
+			expect(parentSpy).to.be.calledOnce;
+			expect(childSpy).to.be.calledTwice;
+		});
+
+		it("should properly subscribe and unsubscribe to conditionally rendered computed signals ", () => {
+			const computedDep = signal(0);
+			const renderComputed = signal(true);
+			const renderSpy = sinon.spy();
+			const computer = sinon.spy(() => computedDep.value + 1);
+
+			function App() {
+				renderSpy();
+				const computed = useComputed(computer);
+				return renderComputed.value ? <p>{computed.value}</p> : null;
+			}
+
+			render(<App />, scratch);
+			expect(scratch.innerHTML).to.equal("<p>1</p>");
+			expect(renderSpy).to.be.calledOnce;
+			expect(computer).to.be.calledOnce;
+
+			computedDep.value += 1;
+			rerender();
+			expect(scratch.innerHTML).to.equal("<p>2</p>");
+			expect(renderSpy).to.be.calledTwice;
+			expect(computer).to.be.calledTwice;
+
+			renderComputed.value = false;
+			rerender();
+			expect(scratch.innerHTML).to.equal("");
+			expect(renderSpy).to.be.calledThrice;
+			expect(computer).to.be.calledTwice;
+
+			computedDep.value += 1;
+			rerender();
+			expect(scratch.innerHTML).to.equal("");
+			expect(renderSpy).to.be.calledThrice; // Should not be called again
+			expect(computer).to.be.calledTwice; // Should not be called again
+		});
 	});
 
 	describe("prop bindings", () => {

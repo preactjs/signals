@@ -642,6 +642,32 @@ describe("effect()", () => {
 		expect(spy).not.to.be.called;
 	});
 
+	it("should not rerun parent effect if a nested child effect's signal's value changes", () => {
+		const parentSignal = signal(0);
+		const childSignal = signal(0);
+
+		const parentEffect = sinon.spy(() => parentSignal.value);
+		const childEffect = sinon.spy(() => childSignal.value);
+
+		effect(() => {
+			parentEffect();
+			effect(childEffect);
+		});
+
+		expect(parentEffect).to.be.calledOnce;
+		expect(childEffect).to.be.calledOnce;
+
+		childSignal.value = 1;
+
+		expect(parentEffect).to.be.calledOnce;
+		expect(childEffect).to.be.calledTwice;
+
+		parentSignal.value = 1;
+
+		expect(parentEffect).to.be.calledTwice;
+		expect(childEffect).to.be.calledThrice;
+	});
+
 	// Test internal behavior depended on by Preact & React integrations
 	describe("internals", () => {
 		it("should pass in the effect instance in callback's `this`", () => {
