@@ -37,10 +37,14 @@ const getData = (node: DataContainer, name: string) =>
 
 type FunctionLikeNodePath =
 	| NodePath<BabelTypes.ArrowFunctionExpression>
+	| NodePath<BabelTypes.FunctionExpression>
 	| NodePath<BabelTypes.FunctionDeclaration>;
 
 function isReactComponent(path: FunctionLikeNodePath): boolean {
-	if (path.node.type === "ArrowFunctionExpression") {
+	if (
+		path.node.type === "ArrowFunctionExpression" ||
+		path.node.type === "FunctionExpression"
+	) {
 		return (
 			path.parentPath.node.type === "VariableDeclarator" &&
 			path.parentPath.node.id.type === "Identifier" &&
@@ -69,9 +73,9 @@ function hasLeadingSignalTrackingComment(path: NodePath) {
 function isOptedIntoSignalTracking(path: NodePath | null): boolean {
 	if (!path) return false;
 
-	// let result: boolean | undefined = false;
 	switch (path.node.type) {
 		case "ArrowFunctionExpression":
+		case "FunctionExpression":
 		case "FunctionDeclaration":
 		case "VariableDeclarator":
 		case "VariableDeclaration":
@@ -169,6 +173,35 @@ export default function signalsTransform(
 								BODY: t.isBlockStatement(path.node.body)
 									? path.node.body.body // TODO: Is it okay to elide the block statement here?
 									: t.returnStatement(path.node.body),
+							})
+						);
+
+						// Using replaceWith keeps the existing leading comments already so
+						// we'll clear our cloned node's leading comments to ensure they
+						// aren't duplicated in the output.
+						newFunction.leadingComments = [];
+
+						setData(path, alreadyTransformed, true);
+						path.replaceWith(newFunction);
+					}
+				},
+			},
+
+			FunctionExpression: {
+				exit(path, state) {
+					if (
+						getData(path, alreadyTransformed) !== true &&
+						shouldTransform(path, options)
+					) {
+						const stopTrackingIdentifier =
+							path.scope.generateUidIdentifier("stopTracking");
+
+						const newFunction = t.cloneNode(path.node);
+						newFunction.body = t.blockStatement(
+							tryCatchTemplate({
+								STOP_TRACKING_IDENTIFIER: stopTrackingIdentifier,
+								HOOK_IDENTIFIER: get(state, getHookIdentifier)(),
+								BODY: path.node.body.body, // TODO: Is it okay to elide the block statement here?
 							})
 						);
 

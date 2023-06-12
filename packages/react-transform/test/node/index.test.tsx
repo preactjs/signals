@@ -122,6 +122,30 @@ describe("React Signals Babel Transform - auto success", () => {
 
 		runTest(inputCode, expectedOutput);
 	});
+
+	it("wraps function expressions with try/finally", () => {
+		const inputCode = `
+			const MyComponent = function () {
+				signal.value;
+				return <div>Hello World</div>;
+			}
+		`;
+
+		const expectedOutput = `
+			import { useSignals as _useSignals } from "@preact/signals-react/runtime";
+			const MyComponent = function () {
+				var _stopTracking = _useSignals();
+				try {
+					signal.value;
+					return <div>Hello World</div>;
+				} finally {
+					_stopTracking();
+				}
+			};
+		`;
+
+		runTest(inputCode, expectedOutput);
+	});
 });
 
 describe("React Signals Babel Transform - manual success", () => {
@@ -267,7 +291,7 @@ describe("React Signals Babel Transform - manual success", () => {
 		runTest(inputCode, expectedOutput, { mode: "manual" });
 	});
 
-	it("wraps named exported variable declarations with leading JSDoc comment", () => {
+	it("wraps named exported variable declarations (arrow functions) with leading JSDoc comment", () => {
 		const inputCode = `
 			/** @trackSignals */
 			export const MyComponent = () => {
@@ -279,6 +303,30 @@ describe("React Signals Babel Transform - manual success", () => {
 			import { useSignals as _useSignals } from "@preact/signals-react/runtime";
 			/** @trackSignals */
 			export const MyComponent = () => {
+				var _stopTracking = _useSignals();
+				try {
+					return <div>Hello World</div>;
+				} finally {
+					_stopTracking();
+				}
+			};
+		`;
+
+		runTest(inputCode, expectedOutput, { mode: "manual" });
+	});
+
+	it("wraps named exported variable declarations (function expression) with leading JSDoc comment", () => {
+		const inputCode = `
+			/** @trackSignals */
+			export const MyComponent = function () {
+				return <div>Hello World</div>;
+			};
+		`;
+
+		const expectedOutput = `
+			import { useSignals as _useSignals } from "@preact/signals-react/runtime";
+			/** @trackSignals */
+			export const MyComponent = function () {
 				var _stopTracking = _useSignals();
 				try {
 					return <div>Hello World</div>;
@@ -318,6 +366,17 @@ describe("React Signals Babel Transform - no auto transform", () => {
 			function MyComponent() {
 				return <div>Hello World</div>;
 			}
+		`;
+
+		const expectedOutput = inputCode;
+		runTest(inputCode, expectedOutput);
+	});
+
+	it("does not wrap function expressions that don't use signals", () => {
+		const inputCode = `
+			const MyComponent = function () {
+				return <div>Hello World</div>;
+			};
 		`;
 
 		const expectedOutput = inputCode;
