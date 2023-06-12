@@ -63,7 +63,7 @@ function isValueMemberExpression(
 	);
 }
 
-const tryCatchTemplate = template`var STOP_TRACKING_IDENTIFIER = HOOK_IDENTIFIER();
+const tryCatchTemplate = template.statements`var STOP_TRACKING_IDENTIFIER = HOOK_IDENTIFIER();
 try {
 	BODY
 } finally {
@@ -76,7 +76,10 @@ export default function signalsTransform({ types: t }: PluginArgs): PluginObj {
 		visitor: {
 			Program: {
 				enter(path, state) {
-					// TODO: Comment why we do this.
+					// Following the pattern of babel-plugin-transform-react-jsx, we
+					// lazily create the import statement for the useSignalTracking hook.
+					// We create a function and store it in the PluginPass object, so that
+					// on the first usage of the hook, we can create the import statement.
 					set(
 						state,
 						getHookIdentifier,
@@ -103,7 +106,7 @@ export default function signalsTransform({ types: t }: PluginArgs): PluginObj {
 								BODY: t.isBlockStatement(path.node.body)
 									? path.node.body.body // TODO: Is it okay to elide the block statement here?
 									: t.returnStatement(path.node.body),
-							}) as BabelTypes.BlockStatement[]
+							})
 						);
 
 						setData(path, alreadyTransformed, true);
@@ -128,7 +131,7 @@ export default function signalsTransform({ types: t }: PluginArgs): PluginObj {
 								STOP_TRACKING_IDENTIFIER: stopTrackingIdentifier,
 								HOOK_IDENTIFIER: get(state, getHookIdentifier)(),
 								BODY: path.node.body.body, // TODO: Is it okay to elide the block statement here?,
-							}) as BabelTypes.BlockStatement[]
+							})
 						);
 
 						setData(path, alreadyTransformed, true);
@@ -138,9 +141,8 @@ export default function signalsTransform({ types: t }: PluginArgs): PluginObj {
 			},
 
 			MemberExpression(path) {
-				// Detect if this member expression is accessing a property called value.
 				if (isValueMemberExpression(path)) {
-					// TODO: Uhhh what if a hook accesses a signal that isn't used in the render body... Hmmmm...
+					// TODO: Uhhh what if a hook accesses a signal in render that isn't used in the render body but... Hmmmm...
 					const functionScope = path.scope.getFunctionParent();
 					if (functionScope) {
 						setData(functionScope, maybeUsesSignal, true);
