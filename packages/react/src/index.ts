@@ -18,105 +18,21 @@ import {
 	Signal,
 	type ReadonlySignal,
 } from "@preact/signals-core";
-import { useSyncExternalStore } from "use-sync-external-store/shim/index.js";
-import type { Effect, JsxRuntimeModule } from "./internal";
+import type { JsxRuntimeModule } from "./internal";
+import { setCurrentUpdater, usePreactSignalStore } from "./useSignalTracking";
 
 export { signal, computed, batch, effect, Signal, type ReadonlySignal };
 
 const Empty = [] as const;
 const ReactElemType = Symbol.for("react.element"); // https://github.com/facebook/react/blob/346c7d4c43a0717302d446da9e7423a8e28d8996/packages/shared/ReactSymbols.js#L15
 
-interface ReactDispatcher {
+export interface ReactDispatcher {
 	useRef: typeof React.useRef;
 	useCallback: typeof React.useCallback;
 	useReducer: typeof React.useReducer;
 	useSyncExternalStore: typeof React.useSyncExternalStore;
 	useEffect: typeof React.useEffect;
 	useImperativeHandle: typeof React.useImperativeHandle;
-}
-
-let finishUpdate: (() => void) | undefined;
-
-function setCurrentUpdater(updater?: Effect) {
-	// end tracking for the current update:
-	if (finishUpdate) finishUpdate();
-	// start tracking the new update:
-	finishUpdate = updater && updater._start();
-}
-
-interface EffectStore {
-	updater: Effect;
-	subscribe(onStoreChange: () => void): () => void;
-	getSnapshot(): number;
-}
-
-/**
- * A redux-like store whose store value is a positive 32bit integer (a 'version').
- *
- * React subscribes to this store and gets a snapshot of the current 'version',
- * whenever the 'version' changes, we tell React it's time to update the component (call 'onStoreChange').
- *
- * How we achieve this is by creating a binding with an 'effect', when the `effect._callback' is called,
- * we update our store version and tell React to re-render the component ([1] We don't really care when/how React does it).
- *
- * [1]
- * @see https://react.dev/reference/react/useSyncExternalStore
- * @see https://github.com/reactjs/rfcs/blob/main/text/0214-use-sync-external-store.md
- */
-function createEffectStore(): EffectStore {
-	let updater!: Effect;
-	let version = 0;
-	let onChangeNotifyReact: (() => void) | undefined;
-
-	let unsubscribe = effect(function (this: Effect) {
-		updater = this;
-	});
-	updater._callback = function () {
-		version = (version + 1) | 0;
-		if (onChangeNotifyReact) onChangeNotifyReact();
-	};
-
-	return {
-		updater,
-		subscribe(onStoreChange) {
-			onChangeNotifyReact = onStoreChange;
-
-			return function () {
-				/**
-				 * Rotate to next version when unsubscribing to ensure that components are re-run
-				 * when subscribing again.
-				 *
-				 * In StrictMode, 'memo'-ed components seem to keep a stale snapshot version, so
-				 * don't re-run after subscribing again if the version is the same as last time.
-				 *
-				 * Because we unsubscribe from the effect, the version may not change. We simply
-				 * set a new initial version in case of stale snapshots here.
-				 */
-				version = (version + 1) | 0;
-				onChangeNotifyReact = undefined;
-				unsubscribe();
-			};
-		},
-		getSnapshot() {
-			return version;
-		},
-	};
-}
-
-/**
- * Custom hook to create the effect to track signals used during render and
- * subscribe to changes to rerender the component when the signals change
- */
-function usePreactSignalStore(nextDispatcher: ReactDispatcher): EffectStore {
-	const storeRef = nextDispatcher.useRef<EffectStore>();
-	if (storeRef.current == null) {
-		storeRef.current = createEffectStore();
-	}
-
-	const store = storeRef.current;
-	useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
-
-	return store;
 }
 
 // In order for signals to work in React, we need to observe what signals a
