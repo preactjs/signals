@@ -13,6 +13,7 @@ interface PluginArgs {
 	template: typeof BabelTemplate;
 }
 
+const commentIdentifier = "@trackSignals";
 const dataNamespace = "@preact/signals-react-transform";
 const importSource = "@preact/signals-react/runtime";
 const importName = "useSignals";
@@ -52,6 +53,57 @@ function isReactComponent(path: FunctionLikeNodePath): boolean {
 	}
 }
 
+function hasLeadingComment(
+	path: NodePath,
+	comment: string
+): path is NodePath & { node: { leadingComments: any[] } } {
+	return (
+		path.node.leadingComments?.some(c => c.value.includes(comment)) ?? false
+	);
+}
+
+function hasLeadingSignalTrackingComment(path: NodePath) {
+	return hasLeadingComment(path, commentIdentifier);
+}
+
+function isOptedIntoSignalTracking(path: NodePath | null): boolean {
+	if (!path) return false;
+
+	// let result: boolean | undefined = false;
+	switch (path.node.type) {
+		case "ArrowFunctionExpression":
+		case "FunctionDeclaration":
+		case "VariableDeclarator":
+		case "VariableDeclaration":
+			return (
+				hasLeadingSignalTrackingComment(path) ||
+				isOptedIntoSignalTracking(path.parentPath)
+			);
+		case "ExportDefaultDeclaration":
+		case "ExportNamedDeclaration":
+			return hasLeadingSignalTrackingComment(path);
+		default:
+			return false;
+	}
+}
+
+function shouldTransform(
+	path: FunctionLikeNodePath,
+	options: PluginOptions
+): boolean {
+	if (options.mode === "auto") {
+		return (
+			(isReactComponent(path) &&
+				getData(path.scope, maybeUsesSignal) === true) ||
+			isOptedIntoSignalTracking(path)
+		);
+	} else if (options.mode === "manual") {
+		return isOptedIntoSignalTracking(path);
+	} else {
+		throw new Error(`Invalid mode: ${options.mode}`);
+	}
+}
+
 function isValueMemberExpression(
 	path: NodePath<BabelTypes.MemberExpression>
 ): boolean {
@@ -70,7 +122,19 @@ try {
 	STOP_TRACKING_IDENTIFIER();
 }`;
 
-export default function signalsTransform({ types: t }: PluginArgs): PluginObj {
+export interface PluginOptions {
+	/**
+	 * Specify the mode to use:
+	 * - `auto`: Automatically wrap all components that use signals.
+	 * - `manual`: Only wrap components that are annotated with `@trackSignals` in a JSX comment.
+	 */
+	mode: "auto" | "manual";
+}
+
+export default function signalsTransform(
+	{ types: t }: PluginArgs,
+	options: PluginOptions
+): PluginObj {
 	return {
 		name: "@preact/signals-transform",
 		visitor: {
@@ -91,9 +155,8 @@ export default function signalsTransform({ types: t }: PluginArgs): PluginObj {
 			ArrowFunctionExpression: {
 				exit(path, state) {
 					if (
-						isReactComponent(path) &&
-						getData(path.scope, maybeUsesSignal) === true &&
-						getData(path, alreadyTransformed) !== true
+						getData(path, alreadyTransformed) !== true &&
+						shouldTransform(path, options)
 					) {
 						const stopTrackingIdentifier =
 							path.scope.generateUidIdentifier("stopTracking");
@@ -109,6 +172,11 @@ export default function signalsTransform({ types: t }: PluginArgs): PluginObj {
 							})
 						);
 
+						// Using replaceWith keeps the existing leading comments already so
+						// we'll clear our cloned node's leading comments to ensure they
+						// aren't duplicated in the output.
+						newFunction.leadingComments = [];
+
 						setData(path, alreadyTransformed, true);
 						path.replaceWith(newFunction);
 					}
@@ -118,9 +186,8 @@ export default function signalsTransform({ types: t }: PluginArgs): PluginObj {
 			FunctionDeclaration: {
 				exit(path, state) {
 					if (
-						isReactComponent(path) &&
-						getData(path.scope, maybeUsesSignal) === true &&
-						getData(path, alreadyTransformed) !== true
+						getData(path, alreadyTransformed) !== true &&
+						shouldTransform(path, options)
 					) {
 						const stopTrackingIdentifier =
 							path.scope.generateUidIdentifier("stopTracking");
@@ -133,6 +200,11 @@ export default function signalsTransform({ types: t }: PluginArgs): PluginObj {
 								BODY: path.node.body.body, // TODO: Is it okay to elide the block statement here?,
 							})
 						);
+
+						// Using replaceWith keeps the existing leading comments already so
+						// we'll clear our cloned node's leading comments to ensure they
+						// aren't duplicated in the output.
+						newFunction.leadingComments = [];
 
 						setData(path, alreadyTransformed, true);
 						path.replaceWith(newFunction);

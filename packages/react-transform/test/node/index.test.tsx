@@ -1,5 +1,5 @@
 import { transform } from "@babel/core";
-import signalsTransform from "../../src/index";
+import signalsTransform, { PluginOptions } from "../../src/index";
 
 function dedent(str: string) {
 	let result = str;
@@ -32,20 +32,29 @@ function dedent(str: string) {
 
 const toSpaces = (str: string) => str.replace(/\t/g, "  ");
 
-function transformCode(code: string) {
+function transformCode(code: string, options?: PluginOptions) {
+	const signalsPluginConfig: any[] = [signalsTransform];
+	if (options) {
+		signalsPluginConfig.push(options);
+	}
+
 	const result = transform(code, {
-		plugins: [signalsTransform, "@babel/plugin-syntax-jsx"],
+		plugins: [signalsPluginConfig, "@babel/plugin-syntax-jsx"],
 	});
 
 	return result?.code || "";
 }
 
-function runTest(input: string, expected: string) {
-	const output = transformCode(input);
+function runTest(
+	input: string,
+	expected: string,
+	options: PluginOptions = { mode: "auto" }
+) {
+	const output = transformCode(input, options);
 	expect(toSpaces(output)).to.equal(toSpaces(dedent(expected)));
 }
 
-describe("React Signals Babel Transform - success", () => {
+describe("React Signals Babel Transform - auto success", () => {
 	it("wraps arrow function component with return statement in try/finally", () => {
 		const inputCode = `
 			const MyComponent = () => {
@@ -115,7 +124,175 @@ describe("React Signals Babel Transform - success", () => {
 	});
 });
 
-describe("React Signals Babel Transform - no transform", () => {
+describe("React Signals Babel Transform - manual success", () => {
+	it("wraps arrow function component with leading JSDoc comment before variable declaration", () => {
+		const inputCode = `
+			/** @trackSignals */
+			const MyComponent = () => {
+				return <div>Hello World</div>;
+			};
+		`;
+
+		const expectedOutput = `
+			import { useSignals as _useSignals } from "@preact/signals-react/runtime";
+			/** @trackSignals */
+			const MyComponent = () => {
+				var _stopTracking = _useSignals();
+				try {
+					return <div>Hello World</div>;
+				} finally {
+					_stopTracking();
+				}
+			};
+		`;
+
+		runTest(inputCode, expectedOutput, { mode: "manual" });
+	});
+
+	it("wraps arrow function component with leading JSDoc comment before arrow function", () => {
+		const inputCode = `
+			const MyComponent = /** @trackSignals */() => {
+				return <div>Hello World</div>;
+			};
+		`;
+
+		const expectedOutput = `
+			import { useSignals as _useSignals } from "@preact/signals-react/runtime";
+			const MyComponent = /** @trackSignals */() => {
+				var _stopTracking = _useSignals();
+				try {
+					return <div>Hello World</div>;
+				} finally {
+					_stopTracking();
+				}
+			};
+		`;
+
+		runTest(inputCode, expectedOutput, { mode: "manual" });
+	});
+
+	it("wraps function declarations with leading JSDoc comment", () => {
+		const inputCode = `
+			/** @trackSignals */
+			function MyComponent() {
+				return <div>Hello World</div>;
+			}
+		`;
+
+		const expectedOutput = `
+			import { useSignals as _useSignals } from "@preact/signals-react/runtime";
+			/** @trackSignals */
+			function MyComponent() {
+				var _stopTracking = _useSignals();
+				try {
+					return <div>Hello World</div>;
+				} finally {
+					_stopTracking();
+				}
+			}
+		`;
+
+		runTest(inputCode, expectedOutput, { mode: "manual" });
+	});
+
+	it("wraps default exported function declarations with leading JSDoc comment", () => {
+		const inputCode = `
+			/** @trackSignals */
+			export default function MyComponent() {
+				return <div>Hello World</div>;
+			}
+		`;
+
+		const expectedOutput = `
+			import { useSignals as _useSignals } from "@preact/signals-react/runtime";
+			/** @trackSignals */
+			export default function MyComponent() {
+				var _stopTracking = _useSignals();
+				try {
+					return <div>Hello World</div>;
+				} finally {
+					_stopTracking();
+				}
+			}
+		`;
+
+		runTest(inputCode, expectedOutput, { mode: "manual" });
+	});
+
+	it("wraps default exported arrow function expression with leading JSDoc comment", () => {
+		const inputCode = `
+			/** @trackSignals */
+			export default () => {
+				return <div>Hello World</div>;
+			}
+		`;
+
+		const expectedOutput = `
+			import { useSignals as _useSignals } from "@preact/signals-react/runtime";
+			/** @trackSignals */
+			export default (() => {
+				var _stopTracking = _useSignals();
+				try {
+					return <div>Hello World</div>;
+				} finally {
+					_stopTracking();
+				}
+			});
+		`;
+
+		runTest(inputCode, expectedOutput, { mode: "manual" });
+	});
+
+	it("wraps named exported function declarations with leading JSDoc comment", () => {
+		const inputCode = `
+			/** @trackSignals */
+			export function MyComponent() {
+				return <div>Hello World</div>;
+			}
+		`;
+
+		const expectedOutput = `
+			import { useSignals as _useSignals } from "@preact/signals-react/runtime";
+			/** @trackSignals */
+			export function MyComponent() {
+				var _stopTracking = _useSignals();
+				try {
+					return <div>Hello World</div>;
+				} finally {
+					_stopTracking();
+				}
+			}
+		`;
+
+		runTest(inputCode, expectedOutput, { mode: "manual" });
+	});
+
+	it("wraps named exported variable declarations with leading JSDoc comment", () => {
+		const inputCode = `
+			/** @trackSignals */
+			export const MyComponent = () => {
+				return <div>Hello World</div>;
+			};
+		`;
+
+		const expectedOutput = `
+			import { useSignals as _useSignals } from "@preact/signals-react/runtime";
+			/** @trackSignals */
+			export const MyComponent = () => {
+				var _stopTracking = _useSignals();
+				try {
+					return <div>Hello World</div>;
+				} finally {
+					_stopTracking();
+				}
+			};
+		`;
+
+		runTest(inputCode, expectedOutput, { mode: "manual" });
+	});
+});
+
+describe("React Signals Babel Transform - no auto transform", () => {
 	it("does not wrap arrow function component that does not use signals", () => {
 		const inputCode = `
 			const MyComponent = () => {
