@@ -19,7 +19,7 @@ import {
 	type ReadonlySignal,
 } from "@preact/signals-core";
 import type { JsxRuntimeModule } from "./internal";
-import { setCurrentUpdater, usePreactSignalStore } from "./useSignalTracking";
+import { useSignalTracking } from "./useSignalTracking";
 
 export { signal, computed, batch, effect, Signal, type ReadonlySignal };
 
@@ -164,6 +164,7 @@ const dispatcherMachinePROD = createMachine({
 ```
 */
 
+let stopTracking: (() => void) | null = null;
 let lock = false;
 let currentDispatcher: ReactDispatcher | null = null;
 Object.defineProperty(ReactInternals.ReactCurrentDispatcher, "current", {
@@ -184,14 +185,12 @@ Object.defineProperty(ReactInternals.ReactCurrentDispatcher, "current", {
 		currentDispatcher = nextDispatcher;
 		if (isEnteringComponentRender(currentDispatcherType, nextDispatcherType)) {
 			lock = true;
-			const store = usePreactSignalStore(nextDispatcher);
+			stopTracking = useSignalTracking();
 			lock = false;
-
-			setCurrentUpdater(store.updater);
 		} else if (
 			isExitingComponentRender(currentDispatcherType, nextDispatcherType)
 		) {
-			setCurrentUpdater();
+			stopTracking?.();
 		}
 	},
 });
