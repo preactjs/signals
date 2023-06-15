@@ -1,18 +1,11 @@
 import { signal, computed, effect, Signal } from "@preact/signals-core";
 import { useRef, useMemo, useEffect } from "react";
-import type { ReactElement } from "react";
 import { useSyncExternalStore } from "use-sync-external-store/shim/index.js";
 
 export { installAutoSignalTracking } from "./auto";
 
 const Empty = [] as const;
 const ReactElemType = Symbol.for("react.element"); // https://github.com/facebook/react/blob/346c7d4c43a0717302d446da9e7423a8e28d8996/packages/shared/ReactSymbols.js#L15
-
-declare module "@preact/signals-core" {
-	// @ts-ignore internal Signal is viewed as function
-	// eslint-disable-next-line @typescript-eslint/no-empty-interface
-	interface Signal extends ReactElement {}
-}
 
 export function wrapJsx<T>(jsx: T): T {
 	if (typeof jsx !== "function") return jsx;
