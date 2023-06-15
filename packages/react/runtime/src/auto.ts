@@ -6,9 +6,7 @@ import {
 import React from "react";
 import jsxRuntime from "react/jsx-runtime";
 import jsxRuntimeDev from "react/jsx-dev-runtime";
-import { Signal } from "@preact/signals-core";
-import type { JsxRuntimeModule } from "./internal";
-import { useSignals } from "./useSignals";
+import { useSignals, wrapJsx } from "./index";
 
 export interface ReactDispatcher {
 	useRef: typeof React.useRef;
@@ -331,24 +329,13 @@ function isExitingComponentRender(
 	);
 }
 
-function WrapJsx<T>(jsx: T): T {
-	if (typeof jsx !== "function") return jsx;
-
-	return function (type: any, props: any, ...rest: any[]) {
-		if (typeof type === "string" && props) {
-			for (let i in props) {
-				let v = props[i];
-				if (i !== "children" && v instanceof Signal) {
-					props[i] = v.value;
-				}
-			}
-		}
-
-		return jsx.call(jsx, type, props, ...rest);
-	} as any as T;
+interface JsxRuntimeModule {
+	jsx?(type: any, ...rest: any[]): unknown;
+	jsxs?(type: any, ...rest: any[]): unknown;
+	jsxDEV?(type: any, ...rest: any[]): unknown;
 }
 
-function installJSXHooks() {
+export function installJSXHooks() {
 	const JsxPro: JsxRuntimeModule = jsxRuntime;
 	const JsxDev: JsxRuntimeModule = jsxRuntimeDev;
 
@@ -359,13 +346,13 @@ function installJSXHooks() {
 	 * The jsx exports depend on the `NODE_ENV` var to ensure the users' bundler doesn't
 	 * include both, so one of them will be set with `undefined` values.
 	 */
-	React.createElement = WrapJsx(React.createElement);
-	JsxDev.jsx && /*   */ (JsxDev.jsx = WrapJsx(JsxDev.jsx));
-	JsxPro.jsx && /*   */ (JsxPro.jsx = WrapJsx(JsxPro.jsx));
-	JsxDev.jsxs && /*  */ (JsxDev.jsxs = WrapJsx(JsxDev.jsxs));
-	JsxPro.jsxs && /*  */ (JsxPro.jsxs = WrapJsx(JsxPro.jsxs));
-	JsxDev.jsxDEV && /**/ (JsxDev.jsxDEV = WrapJsx(JsxDev.jsxDEV));
-	JsxPro.jsxDEV && /**/ (JsxPro.jsxDEV = WrapJsx(JsxPro.jsxDEV));
+	React.createElement = wrapJsx(React.createElement);
+	JsxDev.jsx && /*   */ (JsxDev.jsx = wrapJsx(JsxDev.jsx));
+	JsxPro.jsx && /*   */ (JsxPro.jsx = wrapJsx(JsxPro.jsx));
+	JsxDev.jsxs && /*  */ (JsxDev.jsxs = wrapJsx(JsxDev.jsxs));
+	JsxPro.jsxs && /*  */ (JsxPro.jsxs = wrapJsx(JsxPro.jsxs));
+	JsxDev.jsxDEV && /**/ (JsxDev.jsxDEV = wrapJsx(JsxDev.jsxDEV));
+	JsxPro.jsxDEV && /**/ (JsxPro.jsxDEV = wrapJsx(JsxPro.jsxDEV));
 }
 
 export function installAutoSignalTracking() {

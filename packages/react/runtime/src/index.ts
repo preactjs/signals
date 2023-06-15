@@ -1,7 +1,42 @@
-import { effect } from "@preact/signals-core";
-import { useRef } from "react";
+import { signal, computed, effect, Signal } from "@preact/signals-core";
+import { useRef, useMemo, useEffect } from "react";
+import type { ReactElement } from "react";
 import { useSyncExternalStore } from "use-sync-external-store/shim/index.js";
-import type { Effect } from "./internal.js";
+
+export { installAutoSignalTracking } from "./auto";
+
+const Empty = [] as const;
+const ReactElemType = Symbol.for("react.element"); // https://github.com/facebook/react/blob/346c7d4c43a0717302d446da9e7423a8e28d8996/packages/shared/ReactSymbols.js#L15
+
+declare module "@preact/signals-core" {
+	// @ts-ignore internal Signal is viewed as function
+	// eslint-disable-next-line @typescript-eslint/no-empty-interface
+	interface Signal extends ReactElement {}
+}
+
+export function wrapJsx<T>(jsx: T): T {
+	if (typeof jsx !== "function") return jsx;
+
+	return function (type: any, props: any, ...rest: any[]) {
+		if (typeof type === "string" && props) {
+			for (let i in props) {
+				let v = props[i];
+				if (i !== "children" && v instanceof Signal) {
+					props[i] = v.value;
+				}
+			}
+		}
+
+		return jsx.call(jsx, type, props, ...rest);
+	} as any as T;
+}
+
+interface Effect {
+	_sources: object | undefined;
+	_start(): () => void;
+	_callback(): void;
+	_dispose(): void;
+}
 
 interface EffectStore {
 	updater: Effect;
@@ -88,4 +123,43 @@ export function useSignals(): () => void {
 	setCurrentUpdater(store.updater);
 
 	return clearCurrentUpdater;
+}
+
+/**
+ * A wrapper component that renders a Signal's value directly as a Text node.
+ */
+function Text({ data }: { data: Signal }) {
+	return data.value;
+}
+
+// Decorate Signals so React renders them as <Text> components.
+Object.defineProperties(Signal.prototype, {
+	$$typeof: { configurable: true, value: ReactElemType },
+	type: { configurable: true, value: Text },
+	props: {
+		configurable: true,
+		get() {
+			return { data: this };
+		},
+	},
+	ref: { configurable: true, value: null },
+});
+
+export function useSignal<T>(value: T) {
+	return useMemo(() => signal<T>(value), Empty);
+}
+
+export function useComputed<T>(compute: () => T) {
+	const $compute = useRef(compute);
+	$compute.current = compute;
+	return useMemo(() => computed<T>(() => $compute.current()), Empty);
+}
+
+export function useSignalEffect(cb: () => void | (() => void)) {
+	const callback = useRef(cb);
+	callback.current = cb;
+
+	useEffect(() => {
+		return effect(() => callback.current());
+	}, Empty);
 }
