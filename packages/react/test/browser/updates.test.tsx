@@ -7,6 +7,7 @@ import {
 	useComputed,
 	useSignalEffect,
 	useSignal,
+	Signal,
 } from "@preact/signals-react";
 import {
 	createElement,
@@ -451,6 +452,69 @@ describe("@preact/signals-react updating", () => {
 				updateContext();
 			});
 			expect(scratch.innerHTML).to.equal("<div>1 1</div>");
+		});
+
+		it("should not subscribe to computed signals only created and not used", async () => {
+			const sig = signal(0);
+			const childSpy = sinon.spy();
+			const parentSpy = sinon.spy();
+
+			function Child({ num }: { num: Signal<number> }) {
+				childSpy();
+				return <p>{num.value}</p>;
+			}
+
+			function Parent({ num }: { num: Signal<number> }) {
+				parentSpy();
+				const sig2 = useComputed(() => num.value + 1);
+				return <Child num={sig2} />;
+			}
+
+			await render(<Parent num={sig} />);
+			expect(scratch.innerHTML).to.equal("<p>1</p>");
+			expect(parentSpy).to.be.calledOnce;
+			expect(childSpy).to.be.calledOnce;
+
+			await act(() => {
+				sig.value += 1;
+			});
+			expect(scratch.innerHTML).to.equal("<p>2</p>");
+			expect(parentSpy).to.be.calledOnce;
+			expect(childSpy).to.be.calledTwice;
+		});
+
+		it("should properly subscribe and unsubscribe to conditionally rendered computed signals ", async () => {
+			const computedDep = signal(0);
+			const renderComputed = signal(true);
+			const renderSpy = sinon.spy();
+
+			function App() {
+				renderSpy();
+				const computed = useComputed(() => computedDep.value + 1);
+				return renderComputed.value ? <p>{computed.value}</p> : null;
+			}
+
+			await render(<App />);
+			expect(scratch.innerHTML).to.equal("<p>1</p>");
+			expect(renderSpy).to.be.calledOnce;
+
+			await act(() => {
+				computedDep.value += 1;
+			});
+			expect(scratch.innerHTML).to.equal("<p>2</p>");
+			expect(renderSpy).to.be.calledTwice;
+
+			await act(() => {
+				renderComputed.value = false;
+			});
+			expect(scratch.innerHTML).to.equal("");
+			expect(renderSpy).to.be.calledThrice;
+
+			await act(() => {
+				computedDep.value += 1;
+			});
+			expect(scratch.innerHTML).to.equal("");
+			expect(renderSpy).to.be.calledThrice; // Should not be called again
 		});
 	});
 
