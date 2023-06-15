@@ -8,6 +8,13 @@ import {
 } from "@babel/core";
 import { isModule, addNamed, addNamespace } from "@babel/helper-module-imports";
 
+// TODO:
+// - Add comment to opt-out
+// - If function has JSX & is top-level, opt-in
+// - Add debug log option
+// - how to trigger rerenders on attributes change if transform never sees `.value`?
+// - Have useSignals always end and restart the current tracking effect. it's fine :)
+
 interface PluginArgs {
 	types: typeof BabelTypes;
 	template: typeof BabelTemplate;
