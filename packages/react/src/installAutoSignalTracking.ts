@@ -8,7 +8,7 @@ import jsxRuntime from "react/jsx-runtime";
 import jsxRuntimeDev from "react/jsx-dev-runtime";
 import { Signal } from "@preact/signals-core";
 import type { JsxRuntimeModule } from "./internal";
-import { useSignalTracking } from "./useSignalTracking";
+import { useSignals } from "./useSignals";
 
 export interface ReactDispatcher {
 	useRef: typeof React.useRef;
@@ -173,7 +173,7 @@ function installCurrentDispatcherHook() {
 				isEnteringComponentRender(currentDispatcherType, nextDispatcherType)
 			) {
 				lock = true;
-				stopTracking = useSignalTracking();
+				stopTracking = useSignals();
 				lock = false;
 			} else if (
 				isExitingComponentRender(currentDispatcherType, nextDispatcherType)

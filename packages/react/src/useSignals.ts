@@ -1,7 +1,7 @@
 import { effect } from "@preact/signals-core";
 import { useRef } from "react";
 import { useSyncExternalStore } from "use-sync-external-store/shim/index.js";
-import type { Effect } from "./internal.d.ts";
+import type { Effect } from "./internal.js";
 
 interface EffectStore {
 	updater: Effect;
@@ -77,7 +77,7 @@ const clearCurrentUpdater = () => setCurrentUpdater();
  * Custom hook to create the effect to track signals used during render and
  * subscribe to changes to rerender the component when the signals change
  */
-export function useSignalTracking(): () => void {
+export function useSignals(): () => void {
 	const storeRef = useRef<EffectStore>();
 	if (storeRef.current == null) {
 		storeRef.current = createEffectStore();
