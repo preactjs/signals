@@ -13,15 +13,26 @@ interface PluginArgs {
 	template: typeof BabelTemplate;
 }
 
+const dataNamespace = "@preact/signals-react-transform";
 const importSource = "@preact/signals-react/runtime";
 const importName = "useSignals";
 const getHookIdentifier = "getHookIdentifier";
 const maybeUsesSignal = "maybeUsesSignal";
+const alreadyTransformed = "alreadyTransformed";
 
 const get = (pass: PluginPass, name: any) =>
-	pass.get(`@preact/signals-react-transform/${name}`);
+	pass.get(`${dataNamespace}/${name}`);
 const set = (pass: PluginPass, name: string, v: any) =>
-	pass.set(`@preact/signals-react-transform/${name}`, v);
+	pass.set(`${dataNamespace}/${name}`, v);
+
+interface DataContainer {
+	getData(name: string): any;
+	setData(name: string, value: any): void;
+}
+const setData = (node: DataContainer, name: string, value: any) =>
+	node.setData(`${dataNamespace}/${name}`, value);
+const getData = (node: DataContainer, name: string) =>
+	node.getData(`${dataNamespace}/${name}`);
 
 type FunctionLikeNodePath =
 	| NodePath<BabelTypes.ArrowFunctionExpression>
@@ -78,13 +89,14 @@ export default function signalsTransform({ types: t }: PluginArgs): PluginObj {
 				exit(path, state) {
 					if (
 						isReactComponent(path) &&
-						path.scope.getData(maybeUsesSignal) === true
+						getData(path.scope, maybeUsesSignal) === true &&
+						getData(path, alreadyTransformed) !== true
 					) {
 						const stopTrackingIdentifier =
 							path.scope.generateUidIdentifier("stopTracking");
 
-						// TODO: Should I use replaceWith() instead?
-						path.node.body = t.blockStatement(
+						const newFunction = t.cloneNode(path.node);
+						newFunction.body = t.blockStatement(
 							tryCatchTemplate({
 								STOP_TRACKING_IDENTIFIER: stopTrackingIdentifier,
 								HOOK_IDENTIFIER: get(state, getHookIdentifier)(),
@@ -93,6 +105,9 @@ export default function signalsTransform({ types: t }: PluginArgs): PluginObj {
 									: t.returnStatement(path.node.body),
 							}) as BabelTypes.BlockStatement[]
 						);
+
+						setData(path, alreadyTransformed, true);
+						path.replaceWith(newFunction);
 					}
 				},
 			},
@@ -101,31 +116,34 @@ export default function signalsTransform({ types: t }: PluginArgs): PluginObj {
 				exit(path, state) {
 					if (
 						isReactComponent(path) &&
-						path.scope.getData(maybeUsesSignal) === true
+						getData(path.scope, maybeUsesSignal) === true &&
+						getData(path, alreadyTransformed) !== true
 					) {
 						const stopTrackingIdentifier =
 							path.scope.generateUidIdentifier("stopTracking");
 
-						// TODO: Should I use replaceWith() instead?
-						path.node.body = t.blockStatement(
+						const newFunction = t.cloneNode(path.node);
+						newFunction.body = t.blockStatement(
 							tryCatchTemplate({
 								STOP_TRACKING_IDENTIFIER: stopTrackingIdentifier,
 								HOOK_IDENTIFIER: get(state, getHookIdentifier)(),
 								BODY: path.node.body.body, // TODO: Is it okay to elide the block statement here?,
 							}) as BabelTypes.BlockStatement[]
 						);
+
+						setData(path, alreadyTransformed, true);
+						path.replaceWith(newFunction);
 					}
 				},
 			},
 
-			MemberExpression(path, state) {
+			MemberExpression(path) {
 				// Detect if this member expression is accessing a property called value.
 				if (isValueMemberExpression(path)) {
 					// TODO: Uhhh what if a hook accesses a signal that isn't used in the render body... Hmmmm...
 					const functionScope = path.scope.getFunctionParent();
 					if (functionScope) {
-						functionScope.setData(maybeUsesSignal, true);
-						// console.log(functionScope);
+						setData(functionScope, maybeUsesSignal, true);
 					}
 				}
 			},
