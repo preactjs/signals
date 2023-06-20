@@ -28,7 +28,6 @@
     ".": {
       "types": "./dist/signals-core.d.ts",
       "browser": "./dist/signals-core.module.js",
-      "umd": "./dist/signals-core.umd.js",
       "import": "./dist/signals-core.mjs",
       "require": "./dist/signals-core.js"
     }
