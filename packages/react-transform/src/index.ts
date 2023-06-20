@@ -9,7 +9,6 @@ import {
 import { isModule, addNamed, addNamespace } from "@babel/helper-module-imports";
 
 // TODO:
-// - Add comment to opt-out
 // - If function has JSX & is top-level, opt-in
 // - Add debug log option
 // - how to trigger rerenders on attributes change if transform never sees `.value`?
@@ -20,7 +19,8 @@ interface PluginArgs {
 	template: typeof BabelTemplate;
 }
 
-const commentIdentifier = "@trackSignals";
+const optOutCommentIdentifier = "@noTrackSignals";
+const optInCommentIdentifier = "@trackSignals";
 const dataNamespace = "@preact/signals-react-transform";
 const importSource = "@preact/signals-react/runtime";
 const importName = "useSignals";
@@ -73,8 +73,12 @@ function hasLeadingComment(
 	);
 }
 
-function hasLeadingSignalTrackingComment(path: NodePath) {
-	return hasLeadingComment(path, commentIdentifier);
+function hasLeadingOptInComment(path: NodePath) {
+	return hasLeadingComment(path, optInCommentIdentifier);
+}
+
+function hasLeadingOptOutComment(path: NodePath) {
+	return hasLeadingComment(path, optOutCommentIdentifier);
 }
 
 function isOptedIntoSignalTracking(path: NodePath | null): boolean {
@@ -87,12 +91,33 @@ function isOptedIntoSignalTracking(path: NodePath | null): boolean {
 		case "VariableDeclarator":
 		case "VariableDeclaration":
 			return (
-				hasLeadingSignalTrackingComment(path) ||
+				hasLeadingOptInComment(path) ||
 				isOptedIntoSignalTracking(path.parentPath)
 			);
 		case "ExportDefaultDeclaration":
 		case "ExportNamedDeclaration":
-			return hasLeadingSignalTrackingComment(path);
+			return hasLeadingOptInComment(path);
+		default:
+			return false;
+	}
+}
+
+function isOptedOutOfSignalTracking(path: NodePath | null): boolean {
+	if (!path) return false;
+
+	switch (path.node.type) {
+		case "ArrowFunctionExpression":
+		case "FunctionExpression":
+		case "FunctionDeclaration":
+		case "VariableDeclarator":
+		case "VariableDeclaration":
+			return (
+				hasLeadingOptOutComment(path) ||
+				isOptedOutOfSignalTracking(path.parentPath)
+			);
+		case "ExportDefaultDeclaration":
+		case "ExportNamedDeclaration":
+			return hasLeadingOptOutComment(path);
 		default:
 			return false;
 	}
@@ -102,6 +127,9 @@ function shouldTransform(
 	path: FunctionLikeNodePath,
 	options: PluginOptions
 ): boolean {
+	// Opt-out always takes precedence
+	if (isOptedOutOfSignalTracking(path)) return false;
+
 	if (options.mode === "auto") {
 		return (
 			(isReactComponent(path) &&

@@ -148,8 +148,8 @@ describe("React Signals Babel Transform - auto success", () => {
 	});
 });
 
-describe("React Signals Babel Transform - manual success", () => {
-	it("wraps arrow function component with leading JSDoc comment before variable declaration", () => {
+describe("React Signals Babel Transform - manual opt-in transform", () => {
+	it("transforms arrow function component with leading opt-in JSDoc comment before variable declaration", () => {
 		const inputCode = `
 			/** @trackSignals */
 			const MyComponent = () => {
@@ -173,7 +173,7 @@ describe("React Signals Babel Transform - manual success", () => {
 		runTest(inputCode, expectedOutput, { mode: "manual" });
 	});
 
-	it("wraps arrow function component with leading JSDoc comment before arrow function", () => {
+	it("transforms arrow function component with leading opt-in JSDoc comment before arrow function", () => {
 		const inputCode = `
 			const MyComponent = /** @trackSignals */() => {
 				return <div>Hello World</div>;
@@ -195,7 +195,7 @@ describe("React Signals Babel Transform - manual success", () => {
 		runTest(inputCode, expectedOutput, { mode: "manual" });
 	});
 
-	it("wraps function declarations with leading JSDoc comment", () => {
+	it("transforms function declarations with leading opt-in JSDoc comment", () => {
 		const inputCode = `
 			/** @trackSignals */
 			function MyComponent() {
@@ -219,7 +219,7 @@ describe("React Signals Babel Transform - manual success", () => {
 		runTest(inputCode, expectedOutput, { mode: "manual" });
 	});
 
-	it("wraps default exported function declarations with leading JSDoc comment", () => {
+	it("transforms default exported function declarations with leading opt-in JSDoc comment", () => {
 		const inputCode = `
 			/** @trackSignals */
 			export default function MyComponent() {
@@ -243,7 +243,7 @@ describe("React Signals Babel Transform - manual success", () => {
 		runTest(inputCode, expectedOutput, { mode: "manual" });
 	});
 
-	it("wraps default exported arrow function expression with leading JSDoc comment", () => {
+	it("transforms default exported arrow function expression with leading opt-in JSDoc comment", () => {
 		const inputCode = `
 			/** @trackSignals */
 			export default () => {
@@ -267,7 +267,7 @@ describe("React Signals Babel Transform - manual success", () => {
 		runTest(inputCode, expectedOutput, { mode: "manual" });
 	});
 
-	it("wraps named exported function declarations with leading JSDoc comment", () => {
+	it("transforms named exported function declarations with leading opt-in JSDoc comment", () => {
 		const inputCode = `
 			/** @trackSignals */
 			export function MyComponent() {
@@ -291,7 +291,7 @@ describe("React Signals Babel Transform - manual success", () => {
 		runTest(inputCode, expectedOutput, { mode: "manual" });
 	});
 
-	it("wraps named exported variable declarations (arrow functions) with leading JSDoc comment", () => {
+	it("transforms named exported variable declarations (arrow functions) with leading opt-in JSDoc comment", () => {
 		const inputCode = `
 			/** @trackSignals */
 			export const MyComponent = () => {
@@ -315,7 +315,7 @@ describe("React Signals Babel Transform - manual success", () => {
 		runTest(inputCode, expectedOutput, { mode: "manual" });
 	});
 
-	it("wraps named exported variable declarations (function expression) with leading JSDoc comment", () => {
+	it("transforms named exported variable declarations (function expression) with leading opt-in JSDoc comment", () => {
 		const inputCode = `
 			/** @trackSignals */
 			export const MyComponent = function () {
@@ -340,8 +340,131 @@ describe("React Signals Babel Transform - manual success", () => {
 	});
 });
 
+describe("React Signals Babel Transform - auto opt-out transform", () => {
+	it("skips transforming arrow function component with leading opt-out JSDoc comment before variable declaration", () => {
+		const inputCode = `
+			/** @noTrackSignals */
+			const MyComponent = () => {
+				return <div>{signal.value}</div>;
+			};
+		`;
+
+		const expectedOutput = inputCode;
+
+		runTest(inputCode, expectedOutput, { mode: "auto" });
+	});
+
+	it("skips transforming arrow function component with leading opt-out JSDoc comment before arrow function", () => {
+		const inputCode = `
+			const MyComponent = /** @noTrackSignals */() => {
+				return <div>{signal.value}</div>;
+			};
+		`;
+
+		const expectedOutput = inputCode;
+
+		runTest(inputCode, expectedOutput, {
+			mode: "auto",
+		});
+	});
+
+	it("skips transforming function declarations with leading opt-out JSDoc comment", () => {
+		const inputCode = `
+			/** @noTrackSignals */
+			function MyComponent() {
+				return <div>Hello World</div>;
+			}
+		`;
+
+		const expectedOutput = inputCode;
+
+		runTest(inputCode, expectedOutput, { mode: "auto" });
+	});
+
+	it("skips transforming default exported function declarations with leading opt-out JSDoc comment", () => {
+		const inputCode = `
+			/** @noTrackSignals */
+			export default function MyComponent() {
+				return <div>Hello World</div>;
+			}
+		`;
+
+		const expectedOutput = inputCode;
+
+		runTest(inputCode, expectedOutput, { mode: "auto" });
+	});
+
+	it("skips transforming default exported arrow function expression with leading opt-out JSDoc comment", () => {
+		const inputCode = `
+			/** @noTrackSignals */
+			export default (() => {
+				return <div>Hello World</div>;
+			});
+		`;
+
+		const expectedOutput = inputCode;
+
+		runTest(inputCode, expectedOutput, { mode: "auto" });
+	});
+
+	it("skips transforming named exported function declarations with leading opt-out JSDoc comment", () => {
+		const inputCode = `
+			/** @noTrackSignals */
+			export function MyComponent() {
+				return <div>Hello World</div>;
+			}
+		`;
+
+		const expectedOutput = inputCode;
+
+		runTest(inputCode, expectedOutput, { mode: "auto" });
+	});
+
+	it("wraps named exported variable declarations (arrow functions) with leading JSDoc comment", () => {
+		const inputCode = `
+			/** @noTrackSignals */
+			export const MyComponent = () => {
+				return <div>Hello World</div>;
+			};
+		`;
+
+		const expectedOutput = inputCode;
+
+		runTest(inputCode, expectedOutput, { mode: "auto" });
+	});
+
+	it("wraps named exported variable declarations (function expression) with leading JSDoc comment", () => {
+		const inputCode = `
+			/** @noTrackSignals */
+			export const MyComponent = function () {
+				return <div>Hello World</div>;
+			};
+		`;
+
+		const expectedOutput = inputCode;
+
+		runTest(inputCode, expectedOutput, { mode: "auto" });
+	});
+
+	it("opt-out comment overrides opt-in comment", () => {
+		const inputCode = `
+			/**
+			 * @noTrackSignals
+			 * @trackSignals
+			 */
+			const MyComponent = () => {
+				return <div>{signal.value}</div>;
+			};
+		`;
+
+		const expectedOutput = inputCode;
+
+		runTest(inputCode, expectedOutput, { mode: "auto" });
+	});
+});
+
 describe("React Signals Babel Transform - no auto transform", () => {
-	it("does not wrap arrow function component that does not use signals", () => {
+	it("does not transform arrow function component that does not use signals", () => {
 		const inputCode = `
 			const MyComponent = () => {
 				return <div>Hello World</div>;
@@ -352,7 +475,7 @@ describe("React Signals Babel Transform - no auto transform", () => {
 		runTest(inputCode, expectedOutput);
 	});
 
-	it("does not wrap arrow function component with inline return that does not use signals", () => {
+	it("does not transform arrow function component with inline return that does not use signals", () => {
 		const inputCode = `
 			const MyComponent = () => <div>Hello World!</div>;
 		`;
@@ -361,7 +484,7 @@ describe("React Signals Babel Transform - no auto transform", () => {
 		runTest(inputCode, expectedOutput);
 	});
 
-	it("does not wrap function declarations that don't use signals", () => {
+	it("does not transform function declarations that don't use signals", () => {
 		const inputCode = `
 			function MyComponent() {
 				return <div>Hello World</div>;
@@ -372,7 +495,7 @@ describe("React Signals Babel Transform - no auto transform", () => {
 		runTest(inputCode, expectedOutput);
 	});
 
-	it("does not wrap function expressions that don't use signals", () => {
+	it("does not transform function expressions that don't use signals", () => {
 		const inputCode = `
 			const MyComponent = function () {
 				return <div>Hello World</div>;
