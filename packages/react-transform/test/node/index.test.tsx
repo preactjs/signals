@@ -42,13 +42,14 @@ function transformCode(code: string) {
 
 function runTest(input: string, expected: string) {
 	const output = transformCode(input);
-	expect(toSpaces(dedent(output))).to.equal(toSpaces(dedent(expected)));
+	expect(toSpaces(output)).to.equal(toSpaces(dedent(expected)));
 }
 
-describe("React Signals Babel Transform", () => {
+describe("React Signals Babel Transform - success", () => {
 	it("wraps arrow function component with return statement in try/finally", () => {
 		const inputCode = `
 			const MyComponent = () => {
+				signal.value;
 				return <div>Hello World</div>;
 			};
 		`;
@@ -56,12 +57,13 @@ describe("React Signals Babel Transform", () => {
 		const expectedOutput = `
 			import { useSignals as _useSignals } from "@preact/signals-react/runtime";
 			const MyComponent = () => {
-			var _stopTracking = _useSignals();
-			try {
-				return <div>Hello World</div>;
-			} finally {
-				_stopTracking();
-			}
+				var _stopTracking = _useSignals();
+				try {
+					signal.value;
+					return <div>Hello World</div>;
+				} finally {
+					_stopTracking();
+				}
 			};
 		`;
 
@@ -70,18 +72,18 @@ describe("React Signals Babel Transform", () => {
 
 	it("wraps arrow function component with inline return in try/finally", () => {
 		const inputCode = `
-			const MyComponent = () => <div>Hello World</div>;
+			const MyComponent = () => <div>{name.value}</div>;
 		`;
 
 		const expectedOutput = `
 			import { useSignals as _useSignals } from "@preact/signals-react/runtime";
 			const MyComponent = () => {
-			var _stopTracking = _useSignals();
-			try {
-				return <div>Hello World</div>;
-			} finally {
-				_stopTracking();
-			}
+				var _stopTracking = _useSignals();
+				try {
+					return <div>{name.value}</div>;
+				} finally {
+					_stopTracking();
+				}
 			};
 		`;
 
@@ -91,6 +93,7 @@ describe("React Signals Babel Transform", () => {
 	it("wraps function declarations with try/finally", () => {
 		const inputCode = `
 			function MyComponent() {
+				signal.value;
 				return <div>Hello World</div>;
 			}
 		`;
@@ -98,15 +101,49 @@ describe("React Signals Babel Transform", () => {
 		const expectedOutput = `
 			import { useSignals as _useSignals } from "@preact/signals-react/runtime";
 			function MyComponent() {
-			var _stopTracking = _useSignals();
-			try {
-				return <div>Hello World</div>;
-			} finally {
-				_stopTracking();
-			}
+				var _stopTracking = _useSignals();
+				try {
+					signal.value;
+					return <div>Hello World</div>;
+				} finally {
+					_stopTracking();
+				}
 			}
 		`;
 
+		runTest(inputCode, expectedOutput);
+	});
+});
+
+describe("React Signals Babel Transform - no transform", () => {
+	it("does not wrap arrow function component that does not use signals", () => {
+		const inputCode = `
+			const MyComponent = () => {
+				return <div>Hello World</div>;
+			};
+		`;
+
+		const expectedOutput = inputCode;
+		runTest(inputCode, expectedOutput);
+	});
+
+	it("does not wrap arrow function component with inline return that does not use signals", () => {
+		const inputCode = `
+			const MyComponent = () => <div>Hello World!</div>;
+		`;
+
+		const expectedOutput = inputCode;
+		runTest(inputCode, expectedOutput);
+	});
+
+	it("does not wrap function declarations that don't use signals", () => {
+		const inputCode = `
+			function MyComponent() {
+				return <div>Hello World</div>;
+			}
+		`;
+
+		const expectedOutput = inputCode;
 		runTest(inputCode, expectedOutput);
 	});
 });

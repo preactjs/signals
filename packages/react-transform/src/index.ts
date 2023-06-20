@@ -16,6 +16,7 @@ interface PluginArgs {
 const importSource = "@preact/signals-react/runtime";
 const importName = "useSignals";
 const getHookIdentifier = "getHookIdentifier";
+const maybeUsesSignal = "maybeUsesSignal";
 
 const get = (pass: PluginPass, name: any) =>
 	pass.get(`@preact/signals-react-transform/${name}`);
@@ -40,6 +41,17 @@ function isReactComponent(path: FunctionLikeNodePath): boolean {
 	}
 }
 
+function isValueMemberExpression(
+	path: NodePath<BabelTypes.MemberExpression>
+): boolean {
+	return (
+		(path.node.property.type === "Identifier" &&
+			path.node.property.name === "value") ||
+		(path.node.property.type === "StringLiteral" &&
+			path.node.property.value === "value")
+	);
+}
+
 const tryCatchTemplate = template`var STOP_TRACKING_IDENTIFIER = HOOK_IDENTIFIER();
 try {
 	BODY
@@ -61,37 +73,60 @@ export default function signalsTransform({ types: t }: PluginArgs): PluginObj {
 					);
 				},
 			},
-			ArrowFunctionExpression(path, state) {
-				if (isReactComponent(path)) {
-					const stopTrackingIdentifier =
-						path.scope.generateUidIdentifier("stopTracking");
 
-					// TODO: Should I use replaceWith() instead?
-					path.node.body = t.blockStatement(
-						tryCatchTemplate({
-							STOP_TRACKING_IDENTIFIER: stopTrackingIdentifier,
-							HOOK_IDENTIFIER: get(state, getHookIdentifier)(),
-							BODY: t.isBlockStatement(path.node.body)
-								? path.node.body.body // TODO: Is it okay to elide the block statement here?
-								: t.returnStatement(path.node.body),
-						}) as BabelTypes.BlockStatement[]
-					);
-				}
+			ArrowFunctionExpression: {
+				exit(path, state) {
+					if (
+						isReactComponent(path) &&
+						path.scope.getData(maybeUsesSignal) === true
+					) {
+						const stopTrackingIdentifier =
+							path.scope.generateUidIdentifier("stopTracking");
+
+						// TODO: Should I use replaceWith() instead?
+						path.node.body = t.blockStatement(
+							tryCatchTemplate({
+								STOP_TRACKING_IDENTIFIER: stopTrackingIdentifier,
+								HOOK_IDENTIFIER: get(state, getHookIdentifier)(),
+								BODY: t.isBlockStatement(path.node.body)
+									? path.node.body.body // TODO: Is it okay to elide the block statement here?
+									: t.returnStatement(path.node.body),
+							}) as BabelTypes.BlockStatement[]
+						);
+					}
+				},
 			},
 
-			FunctionDeclaration(path, state) {
-				if (isReactComponent(path)) {
-					const stopTrackingIdentifier =
-						path.scope.generateUidIdentifier("stopTracking");
+			FunctionDeclaration: {
+				exit(path, state) {
+					if (
+						isReactComponent(path) &&
+						path.scope.getData(maybeUsesSignal) === true
+					) {
+						const stopTrackingIdentifier =
+							path.scope.generateUidIdentifier("stopTracking");
 
-					// TODO: Should I use replaceWith() instead?
-					path.node.body = t.blockStatement(
-						tryCatchTemplate({
-							STOP_TRACKING_IDENTIFIER: stopTrackingIdentifier,
-							HOOK_IDENTIFIER: get(state, getHookIdentifier)(),
-							BODY: path.node.body.body, // TODO: Is it okay to elide the block statement here?,
-						}) as BabelTypes.BlockStatement[]
-					);
+						// TODO: Should I use replaceWith() instead?
+						path.node.body = t.blockStatement(
+							tryCatchTemplate({
+								STOP_TRACKING_IDENTIFIER: stopTrackingIdentifier,
+								HOOK_IDENTIFIER: get(state, getHookIdentifier)(),
+								BODY: path.node.body.body, // TODO: Is it okay to elide the block statement here?,
+							}) as BabelTypes.BlockStatement[]
+						);
+					}
+				},
+			},
+
+			MemberExpression(path, state) {
+				// Detect if this member expression is accessing a property called value.
+				if (isValueMemberExpression(path)) {
+					// TODO: Uhhh what if a hook accesses a signal that isn't used in the render body... Hmmmm...
+					const functionScope = path.scope.getFunctionParent();
+					if (functionScope) {
+						functionScope.setData(maybeUsesSignal, true);
+						// console.log(functionScope);
+					}
 				}
 			},
 		},
