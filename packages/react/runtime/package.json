@@ -12,7 +12,6 @@
     ".": {
       "types": "./dist/index.d.ts",
       "browser": "./dist/runtime.module.js",
-      "umd": "./dist/runtime.min.js",
       "import": "./dist/runtime.mjs",
       "require": "./dist/runtime.js"
     }
