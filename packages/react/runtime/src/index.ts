@@ -90,6 +90,7 @@ function createEffectStore(): EffectStore {
 	};
 }
 
+let finalCleanup: Promise<void> | undefined;
 let finishUpdate: (() => void) | undefined;
 
 function setCurrentUpdater(updater?: Effect) {
@@ -99,6 +100,8 @@ function setCurrentUpdater(updater?: Effect) {
 	finishUpdate = updater && updater._start();
 }
 
+const _queueMicroTask = Promise.prototype.then.bind(Promise.resolve());
+
 const clearCurrentUpdater = () => setCurrentUpdater();
 
 /**
@@ -106,6 +109,14 @@ const clearCurrentUpdater = () => setCurrentUpdater();
  * subscribe to changes to rerender the component when the signals change
  */
 export function useSignals(): () => void {
+	clearCurrentUpdater();
+	if (!finalCleanup) {
+		finalCleanup = _queueMicroTask(() => {
+			finalCleanup = undefined;
+			clearCurrentUpdater();
+		});
+	}
+
 	const storeRef = useRef<EffectStore>();
 	if (storeRef.current == null) {
 		storeRef.current = createEffectStore();
