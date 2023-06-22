@@ -42,12 +42,12 @@ const setData = (node: DataContainer, name: string, value: any) =>
 const getData = (node: DataContainer, name: string) =>
 	node.getData(`${dataNamespace}/${name}`);
 
-type FunctionLikeNodePath =
-	| NodePath<BabelTypes.ArrowFunctionExpression>
-	| NodePath<BabelTypes.FunctionExpression>
-	| NodePath<BabelTypes.FunctionDeclaration>;
+type FunctionLike =
+	| BabelTypes.ArrowFunctionExpression
+	| BabelTypes.FunctionExpression
+	| BabelTypes.FunctionDeclaration;
 
-function isReactComponent(path: FunctionLikeNodePath): boolean {
+function isReactComponent(path: NodePath<FunctionLike>): boolean {
 	if (
 		path.node.type === "ArrowFunctionExpression" ||
 		path.node.type === "FunctionExpression"
@@ -124,7 +124,7 @@ function isOptedOutOfSignalTracking(path: NodePath | null): boolean {
 }
 
 function shouldTransform(
-	path: FunctionLikeNodePath,
+	path: NodePath<FunctionLike>,
 	options: PluginOptions
 ): boolean {
 	// Opt-out always takes precedence
@@ -197,19 +197,7 @@ export default function signalsTransform(
 						getData(path, alreadyTransformed) !== true &&
 						shouldTransform(path, options)
 					) {
-						const stopTrackingIdentifier =
-							path.scope.generateUidIdentifier("stopTracking");
-
-						const newFunction = t.cloneNode(path.node);
-						newFunction.body = t.blockStatement(
-							tryCatchTemplate({
-								STOP_TRACKING_IDENTIFIER: stopTrackingIdentifier,
-								HOOK_IDENTIFIER: get(state, getHookIdentifier)(),
-								BODY: t.isBlockStatement(path.node.body)
-									? path.node.body.body // TODO: Is it okay to elide the block statement here?
-									: t.returnStatement(path.node.body),
-							})
-						);
+						const newFunction = wrapInTryFinally(t, path, state);
 
 						// Using replaceWith keeps the existing leading comments already so
 						// we'll clear our cloned node's leading comments to ensure they
@@ -228,17 +216,7 @@ export default function signalsTransform(
 						getData(path, alreadyTransformed) !== true &&
 						shouldTransform(path, options)
 					) {
-						const stopTrackingIdentifier =
-							path.scope.generateUidIdentifier("stopTracking");
-
-						const newFunction = t.cloneNode(path.node);
-						newFunction.body = t.blockStatement(
-							tryCatchTemplate({
-								STOP_TRACKING_IDENTIFIER: stopTrackingIdentifier,
-								HOOK_IDENTIFIER: get(state, getHookIdentifier)(),
-								BODY: path.node.body.body, // TODO: Is it okay to elide the block statement here?
-							})
-						);
+						const newFunction = wrapInTryFinally(t, path, state);
 
 						// Using replaceWith keeps the existing leading comments already so
 						// we'll clear our cloned node's leading comments to ensure they
@@ -257,17 +235,7 @@ export default function signalsTransform(
 						getData(path, alreadyTransformed) !== true &&
 						shouldTransform(path, options)
 					) {
-						const stopTrackingIdentifier =
-							path.scope.generateUidIdentifier("stopTracking");
-
-						const newFunction = t.cloneNode(path.node);
-						newFunction.body = t.blockStatement(
-							tryCatchTemplate({
-								STOP_TRACKING_IDENTIFIER: stopTrackingIdentifier,
-								HOOK_IDENTIFIER: get(state, getHookIdentifier)(),
-								BODY: path.node.body.body, // TODO: Is it okay to elide the block statement here?,
-							})
-						);
+						const newFunction = wrapInTryFinally(t, path, state);
 
 						// Using replaceWith keeps the existing leading comments already so
 						// we'll clear our cloned node's leading comments to ensure they
@@ -291,6 +259,28 @@ export default function signalsTransform(
 			},
 		},
 	};
+}
+
+function wrapInTryFinally<T extends FunctionLike>(
+	t: typeof BabelTypes,
+	path: NodePath<T>,
+	state: PluginPass
+): T {
+	const stopTrackingIdentifier =
+		path.scope.generateUidIdentifier("stopTracking");
+
+	const newFunction = t.cloneNode(path.node);
+	newFunction.body = t.blockStatement(
+		tryCatchTemplate({
+			STOP_TRACKING_IDENTIFIER: stopTrackingIdentifier,
+			HOOK_IDENTIFIER: get(state, getHookIdentifier)(),
+			BODY: t.isBlockStatement(path.node.body)
+				? path.node.body.body // TODO: Is it okay to elide the block statement here?
+				: t.returnStatement(path.node.body),
+		})
+	);
+
+	return newFunction;
 }
 
 function createImportLazily(
