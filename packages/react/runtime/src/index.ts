@@ -7,6 +7,18 @@ export { installAutoSignalTracking } from "./auto";
 const Empty = [] as const;
 const ReactElemType = Symbol.for("react.element"); // https://github.com/facebook/react/blob/346c7d4c43a0717302d446da9e7423a8e28d8996/packages/shared/ReactSymbols.js#L15
 
+export interface ReactSignalOptions {
+	/**
+	 * Called when an error occurs during the invocation of useSignals(). If you
+	 * want this error to bubble up, you need to re-throw it. By default,
+	 * providing this callback will swallow errors.
+	 * @param error The error that occurred
+	 */
+	onError?: (error: Error) => void;
+}
+
+export const options: ReactSignalOptions = {};
+
 export function wrapJsx<T>(jsx: T): T {
 	if (typeof jsx !== "function") return jsx;
 
@@ -106,14 +118,22 @@ const clearCurrentUpdater = () => setCurrentUpdater();
  * subscribe to changes to rerender the component when the signals change
  */
 export function useSignals(): () => void {
-	const storeRef = useRef<EffectStore>();
-	if (storeRef.current == null) {
-		storeRef.current = createEffectStore();
-	}
+	try {
+		const storeRef = useRef<EffectStore>();
+		if (storeRef.current == null) {
+			storeRef.current = createEffectStore();
+		}
 
-	const store = storeRef.current;
-	useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
-	setCurrentUpdater(store.updater);
+		const store = storeRef.current;
+		useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
+		setCurrentUpdater(store.updater);
+	} catch (e) {
+		if (options.onError) {
+			options.onError(e);
+		} else {
+			throw e;
+		}
+	}
 
 	return clearCurrentUpdater;
 }
