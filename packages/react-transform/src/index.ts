@@ -12,7 +12,6 @@ import { isModule, addNamed, addNamespace } from "@babel/helper-module-imports";
 // - If function has JSX & is top-level, opt-in
 // - Add debug log option
 // - how to trigger rerenders on attributes change if transform never sees `.value`?
-// - Have useSignals always end and restart the current tracking effect. it's fine :)
 
 interface PluginArgs {
 	types: typeof BabelTypes;
@@ -130,16 +129,14 @@ function shouldTransform(
 	// Opt-out always takes precedence
 	if (isOptedOutOfSignalTracking(path)) return false;
 
-	if (options.mode === "auto") {
+	if (options.mode === "manual") {
+		return isOptedIntoSignalTracking(path);
+	} else {
 		return (
 			(isReactComponent(path) &&
 				getData(path.scope, maybeUsesSignal) === true) ||
 			isOptedIntoSignalTracking(path)
 		);
-	} else if (options.mode === "manual") {
-		return isOptedIntoSignalTracking(path);
-	} else {
-		throw new Error(`Invalid mode: ${options.mode}`);
 	}
 }
 
@@ -167,7 +164,17 @@ export interface PluginOptions {
 	 * - `auto`: Automatically wrap all components that use signals.
 	 * - `manual`: Only wrap components that are annotated with `@trackSignals` in a JSX comment.
 	 */
-	mode: "auto" | "manual";
+	mode?: "auto" | "manual";
+	experimental?: {
+		/**
+		 * If set to true, the component body will not be wrapped in a try/finally
+		 * block and instead the next component render or a microtick will stop
+		 * tracking signals for this component. This is an experimental feature and
+		 * may be removed in the future.
+		 * @default false
+		 */
+		noTryFinally?: boolean;
+	};
 }
 
 export default function signalsTransform(
@@ -197,7 +204,12 @@ export default function signalsTransform(
 						getData(path, alreadyTransformed) !== true &&
 						shouldTransform(path, options)
 					) {
-						const newFunction = wrapInTryFinally(t, path, state);
+						let newFunction: BabelTypes.ArrowFunctionExpression;
+						if (options.experimental?.noTryFinally) {
+							newFunction = prependUseSignals(t, path, state);
+						} else {
+							newFunction = wrapInTryFinally(t, path, state);
+						}
 
 						// Using replaceWith keeps the existing leading comments already so
 						// we'll clear our cloned node's leading comments to ensure they
@@ -216,7 +228,12 @@ export default function signalsTransform(
 						getData(path, alreadyTransformed) !== true &&
 						shouldTransform(path, options)
 					) {
-						const newFunction = wrapInTryFinally(t, path, state);
+						let newFunction: BabelTypes.FunctionExpression;
+						if (options.experimental?.noTryFinally) {
+							newFunction = prependUseSignals(t, path, state);
+						} else {
+							newFunction = wrapInTryFinally(t, path, state);
+						}
 
 						// Using replaceWith keeps the existing leading comments already so
 						// we'll clear our cloned node's leading comments to ensure they
@@ -235,7 +252,12 @@ export default function signalsTransform(
 						getData(path, alreadyTransformed) !== true &&
 						shouldTransform(path, options)
 					) {
-						const newFunction = wrapInTryFinally(t, path, state);
+						let newFunction: BabelTypes.FunctionDeclaration;
+						if (options.experimental?.noTryFinally) {
+							newFunction = prependUseSignals(t, path, state);
+						} else {
+							newFunction = wrapInTryFinally(t, path, state);
+						}
 
 						// Using replaceWith keeps the existing leading comments already so
 						// we'll clear our cloned node's leading comments to ensure they
@@ -279,6 +301,27 @@ function wrapInTryFinally<T extends FunctionLike>(
 				: t.returnStatement(path.node.body),
 		})
 	);
+
+	return newFunction;
+}
+
+function prependUseSignals<T extends FunctionLike>(
+	t: typeof BabelTypes,
+	path: NodePath<T>,
+	state: PluginPass
+): T {
+	const newFunction = t.cloneNode(path.node);
+	newFunction.body = t.blockStatement([
+		t.expressionStatement(
+			t.callExpression(get(state, getHookIdentifier)(), [])
+		),
+	]);
+	if (t.isBlockStatement(path.node.body)) {
+		// TODO: Is it okay to elide the block statement here?
+		newFunction.body.body.push(...path.node.body.body);
+	} else {
+		newFunction.body.body.push(t.returnStatement(path.node.body));
+	}
 
 	return newFunction;
 }

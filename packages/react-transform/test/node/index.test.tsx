@@ -506,3 +506,89 @@ describe("React Signals Babel Transform - no auto transform", () => {
 		runTest(inputCode, expectedOutput);
 	});
 });
+
+describe("React Signals Babel Transform - noTryFinally", () => {
+	it("prepends arrow function component with useSignals call", () => {
+		const inputCode = `
+			const MyComponent = () => {
+				signal.value;
+				return <div>Hello World</div>;
+			};
+		`;
+
+		const expectedOutput = `
+			import { useSignals as _useSignals } from "@preact/signals-react/runtime";
+			const MyComponent = () => {
+				_useSignals();
+				signal.value;
+				return <div>Hello World</div>;
+			};
+		`;
+
+		runTest(inputCode, expectedOutput, {
+			experimental: { noTryFinally: true },
+		});
+	});
+
+	it("prepends arrow function component with useSignals call", () => {
+		const inputCode = `
+			const MyComponent = () => <div>{name.value}</div>;
+		`;
+
+		const expectedOutput = `
+			import { useSignals as _useSignals } from "@preact/signals-react/runtime";
+			const MyComponent = () => {
+				_useSignals();
+				return <div>{name.value}</div>;
+			};
+		`;
+
+		runTest(inputCode, expectedOutput, {
+			experimental: { noTryFinally: true },
+		});
+	});
+
+	it("prepends function declarations with useSignals call", () => {
+		const inputCode = `
+			function MyComponent() {
+				signal.value;
+				return <div>Hello World</div>;
+			}
+		`;
+
+		const expectedOutput = `
+			import { useSignals as _useSignals } from "@preact/signals-react/runtime";
+			function MyComponent() {
+				_useSignals();
+				signal.value;
+				return <div>Hello World</div>;
+			}
+		`;
+
+		runTest(inputCode, expectedOutput, {
+			experimental: { noTryFinally: true },
+		});
+	});
+
+	it("prepends function expressions with useSignals call", () => {
+		const inputCode = `
+			const MyComponent = function () {
+				signal.value;
+				return <div>Hello World</div>;
+			}
+		`;
+
+		const expectedOutput = `
+			import { useSignals as _useSignals } from "@preact/signals-react/runtime";
+			const MyComponent = function () {
+				_useSignals();
+				signal.value;
+				return <div>Hello World</div>;
+			};
+		`;
+
+		runTest(inputCode, expectedOutput, {
+			experimental: { noTryFinally: true },
+		});
+	});
+});
