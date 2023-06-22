@@ -9,9 +9,12 @@ import {
 import { isModule, addNamed, addNamespace } from "@babel/helper-module-imports";
 
 // TODO:
-// - If function has JSX & is top-level, opt-in
-// - Add debug log option
-// - how to trigger rerenders on attributes change if transform never sees `.value`?
+// - If function has JSX & is top-level & and begins with a capital letter,
+//   opt-in
+// - Add debug log option - how should this be passed down? Keep in mind future
+//   devtools integration which may want to have a name passed into useSignals
+// - how to trigger rerenders on attributes change if transform never sees
+//   `.value`?
 
 interface PluginArgs {
 	types: typeof BabelTypes;
