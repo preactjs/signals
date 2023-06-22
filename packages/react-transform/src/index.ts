@@ -9,10 +9,6 @@ import {
 import { isModule, addNamed, addNamespace } from "@babel/helper-module-imports";
 
 // TODO:
-// - If function has JSX & is top-level & and begins with a capital letter,
-//   opt-in
-// - Add debug log option - how should this be passed down? Keep in mind future
-//   devtools integration which may want to have a name passed into useSignals
 // - how to trigger rerenders on attributes change if transform never sees
 //   `.value`?
 
@@ -28,6 +24,7 @@ const importSource = "@preact/signals-react/runtime";
 const importName = "useSignals";
 const getHookIdentifier = "getHookIdentifier";
 const maybeUsesSignal = "maybeUsesSignal";
+const containsJSX = "containsJSX";
 const alreadyTransformed = "alreadyTransformed";
 
 const get = (pass: PluginPass, name: any) =>
@@ -44,12 +41,19 @@ const setData = (node: DataContainer, name: string, value: any) =>
 const getData = (node: DataContainer, name: string) =>
 	node.getData(`${dataNamespace}/${name}`);
 
+function setOnFunctionScope(path: NodePath, key: string, value: any) {
+	const functionScope = path.scope.getFunctionParent();
+	if (functionScope) {
+		setData(functionScope, key, value);
+	}
+}
+
 type FunctionLike =
 	| BabelTypes.ArrowFunctionExpression
 	| BabelTypes.FunctionExpression
 	| BabelTypes.FunctionDeclaration;
 
-function isReactComponent(path: NodePath<FunctionLike>): boolean {
+function fnNameStartsWithCapital(path: NodePath<FunctionLike>): boolean {
 	if (
 		path.node.type === "ArrowFunctionExpression" ||
 		path.node.type === "FunctionExpression"
@@ -125,18 +129,21 @@ function shouldTransform(
 	path: NodePath<FunctionLike>,
 	options: PluginOptions
 ): boolean {
-	// Opt-out always takes precedence
+	// Opt-out takes first precedence
 	if (isOptedOutOfSignalTracking(path)) return false;
+	// Opt-in opts in to transformation regardless of mode
+	if (isOptedIntoSignalTracking(path)) return true;
 
-	if (options.mode === "manual") {
-		return isOptedIntoSignalTracking(path);
-	} else {
+	if (options.mode == null || options.mode === "auto") {
 		return (
-			(isReactComponent(path) &&
-				getData(path.scope, maybeUsesSignal) === true) ||
-			isOptedIntoSignalTracking(path)
+			fnNameStartsWithCapital(path) && // Function name indicates it's a component
+			getData(path.scope, maybeUsesSignal) === true && // Function appears to use signals
+			getData(path.scope, containsJSX) === true && // Function contains JSX
+			path.scope.parent === path.scope.getProgramParent() // Function is top-level
 		);
 	}
+
+	return false;
 }
 
 function isValueMemberExpression(
@@ -198,6 +205,11 @@ export default function signalsTransform(
 			},
 
 			ArrowFunctionExpression: {
+				// TODO: Consider alternate implementation, where on enter of a function
+				// expression, we run our own manual scan the AST to determine if the
+				// function uses signals and is a component. This manual scan once upon
+				// seeing a function would probably be faster than running an entire
+				// babel pass with plugins on components twice.
 				exit(path, state) {
 					if (
 						getData(path, alreadyTransformed) !== true &&
@@ -272,11 +284,15 @@ export default function signalsTransform(
 			MemberExpression(path) {
 				if (isValueMemberExpression(path)) {
 					// TODO: Uhhh what if a hook accesses a signal in render that isn't used in the render body but... Hmmmm...
-					const functionScope = path.scope.getFunctionParent();
-					if (functionScope) {
-						setData(functionScope, maybeUsesSignal, true);
-					}
+					setOnFunctionScope(path, maybeUsesSignal, true);
 				}
+			},
+
+			JSXElement(path) {
+				setOnFunctionScope(path, containsJSX, true);
+			},
+			JSXFragment(path) {
+				setOnFunctionScope(path, containsJSX, true);
 			},
 		},
 	};
