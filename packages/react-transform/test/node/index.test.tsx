@@ -372,7 +372,7 @@ describe("React Signals Babel Transform - auto opt-out transform", () => {
 		const inputCode = `
 			/** @noTrackSignals */
 			function MyComponent() {
-				return <div>Hello World</div>;
+				return <div>{signal.value}</div>;
 			}
 		`;
 
@@ -385,7 +385,7 @@ describe("React Signals Babel Transform - auto opt-out transform", () => {
 		const inputCode = `
 			/** @noTrackSignals */
 			export default function MyComponent() {
-				return <div>Hello World</div>;
+				return <div>{signal.value}</div>;
 			}
 		`;
 
@@ -398,7 +398,7 @@ describe("React Signals Babel Transform - auto opt-out transform", () => {
 		const inputCode = `
 			/** @noTrackSignals */
 			export default (() => {
-				return <div>Hello World</div>;
+				return <div>{signal.value}</div>;
 			});
 		`;
 
@@ -411,7 +411,7 @@ describe("React Signals Babel Transform - auto opt-out transform", () => {
 		const inputCode = `
 			/** @noTrackSignals */
 			export function MyComponent() {
-				return <div>Hello World</div>;
+				return <div>{signal.value}</div>;
 			}
 		`;
 
@@ -420,11 +420,11 @@ describe("React Signals Babel Transform - auto opt-out transform", () => {
 		runTest(inputCode, expectedOutput, { mode: "auto" });
 	});
 
-	it("wraps named exported variable declarations (arrow functions) with leading JSDoc comment", () => {
+	it("skips transforming named exported variable declarations (arrow functions) with leading opt-out JSDoc comment", () => {
 		const inputCode = `
 			/** @noTrackSignals */
 			export const MyComponent = () => {
-				return <div>Hello World</div>;
+				return <div>{signal.value}</div>;
 			};
 		`;
 
@@ -433,11 +433,11 @@ describe("React Signals Babel Transform - auto opt-out transform", () => {
 		runTest(inputCode, expectedOutput, { mode: "auto" });
 	});
 
-	it("wraps named exported variable declarations (function expression) with leading JSDoc comment", () => {
+	it("skips transforming named exported variable declarations (function expression) with leading opt-out JSDoc comment", () => {
 		const inputCode = `
 			/** @noTrackSignals */
 			export const MyComponent = function () {
-				return <div>Hello World</div>;
+				return <div>{signal.value}</div>;
 			};
 		`;
 

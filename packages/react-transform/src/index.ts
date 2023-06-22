@@ -21,8 +21,8 @@ interface PluginArgs {
 	template: typeof BabelTemplate;
 }
 
-const optOutCommentIdentifier = "@noTrackSignals";
-const optInCommentIdentifier = "@trackSignals";
+const optOutCommentIdentifier = /(^|\s)@noTrackSignals(\s|$)/;
+const optInCommentIdentifier = /(^|\s)@trackSignals(\s|$)/;
 const dataNamespace = "@preact/signals-react-transform";
 const importSource = "@preact/signals-react/runtime";
 const importName = "useSignals";
@@ -66,13 +66,9 @@ function isReactComponent(path: NodePath<FunctionLike>): boolean {
 	}
 }
 
-function hasLeadingComment(
-	path: NodePath,
-	comment: string
-): path is NodePath & { node: { leadingComments: any[] } } {
-	return (
-		path.node.leadingComments?.some(c => c.value.includes(comment)) ?? false
-	);
+function hasLeadingComment(path: NodePath, comment: RegExp): boolean {
+	const comments = path.node.leadingComments;
+	return comments?.some(c => c.value.match(comment) !== null) ?? false;
 }
 
 function hasLeadingOptInComment(path: NodePath) {
