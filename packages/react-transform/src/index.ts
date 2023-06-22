@@ -129,6 +129,8 @@ function shouldTransform(
 	path: NodePath<FunctionLike>,
 	options: PluginOptions
 ): boolean {
+	if (getData(path, alreadyTransformed) === true) return false;
+
 	// Opt-out takes first precedence
 	if (isOptedOutOfSignalTracking(path)) return false;
 	// Opt-in opts in to transformation regardless of mode
@@ -211,72 +213,24 @@ export default function signalsTransform(
 				// seeing a function would probably be faster than running an entire
 				// babel pass with plugins on components twice.
 				exit(path, state) {
-					if (
-						getData(path, alreadyTransformed) !== true &&
-						shouldTransform(path, options)
-					) {
-						let newFunction: BabelTypes.ArrowFunctionExpression;
-						if (options.experimental?.noTryFinally) {
-							newFunction = prependUseSignals(t, path, state);
-						} else {
-							newFunction = wrapInTryFinally(t, path, state);
-						}
-
-						// Using replaceWith keeps the existing leading comments already so
-						// we'll clear our cloned node's leading comments to ensure they
-						// aren't duplicated in the output.
-						newFunction.leadingComments = [];
-
-						setData(path, alreadyTransformed, true);
-						path.replaceWith(newFunction);
+					if (shouldTransform(path, options)) {
+						transformFunction(t, options, path, state);
 					}
 				},
 			},
 
 			FunctionExpression: {
 				exit(path, state) {
-					if (
-						getData(path, alreadyTransformed) !== true &&
-						shouldTransform(path, options)
-					) {
-						let newFunction: BabelTypes.FunctionExpression;
-						if (options.experimental?.noTryFinally) {
-							newFunction = prependUseSignals(t, path, state);
-						} else {
-							newFunction = wrapInTryFinally(t, path, state);
-						}
-
-						// Using replaceWith keeps the existing leading comments already so
-						// we'll clear our cloned node's leading comments to ensure they
-						// aren't duplicated in the output.
-						newFunction.leadingComments = [];
-
-						setData(path, alreadyTransformed, true);
-						path.replaceWith(newFunction);
+					if (shouldTransform(path, options)) {
+						transformFunction(t, options, path, state);
 					}
 				},
 			},
 
 			FunctionDeclaration: {
 				exit(path, state) {
-					if (
-						getData(path, alreadyTransformed) !== true &&
-						shouldTransform(path, options)
-					) {
-						let newFunction: BabelTypes.FunctionDeclaration;
-						if (options.experimental?.noTryFinally) {
-							newFunction = prependUseSignals(t, path, state);
-						} else {
-							newFunction = wrapInTryFinally(t, path, state);
-						}
-
-						// Using replaceWith keeps the existing leading comments already so
-						// we'll clear our cloned node's leading comments to ensure they
-						// aren't duplicated in the output.
-						newFunction.leadingComments = [];
-
-						setData(path, alreadyTransformed, true);
-						path.replaceWith(newFunction);
+					if (shouldTransform(path, options)) {
+						transformFunction(t, options, path, state);
 					}
 				},
 			},
@@ -296,6 +250,28 @@ export default function signalsTransform(
 			},
 		},
 	};
+}
+
+function transformFunction<T extends FunctionLike>(
+	t: typeof BabelTypes,
+	options: PluginOptions,
+	path: NodePath<T>,
+	state: PluginPass
+) {
+	let newFunction: T;
+	if (options.experimental?.noTryFinally) {
+		newFunction = prependUseSignals(t, path, state);
+	} else {
+		newFunction = wrapInTryFinally(t, path, state);
+	}
+
+	// Using replaceWith keeps the existing leading comments already so
+	// we'll clear our cloned node's leading comments to ensure they
+	// aren't duplicated in the output.
+	newFunction.leadingComments = [];
+
+	setData(path, alreadyTransformed, true);
+	path.replaceWith(newFunction);
 }
 
 function wrapInTryFinally<T extends FunctionLike>(
