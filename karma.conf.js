@@ -190,6 +190,8 @@ function createEsbuildPlugin() {
 	};
 }
 
+const pkgList = ["core", "preact", "react", "react/runtime", "react-transform"];
+
 module.exports = function (config) {
 	config.set({
 		browsers: Object.keys(localLaunchers),
@@ -255,7 +257,8 @@ module.exports = function (config) {
 		files: [
 			{
 				pattern:
-					process.env.TESTS || "packages/*/test/{,browser,shared}/*.test.tsx",
+					process.env.TESTS ||
+					`packages/{${pkgList.join(",")}}/test/{,browser,shared}/*.test.tsx`,
 				watched: false,
 				type: "js",
 			},
@@ -266,7 +269,7 @@ module.exports = function (config) {
 		},
 
 		preprocessors: {
-			"packages/*/test/**/*": ["esbuild"],
+			[`packages/{${pkgList.join(",")}}/test/**/*`]: ["esbuild"],
 		},
 
 		plugins: [
@@ -284,7 +287,7 @@ module.exports = function (config) {
 			jsx: "preserve",
 
 			// esbuild options
-			target: downlevel ? "es5" : "es2015",
+			target: downlevel ? "es5" : "es2019",
 			define: {
 				COVERAGE: coverage,
 				"process.env.NODE_ENV": JSON.stringify(process.env.NODE_ENV || ""),
