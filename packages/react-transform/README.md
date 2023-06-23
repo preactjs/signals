@@ -1,6 +1,6 @@
-TODO: Rewrite
+# Signals React Transform
 
-# Signals
+> A Babel plugin to transform React components to automatically subscribe to Preact Signals.
 
 Signals is a performant state management library with two primary goals:
 
@@ -12,30 +12,25 @@ Read the [announcement post](https://preactjs.com/blog/introducing-signals/) to 
 ## Installation:
 
 ```sh
-npm install @preact/signals-react
+npm install @preact/signals-react-transform
 ```
 
-- [Guide / API](../../README.md#guide--api)
-  - [`signal(initialValue)`](../../README.md#signalinitialvalue)
-    - [`signal.peek()`](../../README.md#signalpeek)
-  - [`computed(fn)`](../../README.md#computedfn)
-  - [`effect(fn)`](../../README.md#effectfn)
-  - [`batch(fn)`](../../README.md#batchfn)
-- [React Integration](#react-integration)
-  - [Hooks](#hooks)
-- [License](#license)
+## Usage
 
-## React Integration
+This package works with the `@preact/signals-react` package to integrate signals into React. You use the `@preact/signals-react` package to setup and access signals inside your components and this package is one way to automatically subscribe your components to rerender when the signals you use change.
 
-> Note: The React integration plugs into some React internals and may break unexpectedly in future versions of React. If you are using Signals with React and encounter errors such as "Rendered more hooks than during previous render", "Should have a queue. This is likely a bug in React." or "Cannot redefine property: createElement" please open an issue here.
+To understand how to use signals in your components, check out the [Signals React documentation](../react/README.md). This babel transform is one of a couple different ways to use signals in React. To see other ways, including integrations that don't require a build step, see the [Signals React documentation](../react/README.md).
 
-The React integration can be installed via:
+Then, setup the transform plugin in your Babel config:
 
-```sh
-npm install @preact/signals-react
+```js
+// babel.config.js
+module.exports = {
+	plugins: [["@preact/signals-react-transform"]],
+};
 ```
 
-Similar to the Preact integration, the React adapter allows you to access signals directly inside your components and will automatically subscribe to them.
+Here is an example of a component using signals:
 
 ```js
 import { signal } from "@preact/signals-react";
@@ -49,23 +44,74 @@ function CounterValue() {
 }
 ```
 
-### Hooks
-
-If you need to instantiate new signals inside your components, you can use the `useSignal` or `useComputed` hook.
+After the babel transform runs, it'll look something like:
 
 ```js
-import { useSignal, useComputed } from "@preact/signals-react";
+import { signal, useSignals } from "@preact/signals-react";
 
-function Counter() {
-	const count = useSignal(0);
-	const double = useComputed(() => count.value * 2);
+const count = signal(0);
 
-	return (
-		<button onClick={() => count.value++}>
-			Value: {count.value}, value x 2 = {double.value}
-		</button>
-	);
+function CounterValue() {
+	const endTracking = useSignals();
+	try {
+		// Whenever the `count` signal is updated, we'll
+		// re-render this component automatically for you
+		return <p>Value: {count.value}</p>;
+	} finally {
+		endTracking();
+	}
 }
+```
+
+The `useSignals` hook setups the machinery to observe what signals are used inside the component and then automatically re-render the component when those signals change. The `endTracking` function notifies the tracking mechanism that this component has finished rendering. When your component unmounts, it also unsubscribes from all signals it was using.
+
+Fundamentally, this Babel transform needs to answer two questions in order to know whether to transform a function:
+
+1. Is a function a component?
+2. If so, does this component use signals?
+
+Currently we use the following heuristics to answer these questions:
+
+1. A function is a component if it has a capitalized name (e.g. `function MyComponent() {}`) and contains JSX.
+2. If a function's body includes a member expression referencing `.value` (i.e. `something.value`), we assume it's a signal.
+
+If your function/component meets these criteria, this plugin will transform it. If not, it will be left alone. If you have a function that uses signals but does not meet these criteria (e.g. a function that manually calls `createElement` instead of using JSX), you can add a comment with the string `@trackSignals` to instruct this plugin to transform this function. You can also manually opt-out of transforming a function by adding a comment with the string `@noTrackSignals`.
+
+```js
+// This function will be transformed
+/** @trackSignals */
+function MyComponent() {
+	return createElement("h1", null, signal.value);
+}
+
+// This function will not be transformed
+/** @noTrackSignals */
+function MyComponent() {
+	return <p>{signal.value}</p>;
+}
+```
+
+## Plugin Options
+
+### `mode`
+
+The `mode` option enables you to control how the plugin transforms your code. There are two modes:
+
+- `mode: "auto"` (default): This mode will automatically transform any function that meets the criteria described above. This is the easiest way to get started with signals.
+- `mode: "manual"`: This mode will only transform functions that have a comment with the string `@trackSignals`. This is useful if you want to manually control which functions are transformed.
+
+```js
+// babel.config.js
+module.exports = {
+	plugins: [
+		[
+			"@preact/signals-react-transform",
+			{
+				mode: "manual",
+			},
+		],
+	],
+};
 ```
 
 ## License
