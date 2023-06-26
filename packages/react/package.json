@@ -30,7 +30,14 @@
       "browser": "./dist/signals.module.js",
       "import": "./dist/signals.mjs",
       "require": "./dist/signals.js"
-    }
+    },
+    "./runtime": {
+      "types": "./runtime/dist/index.d.ts",
+      "browser": "./runtime/dist/runtime.module.js",
+      "import": "./runtime/dist/runtime.mjs",
+      "require": "./runtime/dist/runtime.js"
+    },
+    "./runtime/package.json": "./runtime/package.json"
   },
   "mangle": "../../mangle.json",
   "scripts": {
