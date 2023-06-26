@@ -1,5 +1,16 @@
 # @preact/signals-react
 
+## 1.3.3
+
+### Patch Changes
+
+- [#373](https://github.com/preactjs/signals/pull/373) [`8c12a0d`](https://github.com/preactjs/signals/commit/8c12a0df74f00e9cab04e999fc443889b3528c04) Thanks [@rschristian](https://github.com/rschristian)! - Removes package.json#exports.umd, which had invalid paths if they were ever to be consumed
+
+* [#372](https://github.com/preactjs/signals/pull/372) [`6717601`](https://github.com/preactjs/signals/commit/6717601a34449080617033d93a87cc9c441a7567) Thanks [@andrewiggins](https://github.com/andrewiggins)! - Reorganize signals-react package
+
+* Updated dependencies [[`8c12a0d`](https://github.com/preactjs/signals/commit/8c12a0df74f00e9cab04e999fc443889b3528c04), [`26f6526`](https://github.com/preactjs/signals/commit/26f6526875ef0968621c4113594ac95b93de5163)]:
+  - @preact/signals-core@1.3.1
+
 ## 1.3.2
 
 ### Patch Changes
