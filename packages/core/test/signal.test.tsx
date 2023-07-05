@@ -642,6 +642,17 @@ describe("effect()", () => {
 		expect(spy).not.to.be.called;
 	});
 
+	it("should not run if readed signals in a untracked", () => {
+		const a = signal(1);
+		const b = signal(2);
+		const spy = sinon.spy(() => a.value + b.value);
+		effect(() => untracked(spy));
+		a.value = 10;
+		b.value = 20;
+
+		expect(spy).to.be.calledOnce;
+	});
+
 	it("should not rerun parent effect if a nested child effect's signal's value changes", () => {
 		const parentSignal = signal(0);
 		const childSignal = signal(0);
@@ -946,6 +957,22 @@ describe("computed()", () => {
 		a.value = 1;
 		expect(() => c.value).to.throw();
 		expect(spy).to.be.calledTwice;
+	});
+
+	it("should not recompute if readed signals in a untracked", () => {
+		const a = signal(1);
+		const b = signal(2);
+		const spy = sinon.spy(() => a.value + b.value);
+		const c = computed(() => untracked(spy));
+
+		expect(spy).to.not.be.called;
+		expect(c.value).to.equal(3);
+		a.value = 10;
+		c.value;
+		b.value = 20;
+		c.value;
+		expect(spy).to.be.calledOnce;
+		expect(c.value).to.equal(3);
 	});
 
 	it("should store thrown non-errors and recompute only after a dependency changes", () => {
