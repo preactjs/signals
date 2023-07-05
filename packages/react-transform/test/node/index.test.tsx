@@ -99,7 +99,7 @@ describe("React Signals Babel Transform - auto success", () => {
 		runTest(inputCode, expectedOutput);
 	});
 
-	it("wraps function declarations with try/finally", () => {
+	it("wraps function declaration components with try/finally", () => {
 		const inputCode = `
 			function MyComponent() {
 				signal.value;
@@ -123,7 +123,7 @@ describe("React Signals Babel Transform - auto success", () => {
 		runTest(inputCode, expectedOutput);
 	});
 
-	it("wraps function expressions with try/finally", () => {
+	it("wraps component function expressions with try/finally", () => {
 		const inputCode = `
 			const MyComponent = function () {
 				signal.value;
@@ -138,6 +138,92 @@ describe("React Signals Babel Transform - auto success", () => {
 				try {
 					signal.value;
 					return <div>Hello World</div>;
+				} finally {
+					_stopTracking();
+				}
+			};
+		`;
+
+		runTest(inputCode, expectedOutput);
+	});
+
+	it("wraps custom hook arrow functions with return statement in try/finally", () => {
+		const inputCode = `
+			const useCustomHook = () => {
+				return signal.value;
+			};
+		`;
+
+		const expectedOutput = `
+			import { useSignals as _useSignals } from "@preact/signals-react/runtime";
+			const useCustomHook = () => {
+				var _stopTracking = _useSignals();
+				try {
+					return signal.value;
+				} finally {
+					_stopTracking();
+				}
+			};
+		`;
+
+		runTest(inputCode, expectedOutput);
+	});
+
+	it.skip("wraps custom hook arrow functions with inline return statement in try/finally", () => {
+		const inputCode = `
+			const useCustomHook = () => name.value;
+		`;
+
+		const expectedOutput = `
+			import { useSignals as _useSignals } from "@preact/signals-react/runtime";
+			const useCustomHook = () => {
+				var _stopTracking = _useSignals();
+				try {
+					return name.value;
+				} finally {
+					_stopTracking();
+				}
+			};
+		`;
+
+		runTest(inputCode, expectedOutput);
+	});
+
+	it("wraps custom hook function declarations with try/finally", () => {
+		const inputCode = `
+			function useCustomHook() {
+				return signal.value;
+			}
+		`;
+
+		const expectedOutput = `
+			import { useSignals as _useSignals } from "@preact/signals-react/runtime";
+			function useCustomHook() {
+				var _stopTracking = _useSignals();
+				try {
+					return signal.value;
+				} finally {
+					_stopTracking();
+				}
+			}
+		`;
+
+		runTest(inputCode, expectedOutput);
+	});
+
+	it("wraps custom hook function expressions with try/finally", () => {
+		const inputCode = `
+			const useCustomHook = function () {
+				return signal.value;
+			}
+		`;
+
+		const expectedOutput = `
+			import { useSignals as _useSignals } from "@preact/signals-react/runtime";
+			const useCustomHook = function () {
+				var _stopTracking = _useSignals();
+				try {
+					return signal.value;
 				} finally {
 					_stopTracking();
 				}
@@ -195,7 +281,7 @@ describe("React Signals Babel Transform - manual opt-in transform", () => {
 		runTest(inputCode, expectedOutput, { mode: "manual" });
 	});
 
-	it("transforms function declarations with leading opt-in JSDoc comment", () => {
+	it("transforms component function declarations with leading opt-in JSDoc comment", () => {
 		const inputCode = `
 			/** @trackSignals */
 			function MyComponent() {
@@ -219,7 +305,7 @@ describe("React Signals Babel Transform - manual opt-in transform", () => {
 		runTest(inputCode, expectedOutput, { mode: "manual" });
 	});
 
-	it("transforms default exported function declarations with leading opt-in JSDoc comment", () => {
+	it("transforms default exported function declaration components with leading opt-in JSDoc comment", () => {
 		const inputCode = `
 			/** @trackSignals */
 			export default function MyComponent() {
@@ -243,7 +329,7 @@ describe("React Signals Babel Transform - manual opt-in transform", () => {
 		runTest(inputCode, expectedOutput, { mode: "manual" });
 	});
 
-	it("transforms default exported arrow function expression with leading opt-in JSDoc comment", () => {
+	it("transforms default exported arrow function expression component with leading opt-in JSDoc comment", () => {
 		const inputCode = `
 			/** @trackSignals */
 			export default () => {
@@ -267,7 +353,7 @@ describe("React Signals Babel Transform - manual opt-in transform", () => {
 		runTest(inputCode, expectedOutput, { mode: "manual" });
 	});
 
-	it("transforms named exported function declarations with leading opt-in JSDoc comment", () => {
+	it("transforms named exported function declaration components with leading opt-in JSDoc comment", () => {
 		const inputCode = `
 			/** @trackSignals */
 			export function MyComponent() {
@@ -291,7 +377,7 @@ describe("React Signals Babel Transform - manual opt-in transform", () => {
 		runTest(inputCode, expectedOutput, { mode: "manual" });
 	});
 
-	it("transforms named exported variable declarations (arrow functions) with leading opt-in JSDoc comment", () => {
+	it("transforms named exported variable declaration components (arrow functions) with leading opt-in JSDoc comment", () => {
 		const inputCode = `
 			/** @trackSignals */
 			export const MyComponent = () => {
@@ -315,7 +401,7 @@ describe("React Signals Babel Transform - manual opt-in transform", () => {
 		runTest(inputCode, expectedOutput, { mode: "manual" });
 	});
 
-	it("transforms named exported variable declarations (function expression) with leading opt-in JSDoc comment", () => {
+	it("transforms named exported variable declaration components (function expression) with leading opt-in JSDoc comment", () => {
 		const inputCode = `
 			/** @trackSignals */
 			export const MyComponent = function () {
@@ -334,6 +420,78 @@ describe("React Signals Babel Transform - manual opt-in transform", () => {
 					_stopTracking();
 				}
 			};
+		`;
+
+		runTest(inputCode, expectedOutput, { mode: "manual" });
+	});
+
+	it("transforms arrow function custom hook with leading opt-in JSDoc comment before variable declaration", () => {
+		const inputCode = `
+			/** @trackSignals */
+			const useCustomHook = () => {
+				return useState(0);
+			};
+		`;
+
+		const expectedOutput = `
+			import { useSignals as _useSignals } from "@preact/signals-react/runtime";
+			/** @trackSignals */
+			const useCustomHook = () => {
+				var _stopTracking = _useSignals();
+				try {
+					return useState(0);
+				} finally {
+					_stopTracking();
+				}
+			};
+		`;
+
+		runTest(inputCode, expectedOutput, { mode: "manual" });
+	});
+
+	it("transforms default exported function declaration custom hooks with leading opt-in JSDoc comment", () => {
+		const inputCode = `
+			/** @trackSignals */
+			export default function useCustomHook() {
+				return useState(0);
+			}
+		`;
+
+		const expectedOutput = `
+			import { useSignals as _useSignals } from "@preact/signals-react/runtime";
+			/** @trackSignals */
+			export default function useCustomHook() {
+				var _stopTracking = _useSignals();
+				try {
+					return useState(0);
+				} finally {
+					_stopTracking();
+				}
+			}
+		`;
+
+		runTest(inputCode, expectedOutput, { mode: "manual" });
+	});
+
+	it("transforms name exported function declaration custom hooks with leading opt-in JSDoc comment", () => {
+		const inputCode = `
+			/** @trackSignals */
+			export function useCustomHook() {
+				return useState(0);
+			}
+		`;
+
+		const expectedOutput = `
+			import { useSignals as _useSignals } from "@preact/signals-react/runtime";
+			/** @trackSignals */
+			export function useCustomHook() {
+				var _stopTracking = _useSignals();
+				try {
+					return useState(0);
+				} finally {
+					_stopTracking();
+				}
+			}
 		`;
 
 		runTest(inputCode, expectedOutput, { mode: "manual" });
@@ -341,6 +499,22 @@ describe("React Signals Babel Transform - manual opt-in transform", () => {
 });
 
 describe("React Signals Babel Transform - auto opt-out transform", () => {
+	it("opt-out comment overrides opt-in comment", () => {
+		const inputCode = `
+			/**
+			 * @noTrackSignals
+			 * @trackSignals
+			 */
+			const MyComponent = () => {
+				return <div>{signal.value}</div>;
+			};
+		`;
+
+		const expectedOutput = inputCode;
+
+		runTest(inputCode, expectedOutput, { mode: "auto" });
+	});
+
 	it("skips transforming arrow function component with leading opt-out JSDoc comment before variable declaration", () => {
 		const inputCode = `
 			/** @noTrackSignals */
@@ -368,7 +542,7 @@ describe("React Signals Babel Transform - auto opt-out transform", () => {
 		});
 	});
 
-	it("skips transforming function declarations with leading opt-out JSDoc comment", () => {
+	it("skips transforming function declaration components with leading opt-out JSDoc comment", () => {
 		const inputCode = `
 			/** @noTrackSignals */
 			function MyComponent() {
@@ -381,7 +555,7 @@ describe("React Signals Babel Transform - auto opt-out transform", () => {
 		runTest(inputCode, expectedOutput, { mode: "auto" });
 	});
 
-	it("skips transforming default exported function declarations with leading opt-out JSDoc comment", () => {
+	it("skips transforming default exported function declaration components with leading opt-out JSDoc comment", () => {
 		const inputCode = `
 			/** @noTrackSignals */
 			export default function MyComponent() {
@@ -394,7 +568,7 @@ describe("React Signals Babel Transform - auto opt-out transform", () => {
 		runTest(inputCode, expectedOutput, { mode: "auto" });
 	});
 
-	it("skips transforming default exported arrow function expression with leading opt-out JSDoc comment", () => {
+	it("skips transforming default exported arrow function expression components with leading opt-out JSDoc comment", () => {
 		const inputCode = `
 			/** @noTrackSignals */
 			export default (() => {
@@ -407,7 +581,7 @@ describe("React Signals Babel Transform - auto opt-out transform", () => {
 		runTest(inputCode, expectedOutput, { mode: "auto" });
 	});
 
-	it("skips transforming named exported function declarations with leading opt-out JSDoc comment", () => {
+	it("skips transforming named exported function declaration components with leading opt-out JSDoc comment", () => {
 		const inputCode = `
 			/** @noTrackSignals */
 			export function MyComponent() {
@@ -420,7 +594,7 @@ describe("React Signals Babel Transform - auto opt-out transform", () => {
 		runTest(inputCode, expectedOutput, { mode: "auto" });
 	});
 
-	it("skips transforming named exported variable declarations (arrow functions) with leading opt-out JSDoc comment", () => {
+	it("skips transforming named exported variable declaration components (arrow functions) with leading opt-out JSDoc comment", () => {
 		const inputCode = `
 			/** @noTrackSignals */
 			export const MyComponent = () => {
@@ -433,7 +607,7 @@ describe("React Signals Babel Transform - auto opt-out transform", () => {
 		runTest(inputCode, expectedOutput, { mode: "auto" });
 	});
 
-	it("skips transforming named exported variable declarations (function expression) with leading opt-out JSDoc comment", () => {
+	it("skips transforming named exported variable declaration components (function expression) with leading opt-out JSDoc comment", () => {
 		const inputCode = `
 			/** @noTrackSignals */
 			export const MyComponent = function () {
@@ -446,15 +620,38 @@ describe("React Signals Babel Transform - auto opt-out transform", () => {
 		runTest(inputCode, expectedOutput, { mode: "auto" });
 	});
 
-	it("opt-out comment overrides opt-in comment", () => {
+	it("skips transforming arrow function custom hook with leading opt-out JSDoc comment before variable declaration", () => {
 		const inputCode = `
-			/**
-			 * @noTrackSignals
-			 * @trackSignals
-			 */
-			const MyComponent = () => {
-				return <div>{signal.value}</div>;
+			/** @noTrackSignals */
+			const useCustomHook = () => {
+				return useState(0);
 			};
+		`;
+
+		const expectedOutput = inputCode;
+
+		runTest(inputCode, expectedOutput, { mode: "auto" });
+	});
+
+	it("skips transforming default exported function declaration custom hooks with leading opt-out JSDoc comment", () => {
+		const inputCode = `
+			/** @noTrackSignals */
+			export default function useCustomHook() {
+				return useState(0);
+			}
+		`;
+
+		const expectedOutput = inputCode;
+
+		runTest(inputCode, expectedOutput, { mode: "auto" });
+	});
+
+	it("skips transforming name exported function declaration custom hooks with leading opt-out JSDoc comment", () => {
+		const inputCode = `
+			/** @noTrackSignals */
+			export function useCustomHook() {
+				return useState(0);
+			}
 		`;
 
 		const expectedOutput = inputCode;
@@ -484,7 +681,7 @@ describe("React Signals Babel Transform - no auto transform", () => {
 		runTest(inputCode, expectedOutput);
 	});
 
-	it("does not transform function declarations that don't use signals", () => {
+	it("does not transform function declaration components that don't use signals", () => {
 		const inputCode = `
 			function MyComponent() {
 				return <div>Hello World</div>;
@@ -495,11 +692,33 @@ describe("React Signals Babel Transform - no auto transform", () => {
 		runTest(inputCode, expectedOutput);
 	});
 
-	it("does not transform function expressions that don't use signals", () => {
+	it("does not transform function expression components that don't use signals", () => {
 		const inputCode = `
 			const MyComponent = function () {
 				return <div>Hello World</div>;
 			};
+		`;
+
+		const expectedOutput = inputCode;
+		runTest(inputCode, expectedOutput);
+	});
+
+	it("does not transform custom hook function declarations that don't use signals", () => {
+		const inputCode = `
+			function useCustomHook() {
+				return useState(0);
+			}
+		`;
+
+		const expectedOutput = inputCode;
+		runTest(inputCode, expectedOutput);
+	});
+
+	it("does not transform incorrectly named custom hook function declarations", () => {
+		const inputCode = `
+			function usecustomHook() {
+				return signal.value;
+			}
 		`;
 
 		const expectedOutput = inputCode;
@@ -548,7 +767,7 @@ describe("React Signals Babel Transform - noTryFinally", () => {
 		});
 	});
 
-	it("prepends function declarations with useSignals call", () => {
+	it("prepends function declaration components with useSignals call", () => {
 		const inputCode = `
 			function MyComponent() {
 				signal.value;
@@ -570,7 +789,7 @@ describe("React Signals Babel Transform - noTryFinally", () => {
 		});
 	});
 
-	it("prepends function expressions with useSignals call", () => {
+	it("prepends function expression components with useSignals call", () => {
 		const inputCode = `
 			const MyComponent = function () {
 				signal.value;
@@ -585,6 +804,28 @@ describe("React Signals Babel Transform - noTryFinally", () => {
 				signal.value;
 				return <div>Hello World</div>;
 			};
+		`;
+
+		runTest(inputCode, expectedOutput, {
+			experimental: { noTryFinally: true },
+		});
+	});
+
+	it("prepends custom hook function declarations with useSignals call", () => {
+		const inputCode = `
+			function useCustomHook() {
+				signal.value;
+				return useState(0);
+			}
+		`;
+
+		const expectedOutput = `
+			import { useSignals as _useSignals } from "@preact/signals-react/runtime";
+			function useCustomHook() {
+				_useSignals();
+				signal.value;
+				return useState(0);
+			}
 		`;
 
 		runTest(inputCode, expectedOutput, {

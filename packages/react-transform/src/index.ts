@@ -53,22 +53,27 @@ type FunctionLike =
 	| BabelTypes.FunctionExpression
 	| BabelTypes.FunctionDeclaration;
 
-function fnNameStartsWithCapital(path: NodePath<FunctionLike>): boolean {
-	if (
-		path.node.type === "ArrowFunctionExpression" ||
-		path.node.type === "FunctionExpression"
-	) {
-		return (
-			path.parentPath.node.type === "VariableDeclarator" &&
-			path.parentPath.node.id.type === "Identifier" &&
-			path.parentPath.node.id.name.match(/^[A-Z]/) !== null
-		);
-	} else if (path.node.type === "FunctionDeclaration") {
-		return path.node.id?.name?.match(/^[A-Z]/) !== null;
-	} else {
-		return false;
-	}
+function testFunctionName(predicate: (name: string | null) => boolean): (path: NodePath<FunctionLike>) => boolean {
+	return (path: NodePath<FunctionLike>) => {
+		if (
+			path.node.type === "ArrowFunctionExpression" ||
+			path.node.type === "FunctionExpression"
+		) {
+			return (
+				path.parentPath.node.type === "VariableDeclarator" &&
+				path.parentPath.node.id.type === "Identifier" &&
+				predicate(path.parentPath.node.id.name)
+			);
+		} else if (path.node.type === "FunctionDeclaration") {
+			return predicate(path.node.id?.name ?? null);
+		} else {
+			return false;
+		}
+	};
 }
+
+const fnNameStartsWithCapital = testFunctionName(name => name?.match(/^[A-Z]/) !== null);
+const fnNameStartsWithUse = testFunctionName(name => name?.match(/^use[A-Z]/) !== null);
 
 function hasLeadingComment(path: NodePath, comment: RegExp): boolean {
 	const comments = path.node.leadingComments;
@@ -125,6 +130,19 @@ function isOptedOutOfSignalTracking(path: NodePath | null): boolean {
 	}
 }
 
+function isComponentFunction(path: NodePath<FunctionLike>): boolean {
+	return (
+		fnNameStartsWithCapital(path) && // Function name indicates it's a component
+		getData(path.scope, containsJSX) === true && // Function contains JSX
+		path.scope.parent === path.scope.getProgramParent() // Function is top-level
+	);
+}
+
+function isCustomHook(path: NodePath<FunctionLike>): boolean {
+	return fnNameStartsWithUse(path) && // Function name indicates it's a hook
+		path.scope.parent === path.scope.getProgramParent(); // Function is top-level
+}
+
 function shouldTransform(
 	path: NodePath<FunctionLike>,
 	options: PluginOptions
@@ -137,12 +155,8 @@ function shouldTransform(
 	if (isOptedIntoSignalTracking(path)) return true;
 
 	if (options.mode == null || options.mode === "auto") {
-		return (
-			fnNameStartsWithCapital(path) && // Function name indicates it's a component
-			getData(path.scope, maybeUsesSignal) === true && // Function appears to use signals
-			getData(path.scope, containsJSX) === true && // Function contains JSX
-			path.scope.parent === path.scope.getProgramParent() // Function is top-level
-		);
+		return (isComponentFunction(path) || isCustomHook(path))
+			&& getData(path.scope, maybeUsesSignal) === true // Function appears to use signals;
 	}
 
 	return false;
