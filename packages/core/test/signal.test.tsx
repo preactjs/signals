@@ -1,4 +1,4 @@
-import { signal, computed, effect, batch, Signal } from "@preact/signals-core";
+import { signal, computed, effect, batch, Signal, untracked } from "@preact/signals-core";
 
 describe("signal", () => {
 	it("should return value", () => {
