@@ -5,7 +5,8 @@ import {
 	useSignalEffect,
 	Signal,
 } from "@preact/signals";
-import { createElement, createRef, render } from "preact";
+import { createContext, createElement, createRef, render } from "preact";
+import { useContext, useState } from "preact/hooks";
 import { setupRerender, act } from "preact/test-utils";
 
 const sleep = (ms?: number) => new Promise(r => setTimeout(r, ms));
@@ -416,6 +417,38 @@ describe("@preact/signals", () => {
 			});
 		});
 	});
+
+	describe('hooks mixed with signals', () => {
+		it('signals should not stop context from propagating', () => {
+			const ctx = createContext({ test: 'should-not-exist' });
+			let update: any;
+
+			function Provider(props: any) {
+				const [test, setTest] = useState('foo');
+				update = setTest
+				return (
+					<ctx.Provider value={{ test }}>{props.children}</ctx.Provider>
+				);
+			}
+
+			function Test() {
+				const value = useContext(ctx);
+				return <p>{value.test}</p>
+			}
+
+			function App() {
+				return <Provider><Test /></Provider>
+			}
+
+			render(<App />, scratch);
+
+			expect(scratch.innerHTML).to.equal('<p>foo</p>')
+			act(() => {
+				update('bar')
+			})
+			expect(scratch.innerHTML).to.equal('<p>bar</p>')
+		})
+	})
 
 	describe("useSignalEffect()", () => {
 		it("should be invoked after commit", async () => {
