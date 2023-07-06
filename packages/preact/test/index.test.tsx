@@ -1,9 +1,9 @@
 import {
-	signal,
 	computed,
 	useComputed,
 	useSignalEffect,
 	Signal,
+	signal,
 } from "@preact/signals";
 import { createElement, createRef, render, createContext } from "preact";
 import { useContext, useState } from "preact/hooks";
@@ -431,9 +431,10 @@ describe("@preact/signals", () => {
 				);
 			}
 
+			const s = signal('baz')
 			function Test() {
 				const value = useContext(ctx);
-				return <p>{value.test}</p>
+				return <p>{value.test} {s.value}</p>
 			}
 
 			function App() {
@@ -442,11 +443,11 @@ describe("@preact/signals", () => {
 
 			render(<App />, scratch);
 
-			expect(scratch.innerHTML).to.equal('<p>foo</p>')
+			expect(scratch.innerHTML).to.equal('<p>foo baz</p>')
 			act(() => {
 				update('bar')
 			})
-			expect(scratch.innerHTML).to.equal('<p>bar</p>')
+			expect(scratch.innerHTML).to.equal('<p>bar baz</p>')
 		})
 	})
 
