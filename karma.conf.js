@@ -90,6 +90,11 @@ function createEsbuildPlugin() {
 				};
 			});
 
+			// Mock fs module to run babel in a browser environment
+			build.onResolve({ filter: /^fs$/ }, () => {
+				return { path: path.join(__dirname, "test/browser/mockFs.js") };
+			});
+
 			// Apply babel pass whenever we load a .js file
 			build.onLoad({ filter: /\.[mc]?[jt]sx?$/ }, async args => {
 				const contents = await fs.readFile(args.path, "utf-8");
@@ -255,6 +260,12 @@ module.exports = function (config) {
 		customLaunchers: localLaunchers,
 
 		files: [
+			{
+				// Provide some NodeJS globals to run babel in a browser environment
+				pattern: "test/browser/nodeGlobals.js",
+				watched: false,
+				type: "js",
+			},
 			{
 				pattern:
 					process.env.TESTS ||
