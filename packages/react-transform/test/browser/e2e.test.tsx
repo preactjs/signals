@@ -1,49 +1,39 @@
-// @ts-expect-error - missing types
-import syntaxJsx from "@babel/plugin-syntax-jsx";
-// @ts-expect-error - missing types
-import transformReactJsx from "@babel/plugin-transform-react-jsx";
-import { transform } from "@babel/standalone";
+import * as signalsCore from "@preact/signals-core";
 import { signal } from "@preact/signals-core";
-import { useSignals } from "@preact/signals-react/runtime";
+import { PluginOptions } from "@preact/signals-react-transform";
+import * as signalsRuntime from "@preact/signals-react/runtime";
 import React, { createElement } from "react";
 import {
 	Root,
-	createRoot,
 	act,
-	checkHangingAct,
-	getConsoleErrorSpy,
 	checkConsoleErrorLogs,
+	checkHangingAct,
+	createRoot,
+	getConsoleErrorSpy,
 } from "../../../react/test/shared/utils";
-import signalsTransform, { PluginOptions } from "../../src/index";
 
-function transformCode(code: string, options?: PluginOptions) {
-	const signalsPluginConfig: any[] = [signalsTransform];
-	if (options) {
-		signalsPluginConfig.push(options);
+const modules: Record<string, any> = {
+	"@preact/signals-core": signalsCore,
+	"@preact/signals-react/runtime": signalsRuntime,
+};
+
+function testRequire(name: string) {
+	if (name in modules) {
+		return modules[name];
+	} else {
+		throw new Error(`Module ${name} not setup in "testRequire".`);
 	}
-
-	const result = transform(code, {
-		plugins: [signalsPluginConfig, syntaxJsx, transformReactJsx],
-	});
-
-	return result?.code || "";
 }
 
-function createComponent(code: string, options?: PluginOptions) {
-	// Remove the `import { useSignals } from "@preact/signals-react/runtime";`
-	// line since we are compiling code on the fly and can't use import statements.
-	const transformedCode = transformCode(code, options)
-		.trim()
-		.split("\n")
-		.slice(1)
-		.join("\n");
+async function createComponent(code: string, options?: PluginOptions) {
+	// `transformSignalCode` is a global helper function added to the global
+	// namespace by a test helper we've included in Karma.
+	let transformedCode = transformSignalCode(code, options).trim();
 
-	const factory = new Function(
-		"React",
-		"_useSignals",
-		`return ${transformedCode}`
-	);
-	return factory(React, useSignals);
+	const exports: any = {};
+	const wrapper = new Function("React", "exports", "require", transformedCode);
+	wrapper(React, exports, testRequire);
+	return exports;
 }
 
 describe("React Signals babel transfrom - browser E2E tests", () => {
@@ -70,12 +60,36 @@ describe("React Signals babel transfrom - browser E2E tests", () => {
 	});
 
 	it("should rerender components when signals they use change", async () => {
-		const App = createComponent(`
-			function App({ name }) {
+		const { App } = await createComponent(`
+			export function App({ name }) {
 				return <div>Hello {name.value}</div>;
 			}`);
 
 		const name = signal("John");
+		await render(<App name={name} />);
+		expect(scratch.innerHTML).to.equal("<div>Hello John</div>");
+
+		await act(() => {
+			name.value = "Jane";
+		});
+		expect(scratch.innerHTML).to.equal("<div>Hello Jane</div>");
+	});
+
+	it("should rerender components with custom hooks that use signals", async () => {
+		const { App, name } = await createComponent(`
+			import { signal } from "@preact/signals-core";
+
+			export const name = signal("John");
+			function useName() {
+				debugger;
+				return name.value;
+			}
+
+			export function App() {
+				const name = useName();
+				return <div>Hello {name}</div>;
+			}`);
+
 		await render(<App name={name} />);
 		expect(scratch.innerHTML).to.equal("<div>Hello John</div>");
 

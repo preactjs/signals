@@ -15,7 +15,12 @@
       "@preact/signals-core": ["./packages/core/src/index.ts"],
       "@preact/signals": ["./packages/preact/src/index.ts"],
       "@preact/signals-react": ["./packages/react/src/index.ts"],
-      "@preact/signals-react/runtime": ["./packages/react/runtime/src/index.ts"]
+      "@preact/signals-react/runtime": [
+        "./packages/react/runtime/src/index.ts"
+      ],
+      "@preact/signals-react-transform": [
+        "./packages/react-transform/src/index.ts"
+      ]
     }
   },
   "exclude": ["docs", "packages/*/dist/**"]

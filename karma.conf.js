@@ -62,6 +62,7 @@ function createEsbuildPlugin() {
 		"@preact/signals-core": subPkgPath("./packages/core"),
 		"@preact/signals": subPkgPath("./packages/preact"),
 		"@preact/signals-react": subPkgPath("./packages/react"),
+		"@preact/signals-react-transform": subPkgPath("./packages/react-transform"),
 	};
 
 	return {
@@ -267,6 +268,11 @@ module.exports = function (config) {
 				type: "js",
 			},
 			{
+				pattern: "test/browser/babel.js",
+				watched: false,
+				type: "js",
+			},
+			{
 				pattern:
 					process.env.TESTS ||
 					`packages/{${pkgList.join(",")}}/test/{,browser,shared}/*.test.tsx`,
@@ -281,6 +287,8 @@ module.exports = function (config) {
 
 		preprocessors: {
 			[`packages/{${pkgList.join(",")}}/test/**/*`]: ["esbuild"],
+			[`test/browser/babel.js`]: ["esbuild"],
+			[`test/browser/nodeGlobals.js`]: ["esbuild"],
 		},
 
 		plugins: [
