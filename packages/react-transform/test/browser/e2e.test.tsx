@@ -2,7 +2,8 @@ import * as signalsCore from "@preact/signals-core";
 import { signal } from "@preact/signals-core";
 import { PluginOptions } from "@preact/signals-react-transform";
 import * as signalsRuntime from "@preact/signals-react/runtime";
-import React, { createElement } from "react";
+import { createElement } from "react";
+import * as jsxRuntime from "react/jsx-runtime";
 import {
 	Root,
 	act,
@@ -15,6 +16,7 @@ import {
 const modules: Record<string, any> = {
 	"@preact/signals-core": signalsCore,
 	"@preact/signals-react/runtime": signalsRuntime,
+	"react/jsx-runtime": jsxRuntime,
 };
 
 function testRequire(name: string) {
@@ -27,12 +29,12 @@ function testRequire(name: string) {
 
 async function createComponent(code: string, options?: PluginOptions) {
 	// `transformSignalCode` is a global helper function added to the global
-	// namespace by a test helper we've included in Karma.
-	let transformedCode = transformSignalCode(code, options).trim();
+	// namespace by a test helper we've included in the Karma config.
+	let cjsCode = transformSignalCode(code, options);
 
 	const exports: any = {};
-	const wrapper = new Function("React", "exports", "require", transformedCode);
-	wrapper(React, exports, testRequire);
+	const wrapper = new Function("exports", "require", cjsCode);
+	wrapper(exports, testRequire);
 	return exports;
 }
 

@@ -19,7 +19,7 @@ globalThis.transformSignalCode = function transformSignalCode(code, options) {
 		plugins: [
 			signalsPluginConfig,
 			syntaxJsx,
-			transformReactJsx,
+			[transformReactJsx, { runtime: "automatic" }],
 			[transformEsm, { importInterop: "none", loose: true, strict: true }],
 		],
 	});
