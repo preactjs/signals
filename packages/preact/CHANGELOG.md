@@ -1,5 +1,11 @@
 # @preact/signals
 
+## 1.1.5
+
+### Patch Changes
+
+- [#381](https://github.com/preactjs/signals/pull/381) [`e655e7f`](https://github.com/preactjs/signals/commit/e655e7f86c321dca12e760e21c01f2dbfafade47) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Allow for context to propagate to components using context
+
 ## 1.1.4
 
 ### Patch Changes

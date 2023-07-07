@@ -1,5 +1,11 @@
 # @preact/signals-react
 
+## 1.3.4
+
+### Patch Changes
+
+- [#377](https://github.com/preactjs/signals/pull/377) [`f4ff0ab`](https://github.com/preactjs/signals/commit/f4ff0abc55c83198e5ff7557f3d6663bac4b5149) Thanks [@andrewiggins](https://github.com/andrewiggins)! - Fix internal property names
+
 ## 1.3.3
 
 ### Patch Changes
