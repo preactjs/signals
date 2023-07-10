@@ -1,5 +1,5 @@
 import * as signalsCore from "@preact/signals-core";
-import { signal } from "@preact/signals-core";
+import { batch, signal } from "@preact/signals-core";
 import { PluginOptions } from "@preact/signals-react-transform";
 import * as signalsRuntime from "@preact/signals-react/runtime";
 import { createElement } from "react";
@@ -30,7 +30,8 @@ function testRequire(name: string) {
 async function createComponent(code: string, options?: PluginOptions) {
 	// `transformSignalCode` is a global helper function added to the global
 	// namespace by a test helper we've included in the Karma config.
-	let cjsCode = transformSignalCode(code, options);
+	const cjsCode = transformSignalCode(code, options);
+	console.log(cjsCode);
 
 	const exports: any = {};
 	const wrapper = new Function("exports", "require", cjsCode);
@@ -83,7 +84,6 @@ describe("React Signals babel transfrom - browser E2E tests", () => {
 
 			export const name = signal("John");
 			function useName() {
-				debugger;
 				return name.value;
 			}
 
@@ -99,5 +99,96 @@ describe("React Signals babel transfrom - browser E2E tests", () => {
 			name.value = "Jane";
 		});
 		expect(scratch.innerHTML).to.equal("<div>Hello Jane</div>");
+	});
+
+	it("should rerender components with multiple custom hooks that use signals", async () => {
+		const { App, name, greeting } = await createComponent(`
+			import { signal } from "@preact/signals-core";
+
+			export const greeting = signal("Hello");
+			function useGreeting() {
+				return greeting.value;
+			}
+
+			export const name = signal("John");
+			function useName() {
+				return name.value;
+			}
+
+			export function App() {
+				const greeting = useGreeting();
+				const name = useName();
+				return <div>{greeting} {name}</div>;
+			}`);
+
+		await render(<App name={name} />);
+		expect(scratch.innerHTML).to.equal("<div>Hello John</div>");
+
+		await act(() => {
+			greeting.value = "Hi";
+		});
+		expect(scratch.innerHTML).to.equal("<div>Hi John</div>");
+
+		await act(() => {
+			name.value = "Jane";
+		});
+		expect(scratch.innerHTML).to.equal("<div>Hi Jane</div>");
+
+		await act(() => {
+			batch(() => {
+				greeting.value = "Hello";
+				name.value = "John";
+			});
+		});
+		expect(scratch.innerHTML).to.equal("<div>Hello John</div>");
+	});
+
+	it("should rerender components that use signals with multiple custom hooks that use signals", async () => {
+		const { App, name, greeting, punctuation } = await createComponent(`
+			import { signal } from "@preact/signals-core";
+
+			export const greeting = signal("Hello");
+			function useGreeting() {
+				return greeting.value;
+			}
+
+			export const name = signal("John");
+			function useName() {
+				return name.value;
+			}
+
+			export const punctuation = signal("!");
+			export function App() {
+				const greeting = useGreeting();
+				const name = useName();
+				return <div>{greeting} {name}{punctuation.value}</div>;
+			}`);
+
+		await render(<App name={name} />);
+		expect(scratch.innerHTML).to.equal("<div>Hello John!</div>");
+
+		await act(() => {
+			greeting.value = "Hi";
+		});
+		expect(scratch.innerHTML).to.equal("<div>Hi John!</div>");
+
+		await act(() => {
+			name.value = "Jane";
+		});
+		expect(scratch.innerHTML).to.equal("<div>Hi Jane!</div>");
+
+		await act(() => {
+			punctuation.value = "?";
+		});
+		expect(scratch.innerHTML).to.equal("<div>Hi Jane?</div>");
+
+		await act(() => {
+			batch(() => {
+				greeting.value = "Hello";
+				name.value = "John";
+				punctuation.value = "!";
+			});
+		});
+		expect(scratch.innerHTML).to.equal("<div>Hello John!</div>");
 	});
 });
