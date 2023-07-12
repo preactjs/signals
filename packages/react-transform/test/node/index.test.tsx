@@ -147,7 +147,7 @@ describe("React Signals Babel Transform - auto success", () => {
 		runTest(inputCode, expectedOutput);
 	});
 
-	it("wraps custom hook arrow functions with return statement in try/finally", () => {
+	it("transforms custom hook arrow functions with return statement", () => {
 		const inputCode = `
 			const useCustomHook = () => {
 				return signal.value;
@@ -157,19 +157,15 @@ describe("React Signals Babel Transform - auto success", () => {
 		const expectedOutput = `
 			import { useSignals as _useSignals } from "@preact/signals-react/runtime";
 			const useCustomHook = () => {
-				var _stopTracking = _useSignals();
-				try {
-					return signal.value;
-				} finally {
-					_stopTracking();
-				}
+				_useSignals();
+				return signal.value;
 			};
 		`;
 
 		runTest(inputCode, expectedOutput);
 	});
 
-	it.skip("wraps custom hook arrow functions with inline return statement in try/finally", () => {
+	it("transforms custom hook arrow functions with inline return statement", () => {
 		const inputCode = `
 			const useCustomHook = () => name.value;
 		`;
@@ -177,19 +173,15 @@ describe("React Signals Babel Transform - auto success", () => {
 		const expectedOutput = `
 			import { useSignals as _useSignals } from "@preact/signals-react/runtime";
 			const useCustomHook = () => {
-				var _stopTracking = _useSignals();
-				try {
-					return name.value;
-				} finally {
-					_stopTracking();
-				}
+				_useSignals();
+				return name.value;
 			};
 		`;
 
 		runTest(inputCode, expectedOutput);
 	});
 
-	it("wraps custom hook function declarations with try/finally", () => {
+	it("transforms custom hook function declarations", () => {
 		const inputCode = `
 			function useCustomHook() {
 				return signal.value;
@@ -199,19 +191,15 @@ describe("React Signals Babel Transform - auto success", () => {
 		const expectedOutput = `
 			import { useSignals as _useSignals } from "@preact/signals-react/runtime";
 			function useCustomHook() {
-				var _stopTracking = _useSignals();
-				try {
-					return signal.value;
-				} finally {
-					_stopTracking();
-				}
+				_useSignals();
+				return signal.value;
 			}
 		`;
 
 		runTest(inputCode, expectedOutput);
 	});
 
-	it("wraps custom hook function expressions with try/finally", () => {
+	it("transforms custom hook function expressions", () => {
 		const inputCode = `
 			const useCustomHook = function () {
 				return signal.value;
@@ -221,12 +209,8 @@ describe("React Signals Babel Transform - auto success", () => {
 		const expectedOutput = `
 			import { useSignals as _useSignals } from "@preact/signals-react/runtime";
 			const useCustomHook = function () {
-				var _stopTracking = _useSignals();
-				try {
-					return signal.value;
-				} finally {
-					_stopTracking();
-				}
+				_useSignals();
+				return signal.value;
 			};
 		`;
 
@@ -437,12 +421,8 @@ describe("React Signals Babel Transform - manual opt-in transform", () => {
 			import { useSignals as _useSignals } from "@preact/signals-react/runtime";
 			/** @trackSignals */
 			const useCustomHook = () => {
-				var _stopTracking = _useSignals();
-				try {
-					return useState(0);
-				} finally {
-					_stopTracking();
-				}
+				_useSignals();
+				return useState(0);
 			};
 		`;
 
@@ -461,12 +441,8 @@ describe("React Signals Babel Transform - manual opt-in transform", () => {
 			import { useSignals as _useSignals } from "@preact/signals-react/runtime";
 			/** @trackSignals */
 			export default function useCustomHook() {
-				var _stopTracking = _useSignals();
-				try {
-					return useState(0);
-				} finally {
-					_stopTracking();
-				}
+				_useSignals();
+				return useState(0);
 			}
 		`;
 
@@ -485,12 +461,8 @@ describe("React Signals Babel Transform - manual opt-in transform", () => {
 			import { useSignals as _useSignals } from "@preact/signals-react/runtime";
 			/** @trackSignals */
 			export function useCustomHook() {
-				var _stopTracking = _useSignals();
-				try {
-					return useState(0);
-				} finally {
-					_stopTracking();
-				}
+				_useSignals();
+				return useState(0);
 			}
 		`;
 

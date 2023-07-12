@@ -101,31 +101,13 @@ function setCurrentUpdater(updater?: Effect) {
 }
 
 const _queueMicroTask = Promise.prototype.then.bind(Promise.resolve());
-
-const noop = () => { };
 const clearCurrentUpdater = () => setCurrentUpdater();
-
-let inManuallyTrackedRender = false;
-const endManuallyTrackedSignals = () => {
-	inManuallyTrackedRender = false;
-	clearCurrentUpdater();
-}
 
 /**
  * Custom hook to create the effect to track signals used during render and
  * subscribe to changes to rerender the component when the signals change.
- * @param manuallyTrackedSignals Set to true if the returned `stopTracking`
- * function is manually called at the end of this component's render.
  */
-export function useSignals(manuallyTrackedSignals?: boolean): () => void {
-	if (inManuallyTrackedRender) {
-		return noop;
-	}
-
-	if (manuallyTrackedSignals) {
-		inManuallyTrackedRender = true;
-	}
-
+export function useSignals(): () => void {
 	clearCurrentUpdater();
 	if (!finalCleanup) {
 		finalCleanup = _queueMicroTask(() => {
@@ -143,7 +125,7 @@ export function useSignals(manuallyTrackedSignals?: boolean): () => void {
 	useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
 	setCurrentUpdater(store.updater);
 
-	return manuallyTrackedSignals ? endManuallyTrackedSignals : clearCurrentUpdater;
+	return clearCurrentUpdater;
 }
 
 /**

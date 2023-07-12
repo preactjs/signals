@@ -173,7 +173,7 @@ function isValueMemberExpression(
 	);
 }
 
-const tryCatchTemplate = template.statements`var STOP_TRACKING_IDENTIFIER = HOOK_IDENTIFIER(IN_COMPONENT);
+const tryCatchTemplate = template.statements`var STOP_TRACKING_IDENTIFIER = HOOK_IDENTIFIER();
 try {
 	BODY
 } finally {
@@ -273,7 +273,12 @@ function transformFunction(
 	state: PluginPass
 ) {
 	let newFunction: FunctionLike;
-	if (options.experimental?.noTryFinally) {
+	if (isCustomHook(path) || options.experimental?.noTryFinally) {
+		// For custom hooks, we don't need to wrap the function body in a
+		// try/finally block because later code in the function's render body could
+		// read signals and we want to track and associate those signals with this
+		// component. The try/finally in the component's body will stop tracking
+		// signals for us instead.
 		newFunction = prependUseSignals(t, path, state);
 	} else {
 		newFunction = wrapInTryFinally(t, path, state);
@@ -299,7 +304,6 @@ function wrapInTryFinally(
 	const newFunction = t.cloneNode(path.node);
 	newFunction.body = t.blockStatement(
 		tryCatchTemplate({
-			IN_COMPONENT: isComponentFunction(path).toString(),
 			STOP_TRACKING_IDENTIFIER: stopTrackingIdentifier,
 			HOOK_IDENTIFIER: get(state, getHookIdentifier)(),
 			BODY: t.isBlockStatement(path.node.body)
