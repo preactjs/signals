@@ -1,6 +1,6 @@
 {
   "name": "@preact/signals-react",
-  "version": "1.3.2",
+  "version": "1.3.4",
   "license": "MIT",
   "description": "Manage state with style in React",
   "keywords": [],
@@ -41,10 +41,10 @@
   },
   "mangle": "../../mangle.json",
   "scripts": {
-    "prepublishOnly": "cd ../.. && pnpm build:react"
+    "prepublishOnly": "cd ../.. && pnpm build:react-runtime && pnpm build:react"
   },
   "dependencies": {
-    "@preact/signals-core": "workspace:^1.3.0",
+    "@preact/signals-core": "workspace:^1.3.1",
     "use-sync-external-store": "^1.2.0"
   },
   "peerDependencies": {
