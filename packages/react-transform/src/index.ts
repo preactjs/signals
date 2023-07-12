@@ -180,6 +180,109 @@ try {
 	STOP_TRACKING_IDENTIFIER();
 }`;
 
+function wrapInTryFinally(
+	t: typeof BabelTypes,
+	path: NodePath<FunctionLike>,
+	state: PluginPass
+): FunctionLike {
+	const stopTrackingIdentifier =
+		path.scope.generateUidIdentifier("stopTracking");
+
+	const newFunction = t.cloneNode(path.node);
+	newFunction.body = t.blockStatement(
+		tryCatchTemplate({
+			STOP_TRACKING_IDENTIFIER: stopTrackingIdentifier,
+			HOOK_IDENTIFIER: get(state, getHookIdentifier)(),
+			BODY: t.isBlockStatement(path.node.body)
+				? path.node.body.body // TODO: Is it okay to elide the block statement here?
+				: t.returnStatement(path.node.body),
+		})
+	);
+
+	return newFunction;
+}
+
+function prependUseSignals<T extends FunctionLike>(
+	t: typeof BabelTypes,
+	path: NodePath<T>,
+	state: PluginPass
+): T {
+	const newFunction = t.cloneNode(path.node);
+	newFunction.body = t.blockStatement([
+		t.expressionStatement(
+			t.callExpression(get(state, getHookIdentifier)(), [])
+		),
+	]);
+	if (t.isBlockStatement(path.node.body)) {
+		// TODO: Is it okay to elide the block statement here?
+		newFunction.body.body.push(...path.node.body.body);
+	} else {
+		newFunction.body.body.push(t.returnStatement(path.node.body));
+	}
+
+	return newFunction;
+}
+
+function transformFunction(
+	t: typeof BabelTypes,
+	options: PluginOptions,
+	path: NodePath<FunctionLike>,
+	state: PluginPass
+) {
+	let newFunction: FunctionLike;
+	if (isCustomHook(path) || options.experimental?.noTryFinally) {
+		// For custom hooks, we don't need to wrap the function body in a
+		// try/finally block because later code in the function's render body could
+		// read signals and we want to track and associate those signals with this
+		// component. The try/finally in the component's body will stop tracking
+		// signals for us instead.
+		newFunction = prependUseSignals(t, path, state);
+	} else {
+		newFunction = wrapInTryFinally(t, path, state);
+	}
+
+	// Using replaceWith keeps the existing leading comments already so
+	// we'll clear our cloned node's leading comments to ensure they
+	// aren't duplicated in the output.
+	newFunction.leadingComments = [];
+
+	setData(path, alreadyTransformed, true);
+	path.replaceWith(newFunction);
+}
+
+
+function createImportLazily(
+	types: typeof BabelTypes,
+	pass: PluginPass,
+	path: NodePath<BabelTypes.Program>,
+	importName: string,
+	source: string
+) {
+	return () => {
+		if (isModule(path)) {
+			let reference = get(pass, `imports/${importName}`);
+			if (reference) return types.cloneNode(reference);
+			reference = addNamed(path, importName, source, {
+				importedInterop: "uncompiled",
+				importPosition: "after",
+			});
+			set(pass, `imports/${importName}`, reference);
+			return reference;
+		} else {
+			let reference = get(pass, `requires/${source}`);
+			if (reference) {
+				reference = types.cloneNode(reference);
+			} else {
+				reference = addNamespace(path, source, {
+					importedInterop: "uncompiled",
+				});
+				set(pass, `requires/${source}`, reference);
+			}
+			return types.memberExpression(reference, types.identifier(importName));
+		}
+	};
+}
+
 export interface PluginOptions {
 	/**
 	 * Specify the mode to use:
@@ -251,7 +354,6 @@ export default function signalsTransform(
 
 			MemberExpression(path) {
 				if (isValueMemberExpression(path)) {
-					// TODO: Uhhh what if a hook accesses a signal in render that isn't used in the render body but... Hmmmm...
 					setOnFunctionScope(path, maybeUsesSignal, true);
 				}
 			},
@@ -263,107 +365,5 @@ export default function signalsTransform(
 				setOnFunctionScope(path, containsJSX, true);
 			},
 		},
-	};
-}
-
-function transformFunction(
-	t: typeof BabelTypes,
-	options: PluginOptions,
-	path: NodePath<FunctionLike>,
-	state: PluginPass
-) {
-	let newFunction: FunctionLike;
-	if (isCustomHook(path) || options.experimental?.noTryFinally) {
-		// For custom hooks, we don't need to wrap the function body in a
-		// try/finally block because later code in the function's render body could
-		// read signals and we want to track and associate those signals with this
-		// component. The try/finally in the component's body will stop tracking
-		// signals for us instead.
-		newFunction = prependUseSignals(t, path, state);
-	} else {
-		newFunction = wrapInTryFinally(t, path, state);
-	}
-
-	// Using replaceWith keeps the existing leading comments already so
-	// we'll clear our cloned node's leading comments to ensure they
-	// aren't duplicated in the output.
-	newFunction.leadingComments = [];
-
-	setData(path, alreadyTransformed, true);
-	path.replaceWith(newFunction);
-}
-
-function wrapInTryFinally(
-	t: typeof BabelTypes,
-	path: NodePath<FunctionLike>,
-	state: PluginPass
-): FunctionLike {
-	const stopTrackingIdentifier =
-		path.scope.generateUidIdentifier("stopTracking");
-
-	const newFunction = t.cloneNode(path.node);
-	newFunction.body = t.blockStatement(
-		tryCatchTemplate({
-			STOP_TRACKING_IDENTIFIER: stopTrackingIdentifier,
-			HOOK_IDENTIFIER: get(state, getHookIdentifier)(),
-			BODY: t.isBlockStatement(path.node.body)
-				? path.node.body.body // TODO: Is it okay to elide the block statement here?
-				: t.returnStatement(path.node.body),
-		})
-	);
-
-	return newFunction;
-}
-
-function prependUseSignals<T extends FunctionLike>(
-	t: typeof BabelTypes,
-	path: NodePath<T>,
-	state: PluginPass
-): T {
-	const newFunction = t.cloneNode(path.node);
-	newFunction.body = t.blockStatement([
-		t.expressionStatement(
-			t.callExpression(get(state, getHookIdentifier)(), [])
-		),
-	]);
-	if (t.isBlockStatement(path.node.body)) {
-		// TODO: Is it okay to elide the block statement here?
-		newFunction.body.body.push(...path.node.body.body);
-	} else {
-		newFunction.body.body.push(t.returnStatement(path.node.body));
-	}
-
-	return newFunction;
-}
-
-function createImportLazily(
-	types: typeof BabelTypes,
-	pass: PluginPass,
-	path: NodePath<BabelTypes.Program>,
-	importName: string,
-	source: string
-) {
-	return () => {
-		if (isModule(path)) {
-			let reference = get(pass, `imports/${importName}`);
-			if (reference) return types.cloneNode(reference);
-			reference = addNamed(path, importName, source, {
-				importedInterop: "uncompiled",
-				importPosition: "after",
-			});
-			set(pass, `imports/${importName}`, reference);
-			return reference;
-		} else {
-			let reference = get(pass, `requires/${source}`);
-			if (reference) {
-				reference = types.cloneNode(reference);
-			} else {
-				reference = addNamespace(path, source, {
-					importedInterop: "uncompiled",
-				});
-				set(pass, `requires/${source}`, reference);
-			}
-			return types.memberExpression(reference, types.identifier(importName));
-		}
 	};
 }
