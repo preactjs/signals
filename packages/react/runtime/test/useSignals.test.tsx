@@ -1,5 +1,5 @@
 import { createElement, Fragment } from "react";
-import { Signal, signal } from "@preact/signals-core";
+import { Signal, signal, batch } from "@preact/signals-core";
 import { useSignals } from "@preact/signals-react/runtime";
 import {
 	Root,
@@ -319,5 +319,104 @@ describe("useSignals", () => {
 		expect(scratch.innerHTML).to.equal("<button>Add One</button><p>5</p>");
 		expect(buttonSpy).to.not.have.been.called;
 		expect(displaySpy).to.have.been.calledOnce;
+	});
+
+	it("should properly rerender components that use custom hooks", async () => {
+		const greeting = signal("Hello");
+		function useGreeting() {
+			useSignals();
+			return greeting.value;
+		}
+
+		const name = signal("John");
+		function useName() {
+			useSignals();
+			return name.value;
+		}
+
+		function App() {
+			const greeting = useGreeting();
+			const name = useName();
+			return (
+				<div>
+					{greeting} {name}!
+				</div>
+			);
+		}
+
+		await render(<App />);
+		expect(scratch.innerHTML).to.equal("<div>Hello John!</div>");
+
+		await act(() => {
+			greeting.value = "Hi";
+		});
+		expect(scratch.innerHTML).to.equal("<div>Hi John!</div>");
+
+		await act(() => {
+			name.value = "Jane";
+		});
+		expect(scratch.innerHTML).to.equal("<div>Hi Jane!</div>");
+
+		await act(() => {
+			batch(() => {
+				greeting.value = "Hello";
+				name.value = "John";
+			});
+		});
+		expect(scratch.innerHTML).to.equal("<div>Hello John!</div>");
+	});
+
+	it("should properly rerender components that use custom hooks and signals", async () => {
+		const greeting = signal("Hello");
+		function useGreeting() {
+			useSignals();
+			return greeting.value;
+		}
+
+		const name = signal("John");
+		function useName() {
+			useSignals();
+			return name.value;
+		}
+
+		const punctuation = signal("!");
+		function App() {
+			useSignals();
+			const greeting = useGreeting();
+			const name = useName();
+			return (
+				<div>
+					{greeting} {name}
+					{punctuation.value}
+				</div>
+			);
+		}
+
+		await render(<App />);
+		expect(scratch.innerHTML).to.equal("<div>Hello John!</div>");
+
+		await act(() => {
+			greeting.value = "Hi";
+		});
+		expect(scratch.innerHTML).to.equal("<div>Hi John!</div>");
+
+		await act(() => {
+			name.value = "Jane";
+		});
+		expect(scratch.innerHTML).to.equal("<div>Hi Jane!</div>");
+
+		await act(() => {
+			punctuation.value = "?";
+		});
+		expect(scratch.innerHTML).to.equal("<div>Hi Jane?</div>");
+
+		await act(() => {
+			batch(() => {
+				greeting.value = "Hello";
+				name.value = "John";
+				punctuation.value = "!";
+			});
+		});
+		expect(scratch.innerHTML).to.equal("<div>Hello John!</div>");
 	});
 });

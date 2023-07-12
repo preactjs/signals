@@ -164,7 +164,7 @@ describe("React Signals babel transfrom - browser E2E tests", () => {
 				return <div>{greeting} {name}{punctuation.value}</div>;
 			}`);
 
-		await render(<App name={name} />);
+		await render(<App />);
 		expect(scratch.innerHTML).to.equal("<div>Hello John!</div>");
 
 		await act(() => {

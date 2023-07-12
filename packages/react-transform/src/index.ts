@@ -53,8 +53,8 @@ type FunctionLike =
 	| BabelTypes.FunctionExpression
 	| BabelTypes.FunctionDeclaration;
 
-function testFunctionName(predicate: (name: string | null) => boolean): (path: NodePath<FunctionLike>) => boolean {
-	return (path: NodePath<FunctionLike>) => {
+function testFunctionName<T extends FunctionLike>(predicate: (name: string | null) => boolean): (path: NodePath<T>) => boolean {
+	return (path: NodePath<T>) => {
 		if (
 			path.node.type === "ArrowFunctionExpression" ||
 			path.node.type === "FunctionExpression"
@@ -173,7 +173,7 @@ function isValueMemberExpression(
 	);
 }
 
-const tryCatchTemplate = template.statements`var STOP_TRACKING_IDENTIFIER = HOOK_IDENTIFIER();
+const tryCatchTemplate = template.statements`var STOP_TRACKING_IDENTIFIER = HOOK_IDENTIFIER(IN_COMPONENT);
 try {
 	BODY
 } finally {
@@ -266,13 +266,13 @@ export default function signalsTransform(
 	};
 }
 
-function transformFunction<T extends FunctionLike>(
+function transformFunction(
 	t: typeof BabelTypes,
 	options: PluginOptions,
-	path: NodePath<T>,
+	path: NodePath<FunctionLike>,
 	state: PluginPass
 ) {
-	let newFunction: T;
+	let newFunction: FunctionLike;
 	if (options.experimental?.noTryFinally) {
 		newFunction = prependUseSignals(t, path, state);
 	} else {
@@ -288,17 +288,18 @@ function transformFunction<T extends FunctionLike>(
 	path.replaceWith(newFunction);
 }
 
-function wrapInTryFinally<T extends FunctionLike>(
+function wrapInTryFinally(
 	t: typeof BabelTypes,
-	path: NodePath<T>,
+	path: NodePath<FunctionLike>,
 	state: PluginPass
-): T {
+): FunctionLike {
 	const stopTrackingIdentifier =
 		path.scope.generateUidIdentifier("stopTracking");
 
 	const newFunction = t.cloneNode(path.node);
 	newFunction.body = t.blockStatement(
 		tryCatchTemplate({
+			IN_COMPONENT: isComponentFunction(path).toString(),
 			STOP_TRACKING_IDENTIFIER: stopTrackingIdentifier,
 			HOOK_IDENTIFIER: get(state, getHookIdentifier)(),
 			BODY: t.isBlockStatement(path.node.body)
