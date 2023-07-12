@@ -31,7 +31,7 @@
   },
   "mangle": "../../mangle.json",
   "scripts": {
-    "prepublishOnly": "cd ../.. && pnpm build:react"
+    "prepublishOnly": "cd ../.. && pnpm build:react-transform"
   },
   "dependencies": {
     "@babel/helper-module-imports": "^7.22.5",

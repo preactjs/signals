@@ -38,7 +38,7 @@ const subPkgPath = pkgName => {
 	// Resolve from package.exports field
 	const pkgJson = path.join(__dirname, pkgName, "package.json");
 	const pkgExports = require(pkgJson).exports;
-	const file = pkgExports["."].browser;
+	const file = pkgExports["."].browser ?? pkgExports["."].import;
 	return path.join(__dirname, pkgName, file);
 };
 

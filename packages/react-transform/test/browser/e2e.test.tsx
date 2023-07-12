@@ -31,7 +31,7 @@ async function createComponent(code: string, options?: PluginOptions) {
 	// `transformSignalCode` is a global helper function added to the global
 	// namespace by a test helper we've included in the Karma config.
 	const cjsCode = transformSignalCode(code, options);
-	console.log(cjsCode);
+	// console.log(cjsCode); // Useful when debugging tests.
 
 	const exports: any = {};
 	const wrapper = new Function("exports", "require", cjsCode);
