@@ -806,4 +806,30 @@ describe("React Signals Babel Transform", () => {
 			});
 		});
 	});
+
+	describe("importSource option", () => {
+		it("imports useSignals from custom source", () => {
+			const inputCode = `
+				const MyComponent = () => {
+					signal.value;
+					return <div>Hello World</div>;
+				};
+			`;
+
+			const expectedOutput = `
+				import { useSignals as _useSignals } from "custom-source";
+				const MyComponent = () => {
+					var _stopTracking = _useSignals();
+					try {
+						signal.value;
+						return <div>Hello World</div>;
+					} finally {
+						_stopTracking();
+					}
+				};
+			`;
+
+			runTest(inputCode, expectedOutput, { importSource: "custom-source" });
+		});
+	});
 });

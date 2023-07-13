@@ -13,10 +13,12 @@ import {
 	getConsoleErrorSpy,
 } from "../../../react/test/shared/utils";
 
+const customSource = "useSignals-custom-source";
 const modules: Record<string, any> = {
 	"@preact/signals-core": signalsCore,
 	"@preact/signals-react/runtime": signalsRuntime,
 	"react/jsx-runtime": jsxRuntime,
+	[customSource]: signalsRuntime,
 };
 
 function testRequire(name: string) {
@@ -190,5 +192,24 @@ describe("React Signals babel transfrom - browser E2E tests", () => {
 			});
 		});
 		expect(scratch.innerHTML).to.equal("<div>Hello John!</div>");
+	});
+
+	it("loads useSignals from a custom source", async () => {
+		const { App } = await createComponent(
+			`
+			export function App({ name }) {
+				return <div>Hello {name.value}</div>;
+			}`,
+			{ importSource: customSource }
+		);
+
+		const name = signal("John");
+		await render(<App name={name} />);
+		expect(scratch.innerHTML).to.equal("<div>Hello John</div>");
+
+		await act(() => {
+			name.value = "Jane";
+		});
+		expect(scratch.innerHTML).to.equal("<div>Hello Jane</div>");
 	});
 });

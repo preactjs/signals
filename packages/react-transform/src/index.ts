@@ -20,7 +20,7 @@ interface PluginArgs {
 const optOutCommentIdentifier = /(^|\s)@noTrackSignals(\s|$)/;
 const optInCommentIdentifier = /(^|\s)@trackSignals(\s|$)/;
 const dataNamespace = "@preact/signals-react-transform";
-const importSource = "@preact/signals-react/runtime";
+const defaultImportSource = "@preact/signals-react/runtime";
 const importName = "useSignals";
 const getHookIdentifier = "getHookIdentifier";
 const maybeUsesSignal = "maybeUsesSignal";
@@ -290,6 +290,8 @@ export interface PluginOptions {
 	 * - `manual`: Only wrap components that are annotated with `@trackSignals` in a JSX comment.
 	 */
 	mode?: "auto" | "manual";
+	/** Specify a custom package to import the `useSignals` hook from. */
+	importSource?: string;
 	experimental?: {
 		/**
 		 * If set to true, the component body will not be wrapped in a try/finally
@@ -318,7 +320,7 @@ export default function signalsTransform(
 					set(
 						state,
 						getHookIdentifier,
-						createImportLazily(t, state, path, importName, importSource)
+						createImportLazily(t, state, path, importName, options.importSource ?? defaultImportSource)
 					);
 				},
 			},
