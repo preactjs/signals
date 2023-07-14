@@ -8,6 +8,7 @@ import transformReactJsx from "@babel/plugin-transform-react-jsx";
 import { transform } from "@babel/standalone";
 // @ts-expect-error
 import signalsTransform from "@preact/signals-react-transform";
+import explicitResourceManagement from "@babel/plugin-proposal-explicit-resource-management";
 
 globalThis.transformSignalCode = function transformSignalCode(code, options) {
 	const signalsPluginConfig = [signalsTransform];
@@ -21,6 +22,7 @@ globalThis.transformSignalCode = function transformSignalCode(code, options) {
 			syntaxJsx,
 			[transformReactJsx, { runtime: "automatic" }],
 			[transformEsm, { importInterop: "none", loose: true, strict: true }],
+			explicitResourceManagement,
 		],
 	});
 

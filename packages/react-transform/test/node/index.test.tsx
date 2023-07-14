@@ -67,12 +67,12 @@ describe("React Signals Babel Transform", () => {
 			const expectedOutput = `
 				import { useSignals as _useSignals } from "@preact/signals-react/runtime";
 				const MyComponent = () => {
-					var _stopTracking = _useSignals();
+					var _effect = _useSignals();
 					try {
 						signal.value;
 						return <div>Hello World</div>;
 					} finally {
-						_stopTracking();
+						_effect.f();
 					}
 				};
 			`;
@@ -88,11 +88,11 @@ describe("React Signals Babel Transform", () => {
 			const expectedOutput = `
 				import { useSignals as _useSignals } from "@preact/signals-react/runtime";
 				const MyComponent = () => {
-					var _stopTracking = _useSignals();
+					var _effect = _useSignals();
 					try {
 						return <div>{name.value}</div>;
 					} finally {
-						_stopTracking();
+						_effect.f();
 					}
 				};
 			`;
@@ -111,12 +111,12 @@ describe("React Signals Babel Transform", () => {
 			const expectedOutput = `
 				import { useSignals as _useSignals } from "@preact/signals-react/runtime";
 				function MyComponent() {
-					var _stopTracking = _useSignals();
+					var _effect = _useSignals();
 					try {
 						signal.value;
 						return <div>Hello World</div>;
 					} finally {
-						_stopTracking();
+						_effect.f();
 					}
 				}
 			`;
@@ -135,12 +135,12 @@ describe("React Signals Babel Transform", () => {
 			const expectedOutput = `
 				import { useSignals as _useSignals } from "@preact/signals-react/runtime";
 				const MyComponent = function () {
-					var _stopTracking = _useSignals();
+					var _effect = _useSignals();
 					try {
 						signal.value;
 						return <div>Hello World</div>;
 					} finally {
-						_stopTracking();
+						_effect.f();
 					}
 				};
 			`;
@@ -232,11 +232,11 @@ describe("React Signals Babel Transform", () => {
 				import { useSignals as _useSignals } from "@preact/signals-react/runtime";
 				/** @trackSignals */
 				const MyComponent = () => {
-					var _stopTracking = _useSignals();
+					var _effect = _useSignals();
 					try {
 						return <div>Hello World</div>;
 					} finally {
-						_stopTracking();
+						_effect.f();
 					}
 				};
 			`;
@@ -254,11 +254,11 @@ describe("React Signals Babel Transform", () => {
 			const expectedOutput = `
 				import { useSignals as _useSignals } from "@preact/signals-react/runtime";
 				const MyComponent = /** @trackSignals */() => {
-					var _stopTracking = _useSignals();
+					var _effect = _useSignals();
 					try {
 						return <div>Hello World</div>;
 					} finally {
-						_stopTracking();
+						_effect.f();
 					}
 				};
 			`;
@@ -278,11 +278,11 @@ describe("React Signals Babel Transform", () => {
 				import { useSignals as _useSignals } from "@preact/signals-react/runtime";
 				/** @trackSignals */
 				function MyComponent() {
-					var _stopTracking = _useSignals();
+					var _effect = _useSignals();
 					try {
 						return <div>Hello World</div>;
 					} finally {
-						_stopTracking();
+						_effect.f();
 					}
 				}
 			`;
@@ -302,11 +302,11 @@ describe("React Signals Babel Transform", () => {
 				import { useSignals as _useSignals } from "@preact/signals-react/runtime";
 				/** @trackSignals */
 				export default function MyComponent() {
-					var _stopTracking = _useSignals();
+					var _effect = _useSignals();
 					try {
 						return <div>Hello World</div>;
 					} finally {
-						_stopTracking();
+						_effect.f();
 					}
 				}
 			`;
@@ -326,11 +326,11 @@ describe("React Signals Babel Transform", () => {
 				import { useSignals as _useSignals } from "@preact/signals-react/runtime";
 				/** @trackSignals */
 				export default (() => {
-					var _stopTracking = _useSignals();
+					var _effect = _useSignals();
 					try {
 						return <div>Hello World</div>;
 					} finally {
-						_stopTracking();
+						_effect.f();
 					}
 				});
 			`;
@@ -350,11 +350,11 @@ describe("React Signals Babel Transform", () => {
 				import { useSignals as _useSignals } from "@preact/signals-react/runtime";
 				/** @trackSignals */
 				export function MyComponent() {
-					var _stopTracking = _useSignals();
+					var _effect = _useSignals();
 					try {
 						return <div>Hello World</div>;
 					} finally {
-						_stopTracking();
+						_effect.f();
 					}
 				}
 			`;
@@ -374,11 +374,11 @@ describe("React Signals Babel Transform", () => {
 				import { useSignals as _useSignals } from "@preact/signals-react/runtime";
 				/** @trackSignals */
 				export const MyComponent = () => {
-					var _stopTracking = _useSignals();
+					var _effect = _useSignals();
 					try {
 						return <div>Hello World</div>;
 					} finally {
-						_stopTracking();
+						_effect.f();
 					}
 				};
 			`;
@@ -398,11 +398,11 @@ describe("React Signals Babel Transform", () => {
 				import { useSignals as _useSignals } from "@preact/signals-react/runtime";
 				/** @trackSignals */
 				export const MyComponent = function () {
-					var _stopTracking = _useSignals();
+					var _effect = _useSignals();
 					try {
 						return <div>Hello World</div>;
 					} finally {
-						_stopTracking();
+						_effect.f();
 					}
 				};
 			`;
@@ -819,12 +819,12 @@ describe("React Signals Babel Transform", () => {
 			const expectedOutput = `
 				import { useSignals as _useSignals } from "custom-source";
 				const MyComponent = () => {
-					var _stopTracking = _useSignals();
+					var _effect = _useSignals();
 					try {
 						signal.value;
 						return <div>Hello World</div>;
 					} finally {
-						_stopTracking();
+						_effect.f();
 					}
 				};
 			`;

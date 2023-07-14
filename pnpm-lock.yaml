@@ -13,6 +13,7 @@ importers:
   .:
     specifiers:
       '@babel/core': ^7.22.8
+      '@babel/plugin-proposal-explicit-resource-management': ^7.22.6
       '@babel/plugin-syntax-jsx': ^7.21.4
       '@babel/plugin-transform-modules-commonjs': ^7.22.5
       '@babel/plugin-transform-react-jsx': ^7.21.4
@@ -60,6 +61,7 @@ importers:
       typescript: ^4.7.4
     devDependencies:
       '@babel/core': 7.22.8
+      '@babel/plugin-proposal-explicit-resource-management': 7.22.6_@babel+core@7.22.8
       '@babel/plugin-syntax-jsx': 7.22.5_@babel+core@7.22.8
       '@babel/plugin-transform-modules-commonjs': 7.22.5_@babel+core@7.22.8
       '@babel/plugin-transform-react-jsx': 7.22.5_@babel+core@7.22.8
@@ -705,6 +707,17 @@ packages:
       '@babel/plugin-syntax-dynamic-import': 7.8.3_@babel+core@7.22.8
     dev: true
 
+  /@babel/plugin-proposal-explicit-resource-management/7.22.6_@babel+core@7.22.8:
+    resolution: {integrity: sha512-HWbTYUGDXZX9OjVs5RN5DydRZ48PD9QNe10Jgiwz+G0i8ESmQhKMHT01AyivzKzVudxLpXeEHpbhYOBPZLXQ0Q==}
+    engines: {node: '>=6.9.0'}
+    peerDependencies:
+      '@babel/core': ^7.0.0-0
+    dependencies:
+      '@babel/core': 7.22.8
+      '@babel/helper-plugin-utils': 7.22.5
+      '@babel/plugin-syntax-explicit-resource-management': 7.22.5_@babel+core@7.22.8
+    dev: true
+
   /@babel/plugin-proposal-export-namespace-from/7.18.9_@babel+core@7.22.8:
     resolution: {integrity: sha512-k1NtHyOMvlDDFeb9G5PhUXuGj8m/wiwojgQVEhJ/fsVsMCpLyOP4h0uGEjYJKrRI+EVPlb5Jk+Gt9P97lOGwtA==}
     engines: {node: '>=6.9.0'}
@@ -866,6 +879,16 @@ packages:
 
   /@babel/plugin-syntax-dynamic-import/7.8.3_@babel+core@7.22.8:
     resolution: {integrity: sha512-5gdGbFon+PszYzqs83S3E5mpi7/y/8M9eC90MRTZfduQOYW76ig6SOSPNe41IG5LoP3FGBn2N0RjVDSQiS94kQ==}
+    peerDependencies:
+      '@babel/core': ^7.0.0-0
+    dependencies:
+      '@babel/core': 7.22.8
+      '@babel/helper-plugin-utils': 7.22.5
+    dev: true
+
+  /@babel/plugin-syntax-explicit-resource-management/7.22.5_@babel+core@7.22.8:
+    resolution: {integrity: sha512-vokH/rTR4m9hlcxXXL0CPnpoGHUbZ6gfI3kq/UZSwrF9qGo/LxWqEP0qWYqkt5kc6/jrCOTaBeYw+lYleEFtLA==}
+    engines: {node: '>=6.9.0'}
     peerDependencies:
       '@babel/core': ^7.0.0-0
     dependencies:

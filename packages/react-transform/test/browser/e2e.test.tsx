@@ -212,4 +212,27 @@ describe("React Signals babel transfrom - browser E2E tests", () => {
 		});
 		expect(scratch.innerHTML).to.equal("<div>Hello Jane</div>");
 	});
+
+	it("works with the `using` keyword", async () => {
+		const { App } = await createComponent(
+			`
+			import { useSignals } from "@preact/signals-react/runtime";
+
+			export function App({ name }) {
+				using _ = useSignals();
+				return <div>Hello {name.value}</div>;
+			}`,
+			// Disable our babel plugin for this example so the explicit resource management plugin handles this case
+			{ mode: "manual" }
+		);
+
+		const name = signal("John");
+		await render(<App name={name} />);
+		expect(scratch.innerHTML).to.equal("<div>Hello John</div>");
+
+		await act(() => {
+			name.value = "Jane";
+		});
+		expect(scratch.innerHTML).to.equal("<div>Hello Jane</div>");
+	});
 });

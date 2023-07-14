@@ -173,11 +173,11 @@ function isValueMemberExpression(
 	);
 }
 
-const tryCatchTemplate = template.statements`var STOP_TRACKING_IDENTIFIER = HOOK_IDENTIFIER();
+const tryCatchTemplate = template.statements`var STORE_IDENTIFIER = HOOK_IDENTIFIER();
 try {
 	BODY
 } finally {
-	STOP_TRACKING_IDENTIFIER();
+	STORE_IDENTIFIER.f();
 }`;
 
 function wrapInTryFinally(
@@ -186,12 +186,12 @@ function wrapInTryFinally(
 	state: PluginPass
 ): FunctionLike {
 	const stopTrackingIdentifier =
-		path.scope.generateUidIdentifier("stopTracking");
+		path.scope.generateUidIdentifier("effect");
 
 	const newFunction = t.cloneNode(path.node);
 	newFunction.body = t.blockStatement(
 		tryCatchTemplate({
-			STOP_TRACKING_IDENTIFIER: stopTrackingIdentifier,
+			STORE_IDENTIFIER: stopTrackingIdentifier,
 			HOOK_IDENTIFIER: get(state, getHookIdentifier)(),
 			BODY: t.isBlockStatement(path.node.body)
 				? path.node.body.body // TODO: Is it okay to elide the block statement here?
