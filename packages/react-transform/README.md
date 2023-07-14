@@ -52,13 +52,13 @@ import { signal, useSignals } from "@preact/signals-react";
 const count = signal(0);
 
 function CounterValue() {
-	const endTracking = useSignals();
+	const effect = useSignals();
 	try {
 		// Whenever the `count` signal is updated, we'll
 		// re-render this component automatically for you
 		return <p>Value: {count.value}</p>;
 	} finally {
-		endTracking();
+		effect.endTracking();
 	}
 }
 ```
@@ -72,7 +72,7 @@ Fundamentally, this Babel transform needs to answer two questions in order to kn
 
 Currently we use the following heuristics to answer these questions:
 
-1. A function is a component if it has a capitalized name (e.g. `function MyComponent() {}`) and contains JSX.
+1. A function is a component if it has a capitalized name (e.g. `function MyComponent() {}`), contains JSX, and is declared at module scope.
 2. If a function's body includes a member expression referencing `.value` (i.e. `something.value`), we assume it's a signal.
 
 If your function/component meets these criteria, this plugin will transform it. If not, it will be left alone. If you have a function that uses signals but does not meet these criteria (e.g. a function that manually calls `createElement` instead of using JSX), you can add a comment with the string `@trackSignals` to instruct this plugin to transform this function. You can also manually opt-out of transforming a function by adding a comment with the string `@noTrackSignals`.
@@ -90,6 +90,8 @@ function MyComponent() {
 	return <p>{signal.value}</p>;
 }
 ```
+
+Note, this plugin will not transform higher-order components (HOCs) that wrap other components. If you have an HOC that uses signals, you can use the `@trackSignals` comment to transform the body of the higher-order component.
 
 ## Plugin Options
 
