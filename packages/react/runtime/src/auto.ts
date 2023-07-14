@@ -177,6 +177,7 @@ function installCurrentDispatcherHook() {
 				isExitingComponentRender(currentDispatcherType, nextDispatcherType)
 			) {
 				store?.f();
+				store = null;
 			}
 		},
 	});
