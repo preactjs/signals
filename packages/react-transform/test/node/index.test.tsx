@@ -697,6 +697,20 @@ describe("React Signals Babel Transform", () => {
 			const expectedOutput = inputCode;
 			runTest(inputCode, expectedOutput);
 		});
+
+		it("does not transform useEffect callbacks that use signals", () => {
+			const inputCode = `
+				function App() {
+					useEffect(() => {
+						signal.value = <span>Hi</span>;
+					}, []);
+					return <div>Hello World</div>;
+				}
+			`;
+
+			const expectedOutput = inputCode;
+			runTest(inputCode, expectedOutput);
+		});
 	});
 
 	describe("noTryFinally option", () => {
