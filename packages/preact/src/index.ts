@@ -80,10 +80,22 @@ function Text(this: AugmentedComponent, { data }: { data: Signal }) {
 			}
 		}
 
+		const defaultUpdaterCallback = this._updater!._callback;
+
 		// Replace this component's vdom updater with a direct text one:
-		this._updater!._callback = () => {
+		const stringOrJSXUpdaterCallback = () => {
+			const node = this.base;
+			// if we need to update the text directly, we should ensure that current node is a text node
+			// if it is not, we should promise preact to create it via rerendering the whole component
+			if (typeof s.peek() === "object" || node?.nodeType !== 3) {
+				defaultUpdaterCallback();
+
+				return;
+			}
+
 			(this.base as Text).data = s.peek();
 		};
+		this._updater!._callback = stringOrJSXUpdaterCallback;
 
 		return computed(() => {
 			let data = currentSignal.value;
