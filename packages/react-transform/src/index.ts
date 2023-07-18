@@ -97,6 +97,7 @@ function isOptedIntoSignalTracking(path: NodePath | null): boolean {
 		case "FunctionDeclaration":
 		case "VariableDeclarator":
 		case "VariableDeclaration":
+		case "AssignmentExpression":
 			return (
 				hasLeadingOptInComment(path) ||
 				isOptedIntoSignalTracking(path.parentPath)
@@ -104,6 +105,7 @@ function isOptedIntoSignalTracking(path: NodePath | null): boolean {
 		case "ExportDefaultDeclaration":
 		case "ExportNamedDeclaration":
 		case "ObjectProperty":
+		case "ExpressionStatement":
 			return hasLeadingOptInComment(path);
 		default:
 			return false;
@@ -119,6 +121,7 @@ function isOptedOutOfSignalTracking(path: NodePath | null): boolean {
 		case "FunctionDeclaration":
 		case "VariableDeclarator":
 		case "VariableDeclaration":
+		case "AssignmentExpression":
 			return (
 				hasLeadingOptOutComment(path) ||
 				isOptedOutOfSignalTracking(path.parentPath)
@@ -126,6 +129,7 @@ function isOptedOutOfSignalTracking(path: NodePath | null): boolean {
 		case "ExportDefaultDeclaration":
 		case "ExportNamedDeclaration":
 		case "ObjectProperty":
+		case "ExpressionStatement":
 			return hasLeadingOptOutComment(path);
 		default:
 			return false;

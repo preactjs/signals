@@ -511,6 +511,46 @@ describe("React Signals Babel Transform", () => {
 
 			runTest(inputCode, expectedOutput, { mode: "manual" });
 		});
+
+		it("transforms functions assigned to object properties with leading opt-in JSDoc comments", () => {
+			const inputCode = `
+				var obj = {};
+				/** @trackSignals */
+				obj.a = () => {};
+				/** @trackSignals */
+				obj.b = function () {};
+				/** @trackSignals */
+				obj["c"] = function () {};
+			`;
+
+			const expectedOutput = `
+				import { useSignals as _useSignals } from "@preact/signals-react/runtime";
+				var obj = {};
+				/** @trackSignals */
+				obj.a = () => {
+					var _effect = _useSignals();
+					try {} finally {
+						_effect.f();
+					}
+				};
+				/** @trackSignals */
+				obj.b = function () {
+					var _effect2 = _useSignals();
+					try {} finally {
+						_effect2.f();
+					}
+				};
+				/** @trackSignals */
+				obj["c"] = function () {
+					var _effect3 = _useSignals();
+					try {} finally {
+						_effect3.f();
+					}
+				};
+			`;
+
+			runTest(inputCode, expectedOutput, { mode: "manual" });
+		});
 	});
 
 	describe("auto mode opt-out transformations", () => {
@@ -667,6 +707,43 @@ describe("React Signals Babel Transform", () => {
 				export function useCustomHook() {
 					return useState(0);
 				}
+			`;
+
+			const expectedOutput = inputCode;
+
+			runTest(inputCode, expectedOutput, { mode: "auto" });
+		});
+
+		it("skips transforming functions declared as object properties with leading opt-out JSDoc comments", () => {
+			const inputCode = `
+				var obj = {
+					/** @noTrackSignals */
+					a: () => {},
+					/** @noTrackSignals */
+					b: function () {},
+					/** @noTrackSignals */
+					c: function c() {}
+				};
+			`;
+
+			const expectedOutput = inputCode;
+
+			runTest(inputCode, expectedOutput, { mode: "auto" });
+		});
+
+		it("skips transforming functions assigned to object properties with leading opt-out JSDoc comments", () => {
+			const inputCode = `
+				var obj = {};
+				/** @noTrackSignals */
+				obj.a = () => <div />;
+				/** @noTrackSignals */
+				obj.b = function () {
+					return <div />;
+				};
+				/** @noTrackSignals */
+				obj["c"] = function () {
+					return <div />;
+				};
 			`;
 
 			const expectedOutput = inputCode;
