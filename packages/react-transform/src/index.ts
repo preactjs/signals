@@ -103,6 +103,7 @@ function isOptedIntoSignalTracking(path: NodePath | null): boolean {
 			);
 		case "ExportDefaultDeclaration":
 		case "ExportNamedDeclaration":
+		case "ObjectProperty":
 			return hasLeadingOptInComment(path);
 		default:
 			return false;
@@ -124,6 +125,7 @@ function isOptedOutOfSignalTracking(path: NodePath | null): boolean {
 			);
 		case "ExportDefaultDeclaration":
 		case "ExportNamedDeclaration":
+		case "ObjectProperty":
 			return hasLeadingOptOutComment(path);
 		default:
 			return false;

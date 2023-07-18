@@ -469,6 +469,48 @@ describe("React Signals Babel Transform", () => {
 
 			runTest(inputCode, expectedOutput, { mode: "manual" });
 		});
+
+		it("transforms functions declared as object properties with leading opt-in JSDoc comments", () => {
+			const inputCode = `
+				var obj = {
+					/** @trackSignals */
+					a: () => {},
+					/** @trackSignals */
+					b: function () {},
+					/** @trackSignals */
+					c: function c() {},
+				};
+			`;
+
+			const expectedOutput = `
+				import { useSignals as _useSignals } from "@preact/signals-react/runtime";
+				var obj = {
+					/** @trackSignals */
+					a: () => {
+						var _effect = _useSignals();
+						try {} finally {
+							_effect.f();
+						}
+					},
+					/** @trackSignals */
+					b: function () {
+						var _effect2 = _useSignals();
+						try {} finally {
+							_effect2.f();
+						}
+					},
+					/** @trackSignals */
+					c: function c() {
+						var _effect3 = _useSignals();
+						try {} finally {
+							_effect3.f();
+						}
+					}
+				};
+			`;
+
+			runTest(inputCode, expectedOutput, { mode: "manual" });
+		});
 	});
 
 	describe("auto mode opt-out transformations", () => {
