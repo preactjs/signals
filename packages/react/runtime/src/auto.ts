@@ -346,6 +346,13 @@ export function installJSXHooks() {
 	 * The jsx exports depend on the `NODE_ENV` var to ensure the users' bundler doesn't
 	 * include both, so one of them will be set with `undefined` values.
 	 */
+	Object.defineProperty(React, 'createElement', {
+		value: React.createElement,
+		writable: true,
+		enumerable: true,
+		configurable: true
+	});
+
 	React.createElement = wrapJsx(React.createElement);
 	JsxDev.jsx && /*   */ (JsxDev.jsx = wrapJsx(JsxDev.jsx));
 	JsxPro.jsx && /*   */ (JsxPro.jsx = wrapJsx(JsxPro.jsx));
