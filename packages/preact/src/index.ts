@@ -62,7 +62,7 @@ function createUpdater(update: () => void) {
  * A wrapper component that renders a Signal directly as a Text node.
  * @todo: in Preact 11, just decorate Signal with `type:null`
  */
-function Text(this: AugmentedComponent, { data }: { data: Signal }) {
+function SignalValue(this: AugmentedComponent, { data }: { data: Signal }) {
 	// hasComputeds.add(this);
 
 	// Store the props.data signal in another signal so that
@@ -80,36 +80,27 @@ function Text(this: AugmentedComponent, { data }: { data: Signal }) {
 			}
 		}
 
-		const defaultUpdaterCallback = this._updater!._callback;
-
-		// Replace this component's vdom updater with a direct text one:
-		this._updater!._callback = () => {
-			const node = this.base;
-			// if we need to update the text directly, we should ensure that current node is a text node
-			// if it is not, we should promise preact to create it via rerendering the whole component
-			if (isValidElement(s.peek()) || node?.nodeType !== 3) {
-				defaultUpdaterCallback();
-
-				return;
-			}
-
-			(node as Text).data = s.peek();
-		};
-
-		return computed(() => {
+		const sig = computed(() => {
 			let data = currentSignal.value;
 			let s = data.value;
 			return s === 0 ? 0 : s === true ? "" : s || "";
 		});
+		this.__sig = sig;
+
+		return sig;
 	}, []);
 
 	return s.value;
 }
-Text.displayName = "_st";
+// I think this way of checking is more appropriate in case of modifying signal prototype
+const __isTextSymbol = Symbol("isText") ?? "__preact.signal.text";
+// @ts-expect-error unexpected
+SignalValue[__isTextSymbol] = true;
+SignalValue.displayName = "_st";
 
 Object.defineProperties(Signal.prototype, {
 	constructor: { configurable: true, value: undefined },
-	type: { configurable: true, value: Text },
+	type: { configurable: true, value: SignalValue },
 	props: {
 		configurable: true,
 		get() {
@@ -143,6 +134,20 @@ hook(OptionsTypes.DIFF, (old, vnode) => {
 	old(vnode);
 });
 
+function _updater(this: AugmentedComponent, isText: boolean) {
+	if (
+		!isText ||
+		isValidElement(this.__sig?.peek()) ||
+		this.base?.nodeType !== 3
+	) {
+		this._updateFlags |= HAS_PENDING_UPDATE;
+		this.setState({});
+		return;
+	}
+
+	(this.base as Text).data = this.__sig?.peek() as string;
+}
+
 /** Set up Updater before rendering a component */
 hook(OptionsTypes.RENDER, (old, vnode) => {
 	setCurrentUpdater();
@@ -155,10 +160,11 @@ hook(OptionsTypes.RENDER, (old, vnode) => {
 
 		updater = component._updater;
 		if (updater === undefined) {
-			component._updater = updater = createUpdater(() => {
-				component._updateFlags |= HAS_PENDING_UPDATE;
-				component.setState({});
-			});
+			// @ts-expect-error checking symbol in object
+			const isText = !!vnode.type?.[__isTextSymbol];
+			component._updater = updater = createUpdater(
+				_updater.bind(component, isText)
+			);
 		}
 	}
 
