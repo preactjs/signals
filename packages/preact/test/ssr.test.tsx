@@ -15,7 +15,7 @@ describe("@preact/signals", () => {
 			expect(() => renderToString(<App />)).not.to.throw();
 		});
 
-		describe("Text bindings", () => {
+		describe("SignalValue bindings", () => {
 			it("should render strings", () => {
 				const s = signal("hello");
 				expect(renderToString(<p>{s}</p>)).to.equal(`<p>hello</p>`);

@@ -57,7 +57,7 @@ describe("@preact/signals-react updating", () => {
 		checkHangingAct();
 	});
 
-	describe("Text bindings", () => {
+	describe("SignalValue bindings", () => {
 		it("should render text without signals", async () => {
 			await render(<span>test</span>);
 			const span = scratch.firstChild;
@@ -65,7 +65,7 @@ describe("@preact/signals-react updating", () => {
 			expect(text).to.have.property("data", "test");
 		});
 
-		it("should render Signals as Text", async () => {
+		it("should render Signals as SignalValue", async () => {
 			const sig = signal("test");
 			await render(<span>{sig}</span>);
 			const span = scratch.firstChild;
@@ -74,7 +74,7 @@ describe("@preact/signals-react updating", () => {
 			expect(text).to.have.property("data", "test");
 		});
 
-		it("should render computed as Text", async () => {
+		it("should render computed as SignalValue", async () => {
 			const sig = signal("test");
 			const comp = computed(() => `${sig} ${sig}`);
 			await render(<span>{comp}</span>);
@@ -84,7 +84,7 @@ describe("@preact/signals-react updating", () => {
 			expect(text).to.have.property("data", "test test");
 		});
 
-		it("should update Signal-based Text (no parent component)", async () => {
+		it("should update Signal-based SignalValue (no parent component)", async () => {
 			const sig = signal("test");
 			await render(<span>{sig}</span>);
 
@@ -95,13 +95,13 @@ describe("@preact/signals-react updating", () => {
 				sig.value = "changed";
 			});
 
-			// should not remount/replace Text
+			// should not remount/replace SignalValue
 			expect(scratch.firstChild!.firstChild!).to.equal(text);
 			// should update the text in-place
 			expect(text).to.have.property("data", "changed");
 		});
 
-		it("should update Signal-based Text (in a parent component)", async () => {
+		it("should update Signal-based SignalValue (in a parent component)", async () => {
 			const sig = signal("test");
 			function App({ x }: { x: typeof sig }) {
 				return <span>{x}</span>;
@@ -115,10 +115,30 @@ describe("@preact/signals-react updating", () => {
 				sig.value = "changed";
 			});
 
-			// should not remount/replace Text
+			// should not remount/replace SignalValue
 			expect(scratch.firstChild!.firstChild!).to.equal(text);
 			// should update the text in-place
 			expect(text).to.have.property("data", "changed");
+		});
+
+		it("should work with JSX inside signal", async () => {
+			const sig = signal(<b>test</b>);
+			function App({ x }: { x: typeof sig }) {
+				return <span>{x}</span>;
+			}
+			await render(<App x={sig} />);
+
+			let text = scratch.firstChild!.firstChild!;
+			expect(text).to.be.instanceOf(HTMLElement);
+			expect(text.firstChild).to.have.property("data", "test");
+
+			await act(() => {
+				sig.value = <div>changed</div>;
+			});
+
+			text = scratch.firstChild!.firstChild!;
+			expect(text).to.be.instanceOf(HTMLDivElement);
+			expect(text.firstChild).to.have.property("data", "changed");
 		});
 	});
 

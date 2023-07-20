@@ -29,13 +29,13 @@ export function mountSignalsTests(
 			expect(html).to.equal("<span>test</span>");
 		});
 
-		it("should render Signals as Text", async () => {
+		it("should render Signals as SignalValue", async () => {
 			const sig = signal("test");
 			const html = await render(<span>{sig}</span>);
 			expect(html).to.equal("<span>test</span>");
 		});
 
-		it("should render computed as Text", async () => {
+		it("should render computed as SignalValue", async () => {
 			const sig = signal("test");
 			const comp = computed(() => `${sig} ${sig}`);
 			const html = await render(<span>{comp}</span>);
