@@ -181,42 +181,34 @@ describe("@preact/signals", () => {
 
 			render(<App x={sig} />, scratch);
 
-			{
-				const text = scratch.firstChild!.firstChild!;
+			let text = scratch.firstChild!.firstChild!;
 
-				expect(text.textContent).to.equal("test");
-				expect(text).to.be.an.instanceOf(HTMLSpanElement);
-				expect(text).to.have.property("firstChild").that.is.an.instanceOf(Text);
-			}
+			expect(text.textContent).to.equal("test");
+			expect(text).to.be.an.instanceOf(HTMLSpanElement);
+			expect(text).to.have.property("firstChild").that.is.an.instanceOf(Text);
 			sig.value = "a";
 			rerender();
-			{
-				const text = scratch.firstChild!.firstChild!;
-				expect(text.nodeType).to.equal(Node.TEXT_NODE);
-				expect(text.textContent).to.equal("a");
+			text = scratch.firstChild!.firstChild!;
+			expect(text.nodeType).to.equal(Node.TEXT_NODE);
+			expect(text.textContent).to.equal("a");
 
-				sig.value = "b";
-				expect(text.textContent).to.equal("b");
-			}
+			sig.value = "b";
+			expect(text.textContent).to.equal("b");
 
 			sig.value = <div>c</div>;
 			rerender();
 			await sleep();
-			{
-				const text = scratch.firstChild!.firstChild!;
+			text = scratch.firstChild!.firstChild!;
 
-				expect(text).to.be.an.instanceOf(HTMLDivElement);
-				expect(text.textContent).to.equal("c");
-			}
-			{
-				sig.value = <span>d</span>;
-				rerender();
-				await sleep();
+			expect(text).to.be.an.instanceOf(HTMLDivElement);
+			expect(text.textContent).to.equal("c");
+			sig.value = <span>d</span>;
+			rerender();
+			await sleep();
 
-				const text = scratch.firstChild!.firstChild!;
-				expect(text).to.be.an.instanceOf(HTMLSpanElement);
-				expect(text.textContent).to.equal("d");
-			}
+			text = scratch.firstChild!.firstChild!;
+			expect(text).to.be.an.instanceOf(HTMLSpanElement);
+			expect(text.textContent).to.equal("d");
 		});
 	});
 
