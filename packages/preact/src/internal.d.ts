@@ -1,5 +1,5 @@
 import { Component } from "preact";
-import { ReadonlySignal, Signal } from "@preact/signals-core";
+import { Signal } from "@preact/signals-core";
 
 export interface Effect {
 	_sources: object | undefined;
@@ -21,7 +21,6 @@ export interface AugmentedComponent extends Component<any, any> {
 	__v: VNode;
 	_updater?: Effect;
 	_updateFlags: number;
-	__sig?: ReadonlySignal<unknown>;
 }
 
 export interface VNode<P = any> extends preact.VNode<P> {
