@@ -80,22 +80,25 @@ function SignalValue(this: AugmentedComponent, { data }: { data: Signal }) {
 			}
 		}
 
-		const sig = computed(() => {
+		this._updater!._callback = () => {
+			if (isValidElement(s.peek()) || this.base?.nodeType !== 3) {
+				this._updateFlags |= HAS_PENDING_UPDATE;
+				this.setState({});
+				return;
+			}
+
+			(this.base as Text).data = s.peek();
+		};
+
+		return computed(() => {
 			let data = currentSignal.value;
 			let s = data.value;
 			return s === 0 ? 0 : s === true ? "" : s || "";
 		});
-		this.__sig = sig;
-
-		return sig;
 	}, []);
 
 	return s.value;
 }
-// I think this way of checking is more appropriate in case of modifying signal prototype
-const __isTextSymbol = Symbol("isText") ?? "__preact.signal.text";
-// @ts-expect-error unexpected
-SignalValue[__isTextSymbol] = true;
 SignalValue.displayName = "_st";
 
 Object.defineProperties(Signal.prototype, {
@@ -134,20 +137,6 @@ hook(OptionsTypes.DIFF, (old, vnode) => {
 	old(vnode);
 });
 
-function _updater(this: AugmentedComponent, isText: boolean) {
-	if (
-		!isText ||
-		isValidElement(this.__sig?.peek()) ||
-		this.base?.nodeType !== 3
-	) {
-		this._updateFlags |= HAS_PENDING_UPDATE;
-		this.setState({});
-		return;
-	}
-
-	(this.base as Text).data = this.__sig?.peek() as string;
-}
-
 /** Set up Updater before rendering a component */
 hook(OptionsTypes.RENDER, (old, vnode) => {
 	setCurrentUpdater();
@@ -160,11 +149,10 @@ hook(OptionsTypes.RENDER, (old, vnode) => {
 
 		updater = component._updater;
 		if (updater === undefined) {
-			// @ts-expect-error checking symbol in object
-			const isText = !!vnode.type?.[__isTextSymbol];
-			component._updater = updater = createUpdater(
-				_updater.bind(component, isText)
-			);
+			component._updater = updater = createUpdater(() => {
+				component._updateFlags |= HAS_PENDING_UPDATE;
+				component.setState({});
+			});
 		}
 	}
 
