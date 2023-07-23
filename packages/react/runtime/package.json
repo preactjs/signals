@@ -8,6 +8,7 @@
   "unpkg": "dist/runtime.min.js",
   "types": "dist/index.d.ts",
   "source": "src/index.ts",
+  "mangle": "../../../mangle.json",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
