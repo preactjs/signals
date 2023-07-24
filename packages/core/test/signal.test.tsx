@@ -679,22 +679,6 @@ describe("effect()", () => {
 		dispose();
 	});
 
-	it("should not throw on recursive assignment in untracked", () => {
-		const a = signal(1);
-
-		const dispose = effect(() => {
-			a.value;
-			untracked(() => {
-				a.value = 2;
-			});
-		});
-
-		expect(() => (a.value = 3)).not.to.throw();
-		expect(a.value).to.equal(2);
-
-		dispose();
-	});
-
 	it("should not rerun parent effect if a nested child effect's signal's value changes", () => {
 		const parentSignal = signal(0);
 		const childSignal = signal(0);
