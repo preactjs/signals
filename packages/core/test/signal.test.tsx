@@ -1,4 +1,11 @@
-import { signal, computed, effect, batch, Signal, untracked } from "@preact/signals-core";
+import {
+	signal,
+	computed,
+	effect,
+	batch,
+	Signal,
+	untracked,
+} from "@preact/signals-core";
 
 describe("signal", () => {
 	it("should return value", () => {
@@ -651,6 +658,41 @@ describe("effect()", () => {
 		b.value = 20;
 
 		expect(spy).to.be.calledOnce;
+	});
+
+	it("should not throw on assignment in untracked", () => {
+		const a = signal(1);
+		const aChangedTime = signal(0);
+
+		const dispose = effect(() => {
+			a.value;
+			untracked(() => {
+				aChangedTime.value = aChangedTime.value + 1;
+			});
+		});
+
+		expect(() => (a.value = 2)).not.to.throw();
+		expect(aChangedTime.value).to.equal(2);
+		a.value = 3;
+		expect(aChangedTime.value).to.equal(3);
+
+		dispose();
+	});
+
+	it("should not throw on recursive assignment in untracked", () => {
+		const a = signal(1);
+
+		const dispose = effect(() => {
+			a.value;
+			untracked(() => {
+				a.value = 2;
+			});
+		});
+
+		expect(() => (a.value = 3)).not.to.throw();
+		expect(a.value).to.equal(2);
+
+		dispose();
 	});
 
 	it("should not rerun parent effect if a nested child effect's signal's value changes", () => {
