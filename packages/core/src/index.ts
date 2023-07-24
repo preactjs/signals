@@ -97,7 +97,6 @@ function batch<T>(callback: () => T): T {
 // Currently evaluated computed or effect.
 let evalContext: Computed | Effect | undefined = undefined;
 
-
 let untrackedDepth = 0;
 
 function untracked<T>(callback: () => T): T {
@@ -105,6 +104,7 @@ function untracked<T>(callback: () => T): T {
 		return callback();
 	}
 	const prevContext = evalContext;
+	evalContext = undefined;
 	untrackedDepth++;
 	try {
 		return callback();
@@ -769,4 +769,12 @@ function effect(compute: () => unknown | EffectCleanup): () => void {
 	return effect._dispose.bind(effect);
 }
 
-export { signal, computed, effect, batch, Signal, type ReadonlySignal, untracked };
+export {
+	signal,
+	computed,
+	effect,
+	batch,
+	Signal,
+	type ReadonlySignal,
+	untracked,
+};
