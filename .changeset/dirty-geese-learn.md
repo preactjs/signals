@@ -2,4 +2,4 @@
 "@preact/signals-core": minor
 ---
 
-Added `untracked` api, to more flexible control over dependency tracking. More info in README.md
+Add `untracked` function, this allows more granular control within `effect`/`computed` around what should affect re-runs.
