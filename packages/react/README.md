@@ -19,6 +19,7 @@ npm install @preact/signals-react
   - [`computed(fn)`](../../README.md#computedfn)
   - [`effect(fn)`](../../README.md#effectfn)
   - [`batch(fn)`](../../README.md#batchfn)
+  - [`untracked(fn)`](../../README.md#untrackedfn)
 - [React Integration](#react-integration)
   - [Hooks](#hooks)
 - [License](#license)

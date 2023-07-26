@@ -5,6 +5,7 @@ import {
 	effect,
 	Signal,
 	type ReadonlySignal,
+	untracked,
 } from "@preact/signals-core";
 import type { ReactElement } from "react";
 import { useSignal, useComputed, useSignalEffect } from "../runtime";
@@ -20,6 +21,7 @@ export {
 	useSignal,
 	useComputed,
 	useSignalEffect,
+	untracked,
 };
 
 declare module "@preact/signals-core" {
