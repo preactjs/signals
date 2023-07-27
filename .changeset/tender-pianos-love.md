@@ -2,4 +2,4 @@
 "@preact/signals": minor
 ---
 
-Removed difference in behaviour between adapters. Now signals inserted into jsx can display not only text but other jsx as well
+Removed difference in behaviour between adapters, signals that use a JSX value will correctly re-render the whole component rather than attempting the JSX-Text optimization.
