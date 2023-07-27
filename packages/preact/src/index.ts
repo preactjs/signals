@@ -7,6 +7,7 @@ import {
 	effect,
 	Signal,
 	type ReadonlySignal,
+	untracked,
 } from "@preact/signals-core";
 import {
 	VNode,
@@ -18,7 +19,15 @@ import {
 	AugmentedElement as Element,
 } from "./internal";
 
-export { signal, computed, batch, effect, Signal, type ReadonlySignal };
+export {
+	signal,
+	computed,
+	batch,
+	effect,
+	Signal,
+	type ReadonlySignal,
+	untracked,
+};
 
 const HAS_PENDING_UPDATE = 1 << 0;
 const HAS_HOOK_STATE = 1 << 1;
