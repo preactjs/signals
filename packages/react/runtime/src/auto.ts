@@ -6,7 +6,7 @@ import {
 import React from "react";
 import jsxRuntime from "react/jsx-runtime";
 import jsxRuntimeDev from "react/jsx-dev-runtime";
-import { useSignals, wrapJsx } from "./index";
+import { EffectStore, useSignals, wrapJsx } from "./index";
 
 export interface ReactDispatcher {
 	useRef: typeof React.useRef;
@@ -103,50 +103,50 @@ import { createMachine } from "xstate";
 // if it doesn't signal a change in the component rendering lifecyle (NOOP).
 
 const dispatcherMachinePROD = createMachine({
-  id: "ReactCurrentDispatcher_PROD",
-  initial: "null",
-  states: {
-    null: {
-      on: {
-        pushDispatcher: "ContextOnlyDispatcher",
-      },
-    },
-    ContextOnlyDispatcher: {
-      on: {
-        renderWithHooks_Mount_ENTER: "HooksDispatcherOnMount",
-        renderWithHooks_Update_ENTER: "HooksDispatcherOnUpdate",
-        pushDispatcher_NOOP: "ContextOnlyDispatcher",
-        popDispatcher_NOOP: "ContextOnlyDispatcher",
-      },
-    },
-    HooksDispatcherOnMount: {
-      on: {
-        renderWithHooksAgain_ENTER: "HooksDispatcherOnRerender",
-        resetHooksAfterThrow_EXIT: "ContextOnlyDispatcher",
-        finishRenderingHooks_EXIT: "ContextOnlyDispatcher",
-      },
-    },
-    HooksDispatcherOnUpdate: {
-      on: {
-        renderWithHooksAgain_ENTER: "HooksDispatcherOnRerender",
-        resetHooksAfterThrow_EXIT: "ContextOnlyDispatcher",
-        finishRenderingHooks_EXIT: "ContextOnlyDispatcher",
-        use_ResumeSuspensedMount_NOOP: "HooksDispatcherOnMount",
-      },
-    },
-    HooksDispatcherOnRerender: {
-      on: {
-        renderWithHooksAgain_ENTER: "HooksDispatcherOnRerender",
-        resetHooksAfterThrow_EXIT: "ContextOnlyDispatcher",
-        finishRenderingHooks_EXIT: "ContextOnlyDispatcher",
-      },
-    },
-  },
+	id: "ReactCurrentDispatcher_PROD",
+	initial: "null",
+	states: {
+		null: {
+			on: {
+				pushDispatcher: "ContextOnlyDispatcher",
+			},
+		},
+		ContextOnlyDispatcher: {
+			on: {
+				renderWithHooks_Mount_ENTER: "HooksDispatcherOnMount",
+				renderWithHooks_Update_ENTER: "HooksDispatcherOnUpdate",
+				pushDispatcher_NOOP: "ContextOnlyDispatcher",
+				popDispatcher_NOOP: "ContextOnlyDispatcher",
+			},
+		},
+		HooksDispatcherOnMount: {
+			on: {
+				renderWithHooksAgain_ENTER: "HooksDispatcherOnRerender",
+				resetHooksAfterThrow_EXIT: "ContextOnlyDispatcher",
+				finishRenderingHooks_EXIT: "ContextOnlyDispatcher",
+			},
+		},
+		HooksDispatcherOnUpdate: {
+			on: {
+				renderWithHooksAgain_ENTER: "HooksDispatcherOnRerender",
+				resetHooksAfterThrow_EXIT: "ContextOnlyDispatcher",
+				finishRenderingHooks_EXIT: "ContextOnlyDispatcher",
+				use_ResumeSuspensedMount_NOOP: "HooksDispatcherOnMount",
+			},
+		},
+		HooksDispatcherOnRerender: {
+			on: {
+				renderWithHooksAgain_ENTER: "HooksDispatcherOnRerender",
+				resetHooksAfterThrow_EXIT: "ContextOnlyDispatcher",
+				finishRenderingHooks_EXIT: "ContextOnlyDispatcher",
+			},
+		},
+	},
 });
 ```
 */
 
-let stopTracking: (() => void) | null = null;
+let store: EffectStore | null = null;
 let lock = false;
 let currentDispatcher: ReactDispatcher | null = null;
 
@@ -171,12 +171,13 @@ function installCurrentDispatcherHook() {
 				isEnteringComponentRender(currentDispatcherType, nextDispatcherType)
 			) {
 				lock = true;
-				stopTracking = useSignals();
+				store = useSignals();
 				lock = false;
 			} else if (
 				isExitingComponentRender(currentDispatcherType, nextDispatcherType)
 			) {
-				stopTracking?.();
+				store?.f();
+				store = null;
 			}
 		},
 	});
@@ -325,7 +326,7 @@ function isExitingComponentRender(
 ): boolean {
 	return Boolean(
 		currentDispatcherType & BrowserClientDispatcherType &&
-			nextDispatcherType & ContextOnlyDispatcherType
+		nextDispatcherType & ContextOnlyDispatcherType
 	);
 }
 

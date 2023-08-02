@@ -11,6 +11,7 @@ import {
 } from "@preact/signals-react";
 import {
 	createElement,
+	Fragment,
 	forwardRef,
 	useMemo,
 	useReducer,
@@ -158,6 +159,40 @@ describe("@preact/signals-react updating", () => {
 				sig.value = "bar";
 			});
 			expect(scratch.textContent).to.equal("bar");
+		});
+
+		it("should rerender components when signals they use change", async () => {
+			const signal1 = signal(0);
+			function Child1() {
+				return <div>{signal1}</div>;
+			}
+
+			const signal2 = signal(0);
+			function Child2() {
+				return <div>{signal2}</div>;
+			}
+
+			function Parent() {
+				return (
+					<Fragment>
+						<Child1 />
+						<Child2 />
+					</Fragment>
+				);
+			}
+
+			await render(<Parent />);
+			expect(scratch.innerHTML).to.equal("<div>0</div><div>0</div>");
+
+			await act(() => {
+				signal1.value += 1;
+			});
+			expect(scratch.innerHTML).to.equal("<div>1</div><div>0</div>");
+
+			await act(() => {
+				signal2.value += 1;
+			});
+			expect(scratch.innerHTML).to.equal("<div>1</div><div>1</div>");
 		});
 
 		it("should subscribe to signals passed as props to DOM elements", async () => {

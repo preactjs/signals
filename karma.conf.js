@@ -38,7 +38,7 @@ const subPkgPath = pkgName => {
 	// Resolve from package.exports field
 	const pkgJson = path.join(__dirname, pkgName, "package.json");
 	const pkgExports = require(pkgJson).exports;
-	const file = pkgExports["."].browser;
+	const file = pkgExports["."].browser ?? pkgExports["."].import;
 	return path.join(__dirname, pkgName, file);
 };
 
@@ -62,6 +62,7 @@ function createEsbuildPlugin() {
 		"@preact/signals-core": subPkgPath("./packages/core"),
 		"@preact/signals": subPkgPath("./packages/preact"),
 		"@preact/signals-react": subPkgPath("./packages/react"),
+		"@preact/signals-react-transform": subPkgPath("./packages/react-transform"),
 	};
 
 	return {
@@ -88,6 +89,11 @@ function createEsbuildPlugin() {
 				return {
 					path: pkg,
 				};
+			});
+
+			// Mock fs module to run babel in a browser environment
+			build.onResolve({ filter: /^fs$/ }, () => {
+				return { path: path.join(__dirname, "test/browser/mockFs.js") };
 			});
 
 			// Apply babel pass whenever we load a .js file
@@ -190,6 +196,8 @@ function createEsbuildPlugin() {
 	};
 }
 
+const pkgList = ["core", "preact", "react", "react/runtime", "react-transform"];
+
 module.exports = function (config) {
 	config.set({
 		browsers: Object.keys(localLaunchers),
@@ -254,7 +262,20 @@ module.exports = function (config) {
 
 		files: [
 			{
-				pattern: process.env.TESTS || "packages/*/test/**/*.test.tsx",
+				// Provide some NodeJS globals to run babel in a browser environment
+				pattern: "test/browser/nodeGlobals.js",
+				watched: false,
+				type: "js",
+			},
+			{
+				pattern: "test/browser/babel.js",
+				watched: false,
+				type: "js",
+			},
+			{
+				pattern:
+					process.env.TESTS ||
+					`packages/{${pkgList.join(",")}}/test/{,browser,shared}/*.test.tsx`,
 				watched: false,
 				type: "js",
 			},
@@ -265,7 +286,9 @@ module.exports = function (config) {
 		},
 
 		preprocessors: {
-			"packages/*/test/**/*": ["esbuild"],
+			[`packages/{${pkgList.join(",")}}/test/**/*`]: ["esbuild"],
+			[`test/browser/babel.js`]: ["esbuild"],
+			[`test/browser/nodeGlobals.js`]: ["esbuild"],
 		},
 
 		plugins: [

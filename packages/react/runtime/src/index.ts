@@ -24,6 +24,8 @@ export function wrapJsx<T>(jsx: T): T {
 	} as any as T;
 }
 
+const symDispose: unique symbol = (Symbol as any).dispose || Symbol.for("Symbol.dispose");
+
 interface Effect {
 	_sources: object | undefined;
 	_start(): () => void;
@@ -31,11 +33,25 @@ interface Effect {
 	_dispose(): void;
 }
 
-interface EffectStore {
-	updater: Effect;
+export interface EffectStore {
+	effect: Effect;
 	subscribe(onStoreChange: () => void): () => void;
 	getSnapshot(): number;
+	/** finishEffect - stop tracking the signals used in this component */
+	f(): void;
+	[symDispose](): void;
 }
+
+let finishUpdate: (() => void) | undefined;
+
+function setCurrentStore(store?: EffectStore) {
+	// end tracking for the current update:
+	if (finishUpdate) finishUpdate();
+	// start tracking the new update:
+	finishUpdate = store && store.effect._start();
+}
+
+const clearCurrentStore = () => setCurrentStore();
 
 /**
  * A redux-like store whose store value is a positive 32bit integer (a 'version').
@@ -51,20 +67,20 @@ interface EffectStore {
  * @see https://github.com/reactjs/rfcs/blob/main/text/0214-use-sync-external-store.md
  */
 function createEffectStore(): EffectStore {
-	let updater!: Effect;
+	let effectInstance!: Effect;
 	let version = 0;
 	let onChangeNotifyReact: (() => void) | undefined;
 
 	let unsubscribe = effect(function (this: Effect) {
-		updater = this;
+		effectInstance = this;
 	});
-	updater._callback = function () {
+	effectInstance._callback = function () {
 		version = (version + 1) | 0;
 		if (onChangeNotifyReact) onChangeNotifyReact();
 	};
 
 	return {
-		updater,
+		effect: effectInstance,
 		subscribe(onStoreChange) {
 			onChangeNotifyReact = onStoreChange;
 
@@ -87,25 +103,31 @@ function createEffectStore(): EffectStore {
 		getSnapshot() {
 			return version;
 		},
+		f() {
+			clearCurrentStore();
+		},
+		[symDispose]() {
+			clearCurrentStore();
+		}
 	};
 }
 
-let finishUpdate: (() => void) | undefined;
-
-function setCurrentUpdater(updater?: Effect) {
-	// end tracking for the current update:
-	if (finishUpdate) finishUpdate();
-	// start tracking the new update:
-	finishUpdate = updater && updater._start();
-}
-
-const clearCurrentUpdater = () => setCurrentUpdater();
+let finalCleanup: Promise<void> | undefined;
+const _queueMicroTask = Promise.prototype.then.bind(Promise.resolve());
 
 /**
  * Custom hook to create the effect to track signals used during render and
- * subscribe to changes to rerender the component when the signals change
+ * subscribe to changes to rerender the component when the signals change.
  */
-export function useSignals(): () => void {
+export function useSignals(): EffectStore {
+	clearCurrentStore();
+	if (!finalCleanup) {
+		finalCleanup = _queueMicroTask(() => {
+			finalCleanup = undefined;
+			clearCurrentStore();
+		});
+	}
+
 	const storeRef = useRef<EffectStore>();
 	if (storeRef.current == null) {
 		storeRef.current = createEffectStore();
@@ -113,9 +135,9 @@ export function useSignals(): () => void {
 
 	const store = storeRef.current;
 	useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
-	setCurrentUpdater(store.updater);
+	setCurrentStore(store);
 
-	return clearCurrentUpdater;
+	return store;
 }
 
 /**
