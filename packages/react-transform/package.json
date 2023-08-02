@@ -3,7 +3,11 @@
   "version": "0.0.1-alpha.0",
   "license": "MIT",
   "description": "Manage state with style in React",
-  "keywords": [],
+  "keywords": [
+    "babel",
+    "signals",
+    "react"
+  ],
   "authors": [
     "The Preact Authors (https://github.com/preactjs/signals/contributors)"
   ],

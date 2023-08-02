@@ -306,7 +306,7 @@ module.exports = function (config) {
 			jsx: "preserve",
 
 			// esbuild options
-			target: downlevel ? "es5" : "es2019",
+			target: downlevel ? "es5" : "es2015",
 			define: {
 				COVERAGE: coverage,
 				"process.env.NODE_ENV": JSON.stringify(process.env.NODE_ENV || ""),
