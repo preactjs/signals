@@ -1,5 +1,16 @@
 # @preact/signals-react
 
+## 1.3.5
+
+### Patch Changes
+
+- [#375](https://github.com/preactjs/signals/pull/375) [`cd3a22d`](https://github.com/preactjs/signals/commit/cd3a22d628c3a535108bc45b8151505dd6fc51c8) Thanks [@andrewiggins](https://github.com/andrewiggins)! - Clean up effect store reference after finishing it
+
+* [#375](https://github.com/preactjs/signals/pull/375) [`59115d9`](https://github.com/preactjs/signals/commit/59115d9ea6dfa073255f9803dd7e8a09892d2acc) Thanks [@andrewiggins](https://github.com/andrewiggins)! - Update internal useSignals API
+
+* Updated dependencies [[`256a331`](https://github.com/preactjs/signals/commit/256a331b5335e54f7e918b3f1068fb9d92d1c613)]:
+  - @preact/signals-core@1.4.0
+
 ## 1.3.4
 
 ### Patch Changes

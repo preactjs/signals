@@ -1,5 +1,16 @@
 # @preact/signals
 
+## 1.2.0
+
+### Minor Changes
+
+- [#387](https://github.com/preactjs/signals/pull/387) [`6e4dab4`](https://github.com/preactjs/signals/commit/6e4dab4e8c99217aa2837037a5fc82ee852ee288) Thanks [@XantreGodlike](https://github.com/XantreGodlike)! - Removed difference in behaviour between adapters, signals that use a JSX value will correctly re-render the whole component rather than attempting the JSX-Text optimization.
+
+### Patch Changes
+
+- Updated dependencies [[`256a331`](https://github.com/preactjs/signals/commit/256a331b5335e54f7e918b3f1068fb9d92d1c613)]:
+  - @preact/signals-core@1.4.0
+
 ## 1.1.5
 
 ### Patch Changes
