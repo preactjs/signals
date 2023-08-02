@@ -19,6 +19,7 @@ npm install @preact/signals
   - [`computed(fn)`](../../README.md#computedfn)
   - [`effect(fn)`](../../README.md#effectfn)
   - [`batch(fn)`](../../README.md#batchfn)
+  - [`untracked(fn)`](../../README.md#untrackedfn)
 - [Preact Integration](#preact-integration)
   - [Hooks](#hooks)
   - [Rendering optimizations](#rendering-optimizations)

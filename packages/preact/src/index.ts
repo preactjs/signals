@@ -1,4 +1,4 @@
-import { options, Component } from "preact";
+import { options, Component, isValidElement } from "preact";
 import { useRef, useMemo, useEffect } from "preact/hooks";
 import {
 	signal,
@@ -7,6 +7,7 @@ import {
 	effect,
 	Signal,
 	type ReadonlySignal,
+	untracked,
 } from "@preact/signals-core";
 import {
 	VNode,
@@ -18,7 +19,15 @@ import {
 	AugmentedElement as Element,
 } from "./internal";
 
-export { signal, computed, batch, effect, Signal, type ReadonlySignal };
+export {
+	signal,
+	computed,
+	batch,
+	effect,
+	Signal,
+	type ReadonlySignal,
+	untracked,
+};
 
 const HAS_PENDING_UPDATE = 1 << 0;
 const HAS_HOOK_STATE = 1 << 1;
@@ -62,7 +71,7 @@ function createUpdater(update: () => void) {
  * A wrapper component that renders a Signal directly as a Text node.
  * @todo: in Preact 11, just decorate Signal with `type:null`
  */
-function Text(this: AugmentedComponent, { data }: { data: Signal }) {
+function SignalValue(this: AugmentedComponent, { data }: { data: Signal }) {
 	// hasComputeds.add(this);
 
 	// Store the props.data signal in another signal so that
@@ -80,8 +89,13 @@ function Text(this: AugmentedComponent, { data }: { data: Signal }) {
 			}
 		}
 
-		// Replace this component's vdom updater with a direct text one:
 		this._updater!._callback = () => {
+			if (isValidElement(s.peek()) || this.base?.nodeType !== 3) {
+				this._updateFlags |= HAS_PENDING_UPDATE;
+				this.setState({});
+				return;
+			}
+
 			(this.base as Text).data = s.peek();
 		};
 
@@ -94,11 +108,11 @@ function Text(this: AugmentedComponent, { data }: { data: Signal }) {
 
 	return s.value;
 }
-Text.displayName = "_st";
+SignalValue.displayName = "_st";
 
 Object.defineProperties(Signal.prototype, {
 	constructor: { configurable: true, value: undefined },
-	type: { configurable: true, value: Text },
+	type: { configurable: true, value: SignalValue },
 	props: {
 		configurable: true,
 		get() {

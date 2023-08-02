@@ -34,7 +34,7 @@ describe("@preact/signals", () => {
 		});
 	});
 
-	describe("Text bindings", () => {
+	describe("SignalValue bindings", () => {
 		it("should render text without signals", () => {
 			render(<span>test</span>, scratch);
 			const span = scratch.firstChild;
@@ -42,7 +42,7 @@ describe("@preact/signals", () => {
 			expect(text).to.have.property("data", "test");
 		});
 
-		it("should render Signals as Text", () => {
+		it("should render Signals as SignalValue", () => {
 			const sig = signal("test");
 			render(<span>{sig}</span>, scratch);
 			const span = scratch.firstChild;
@@ -51,7 +51,7 @@ describe("@preact/signals", () => {
 			expect(text).to.have.property("data", "test");
 		});
 
-		it("should update Signal-based Text (no parent component)", () => {
+		it("should update Signal-based SignalValue (no parent component)", () => {
 			const sig = signal("test");
 			render(<span>{sig}</span>, scratch);
 
@@ -60,13 +60,13 @@ describe("@preact/signals", () => {
 
 			sig.value = "changed";
 
-			// should not remount/replace Text
+			// should not remount/replace SignalValue
 			expect(scratch.firstChild!.firstChild!).to.equal(text);
 			// should update the text in-place
 			expect(text).to.have.property("data", "changed");
 		});
 
-		it("should update Signal-based Text (in a parent component)", async () => {
+		it("should update Signal-based SignalValue (in a parent component)", async () => {
 			const sig = signal("test");
 			const spy = sinon.spy();
 			function App({ x }: { x: typeof sig }) {
@@ -81,7 +81,7 @@ describe("@preact/signals", () => {
 
 			sig.value = "changed";
 
-			// should not remount/replace Text
+			// should not remount/replace SignalValue
 			expect(scratch.firstChild!.firstChild!).to.equal(text);
 			// should update the text in-place
 			expect(text).to.have.property("data", "changed");
@@ -90,7 +90,7 @@ describe("@preact/signals", () => {
 			expect(spy).not.to.have.been.called;
 		});
 
-		it("should support swapping Signals in Text positions", async () => {
+		it("should support swapping Signals in SignalValue positions", async () => {
 			const sig = signal("test");
 			const spy = sinon.spy();
 			function App({ x }: { x: typeof sig }) {
@@ -108,7 +108,7 @@ describe("@preact/signals", () => {
 			expect(spy).to.have.been.called;
 			spy.resetHistory();
 
-			// should not remount/replace Text
+			// should not remount/replace SignalValue
 			expect(scratch.firstChild!.firstChild!).to.equal(text);
 			// should update the text in-place
 			expect(text).to.have.property("data", "different");
@@ -130,6 +130,85 @@ describe("@preact/signals", () => {
 
 			await sleep();
 			expect(spy).not.to.have.been.called;
+		});
+
+		it("should support rendering JSX in SignalValue positions", async () => {
+			const sig = signal(<span>test</span>);
+			function App({ x }: { x: typeof sig }) {
+				return <span>{x}</span>;
+			}
+
+			render(<App x={sig} />, scratch);
+
+			const text = scratch.firstChild!.firstChild!;
+
+			expect(text.textContent).to.equal("test");
+			expect(text).to.be.an.instanceOf(HTMLSpanElement);
+			expect(text).to.have.property("firstChild").that.is.an.instanceOf(Text);
+		});
+
+		it("JSX in SignalValue should be reactive", async () => {
+			const sig = signal(<span>test</span>);
+			const spy = sinon.spy();
+			function App({ x }: { x: typeof sig }) {
+				spy();
+				return <span>{x}</span>;
+			}
+
+			render(<App x={sig} />, scratch);
+			expect(spy).to.have.been.calledOnce;
+			spy.resetHistory();
+
+			const text = scratch.firstChild!.firstChild!;
+
+			expect(text.textContent).to.equal("test");
+			expect(text).to.be.an.instanceOf(HTMLSpanElement);
+			expect(text).to.have.property("firstChild").that.is.an.instanceOf(Text);
+
+			sig.value = <div>a</div>;
+
+			expect(spy).not.to.have.been.calledOnce;
+
+			rerender();
+			scratch.firstChild!.firstChild!.textContent!.should.equal("a");
+		});
+
+		it("should support swapping between JSX and string in SignalValue positions", async () => {
+			const sig = signal<JSX.Element | string>(<span>test</span>);
+			function App({ x }: { x: typeof sig }) {
+				return <span>{x}</span>;
+			}
+
+			render(<App x={sig} />, scratch);
+
+			let text = scratch.firstChild!.firstChild!;
+
+			expect(text.textContent).to.equal("test");
+			expect(text).to.be.an.instanceOf(HTMLSpanElement);
+			expect(text).to.have.property("firstChild").that.is.an.instanceOf(Text);
+			sig.value = "a";
+			rerender();
+			text = scratch.firstChild!.firstChild!;
+			expect(text.nodeType).to.equal(Node.TEXT_NODE);
+			expect(text.textContent).to.equal("a");
+
+			sig.value = "b";
+			expect(text.textContent).to.equal("b");
+
+			sig.value = <div>c</div>;
+			rerender();
+			await sleep();
+			text = scratch.firstChild!.firstChild!;
+
+			expect(text).to.be.an.instanceOf(HTMLDivElement);
+			expect(text.textContent).to.equal("c");
+			sig.value = <span>d</span>;
+			rerender();
+			await sleep();
+
+			text = scratch.firstChild!.firstChild!;
+			expect(text).to.be.an.instanceOf(HTMLSpanElement);
+			expect(text.textContent).to.equal("d");
 		});
 	});
 
@@ -418,38 +497,44 @@ describe("@preact/signals", () => {
 		});
 	});
 
-	describe('hooks mixed with signals', () => {
-		it('signals should not stop context from propagating', () => {
-			const ctx = createContext({ test: 'should-not-exist' });
+	describe("hooks mixed with signals", () => {
+		it("signals should not stop context from propagating", () => {
+			const ctx = createContext({ test: "should-not-exist" });
 			let update: any;
 
 			function Provider(props: any) {
-				const [test, setTest] = useState('foo');
-				update = setTest
+				const [test, setTest] = useState("foo");
+				update = setTest;
+				return <ctx.Provider value={{ test }}>{props.children}</ctx.Provider>;
+			}
+
+			const s = signal("baz");
+			function Test() {
+				const value = useContext(ctx);
 				return (
-					<ctx.Provider value={{ test }}>{props.children}</ctx.Provider>
+					<p>
+						{value.test} {s.value}
+					</p>
 				);
 			}
 
-			const s = signal('baz')
-			function Test() {
-				const value = useContext(ctx);
-				return <p>{value.test} {s.value}</p>
-			}
-
 			function App() {
-				return <Provider><Test /></Provider>
+				return (
+					<Provider>
+						<Test />
+					</Provider>
+				);
 			}
 
 			render(<App />, scratch);
 
-			expect(scratch.innerHTML).to.equal('<p>foo baz</p>')
+			expect(scratch.innerHTML).to.equal("<p>foo baz</p>");
 			act(() => {
-				update('bar')
-			})
-			expect(scratch.innerHTML).to.equal('<p>bar baz</p>')
-		})
-	})
+				update("bar");
+			});
+			expect(scratch.innerHTML).to.equal("<p>bar baz</p>");
+		});
+	});
 
 	describe("useSignalEffect()", () => {
 		it("should be invoked after commit", async () => {

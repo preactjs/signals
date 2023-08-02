@@ -141,16 +141,16 @@ export function useSignals(): EffectStore {
 }
 
 /**
- * A wrapper component that renders a Signal's value directly as a Text node.
+ * A wrapper component that renders a Signal's value directly as a Text node or JSX.
  */
-function Text({ data }: { data: Signal }) {
+function SignalValue({ data }: { data: Signal }) {
 	return data.value;
 }
 
-// Decorate Signals so React renders them as <Text> components.
+// Decorate Signals so React renders them as <SignalValue> components.
 Object.defineProperties(Signal.prototype, {
 	$$typeof: { configurable: true, value: ReactElemType },
-	type: { configurable: true, value: Text },
+	type: { configurable: true, value: SignalValue },
 	props: {
 		configurable: true,
 		get() {

@@ -26,6 +26,7 @@ npm install @preact/signals-core
   - [`computed(fn)`](#computedfn)
   - [`effect(fn)`](#effectfn)
   - [`batch(fn)`](#batchfn)
+  - [`untracked(fn)`](#untrackedfn)
 - [Preact Integration](./packages/preact/README.md#preact-integration)
   - [Hooks](./packages/preact/README.md#hooks)
   - [Rendering optimizations](./packages/preact/README.md#rendering-optimizations)
@@ -70,6 +71,25 @@ effect(() => {
 	// Whenever this effect is triggered, increase `effectCount`.
 	// But we don't want this signal to react to `effectCount`
 	effectCount.value = effectCount.peek() + 1;
+});
+```
+
+Note that you should only use `signal.peek()` if you really need it. Reading a signal's value via `signal.value` is the preferred way in most scenarios.
+
+### `untracked(fn)`
+
+In case when you're receiving a callback that can read some signals, but you don't want to subscribe to them, you can use `untracked` to prevent any subscriptions from happening.
+
+```js
+const counter = signal(0);
+const effectCount = signal(0);
+const fn = () => effectCount.value + 1;
+
+effect(() => {
+	console.log(counter.value);
+
+	// Whenever this effect is triggered, run `fn` that gives new value
+	effectCount.value = untracked(fn);
 });
 ```
 

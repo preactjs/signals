@@ -19,6 +19,7 @@ npm install @preact/signals-react
   - [`computed(fn)`](../../README.md#computedfn)
   - [`effect(fn)`](../../README.md#effectfn)
   - [`batch(fn)`](../../README.md#batchfn)
+  - [`untracked(fn)`](../../README.md#untrackedfn)
 - [React Integration](#react-integration)
   - [Hooks](#hooks)
 - [License](#license)
@@ -65,6 +66,36 @@ function Counter() {
 	);
 }
 ```
+
+### Rendering optimizations
+
+The React adapter ships with several optimizations it can apply out of the box to skip virtual-dom rendering entirely. If you pass a signal directly into JSX, it will bind directly to the DOM `Text` node that is created and update that whenever the signal changes.
+
+```js
+import { signal } from "@preact/signals-react";
+
+const count = signal(0);
+
+// Unoptimized: Will trigger the surrounding
+// component to re-render
+function Counter() {
+	return <p>Value: {count.value}</p>;
+}
+
+// Optimized: Will update the text node directly
+function Counter() {
+	return (
+		<p>
+			<>Value: {count}</>
+		</p>
+	);
+}
+```
+
+To opt into this optimization, simply pass the signal directly instead of accessing the `.value` property.
+
+> **Note**
+> The content is wrapped in a React Fragment due to React 18's newer, more strict children types.
 
 ## License
 
