@@ -1,5 +1,11 @@
 # @preact/signals-core
 
+## 1.4.0
+
+### Minor Changes
+
+- [#380](https://github.com/preactjs/signals/pull/380) [`256a331`](https://github.com/preactjs/signals/commit/256a331b5335e54f7e918b3f1068fb9d92d1c613) Thanks [@XantreGodlike](https://github.com/XantreGodlike)! - Add `untracked` function, this allows more granular control within `effect`/`computed` around what should affect re-runs.
+
 ## 1.3.1
 
 ### Patch Changes
