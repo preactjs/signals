@@ -1,5 +1,14 @@
 # @preact/signals-react-transform
 
+## 0.0.2
+
+### Patch Changes
+
+- [#401](https://github.com/preactjs/signals/pull/401) [`17e1491`](https://github.com/preactjs/signals/commit/17e1491a27afedc714c6b0ab1e9fbf88d0d6433c) Thanks [@andrewiggins](https://github.com/andrewiggins)! - Lower required babel version required as a peer dependency
+
+- Updated dependencies [[`24fa9f7`](https://github.com/preactjs/signals/commit/24fa9f791d70baba35bdce722f71ce63ac091a4d)]:
+  - @preact/signals-react@1.3.6
+
 ## 0.0.1
 
 ### Patch Changes

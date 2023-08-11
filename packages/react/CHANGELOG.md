@@ -1,5 +1,11 @@
 # @preact/signals-react
 
+## 1.3.6
+
+### Patch Changes
+
+- [#399](https://github.com/preactjs/signals/pull/399) [`24fa9f7`](https://github.com/preactjs/signals/commit/24fa9f791d70baba35bdce722f71ce63ac091a4d) Thanks [@rschristian](https://github.com/rschristian)! - Fixes UMD builds of `@preact/signals` and `@preact/signals-react`
+
 ## 1.3.5
 
 ### Patch Changes
