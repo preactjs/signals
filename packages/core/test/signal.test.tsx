@@ -164,6 +164,16 @@ describe("signal", () => {
 			expect(spy).not.to.be.called;
 		});
 	});
+
+	it("signals should be identified with a symbol", () => {
+		const a = signal(0);
+		expect(a.type).to.equal(Symbol.for('preact-signals'))
+	})
+
+	it("should be identified with a symbol", () => {
+		const a = computed(() => {});
+		expect(a.type).to.equal(Symbol.for('preact-signals'))
+	})
 });
 
 describe("effect()", () => {
