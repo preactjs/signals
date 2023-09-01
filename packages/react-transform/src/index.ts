@@ -279,6 +279,29 @@ function createImportLazily(
 		});
 		set(pass, `imports/${importName}`, reference);
 
+		/** Helper function to determine if an import declaration's specifier matches the given importName  */
+		const matchesImportName = (
+			s: BabelTypes.ImportDeclaration["specifiers"][0]
+		) => {
+			if (s.type !== "ImportSpecifier") return false;
+			return (
+				(s.imported.type === "Identifier" && s.imported.name === importName) ||
+				(s.imported.type === "StringLiteral" &&
+					s.imported.value === importName)
+			);
+		};
+
+		for (let statement of path.get("body")) {
+			if (
+				statement.isImportDeclaration() &&
+				statement.node.source.value === source &&
+				statement.node.specifiers.some(matchesImportName)
+			) {
+				path.scope.registerDeclaration(statement);
+				break;
+			}
+		}
+
 		return reference;
 	};
 }

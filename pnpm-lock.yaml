@@ -55,6 +55,9 @@ importers:
       '@changesets/cli':
         specifier: ^2.24.2
         version: 2.24.2
+      '@types/babel__traverse':
+        specifier: ^7.18.5
+        version: 7.18.5
       '@types/chai':
         specifier: ^4.3.3
         version: 4.3.3
