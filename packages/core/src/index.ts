@@ -5,6 +5,8 @@ function mutationDetected(): never {
 	throw new Error("Computed cannot have side-effects");
 }
 
+const identifier = Symbol.for('preact-signals')
+
 // Flags for Computed and Effect.
 const RUNNING = 1 << 0;
 const NOTIFIED = 1 << 1;
@@ -242,6 +244,8 @@ declare class Signal<T = any> {
 
 	peek(): T;
 
+	brand: typeof identifier;
+
 	get value(): T;
 	set value(value: T);
 }
@@ -254,6 +258,8 @@ function Signal(this: Signal, value?: unknown) {
 	this._node = undefined;
 	this._targets = undefined;
 }
+
+Signal.prototype.brand = identifier
 
 Signal.prototype._refresh = function () {
 	return true;
