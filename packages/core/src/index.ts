@@ -244,7 +244,7 @@ declare class Signal<T = any> {
 
 	peek(): T;
 
-	type: typeof identifier;
+	brand: typeof identifier;
 
 	get value(): T;
 	set value(value: T);
@@ -259,7 +259,7 @@ function Signal(this: Signal, value?: unknown) {
 	this._targets = undefined;
 }
 
-Signal.prototype.type = identifier
+Signal.prototype.brand = identifier
 
 Signal.prototype._refresh = function () {
 	return true;

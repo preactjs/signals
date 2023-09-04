@@ -167,12 +167,12 @@ describe("signal", () => {
 
 	it("signals should be identified with a symbol", () => {
 		const a = signal(0);
-		expect(a.type).to.equal(Symbol.for('preact-signals'))
+		expect(a.brand).to.equal(Symbol.for('preact-signals'))
 	})
 
 	it("should be identified with a symbol", () => {
 		const a = computed(() => {});
-		expect(a.type).to.equal(Symbol.for('preact-signals'))
+		expect(a.brand).to.equal(Symbol.for('preact-signals'))
 	})
 });
 
