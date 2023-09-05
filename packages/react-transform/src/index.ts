@@ -6,7 +6,7 @@ import {
 	NodePath,
 	template,
 } from "@babel/core";
-import { isModule, addNamed, addNamespace } from "@babel/helper-module-imports";
+import { isModule, addNamed } from "@babel/helper-module-imports";
 
 // TODO:
 // - how to trigger rerenders on attributes change if transform never sees
@@ -263,29 +263,46 @@ function createImportLazily(
 	path: NodePath<BabelTypes.Program>,
 	importName: string,
 	source: string
-) {
+): () => BabelTypes.Identifier {
 	return () => {
-		if (isModule(path)) {
-			let reference = get(pass, `imports/${importName}`);
-			if (reference) return types.cloneNode(reference);
-			reference = addNamed(path, importName, source, {
-				importedInterop: "uncompiled",
-				importPosition: "after",
-			});
-			set(pass, `imports/${importName}`, reference);
-			return reference;
-		} else {
-			let reference = get(pass, `requires/${source}`);
-			if (reference) {
-				reference = types.cloneNode(reference);
-			} else {
-				reference = addNamespace(path, source, {
-					importedInterop: "uncompiled",
-				});
-				set(pass, `requires/${source}`, reference);
-			}
-			return types.memberExpression(reference, types.identifier(importName));
+		if (!isModule(path)) {
+			throw new Error(
+				`Cannot import ${importName} outside of an ESM module file`
+			);
 		}
+
+		let reference: BabelTypes.Identifier = get(pass, `imports/${importName}`);
+		if (reference) return types.cloneNode(reference);
+		reference = addNamed(path, importName, source, {
+			importedInterop: "uncompiled",
+			importPosition: "after",
+		});
+		set(pass, `imports/${importName}`, reference);
+
+		/** Helper function to determine if an import declaration's specifier matches the given importName  */
+		const matchesImportName = (
+			s: BabelTypes.ImportDeclaration["specifiers"][0]
+		) => {
+			if (s.type !== "ImportSpecifier") return false;
+			return (
+				(s.imported.type === "Identifier" && s.imported.name === importName) ||
+				(s.imported.type === "StringLiteral" &&
+					s.imported.value === importName)
+			);
+		};
+
+		for (let statement of path.get("body")) {
+			if (
+				statement.isImportDeclaration() &&
+				statement.node.source.value === source &&
+				statement.node.specifiers.some(matchesImportName)
+			) {
+				path.scope.registerDeclaration(statement);
+				break;
+			}
+		}
+
+		return reference;
 	};
 }
 

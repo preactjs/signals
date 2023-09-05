@@ -1,4 +1,6 @@
-import { transform } from "@babel/core";
+import { transform, traverse } from "@babel/core";
+import type { Visitor } from "@babel/core";
+import type { Scope } from "@babel/traverse";
 import signalsTransform, { PluginOptions } from "../../src/index";
 
 function dedent(str: string) {
@@ -963,6 +965,56 @@ describe("React Signals Babel Transform", () => {
 			`;
 
 			runTest(inputCode, expectedOutput, { importSource: "custom-source" });
+		});
+	});
+
+	describe("scope tracking", () => {
+		interface VisitorState {
+			programScope?: Scope;
+		}
+
+		const programScopeVisitor: Visitor<VisitorState> = {
+			Program: {
+				exit(path, state) {
+					state.programScope = path.scope;
+				},
+			},
+		};
+
+		function getRootScope(code: string) {
+			const signalsPluginConfig: any[] = [signalsTransform];
+			const result = transform(code, {
+				ast: true,
+				plugins: [signalsPluginConfig, "@babel/plugin-syntax-jsx"],
+			});
+			if (!result) {
+				throw new Error("Could not transform code");
+			}
+
+			const state: VisitorState = {};
+			traverse(result.ast, programScopeVisitor, undefined, state);
+
+			const scope = state.programScope;
+			if (!scope) {
+				throw new Error("Could not find program scope");
+			}
+
+			return scope;
+		}
+
+		it("adds newly inserted import declarations and usages to program scope", () => {
+			const scope = getRootScope(`
+				const MyComponent = () => {
+					signal.value;
+					return <div>Hello World</div>;
+				};
+			`);
+
+			const signalsBinding = scope.bindings["_useSignals"];
+			console.log(signalsBinding);
+			expect(signalsBinding).to.exist;
+			expect(signalsBinding.kind).to.equal("module");
+			expect(signalsBinding.referenced).to.be.true;
 		});
 	});
 });
