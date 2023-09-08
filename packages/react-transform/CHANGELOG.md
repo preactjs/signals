@@ -1,5 +1,17 @@
 # @preact/signals-react-transform
 
+## 0.1.0
+
+### Minor Changes
+
+- [#406](https://github.com/preactjs/signals/pull/406) [`71caaad`](https://github.com/preactjs/signals/commit/71caaad9c69da4bd6a1c9bf1926562162a109dfb) Thanks [@andrewiggins](https://github.com/andrewiggins)! - Remove support for transforming CJS files
+
+  Removing support for transforming CommonJS files since we have no tests for it currently
+
+### Patch Changes
+
+- [#406](https://github.com/preactjs/signals/pull/406) [`71caaad`](https://github.com/preactjs/signals/commit/71caaad9c69da4bd6a1c9bf1926562162a109dfb) Thanks [@andrewiggins](https://github.com/andrewiggins)! - Register newly inserted import statement as a scope declaration in Babel's scope tracking
+
 ## 0.0.2
 
 ### Patch Changes

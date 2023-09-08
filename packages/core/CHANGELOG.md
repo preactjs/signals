@@ -1,5 +1,11 @@
 # @preact/signals-core
 
+## 1.5.0
+
+### Minor Changes
+
+- [#405](https://github.com/preactjs/signals/pull/405) [`9355d96`](https://github.com/preactjs/signals/commit/9355d962b0d21b409b1661abcead799886e3cdb3) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Add unique identifier to every `Signal`, this will be present on the `brand` property of a Signal coming from either `signal()` or `computed()`
+
 ## 1.4.0
 
 ### Minor Changes
