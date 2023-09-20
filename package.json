@@ -4,7 +4,7 @@
   "scripts": {
     "prebuild": "rimraf packages/core/dist/ packages/preact/dist",
     "build": "pnpm build:core && pnpm build:preact && pnpm build:react-runtime && pnpm build:react && pnpm build:react-transform",
-    "_build": "microbundle --raw --globals @preact/signals-core=preactSignalsCore",
+    "_build": "microbundle --raw --globals @preact/signals-core=preactSignalsCore,preact/hooks=preactHooks",
     "build:core": "pnpm _build --cwd packages/core && pnpm postbuild:core",
     "build:preact": "pnpm _build --cwd packages/preact && pnpm postbuild:preact",
     "build:react": "pnpm _build --cwd packages/react && pnpm postbuild:react",
