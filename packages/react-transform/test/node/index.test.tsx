@@ -1011,7 +1011,6 @@ describe("React Signals Babel Transform", () => {
 			`);
 
 			const signalsBinding = scope.bindings["_useSignals"];
-			console.log(signalsBinding);
 			expect(signalsBinding).to.exist;
 			expect(signalsBinding.kind).to.equal("module");
 			expect(signalsBinding.referenced).to.be.true;
