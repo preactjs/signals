@@ -145,7 +145,12 @@ export function useSignals(): EffectStore {
  * A wrapper component that renders a Signal's value directly as a Text node or JSX.
  */
 function SignalValue({ data }: { data: Signal }) {
-	return data.value;
+	const store = useSignals();
+	try {
+		return data.value;
+	} finally {
+		store.f();
+	}
 }
 
 // Decorate Signals so React renders them as <SignalValue> components.
