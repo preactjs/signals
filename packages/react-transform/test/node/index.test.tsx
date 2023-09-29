@@ -834,6 +834,126 @@ describe("React Signals Babel Transform", () => {
 		});
 	});
 
+	describe("all mode transformations", () => {
+		it("skips transforming arrow function component with leading opt-out JSDoc comment before variable declaration", () => {
+			const inputCode = `
+				/** @noTrackSignals */
+				const MyComponent = () => {
+					return <div>{signal.value}</div>;
+				};
+			`;
+
+			const expectedOutput = inputCode;
+
+			runTest(inputCode, expectedOutput, { mode: "all" });
+		});
+
+		it("skips transforming function declaration components with leading opt-out JSDoc comment", () => {
+			const inputCode = `
+				/** @noTrackSignals */
+				function MyComponent() {
+					return <div>{signal.value}</div>;
+				}
+			`;
+
+			const expectedOutput = inputCode;
+
+			runTest(inputCode, expectedOutput, { mode: "all" });
+		});
+
+		it("transforms function declaration component that doesn't use signals", () => {
+			const inputCode = `
+				function MyComponent() {
+					return <div>Hello World</div>;
+				}
+			`;
+
+			const expectedOutput = `
+				import { useSignals as _useSignals } from "@preact/signals-react/runtime";
+				function MyComponent() {
+					var _effect = _useSignals();
+					try {
+						return <div>Hello World</div>;
+					} finally {
+						_effect.f();
+					}
+				}
+			`;
+
+			runTest(inputCode, expectedOutput, { mode: "all" });
+		});
+
+		it("transforms arrow function component with return statement that doesn't use signals", () => {
+			const inputCode = `
+				const MyComponent = () => {
+					return <div>Hello World</div>;
+				};
+			`;
+
+			const expectedOutput = `
+				import { useSignals as _useSignals } from "@preact/signals-react/runtime";
+				const MyComponent = () => {
+					var _effect = _useSignals();
+					try {
+						return <div>Hello World</div>;
+					} finally {
+						_effect.f();
+					}
+				};
+			`;
+
+			runTest(inputCode, expectedOutput, { mode: "all" });
+		});
+
+		it("transforms function declaration component that uses signals", () => {
+			const inputCode = `
+				function MyComponent() {
+					signal.value;
+					return <div>Hello World</div>;
+				}
+			`;
+
+			const expectedOutput = `
+				import { useSignals as _useSignals } from "@preact/signals-react/runtime";
+				function MyComponent() {
+					var _effect = _useSignals();
+					try {
+						signal.value;
+						return <div>Hello World</div>;
+					} finally {
+						_effect.f();
+					}
+				}
+			`;
+
+			runTest(inputCode, expectedOutput, { mode: "all" });
+		});
+
+		it("transforms arrow function component with return statement that uses signals", () => {
+			const inputCode = `
+				const MyComponent = () => {
+					signal.value;
+					return <div>Hello World</div>;
+				};
+			`;
+
+			const expectedOutput = `
+				import { useSignals as _useSignals } from "@preact/signals-react/runtime";
+				const MyComponent = () => {
+					var _effect = _useSignals();
+					try {
+						signal.value;
+						return <div>Hello World</div>;
+					} finally {
+						_effect.f();
+					}
+				};
+			`;
+
+			runTest(inputCode, expectedOutput, { mode: "all" });
+		});
+	});
+
 	describe("noTryFinally option", () => {
 		it("prepends arrow function component with useSignals call", () => {
 			const inputCode = `
