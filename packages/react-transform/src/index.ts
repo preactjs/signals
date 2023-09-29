@@ -160,6 +160,10 @@ function shouldTransform(
 	// Opt-in opts in to transformation regardless of mode
 	if (isOptedIntoSignalTracking(path)) return true;
 
+	if (options.mode === "all") {
+		return isComponentFunction(path);
+	}
+
 	if (options.mode == null || options.mode === "auto") {
 		return (isComponentFunction(path) || isCustomHook(path))
 			&& getData(path.scope, maybeUsesSignal) === true // Function appears to use signals;
@@ -311,8 +315,9 @@ export interface PluginOptions {
 	 * Specify the mode to use:
 	 * - `auto`: Automatically wrap all components that use signals.
 	 * - `manual`: Only wrap components that are annotated with `@trackSignals` in a JSX comment.
+	 * - `all`: Makes all components reactive to signals.
 	 */
-	mode?: "auto" | "manual";
+	mode?: "auto" | "manual" | "all";
 	/** Specify a custom package to import the `useSignals` hook from. */
 	importSource?: string;
 	experimental?: {
