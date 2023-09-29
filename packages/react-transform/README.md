@@ -26,7 +26,7 @@ Then, setup the transform plugin in your Babel config:
 ```js
 // babel.config.js
 module.exports = {
-	plugins: [["@preact/signals-react-transform"]],
+	plugins: [["module:@preact/signals-react-transform"]],
 };
 ```
 
