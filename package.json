@@ -18,6 +18,7 @@
     "lint": "pnpm lint:eslint && pnpm lint:tsc",
     "lint:eslint": "eslint 'packages/**/*.{ts,tsx,js,jsx}'",
     "lint:tsc": "tsc -p tsconfig.json --noEmit",
+    "lint-staged": "lint-staged",
     "test": "pnpm test:karma && pnpm test:mocha",
     "test:minify": "pnpm test:karma:minify && pnpm test:mocha",
     "test:prod": "pnpm test:karma:prod && pnpm test:mocha:prod",
@@ -34,6 +35,7 @@
     "ci:build": "pnpm build && pnpm docs:build",
     "ci:test": "pnpm lint && pnpm test",
     "release": "pnpm changeset version && pnpm install && git add -A && git commit -m 'Version Packages' && changeset tag && pnpm publish -r",
+    "prepare": "husky install",
     "format": "prettier --ignore-path .gitignore --write '**/*.{js,jsx,ts,tsx,yml,json,md}'"
   },
   "authors": [
@@ -81,7 +83,7 @@
     "karma-mocha-reporter": "^2.2.5",
     "karma-sinon": "^1.0.5",
     "kolorist": "^1.5.1",
-    "lint-staged": "^13.0.3",
+    "lint-staged": "^14.0.1",
     "microbundle": "^0.15.1",
     "mocha": "^10.0.0",
     "prettier": "^2.7.1",
@@ -94,11 +96,6 @@
     "**/*.{js,jsx,ts,tsx,yml,json,md}": [
       "prettier --write"
     ]
-  },
-  "husky": {
-    "hooks": {
-      "pre-commit": "lint-staged"
-    }
   },
   "prettier": {
     "arrowParens": "avoid"
