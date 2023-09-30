@@ -24,7 +24,8 @@ export function wrapJsx<T>(jsx: T): T {
 	} as any as T;
 }
 
-const symDispose: unique symbol = (Symbol as any).dispose || Symbol.for("Symbol.dispose");
+const symDispose: unique symbol =
+	(Symbol as any).dispose || Symbol.for("Symbol.dispose");
 
 interface Effect {
 	_sources: object | undefined;
@@ -108,7 +109,7 @@ function createEffectStore(): EffectStore {
 		},
 		[symDispose]() {
 			clearCurrentStore();
-		}
+		},
 	};
 }
 

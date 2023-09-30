@@ -326,7 +326,7 @@ function isExitingComponentRender(
 ): boolean {
 	return Boolean(
 		currentDispatcherType & BrowserClientDispatcherType &&
-		nextDispatcherType & ContextOnlyDispatcherType
+			nextDispatcherType & ContextOnlyDispatcherType
 	);
 }
 

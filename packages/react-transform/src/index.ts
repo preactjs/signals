@@ -53,7 +53,9 @@ type FunctionLike =
 	| BabelTypes.FunctionExpression
 	| BabelTypes.FunctionDeclaration;
 
-function testFunctionName<T extends FunctionLike>(predicate: (name: string | null) => boolean): (path: NodePath<T>) => boolean {
+function testFunctionName<T extends FunctionLike>(
+	predicate: (name: string | null) => boolean
+): (path: NodePath<T>) => boolean {
 	return (path: NodePath<T>) => {
 		if (
 			path.node.type === "ArrowFunctionExpression" ||
@@ -72,8 +74,12 @@ function testFunctionName<T extends FunctionLike>(predicate: (name: string | nul
 	};
 }
 
-const fnNameStartsWithCapital = testFunctionName(name => name?.match(/^[A-Z]/) !== null);
-const fnNameStartsWithUse = testFunctionName(name => name?.match(/^use[A-Z]/) !== null);
+const fnNameStartsWithCapital = testFunctionName(
+	name => name?.match(/^[A-Z]/) !== null
+);
+const fnNameStartsWithUse = testFunctionName(
+	name => name?.match(/^use[A-Z]/) !== null
+);
 
 function hasLeadingComment(path: NodePath, comment: RegExp): boolean {
 	const comments = path.node.leadingComments;
@@ -145,8 +151,10 @@ function isComponentFunction(path: NodePath<FunctionLike>): boolean {
 }
 
 function isCustomHook(path: NodePath<FunctionLike>): boolean {
-	return fnNameStartsWithUse(path) && // Function name indicates it's a hook
-		path.scope.parent === path.scope.getProgramParent(); // Function is top-level
+	return (
+		fnNameStartsWithUse(path) && // Function name indicates it's a hook
+		path.scope.parent === path.scope.getProgramParent()
+	); // Function is top-level
 }
 
 function shouldTransform(
@@ -165,8 +173,10 @@ function shouldTransform(
 	}
 
 	if (options.mode == null || options.mode === "auto") {
-		return (isComponentFunction(path) || isCustomHook(path))
-			&& getData(path.scope, maybeUsesSignal) === true // Function appears to use signals;
+		return (
+			(isComponentFunction(path) || isCustomHook(path)) &&
+			getData(path.scope, maybeUsesSignal) === true
+		); // Function appears to use signals;
 	}
 
 	return false;
@@ -195,8 +205,7 @@ function wrapInTryFinally(
 	path: NodePath<FunctionLike>,
 	state: PluginPass
 ): FunctionLike {
-	const stopTrackingIdentifier =
-		path.scope.generateUidIdentifier("effect");
+	const stopTrackingIdentifier = path.scope.generateUidIdentifier("effect");
 
 	const newFunction = t.cloneNode(path.node);
 	newFunction.body = t.blockStatement(
@@ -260,7 +269,6 @@ function transformFunction(
 	path.replaceWith(newFunction);
 }
 
-
 function createImportLazily(
 	types: typeof BabelTypes,
 	pass: PluginPass,
@@ -290,8 +298,7 @@ function createImportLazily(
 			if (s.type !== "ImportSpecifier") return false;
 			return (
 				(s.imported.type === "Identifier" && s.imported.name === importName) ||
-				(s.imported.type === "StringLiteral" &&
-					s.imported.value === importName)
+				(s.imported.type === "StringLiteral" && s.imported.value === importName)
 			);
 		};
 
@@ -348,7 +355,13 @@ export default function signalsTransform(
 					set(
 						state,
 						getHookIdentifier,
-						createImportLazily(t, state, path, importName, options.importSource ?? defaultImportSource)
+						createImportLazily(
+							t,
+							state,
+							path,
+							importName,
+							options.importSource ?? defaultImportSource
+						)
 					);
 				},
 			},
