@@ -1,5 +1,5 @@
-import { signal, computed, effect, Signal } from "@preact/signals-core";
-import { useRef, useMemo, useEffect } from "react";
+import { signal, computed, effect, Signal, ReadonlySignal } from "@preact/signals-core";
+import { useRef, useEffect } from "react";
 import { useSyncExternalStore } from "use-sync-external-store/shim/index.js";
 
 export { installAutoSignalTracking } from "./auto";
@@ -144,7 +144,7 @@ export function useSignals(): EffectStore {
 /**
  * A wrapper component that renders a Signal's value directly as a Text node or JSX.
  */
-function SignalValue({ data }: { data: Signal }) {
+function SignalValue({ data }: { data: Signal }): React.ReactNode {
 	return data.value;
 }
 
@@ -161,17 +161,26 @@ Object.defineProperties(Signal.prototype, {
 	ref: { configurable: true, value: null },
 });
 
-export function useSignal<T>(value: T) {
-	return useMemo(() => signal<T>(value), Empty);
+function useConstant<T = any>(initializer: () => T): T {
+	const ref = useRef<T>();
+	if (!ref.current) ref.current = initializer();
+	return ref.current;
 }
 
-export function useComputed<T>(compute: () => T) {
+/** Create a new Signal */
+export function useSignal<T>(value: T): Signal<T> {
+	return useConstant(() => signal<T>(value));
+}
+
+/** Create a Signal derived from the return value of a function that accesses other Signals. */
+export function useComputed<T>(compute: () => T): ReadonlySignal<T> {
 	const $compute = useRef(compute);
 	$compute.current = compute;
-	return useMemo(() => computed<T>(() => $compute.current()), Empty);
+	return useConstant(() => computed<T>(() => $compute.current()));
 }
 
-export function useSignalEffect(cb: () => void | (() => void)) {
+/** Run a function that accesses Signals, and re-run it if they change. Return a function to perform cleanup. */
+export function useSignalEffect(cb: () => void | (() => void)): void {
 	const callback = useRef(cb);
 	callback.current = cb;
 
