@@ -37,7 +37,14 @@
       "import": "./runtime/dist/runtime.mjs",
       "require": "./runtime/dist/runtime.js"
     },
-    "./runtime/package.json": "./runtime/package.json"
+    "./auto": {
+      "types": "./auto/dist/index.d.ts",
+      "browser": "./auto/dist/auto.module.js",
+      "import": "./auto/dist/auto.mjs",
+      "require": "./auto/dist/auto.js"
+    },
+    "./runtime/package.json": "./runtime/package.json",
+    "./auto/package.json": "./auto/package.json"
   },
   "mangle": "../../mangle.json",
   "files": [
@@ -51,7 +58,7 @@
     "README.md"
   ],
   "scripts": {
-    "prepublishOnly": "cd ../.. && pnpm build:react-runtime && pnpm build:react"
+    "prepublishOnly": "cd ../.. && pnpm build:react-runtime && pnpm build:react-auto && pnpm build:react"
   },
   "dependencies": {
     "@preact/signals-core": "workspace:^1.4.0",

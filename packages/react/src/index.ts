@@ -8,8 +8,12 @@ import {
 	untracked,
 } from "@preact/signals-core";
 import type { ReactElement } from "react";
-import { useSignal, useComputed, useSignalEffect } from "../runtime";
-import { installAutoSignalTracking } from "../runtime/src/auto";
+import {
+	useSignal,
+	useComputed,
+	useSignalEffect,
+	installAutoSignalTracking,
+} from "../runtime/src/index"; // TODO: This duplicates runtime code between main and sub runtime packages
 
 export {
 	signal,

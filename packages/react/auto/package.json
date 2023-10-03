@@ -1,0 +1,25 @@
+{
+  "name": "@preact/signals-react-auto",
+  "description": "Sub package for @preact/signals-react that patches React to automatically update when signals change",
+  "private": true,
+  "amdName": "reactSignalsAuto",
+  "main": "dist/auto.js",
+  "module": "dist/auto.module.js",
+  "unpkg": "dist/auto.min.js",
+  "types": "dist/index.d.ts",
+  "mangle": "../../../mangle.json",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "browser": "./dist/auto.module.js",
+      "import": "./dist/auto.mjs",
+      "require": "./dist/auto.js"
+    }
+  },
+  "dependencies": {},
+  "peerDependencies": {
+    "@preact/signals-core": "workspace:^1.3.0",
+    "@preact/signals-react": "workspace:*",
+    "react": "^16.14.0 || 17.x || 18.x"
+  }
+}
