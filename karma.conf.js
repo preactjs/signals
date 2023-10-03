@@ -197,6 +197,7 @@ function createEsbuildPlugin() {
 }
 
 const pkgList = ["core", "preact", "react", "react/runtime", "react-transform"];
+const pkgListJoined = pkgList.join(",");
 
 module.exports = function (config) {
 	config.set({
@@ -275,7 +276,7 @@ module.exports = function (config) {
 			{
 				pattern:
 					process.env.TESTS ||
-					`packages/{${pkgList.join(",")}}/test/{,browser,shared}/*.test.tsx`,
+					`packages/{${pkgListJoined}}/test/{browser,shared}/**/*.test.tsx`,
 				watched: false,
 				type: "js",
 			},
@@ -286,7 +287,7 @@ module.exports = function (config) {
 		},
 
 		preprocessors: {
-			[`packages/{${pkgList.join(",")}}/test/**/*`]: ["esbuild"],
+			[`packages/{${pkgListJoined}}/test/**/*`]: ["esbuild"],
 			[`test/browser/babel.js`]: ["esbuild"],
 			[`test/browser/nodeGlobals.js`]: ["esbuild"],
 		},

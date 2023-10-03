@@ -8,7 +8,7 @@ import {
 	checkHangingAct,
 	getConsoleErrorSpy,
 	checkConsoleErrorLogs,
-} from "../../test/shared/utils";
+} from "../../../test/shared/utils";
 
 describe("useSignals", () => {
 	let scratch: HTMLDivElement;
