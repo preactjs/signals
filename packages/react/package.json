@@ -37,14 +37,7 @@
       "import": "./runtime/dist/runtime.mjs",
       "require": "./runtime/dist/runtime.js"
     },
-    "./auto": {
-      "types": "./auto/dist/index.d.ts",
-      "browser": "./auto/dist/auto.module.js",
-      "import": "./auto/dist/auto.mjs",
-      "require": "./auto/dist/auto.js"
-    },
-    "./runtime/package.json": "./runtime/package.json",
-    "./auto/package.json": "./auto/package.json"
+    "./runtime/package.json": "./runtime/package.json"
   },
   "mangle": "../../mangle.json",
   "files": [
