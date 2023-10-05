@@ -7,8 +7,8 @@ import {
 	useComputed,
 	useSignalEffect,
 	useSignal,
-	Signal,
 } from "@preact/signals-react";
+import type { Signal, ReadonlySignal } from "@preact/signals-react";
 import {
 	createElement,
 	Fragment,
@@ -21,7 +21,9 @@ import {
 	useState,
 	useContext,
 	createContext,
+	useRef,
 } from "react";
+import type { FunctionComponent } from "react";
 
 import { renderToStaticMarkup } from "react-dom/server";
 import {
@@ -507,6 +509,111 @@ describe("@preact/signals-react updating", () => {
 				updateContext();
 			});
 			expect(scratch.innerHTML).to.equal("<div>1 1</div>");
+		});
+
+		it("should minimize rerenders when passing signals through context", async () => {
+			function spyOn<P = { children?: React.ReactNode }>(
+				c: FunctionComponent<P>
+			) {
+				return sinon.spy(c);
+			}
+
+			// Manually read signal value below so we can watch whether components rerender
+			const Origin = spyOn(function Origin() {
+				const origin = useContext(URLModelContext).origin;
+				return <span>{origin.value}</span>;
+			});
+
+			const Pathname = spyOn(function Pathname() {
+				const pathname = useContext(URLModelContext).pathname;
+				return <span>{pathname.value}</span>;
+			});
+
+			const Search = spyOn(function Search() {
+				const search = useContext(URLModelContext).search;
+				return <span>{search.value}</span>;
+			});
+
+			// Never reads signal value during render so should never rerender
+			const UpdateURL = spyOn(function UpdateURL() {
+				const update = useContext(URLModelContext).update;
+				return (
+					<button
+						onClick={() => {
+							update(newURL => {
+								newURL.search = newURL.search === "?a=1" ? "?a=2" : "?a=1";
+							});
+						}}
+					>
+						update
+					</button>
+				);
+			});
+
+			interface URLModel {
+				origin: ReadonlySignal<string>;
+				pathname: ReadonlySignal<string>;
+				search: ReadonlySignal<string>;
+				update(updater: (newURL: URL) => void): void;
+			}
+
+			// Also never reads signal value during render so should never rerender
+			const URLModelContext = createContext<URLModel>(null as any);
+			const URLModelProvider = spyOn(function SignalProvider({ children }) {
+				const url = useSignal(new URL("https://domain.com/test?a=1"));
+				const modelRef = useRef<URLModel | null>(null);
+
+				if (modelRef.current == null) {
+					modelRef.current = {
+						origin: computed(() => url.value.origin),
+						pathname: computed(() => url.value.pathname),
+						search: computed(() => url.value.search),
+						update(updater) {
+							const newURL = new URL(url.value);
+							updater(newURL);
+							url.value = newURL;
+						},
+					};
+				}
+
+				return (
+					<URLModelContext.Provider value={modelRef.current}>
+						{children}
+					</URLModelContext.Provider>
+				);
+			});
+
+			function App() {
+				return (
+					<URLModelProvider>
+						<p>
+							<Origin />
+							<Pathname />
+							<Search />
+						</p>
+						<UpdateURL />
+					</URLModelProvider>
+				);
+			}
+
+			await render(<App />);
+
+			const url = scratch.querySelector("p")!;
+			expect(url.textContent).to.equal("https://domain.com/test?a=1");
+			expect(URLModelProvider).to.be.calledOnce;
+			expect(Origin).to.be.calledOnce;
+			expect(Pathname).to.be.calledOnce;
+			expect(Search).to.be.calledOnce;
+
+			await act(() => {
+				scratch.querySelector("button")!.click();
+			});
+
+			expect(url.textContent).to.equal("https://domain.com/test?a=2");
+			expect(URLModelProvider).to.be.calledOnce;
+			expect(Origin).to.be.calledOnce;
+			expect(Pathname).to.be.calledOnce;
+			expect(Search).to.be.calledTwice;
 		});
 
 		it("should not subscribe to computed signals only created and not used", async () => {

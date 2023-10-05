@@ -4,11 +4,12 @@ import {
 	useSignalEffect,
 	Signal,
 	signal,
+	useSignal,
 } from "@preact/signals";
+import type { ReadonlySignal } from "@preact/signals";
 import { createElement, createRef, render, createContext } from "preact";
-import type { FunctionComponent } from "preact";
-import { useContext, useState } from "preact/hooks";
-import type { StateUpdater } from "preact/hooks";
+import type { ComponentChildren, FunctionComponent } from "preact";
+import { useContext, useRef, useState } from "preact/hooks";
 import { setupRerender, act } from "preact/test-utils";
 
 const sleep = (ms?: number) => new Promise(r => setTimeout(r, ms));
@@ -272,66 +273,105 @@ describe("@preact/signals", () => {
 			expect(spy).to.be.calledOnce;
 		});
 
-		it.only("should not subscribe to write-only signals", () => {
-			const location = signal<URL | null>(null);
-			const origin = computed(() => location.value?.origin);
-			const pathname = computed(() => location.value?.pathname);
-			const search = computed(() => location.value?.search);
+		it("should minimize rerenders when passing signals through context", () => {
+			function spyOn<P = { children?: ComponentChildren }>(
+				c: FunctionComponent<P>
+			) {
+				return sinon.spy(c);
+			}
 
-			const Origin = sinon.spy<FunctionComponent>(function Origin() {
-				// Manually read signal value so we can watch whether component rerenders
-				return <p>{origin.value}</p>;
+			// Manually read signal value below so we can watch whether components rerender
+			const Origin = spyOn(function Origin() {
+				const origin = useContext(URLModelContext).origin;
+				return <span>{origin.value}</span>;
 			});
 
-			const Pathname = sinon.spy<FunctionComponent>(function Pathname() {
-				// Manually read signal value so we can watch whether component rerenders
-				return <p>{pathname.value}</p>;
+			const Pathname = spyOn(function Pathname() {
+				const pathname = useContext(URLModelContext).pathname;
+				return <span>{pathname.value}</span>;
 			});
 
-			const Search = sinon.spy<FunctionComponent>(function Search() {
-				// Manually read signal value so we can watch whether component rerenders
-				return <p>{search.value}</p>;
+			const Search = spyOn(function Search() {
+				const search = useContext(URLModelContext).search;
+				return <span>{search.value}</span>;
 			});
 
-			let setLocation: StateUpdater<URL> = () => {};
-			const LocationProvider = sinon.spy<FunctionComponent>(
-				function SignalProvider({ children }) {
-					const [value, setValue] = useState(
-						new URL("https://domain.com/test?a=1")
-					);
-					setLocation = setValue;
+			// Never reads signal value during render so should never rerender
+			const UpdateURL = spyOn(function UpdateURL() {
+				const update = useContext(URLModelContext).update;
+				return (
+					<button
+						onClick={() => {
+							update(newURL => {
+								newURL.search = newURL.search === "?a=1" ? "?a=2" : "?a=1";
+							});
+						}}
+					>
+						update
+					</button>
+				);
+			});
 
-					location.value = value;
-					return children as any;
+			interface URLModel {
+				origin: ReadonlySignal<string>;
+				pathname: ReadonlySignal<string>;
+				search: ReadonlySignal<string>;
+				update(updater: (newURL: URL) => void): void;
+			}
+
+			// Also never reads signal value during render so should never rerender
+			const URLModelContext = createContext<URLModel>(null as any);
+			const URLModelProvider = spyOn(function SignalProvider({ children }) {
+				const url = useSignal(new URL("https://domain.com/test?a=1"));
+				const modelRef = useRef<URLModel | null>(null);
+
+				if (modelRef.current == null) {
+					modelRef.current = {
+						origin: computed(() => url.value.origin),
+						pathname: computed(() => url.value.pathname),
+						search: computed(() => url.value.search),
+						update(updater) {
+							const newURL = new URL(url.value);
+							updater(newURL);
+							url.value = newURL;
+						},
+					};
 				}
-			);
+
+				return (
+					<URLModelContext.Provider value={modelRef.current}>
+						{children}
+					</URLModelContext.Provider>
+				);
+			});
 
 			function App() {
 				return (
-					<LocationProvider>
-						<Origin />
-						<Pathname />
-						<Search />
-					</LocationProvider>
+					<URLModelProvider>
+						<p>
+							<Origin />
+							<Pathname />
+							<Search />
+						</p>
+						<UpdateURL />
+					</URLModelProvider>
 				);
 			}
 
 			render(<App />, scratch);
 
-			expect(scratch.textContent).to.equal("https://domain.com/test?a=1");
-			expect(LocationProvider).to.be.calledOnce;
+			const url = scratch.querySelector("p")!;
+			expect(url.textContent).to.equal("https://domain.com/test?a=1");
+			expect(URLModelProvider).to.be.calledOnce;
 			expect(Origin).to.be.calledOnce;
 			expect(Pathname).to.be.calledOnce;
 			expect(Search).to.be.calledOnce;
 
-			setLocation(u => {
-				u.search = "?a=2";
-				return new URL(u);
-			});
+			scratch.querySelector("button")!.click();
 			rerender();
 
-			expect(scratch.textContent).to.equal("https://domain.com/test?a=2");
-			expect(LocationProvider).to.be.calledTwice;
+			expect(url.textContent).to.equal("https://domain.com/test?a=2");
+			expect(URLModelProvider).to.be.calledOnce;
 			expect(Origin).to.be.calledOnce;
 			expect(Pathname).to.be.calledOnce;
 			expect(Search).to.be.calledTwice;
