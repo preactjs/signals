@@ -96,8 +96,11 @@ function createEsbuildPlugin() {
 				return { path: path.join(__dirname, "test/browser/mockFs.js") };
 			});
 
-			// Apply babel pass whenever we load a .js file
+			// Apply babel pass whenever we load a TS or JS file
 			build.onLoad({ filter: /\.[mc]?[jt]sx?$/ }, async args => {
+				// But skip any file from node_modules if we aren't down-leveling
+				if (!downlevel && args.path.includes("node_modules")) return;
+
 				const contents = await fs.readFile(args.path, "utf-8");
 
 				// Using a cache is crucial as babel is 30x slower than esbuild
@@ -126,6 +129,7 @@ function createEsbuildPlugin() {
 							pragmaFrag: "Fragment",
 						},
 					];
+
 					const ts = [
 						"@babel/preset-typescript",
 						{
@@ -141,36 +145,34 @@ function createEsbuildPlugin() {
 						},
 					];
 
+					const downlevelPlugin = [
+						"@babel/preset-env",
+						{
+							loose: true,
+							modules: false,
+							targets: {
+								browsers: ["last 2 versions", "IE >= 11"],
+							},
+						},
+					];
+
+					const coveragePlugin = [
+						"istanbul",
+						{
+							include: minify ? "**/dist/**/*.js" : "**/src/**/*.{ts,js}",
+						},
+					];
+
 					const tmp = await babel.transformAsync(result, {
 						filename: args.path,
 						sourceMaps: "inline",
-						presets: downlevel
-							? [
-									ts,
-									jsx,
-									[
-										"@babel/preset-env",
-										{
-											loose: true,
-											modules: false,
-											targets: {
-												browsers: ["last 2 versions", "IE >= 11"],
-											},
-										},
-									],
-							  ]
-							: [ts, jsx],
+						presets: downlevel ? [ts, jsx, downlevelPlugin] : [ts, jsx],
 						plugins: [
-							coverage && [
-								"istanbul",
-								{
-									include: minify ? "**/dist/**/*.js" : "**/src/**/*.{ts,js}",
-								},
-							],
+							coverage && coveragePlugin,
 							minify && renamePlugin,
 						].filter(Boolean),
 					});
-					result = tmp.code || result;
+					result = (tmp && tmp.code) || result;
 					cache.set(args.path, { input: contents, result });
 
 					// Fire all pending listeners that are waiting on the same
