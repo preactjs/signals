@@ -66,6 +66,22 @@ describe("React Signals babel transfrom - browser E2E tests", () => {
 		checkHangingAct();
 	});
 
+	it("should rerender components when using signals as text", async () => {
+		const { App } = await createComponent(`
+			export function App({ name }) {
+				return <div>Hello {name}</div>;
+			}`);
+
+		const name = signal("John");
+		await render(<App name={name} />);
+		expect(scratch.innerHTML).to.equal("<div>Hello John</div>");
+
+		await act(() => {
+			name.value = "Jane";
+		});
+		expect(scratch.innerHTML).to.equal("<div>Hello Jane</div>");
+	});
+
 	it("should rerender components when signals they use change", async () => {
 		const { App } = await createComponent(`
 			export function App({ name }) {
