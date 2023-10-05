@@ -40,6 +40,16 @@
     "./runtime/package.json": "./runtime/package.json"
   },
   "mangle": "../../mangle.json",
+  "files": [
+    "src",
+    "dist",
+    "runtime/dist",
+    "runtime/src",
+    "runtime/package.json",
+    "CHANGELOG.md",
+    "LICENSE",
+    "README.md"
+  ],
   "scripts": {
     "prepublishOnly": "cd ../.. && pnpm build:react-runtime && pnpm build:react"
   },
