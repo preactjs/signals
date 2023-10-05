@@ -314,6 +314,33 @@ describe("React Signals babel transfrom - browser E2E tests", () => {
 		expect(ref.current).to.equal(scratch.firstChild);
 	});
 
+	it("should transform components authored inside a test's body", async () => {
+		const { name, App } = await createComponent(`
+			import { signal } from "@preact/signals-core";
+			import { memo } from "react";
+
+			export const name = signal("John");
+			export let App;
+
+			const it = (name, fn) => fn();
+
+			it('should work', () => {
+				App = () => {
+					return <div>Hello {name.value}</div>;
+				}
+			});
+			`);
+
+		await render(<App name={name} />);
+		expect(scratch.innerHTML).to.equal("<div>Hello John</div>");
+
+		await act(() => {
+			name.value = "Jane";
+		});
+
+		expect(scratch.innerHTML).to.equal("<div>Hello Jane</div>");
+	});
+
 	it("loads useSignals from a custom source", async () => {
 		const { App } = await createComponent(
 			`

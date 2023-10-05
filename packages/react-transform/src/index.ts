@@ -241,10 +241,6 @@ function isComponentFunction(
 	filename: string | undefined
 ): boolean {
 	return (
-		// fnNameStartsWithCapital(path) && // Function name indicates it's a component
-		// getData(path.scope, containsJSX) === true && // Function contains JSX
-		// path.scope.parent === path.scope.getProgramParent() // Function is top-level
-
 		// TODO: Could also check number of function arguments. Should be 0, 1, or
 		// 2.
 		//
@@ -262,8 +258,7 @@ function isComponentFunction(
 		// export default function () {};
 		// ```
 		fnNameStartsWithCapital(path, filename) && // Function name indicates it's a component
-		getData(path.scope, containsJSX) === true && // Function contains JSX
-		path.scope.parent === path.scope.getProgramParent() // Function is top-level
+		getData(path.scope, containsJSX) === true // Function contains JSX
 	);
 }
 
