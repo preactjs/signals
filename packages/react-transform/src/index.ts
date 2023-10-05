@@ -241,22 +241,48 @@ function isComponentFunction(
 	filename: string | undefined
 ): boolean {
 	return (
-		// TODO: Could also check number of function arguments. Should be 0, 1, or
-		// 2.
+		// Consider: Could also check length of node.params. Should be
+		// - 0: no props
+		// - 1: has props
+		// - 2: props + context, or props + ref
 		//
-		// TODO: Accommodate memo, forwardRef, and other HoCs, as well as inline
-		// defined default exports. Maybe return a DefaultExportSymbol from
-		// getFnName to indicate it's a default export
+		// TODO: Add tests for these cases:
 		//
-		// Examples:
-		// ```
+		// Examples for auto detect, auto opt-out, and manual opt-in:
+		// ```jsx
 		// const ReactMemoTest = memo(() => <p>{sig.value}</p>);
 		// const ReactMemoTest2 = memo(function () { return <p>{sig.value}</p>; });
+		// // Note: testing func expression with/without name
 		// const ReactMemoTest3 = memo(function A () { return <p>{sig.value}</p>; });
 		// export default memo(() => <p>{sig.value}</p>);
 		// export default () => {};
 		// export default function () {};
+		//
+		// // Plus other function types
+		// const Combined = forwardRef(memo(function A () { return <p>{sig.value}</p>; }));
+		//
+		// // Plus other function types
+		// let App;
+		// App = function () {}
+		// App = () => {}
+		// App = memo(() => <p>{sig.value}</p>);
+		//
+		// // Plus non-top-level functions
+		// it("should work", () => {
+		//   const Inner = memo(() => <p>{sig.value}</p>);
+		//   return <Inner />;
+		// });
+		//
 		// ```
+		//
+		// In general: Func declarations exist by themselves. Top level structures
+		// around [arrow] func expressions:
+		// - None, Export default, export named, object property, expression
+		//   statement, variable declarator, variable declaration, assignment
+		//   expression
+		// - all func expressions could be wrapped in call expressions
+		// - func expressions could have a name or not
+		// - arrows can have implicit return or not
 		fnNameStartsWithCapital(path, filename) && // Function name indicates it's a component
 		getData(path.scope, containsJSX) === true // Function contains JSX
 	);
