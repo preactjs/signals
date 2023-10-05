@@ -53,33 +53,127 @@ type FunctionLike =
 	| BabelTypes.FunctionExpression
 	| BabelTypes.FunctionDeclaration;
 
-function testFunctionName<T extends FunctionLike>(
-	predicate: (name: string | null) => boolean
-): (path: NodePath<T>) => boolean {
-	return (path: NodePath<T>) => {
-		if (
-			path.node.type === "ArrowFunctionExpression" ||
-			path.node.type === "FunctionExpression"
-		) {
-			return (
-				path.parentPath.node.type === "VariableDeclarator" &&
-				path.parentPath.node.id.type === "Identifier" &&
-				predicate(path.parentPath.node.id.name)
-			);
-		} else if (path.node.type === "FunctionDeclaration") {
-			return predicate(path.node.id?.name ?? null);
-		} else {
-			return false;
-		}
-	};
+/**
+ * Returns the name of the function if it is a function declaration with a name or
+ * a [arrow] function expression with a variable declarator parent.
+ */
+function getDirectFunctionName<T extends FunctionLike>(
+	path: NodePath<T>
+): string | null {
+	const parentPath = path.parentPath;
+	if (path.node.type === "FunctionDeclaration") {
+		return path.node.id?.name ?? null;
+	} else if (
+		(path.node.type === "ArrowFunctionExpression" ||
+			path.node.type === "FunctionExpression") &&
+		parentPath.node.type === "VariableDeclarator" &&
+		parentPath.node.id.type === "Identifier"
+	) {
+		return parentPath.node.id.name;
+	} else {
+		return null;
+	}
 }
 
-const fnNameStartsWithCapital = testFunctionName(
-	name => name?.match(/^[A-Z]/) !== null
-);
-const fnNameStartsWithUse = testFunctionName(
-	name => name?.match(/^use[A-Z]/) !== null
-);
+const DefaultExportSymbol = Symbol("DefaultExportSymbol");
+
+/**
+ * Gets the name of the function if it is a function declaration with a name or
+ * a [arrow] function expression with a variable declarator parent. If the
+ * function is an inline default export (e.g. `export default () => {}`),
+ * returns a symbol indicating it is a default export. If the function is an
+ * anonymous function wrapped in higher order functions (e.g. memo(() => {}))
+ * we'll climb through the higher order functions to find the name of the
+ * variable that the function is assigned to, if any. Else returns null.
+ */
+function getIndirectFunctionName(
+	path: NodePath<FunctionLike>
+): string | null | typeof DefaultExportSymbol {
+	let directName;
+	if (
+		path.node.type === "FunctionDeclaration" ||
+		path.node.type === "ArrowFunctionExpression" ||
+		path.node.type === "FunctionExpression"
+	) {
+		directName = getDirectFunctionName(path);
+	}
+
+	if (directName) return directName;
+
+	let parentPath = path.parentPath;
+	if (
+		parentPath.node.type === "VariableDeclarator" &&
+		parentPath.node.id.type === "Identifier"
+	) {
+		return parentPath.node.id.name;
+	} else if (
+		parentPath.node.type === "AssignmentExpression" &&
+		parentPath.node.left.type === "Identifier"
+	) {
+		return parentPath.node.left.name;
+	} else if (parentPath.node.type === "ExportDefaultDeclaration") {
+		return DefaultExportSymbol;
+	} else if (parentPath.node.type === "CallExpression") {
+		// If our parent is a Call Expression, then this function expression is
+		// wrapped in some higher order functions. Loop through the higher order
+		// functions to determine if this expression is assigned to a name we can
+		// use as the function name
+		parentPath = path.parentPath;
+		while (parentPath.node.type === "CallExpression") {
+			if (parentPath.parentPath) {
+				parentPath = parentPath.parentPath;
+			} else {
+				return null;
+			}
+		}
+
+		// Now check again to see if we are at a variable declarator or assignment,
+		// or export default declaration
+		if (
+			parentPath.node.type === "VariableDeclarator" &&
+			parentPath.node.id.type === "Identifier"
+		) {
+			return parentPath.node.id.name;
+		} else if (
+			parentPath.node.type === "AssignmentExpression" &&
+			parentPath.node.left.type === "Identifier"
+		) {
+			return parentPath.node.left.name;
+		} else if (parentPath.node.type === "ExportDefaultDeclaration") {
+			return DefaultExportSymbol;
+		} else {
+			return null;
+		}
+	} else {
+		return null;
+	}
+}
+
+function fnNameStartsWithCapital(
+	path: NodePath<FunctionLike>,
+	filename: string | undefined | undefined
+): boolean {
+	const name = getIndirectFunctionName(path);
+	if (!name) return false;
+	if (name === DefaultExportSymbol) {
+		// TODO: Investigate if filename is the basename or a full path
+		return filename?.match(/^[A-Z]/) != null ?? false;
+	}
+	return name.match(/^[A-Z]/) != null;
+}
+function fnNameStartsWithUse(
+	path: NodePath<FunctionLike>,
+	filename: string | undefined | undefined
+): boolean {
+	const name = getIndirectFunctionName(path);
+	if (!name) return false;
+	if (name === DefaultExportSymbol) {
+		// TODO: Investigate if filename is the basename or a full path
+		return filename?.match(/^use[A-Z]/) != null ?? false;
+	}
+
+	return name.match(/^use[A-Z]/) != null;
+}
 
 function hasLeadingComment(path: NodePath, comment: RegExp): boolean {
 	const comments = path.node.leadingComments;
@@ -142,23 +236,50 @@ function isOptedOutOfSignalTracking(path: NodePath | null): boolean {
 	}
 }
 
-function isComponentFunction(path: NodePath<FunctionLike>): boolean {
+function isComponentFunction(
+	path: NodePath<FunctionLike>,
+	filename: string | undefined
+): boolean {
 	return (
-		fnNameStartsWithCapital(path) && // Function name indicates it's a component
+		// fnNameStartsWithCapital(path) && // Function name indicates it's a component
+		// getData(path.scope, containsJSX) === true && // Function contains JSX
+		// path.scope.parent === path.scope.getProgramParent() // Function is top-level
+
+		// TODO: Could also check number of function arguments. Should be 0, 1, or
+		// 2.
+		//
+		// TODO: Accommodate memo, forwardRef, and other HoCs, as well as inline
+		// defined default exports. Maybe return a DefaultExportSymbol from
+		// getFnName to indicate it's a default export
+		//
+		// Examples:
+		// ```
+		// const ReactMemoTest = memo(() => <p>{sig.value}</p>);
+		// const ReactMemoTest2 = memo(function () { return <p>{sig.value}</p>; });
+		// const ReactMemoTest3 = memo(function A () { return <p>{sig.value}</p>; });
+		// export default memo(() => <p>{sig.value}</p>);
+		// export default () => {};
+		// export default function () {};
+		// ```
+		fnNameStartsWithCapital(path, filename) && // Function name indicates it's a component
 		getData(path.scope, containsJSX) === true && // Function contains JSX
 		path.scope.parent === path.scope.getProgramParent() // Function is top-level
 	);
 }
 
-function isCustomHook(path: NodePath<FunctionLike>): boolean {
+function isCustomHook(
+	path: NodePath<FunctionLike>,
+	filename: string | undefined
+): boolean {
 	return (
-		fnNameStartsWithUse(path) && // Function name indicates it's a hook
+		fnNameStartsWithUse(path, filename) && // Function name indicates it's a hook
 		path.scope.parent === path.scope.getProgramParent()
 	); // Function is top-level
 }
 
 function shouldTransform(
 	path: NodePath<FunctionLike>,
+	filename: string | undefined,
 	options: PluginOptions
 ): boolean {
 	if (getData(path, alreadyTransformed) === true) return false;
@@ -169,12 +290,12 @@ function shouldTransform(
 	if (isOptedIntoSignalTracking(path)) return true;
 
 	if (options.mode === "all") {
-		return isComponentFunction(path);
+		return isComponentFunction(path, filename);
 	}
 
 	if (options.mode == null || options.mode === "auto") {
 		return (
-			(isComponentFunction(path) || isCustomHook(path)) &&
+			(isComponentFunction(path, filename) || isCustomHook(path, filename)) &&
 			getData(path.scope, maybeUsesSignal) === true
 		); // Function appears to use signals;
 	}
@@ -246,10 +367,11 @@ function transformFunction(
 	t: typeof BabelTypes,
 	options: PluginOptions,
 	path: NodePath<FunctionLike>,
+	filename: string | undefined,
 	state: PluginPass
 ) {
 	let newFunction: FunctionLike;
-	if (isCustomHook(path) || options.experimental?.noTryFinally) {
+	if (isCustomHook(path, filename) || options.experimental?.noTryFinally) {
 		// For custom hooks, we don't need to wrap the function body in a
 		// try/finally block because later code in the function's render body could
 		// read signals and we want to track and associate those signals with this
@@ -373,24 +495,24 @@ export default function signalsTransform(
 				// seeing a function would probably be faster than running an entire
 				// babel pass with plugins on components twice.
 				exit(path, state) {
-					if (shouldTransform(path, options)) {
-						transformFunction(t, options, path, state);
+					if (shouldTransform(path, this.filename, options)) {
+						transformFunction(t, options, path, this.filename, state);
 					}
 				},
 			},
 
 			FunctionExpression: {
 				exit(path, state) {
-					if (shouldTransform(path, options)) {
-						transformFunction(t, options, path, state);
+					if (shouldTransform(path, this.filename, options)) {
+						transformFunction(t, options, path, this.filename, state);
 					}
 				},
 			},
 
 			FunctionDeclaration: {
 				exit(path, state) {
-					if (shouldTransform(path, options)) {
-						transformFunction(t, options, path, state);
+					if (shouldTransform(path, this.filename, options)) {
+						transformFunction(t, options, path, this.filename, state);
 					}
 				},
 			},
