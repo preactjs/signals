@@ -797,6 +797,61 @@ describe("React Signals Babel Transform", () => {
 			runTest(inputCode, expectedOutput);
 		});
 
+		it("does not transform jsx function declaration with improper name", () => {
+			const inputCode = `
+				function app() {
+					return <div>signal.value</div>;
+				}
+			`;
+
+			const expectedOutput = inputCode;
+			runTest(inputCode, expectedOutput);
+		});
+
+		it("does not transform function declaration that uses signals with no JSX", () => {
+			const inputCode = `
+				function App() {
+					return signal.value;
+				}
+			`;
+
+			const expectedOutput = inputCode;
+			runTest(inputCode, expectedOutput);
+		});
+
+		it("does not transform function expression that uses signals with no JSX", () => {
+			const inputCode = `
+				const App = function () {
+					return signal.value;
+				};
+			`;
+
+			const expectedOutput = inputCode;
+			runTest(inputCode, expectedOutput);
+		});
+
+		it("does not transform jsx function expression that uses signals with improper name", () => {
+			const inputCode = `
+				const app = function () {
+					return <div>signal.value</div>;
+				};
+			`;
+
+			const expectedOutput = inputCode;
+			runTest(inputCode, expectedOutput);
+		});
+
+		it("does not transform jsx function expression that uses signals with improper inline name", () => {
+			const inputCode = `
+				const App = function name() {
+					return <div>signal.value</div>;
+				};
+			`;
+
+			const expectedOutput = inputCode;
+			runTest(inputCode, expectedOutput);
+		});
+
 		it("does not transform custom hook function declarations that don't use signals", () => {
 			const inputCode = `
 				function useCustomHook() {
