@@ -283,6 +283,9 @@ importers:
       '@types/babel__helper-plugin-utils':
         specifier: ^7.10.0
         version: 7.10.0
+      '@types/prettier':
+        specifier: ^3.0.0
+        version: 3.0.0
       '@types/react':
         specifier: ^18.0.18
         version: 18.0.18
@@ -301,6 +304,9 @@ importers:
       path:
         specifier: ^0.12.7
         version: 0.12.7
+      prettier:
+        specifier: ^3.0.3
+        version: 3.0.3
       react:
         specifier: ^18.2.0
         version: 18.2.0
@@ -2419,6 +2425,13 @@ packages:
 
   /@types/parse-json@4.0.0:
     resolution: {integrity: sha512-//oorEZjL6sbPcKUaCdIGlIUeH26mgzimjBB77G6XRgnDl/L5wOnpyBGRe/Mmf5CVW3PwEBE1NjiMZ/ssFh4wA==}
+    dev: true
+
+  /@types/prettier@3.0.0:
+    resolution: {integrity: sha512-mFMBfMOz8QxhYVbuINtswBp9VL2b4Y0QqYHwqLz3YbgtfAcat2Dl6Y1o4e22S/OVE6Ebl9m7wWiMT2lSbAs1wA==}
+    deprecated: This is a stub types definition. prettier provides its own type definitions, so you do not need this installed.
+    dependencies:
+      prettier: 3.0.3
     dev: true
 
   /@types/prop-types@15.7.5:
@@ -6509,6 +6522,12 @@ packages:
   /prettier@2.7.1:
     resolution: {integrity: sha512-ujppO+MkdPqoVINuDFDRLClm7D78qbDt0/NR+wp5FqEZOoTNAjPHWj17QRhu7geIHJfcNhRk1XVQmF8Bp3ye+g==}
     engines: {node: '>=10.13.0'}
+    hasBin: true
+    dev: true
+
+  /prettier@3.0.3:
+    resolution: {integrity: sha512-L/4pUDMxcNa8R/EthV08Zt42WBO4h1rarVtK0K+QJG0X187OLo7l699jWw0GKuwzkPQ//jMFA/8Xm6Fh3J/DAg==}
+    engines: {node: '>=14'}
     hasBin: true
     dev: true
 
