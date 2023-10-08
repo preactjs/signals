@@ -1,7 +1,16 @@
 import { transform, traverse } from "@babel/core";
 import type { Visitor } from "@babel/core";
 import type { Scope } from "@babel/traverse";
+import prettier from "prettier";
 import signalsTransform, { PluginOptions } from "../../src/index";
+import {
+	TestCase,
+	declarationComp,
+	exportDefaultComp,
+	exportNamedComp,
+	objectPropertyComp,
+	variableComp,
+} from "./helpers";
 
 function dedent(str: string) {
 	let result = str;
@@ -55,6 +64,93 @@ function runTest(
 	const output = transformCode(input, options);
 	expect(toSpaces(output)).to.equal(toSpaces(dedent(expected)));
 }
+
+const format = (code: string) => prettier.format(code, { parser: "babel" });
+
+interface TestCaseConfig {
+	/** Whether to use components whose body contains valid code auto mode would transform (true) or not (false) */
+	useValidAutoMode: boolean;
+	/** Whether to assert that the plugin transforms the code (true) or not (false) */
+	expectTransformed: boolean;
+	/** Options to pass to the babel plugin */
+	options: PluginOptions;
+}
+
+function runTestCases(config: TestCaseConfig, testCases: TestCase[]) {
+	testCases = testCases.sort((a, b) => (a.name < b.name ? -1 : 1));
+	for (const testCase of testCases) {
+		it(testCase.name, () => {
+			const input = testCase.input;
+			let expected = "";
+			if (config.expectTransformed) {
+				expected +=
+					'import { useSignals as _useSignals } from "@preact/signals-react/runtime";\n';
+				expected += testCase.transformed;
+			} else {
+				expected = input;
+			}
+
+			const output = transformCode(input, config.options);
+			expect(format(output)).to.equal(format(expected));
+		});
+	}
+}
+
+/**
+ *
+ * @param config
+ * @param auto Whether to run tests with component bodies that auto mode would transform or not
+ */
+function runGeneratedTestCases(config: TestCaseConfig) {
+	// function C() {}
+	describe("function components", () =>
+		runTestCases(config, declarationComp({ auto: config.useValidAutoMode })));
+
+	// const C = () => {};
+	describe("variable declared components", () =>
+		runTestCases(config, variableComp({ auto: config.useValidAutoMode })));
+
+	// let C; C = () => {};
+	describe("assigned to variable components", () =>
+		runTestCases(config, variableComp({ auto: config.useValidAutoMode })));
+
+	// const obj = { C: () => {} };
+	describe.skip("object property components", () =>
+		runTestCases(
+			config,
+			objectPropertyComp({ auto: config.useValidAutoMode })
+		));
+
+	// export default () => {};
+	describe.skip("default exported components", () =>
+		runTestCases(config, exportDefaultComp({ auto: config.useValidAutoMode })));
+
+	// export function C() {}
+	describe("named exported components", () =>
+		runTestCases(config, exportNamedComp({ auto: config.useValidAutoMode })));
+}
+
+describe.only("React Signals Babel Transform", () => {
+	describe("auto mode transforms", () => {
+		runGeneratedTestCases({
+			useValidAutoMode: true,
+			expectTransformed: true,
+			options: { mode: "auto" },
+		});
+	});
+
+	describe("auto mode doesn't transform", () => {
+		runGeneratedTestCases({
+			useValidAutoMode: false,
+			expectTransformed: false,
+			options: { mode: "auto" },
+		});
+	});
+
+	describe("auto mode supports opting out of transforming", () => {});
+
+	describe("manual mode opts into transforming", () => {});
+});
 
 describe("React Signals Babel Transform", () => {
 	describe("auto mode transformations", () => {
@@ -888,6 +984,8 @@ describe("React Signals Babel Transform", () => {
 			runTest(inputCode, expectedOutput);
 		});
 	});
+
+	// TODO: Figure out what to do with the following
 
 	describe("all mode transformations", () => {
 		it("skips transforming arrow function component with leading opt-out JSDoc comment before variable declaration", () => {

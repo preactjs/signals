@@ -186,22 +186,25 @@ function generateCode(config: Node): InputOutput {
 	return codeGenerators[config.type](config as any);
 }
 
-interface TestCase extends InputOutput {
+export interface TestCase extends InputOutput {
 	name: string;
 }
 
 interface TestCaseConfig {
-	name: string;
 	auto: boolean;
+	name?: string;
 	params?: ParamsConfig;
 }
+
+const testName = (...parts: Array<string | undefined>) =>
+	parts.filter(Boolean).join(" ");
 
 function expressionComponents(config: TestCaseConfig): TestCase[] {
 	const { name: baseName, params } = config;
 	if (config.auto) {
 		return [
 			{
-				name: baseName + " func expression",
+				name: testName(baseName, "as function without inline name"),
 				...generateCode({
 					type: "FuncExpComp",
 					body: "return <div>{signal.value}</div>",
@@ -209,7 +212,7 @@ function expressionComponents(config: TestCaseConfig): TestCase[] {
 				}),
 			},
 			{
-				name: baseName + " func expression with name",
+				name: testName(baseName, "as function with proper inline name"),
 				...generateCode({
 					type: "FuncExpComp",
 					name: "App",
@@ -218,7 +221,7 @@ function expressionComponents(config: TestCaseConfig): TestCase[] {
 				}),
 			},
 			{
-				name: baseName + " arrow func expression with statement body",
+				name: testName(baseName, "as arrow function with statement body"),
 				...generateCode({
 					type: "ArrowComp",
 					return: "statement",
@@ -227,7 +230,7 @@ function expressionComponents(config: TestCaseConfig): TestCase[] {
 				}),
 			},
 			{
-				name: baseName + " arrow func expression with expression body",
+				name: testName(baseName, "as arrow function with expression body"),
 				...generateCode({
 					type: "ArrowComp",
 					return: "expression",
@@ -239,7 +242,7 @@ function expressionComponents(config: TestCaseConfig): TestCase[] {
 	} else {
 		return [
 			{
-				name: baseName + " func expression with bad name",
+				name: testName(baseName, "as function with bad inline name"),
 				...generateCode({
 					type: "FuncExpComp",
 					name: "app",
@@ -248,7 +251,7 @@ function expressionComponents(config: TestCaseConfig): TestCase[] {
 				}),
 			},
 			{
-				name: baseName + " func expression with no JSX",
+				name: testName(baseName, "as function with no JSX"),
 				...generateCode({
 					type: "FuncExpComp",
 					body: "return signal.value",
@@ -256,7 +259,7 @@ function expressionComponents(config: TestCaseConfig): TestCase[] {
 				}),
 			},
 			{
-				name: baseName + " func expression with no signals",
+				name: testName(baseName, "as function with no signals"),
 				...generateCode({
 					type: "FuncExpComp",
 					body: "return <div>Hello World</div>",
@@ -264,7 +267,7 @@ function expressionComponents(config: TestCaseConfig): TestCase[] {
 				}),
 			},
 			{
-				name: baseName + " arrow func expression with no JSX",
+				name: testName(baseName, "as arrow function with no JSX"),
 				...generateCode({
 					type: "ArrowComp",
 					return: "expression",
@@ -273,7 +276,7 @@ function expressionComponents(config: TestCaseConfig): TestCase[] {
 				}),
 			},
 			{
-				name: baseName + " arrow func expression with no signals",
+				name: testName(baseName, "as arrow function with no signals"),
 				...generateCode({
 					type: "ArrowComp",
 					return: "expression",
@@ -335,12 +338,12 @@ function withCallExpWrappers(config: TestCaseConfig): TestCase[] {
 	return testCases;
 }
 
-function declarationComp(config: TestCaseConfig): TestCase[] {
+export function declarationComp(config: TestCaseConfig): TestCase[] {
 	const { name: baseName, params } = config;
 	if (config.auto) {
 		return [
 			{
-				name: baseName + " func declaration",
+				name: testName(baseName, "with proper name, jsx, and signal usage"),
 				...generateCode({
 					type: "FuncDeclComp",
 					name: "App",
@@ -352,7 +355,7 @@ function declarationComp(config: TestCaseConfig): TestCase[] {
 	} else {
 		return [
 			{
-				name: baseName + " func declaration with improper name",
+				name: testName(baseName, "with bad name"),
 				...generateCode({
 					type: "FuncDeclComp",
 					name: "app",
@@ -361,7 +364,7 @@ function declarationComp(config: TestCaseConfig): TestCase[] {
 				}),
 			},
 			{
-				name: baseName + " func declaration with no JSX",
+				name: testName(baseName, "with no JSX"),
 				...generateCode({
 					type: "FuncDeclComp",
 					name: "App",
@@ -370,7 +373,7 @@ function declarationComp(config: TestCaseConfig): TestCase[] {
 				}),
 			},
 			{
-				name: baseName + " func declaration with no signals",
+				name: testName(baseName, "with no signals"),
 				...generateCode({
 					type: "FuncDeclComp",
 					name: "App",
@@ -382,13 +385,13 @@ function declarationComp(config: TestCaseConfig): TestCase[] {
 	}
 }
 
-function variableComp(config: TestCaseConfig): TestCase[] {
+export function variableComp(config: TestCaseConfig): TestCase[] {
 	const testCases: TestCase[] = [];
 
 	const components = expressionComponents(config);
 	for (const c of components) {
 		testCases.push({
-			name: c.name + " assigned to variable declaration",
+			name: testName(c.name),
 			...generateCode({
 				type: "Variable",
 				name: "VarComp",
@@ -399,7 +402,7 @@ function variableComp(config: TestCaseConfig): TestCase[] {
 
 	if (!config.auto) {
 		testCases.push({
-			name: `${config.name} func expression assigned to variable declaration with improper name`,
+			name: testName(config.name, `as function with bad variable name`),
 			...generateCode({
 				type: "Variable",
 				name: "render",
@@ -411,7 +414,7 @@ function variableComp(config: TestCaseConfig): TestCase[] {
 		});
 
 		testCases.push({
-			name: `${config.name} arrow func expression assigned to variable declaration with improper name`,
+			name: testName(config.name, `as arrow function with bad variable name`),
 			...generateCode({
 				type: "Variable",
 				name: "render",
@@ -426,12 +429,12 @@ function variableComp(config: TestCaseConfig): TestCase[] {
 
 	// With HoC wrappers, we are testing the logic to find the component name. So
 	// only generate tests where the function body is correct ("auto" is true) and
-	// the name is either correct or improper.
+	// the name is either correct or bad.
 	const hocComponents = withCallExpWrappers({ ...config, auto: true });
-	const suffix = config.auto ? "" : " with improper name";
+	const suffix = config.auto ? "" : "with bad variable name";
 	for (const c of hocComponents) {
 		testCases.push({
-			name: `${c.name} assigned to variable declaration${suffix}`,
+			name: testName(c.name, suffix),
 			...generateCode({
 				type: "Variable",
 				name: config.auto ? "VarComp" : "render",
@@ -443,13 +446,13 @@ function variableComp(config: TestCaseConfig): TestCase[] {
 	return testCases;
 }
 
-function assignmentComp(config: TestCaseConfig): TestCase[] {
+export function assignmentComp(config: TestCaseConfig): TestCase[] {
 	const testCases: TestCase[] = [];
 
 	const components = expressionComponents(config);
 	for (const c of components) {
 		testCases.push({
-			name: c.name + " assigned to variable",
+			name: testName(c.name),
 			...generateCode({
 				type: "Assignment",
 				name: "AssignComp",
@@ -460,7 +463,7 @@ function assignmentComp(config: TestCaseConfig): TestCase[] {
 
 	if (!config.auto) {
 		testCases.push({
-			name: `${config.name} func expression assigned to variable with improper name`,
+			name: testName(config.name, "function component with bad variable name"),
 			...generateCode({
 				type: "Assignment",
 				name: "render",
@@ -472,7 +475,7 @@ function assignmentComp(config: TestCaseConfig): TestCase[] {
 		});
 
 		testCases.push({
-			name: `${config.name} arrow func expression assigned to variable with improper name`,
+			name: testName(config.name, "arrow function with bad variable name"),
 			...generateCode({
 				type: "Assignment",
 				name: "render",
@@ -487,12 +490,12 @@ function assignmentComp(config: TestCaseConfig): TestCase[] {
 
 	// With HoC wrappers, we are testing the logic to find the component name. So
 	// only generate tests where the function body is correct ("auto" is true) and
-	// the name is either correct or improper.
+	// the name is either correct or bad.
 	const hocComponents = withCallExpWrappers({ ...config, auto: true });
-	const suffix = config.auto ? "" : " with improper name";
+	const suffix = config.auto ? "" : "with bad variable name";
 	for (const c of hocComponents) {
 		testCases.push({
-			name: `${c.name} assigned to variable${suffix}`,
+			name: testName(c.name, suffix),
 			...generateCode({
 				type: "Assignment",
 				name: config.auto ? "AssignComp" : "render",
@@ -504,13 +507,13 @@ function assignmentComp(config: TestCaseConfig): TestCase[] {
 	return testCases;
 }
 
-function objectPropertyComp(config: TestCaseConfig): TestCase[] {
+export function objectPropertyComp(config: TestCaseConfig): TestCase[] {
 	const testCases: TestCase[] = [];
 
 	const components = expressionComponents(config);
 	for (const c of components) {
 		testCases.push({
-			name: c.name + " assigned to object property",
+			name: c.name,
 			...generateCode({
 				type: "ObjectProperty",
 				name: "ObjComp",
@@ -521,7 +524,7 @@ function objectPropertyComp(config: TestCaseConfig): TestCase[] {
 
 	if (!config.auto) {
 		testCases.push({
-			name: `${config.name} func expression assigned to object prop with improper name`,
+			name: testName(config.name, "function component with bad property name"),
 			...generateCode({
 				type: "ObjectProperty",
 				name: "render_prop",
@@ -533,7 +536,7 @@ function objectPropertyComp(config: TestCaseConfig): TestCase[] {
 		});
 
 		testCases.push({
-			name: `${config.name} arrow func expression assigned to object prop with improper name`,
+			name: testName(config.name, "arrow function with bad property name"),
 			...generateCode({
 				type: "ObjectProperty",
 				name: "render_prop",
@@ -548,12 +551,12 @@ function objectPropertyComp(config: TestCaseConfig): TestCase[] {
 
 	// With HoC wrappers, we are testing the logic to find the component name. So
 	// only generate tests where the function body is correct ("auto" is true) and
-	// the name is either correct or improper.
+	// the name is either correct or bad.
 	const hocComponents = withCallExpWrappers({ ...config, auto: true });
-	const suffix = config.auto ? "" : " with improper name";
+	const suffix = config.auto ? "" : "with bad property name";
 	for (const c of hocComponents) {
 		testCases.push({
-			name: `${c.name} assigned to object property${suffix}`,
+			name: testName(c.name, suffix),
 			...generateCode({
 				type: "ObjectProperty",
 				name: config.auto ? "ObjComp" : "render_prop",
@@ -565,10 +568,7 @@ function objectPropertyComp(config: TestCaseConfig): TestCase[] {
 	return testCases;
 }
 
-// ExportDefaultDeclaration is a different AST node type from
-// ExpressionStatement so add separate tests for it even though we can reuse the
-// expressionComponents generator.
-function exportDefaultComp(config: TestCaseConfig): TestCase[] {
+export function exportDefaultComp(config: TestCaseConfig): TestCase[] {
 	const testCases: TestCase[] = [];
 
 	const components = expressionComponents(config);
@@ -596,10 +596,7 @@ function exportDefaultComp(config: TestCaseConfig): TestCase[] {
 	return testCases;
 }
 
-// ExportNamedDeclaration is a different AST node type from VariableDeclaration
-// or FunctionDeclaration so add separate tests for it even though we can reuse
-// the variable and function declaration generators.
-function exportNamedComp(config: TestCaseConfig): TestCase[] {
+export function exportNamedComp(config: TestCaseConfig): TestCase[] {
 	const testCases: TestCase[] = [];
 
 	const funcComponents = declarationComp(config);
@@ -679,4 +676,4 @@ async function run() {
 	}
 }
 
-run();
+// run();
