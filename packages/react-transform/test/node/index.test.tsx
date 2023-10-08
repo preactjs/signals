@@ -124,31 +124,35 @@ function runTestCases(config: TestCaseConfig, testCases: TestCase[]) {
 
 function runGeneratedTestCases(config: TestCaseConfig) {
 	// function C() {}
-	describe("function components", () =>
-		runTestCases(config, declarationComp({ auto: config.useValidAutoMode })));
+	describe("function components", () => {
+		runTestCases(config, declarationComp({ auto: config.useValidAutoMode }));
+	});
 
 	// const C = () => {};
-	describe("variable declared components", () =>
-		runTestCases(config, variableComp({ auto: config.useValidAutoMode })));
+	describe("variable declared components", () => {
+		runTestCases(config, variableComp({ auto: config.useValidAutoMode }));
+	});
 
 	// let C; C = () => {};
-	describe("assigned to variable components", () =>
-		runTestCases(config, assignmentComp({ auto: config.useValidAutoMode })));
+	describe("assigned to variable components", () => {
+		runTestCases(config, assignmentComp({ auto: config.useValidAutoMode }));
+	});
 
 	// const obj = { C: () => {} };
-	describe.skip("object property components", () =>
-		runTestCases(
-			config,
-			objectPropertyComp({ auto: config.useValidAutoMode })
-		));
+	describe.skip("object property components", () => {
+		runTestCases(config, objectPropertyComp({ auto: config.useValidAutoMode }));
+	});
 
+	// TODO: Determine a way to specify the file name...
 	// export default () => {};
-	describe.skip("default exported components", () =>
-		runTestCases(config, exportDefaultComp({ auto: config.useValidAutoMode })));
+	describe.skip("default exported components", () => {
+		runTestCases(config, exportDefaultComp({ auto: config.useValidAutoMode }));
+	});
 
 	// export function C() {}
-	describe("named exported components", () =>
-		runTestCases(config, exportNamedComp({ auto: config.useValidAutoMode })));
+	describe("named exported components", () => {
+		runTestCases(config, exportNamedComp({ auto: config.useValidAutoMode }));
+	});
 }
 
 describe.only("React Signals Babel Transform", () => {
@@ -168,9 +172,13 @@ describe.only("React Signals Babel Transform", () => {
 		});
 	});
 
-	describe("auto mode supports opting out of transforming", () => {});
+	describe("auto mode supports opting out of transforming", () => {
+		// TODO: implement
+	});
 
-	describe("manual mode opts into transforming", () => {});
+	describe("manual mode opts into transforming", () => {
+		// TODO: implement
+	});
 });
 
 describe("React Signals Babel Transform", () => {
