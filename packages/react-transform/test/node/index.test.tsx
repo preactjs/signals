@@ -77,10 +77,35 @@ interface TestCaseConfig {
 	options: PluginOptions;
 }
 
+let testCount = 0;
+const getTestId = () => (testCount++).toString().padStart(3, "0");
+const makeOneLine = (str: string) => str.replace(/\s+/g, " ");
+
 function runTestCases(config: TestCaseConfig, testCases: TestCase[]) {
-	testCases = testCases.sort((a, b) => (a.name < b.name ? -1 : 1));
+	// Experiment with using input code as test case name...
+	// testCases = testCases
+	// 	.map(t => ({ ...t, input: makeOneLine(format(t.input)) }))
+	// 	.sort((a, b) => (a.input < b.input ? -1 : 1));
+
+	testCases = testCases
+		.map(t => ({
+			...t,
+			input: format(t.input),
+			transformed: format(t.transformed),
+		}))
+		.sort((a, b) => (a.name < b.name ? -1 : 1));
+
 	for (const testCase of testCases) {
-		it(testCase.name, () => {
+		let testId = getTestId();
+		it(`(${testId}) ${testCase.name}`, () => {
+			// To help interactively debug a specific test case, set this to the test
+			// id of the test case you want to debug
+			const debugTestId = "";
+			if (debugTestId == testId) {
+				console.log(makeOneLine(testCase.input)); // eslint-disable-line no-console
+				debugger; // eslint-disable-line no-debugger
+			}
+
 			const input = testCase.input;
 			let expected = "";
 			if (config.expectTransformed) {
@@ -97,11 +122,6 @@ function runTestCases(config: TestCaseConfig, testCases: TestCase[]) {
 	}
 }
 
-/**
- *
- * @param config
- * @param auto Whether to run tests with component bodies that auto mode would transform or not
- */
 function runGeneratedTestCases(config: TestCaseConfig) {
 	// function C() {}
 	describe("function components", () =>

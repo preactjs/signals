@@ -1,7 +1,5 @@
 /* eslint no-console: 0 */
 
-import prettier from "prettier";
-
 interface InputOutput {
 	input: string;
 	transformed: string;
@@ -601,9 +599,8 @@ export function exportNamedComp(config: TestCaseConfig): TestCase[] {
 
 	const funcComponents = declarationComp(config);
 	for (const c of funcComponents) {
-		const name = c.name.replace(" assigned to variable declaration", "");
 		testCases.push({
-			name: `${name} exported as named`,
+			name: `function declaration ${c.name}`,
 			...generateCode({
 				type: "ExportNamed",
 				body: c,
@@ -613,9 +610,9 @@ export function exportNamedComp(config: TestCaseConfig): TestCase[] {
 
 	const varComponents = variableComp(config);
 	for (const c of varComponents) {
-		const name = c.name.replace(" assigned to variable declaration", "");
+		const name = c.name.replace(" variable ", " exported ");
 		testCases.push({
-			name: `${name} exported as named`,
+			name: `variable ${name}`,
 			...generateCode({
 				type: "ExportNamed",
 				body: c,
@@ -626,9 +623,12 @@ export function exportNamedComp(config: TestCaseConfig): TestCase[] {
 	return testCases;
 }
 
-const format = (code: string) => prettier.format(code, { parser: "babel" });
-
-async function run() {
+// Command to use to debug the generated code
+// ../../../../node_modules/.bin/tsc --target es2020 --module es2020 --moduleResolution node --esModuleInterop --outDir . helpers.ts; mv helpers.js helpers.mjs; node helpers.mjs
+async function debug() {
+	// @ts-ignore
+	const prettier = await import("prettier");
+	const format = (code: string) => prettier.format(code, { parser: "babel" });
 	console.log("generating...");
 	console.time("generated");
 	const testCases: TestCase[] = [
@@ -666,14 +666,7 @@ async function run() {
 		console.log("transformed:");
 		console.log(await format(testCase.transformed));
 		console.log();
-
-		// it(testCase.name, () => {
-		// 	const input = testCase.input;
-		// 	const expected = testCase.output;
-		// 	const output = transformCode(input);
-		// 	expect(toSpaces(output)).to.equal(toSpaces(dedent(expected)));
-		// });
 	}
 }
 
-// run();
+debug();
