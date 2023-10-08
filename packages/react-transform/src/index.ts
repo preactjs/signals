@@ -283,8 +283,8 @@ function isComponentFunction(
 		// - all func expressions could be wrapped in call expressions
 		// - func expressions could have a name or not
 		// - arrows can have implicit return or not
-		fnNameStartsWithCapital(path, filename) && // Function name indicates it's a component
-		getData(path.scope, containsJSX) === true // Function contains JSX
+		getData(path.scope, containsJSX) === true && // Function contains JSX
+		fnNameStartsWithCapital(path, filename) // Function name indicates it's a component
 	);
 }
 
@@ -293,9 +293,9 @@ function isCustomHook(
 	filename: string | undefined
 ): boolean {
 	return (
-		fnNameStartsWithUse(path, filename) && // Function name indicates it's a hook
-		path.scope.parent === path.scope.getProgramParent()
-	); // Function is top-level
+		path.scope.parent === path.scope.getProgramParent() && // Function is top-level
+		fnNameStartsWithUse(path, filename) // Function name indicates it's a hook
+	);
 }
 
 function shouldTransform(
@@ -316,9 +316,9 @@ function shouldTransform(
 
 	if (options.mode == null || options.mode === "auto") {
 		return (
-			(isComponentFunction(path, filename) || isCustomHook(path, filename)) &&
-			getData(path.scope, maybeUsesSignal) === true
-		); // Function appears to use signals;
+			getData(path.scope, maybeUsesSignal) === true && // Function appears to use signals;
+			(isComponentFunction(path, filename) || isCustomHook(path, filename))
+		);
 	}
 
 	return false;
