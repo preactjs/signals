@@ -5,6 +5,7 @@ import prettier from "prettier";
 import signalsTransform, { PluginOptions } from "../../src/index";
 import {
 	TestCase,
+	assignmentComp,
 	declarationComp,
 	exportDefaultComp,
 	exportNamedComp,
@@ -112,7 +113,7 @@ function runGeneratedTestCases(config: TestCaseConfig) {
 
 	// let C; C = () => {};
 	describe("assigned to variable components", () =>
-		runTestCases(config, variableComp({ auto: config.useValidAutoMode })));
+		runTestCases(config, assignmentComp({ auto: config.useValidAutoMode })));
 
 	// const obj = { C: () => {} };
 	describe.skip("object property components", () =>
