@@ -53,6 +53,11 @@ type FunctionLike =
 	| BabelTypes.FunctionExpression
 	| BabelTypes.FunctionDeclaration;
 
+// TODO: Change these functions to instead be:
+// - getFunctionNodeName(node: NodePath<FunctionLike>): string | null
+// - getFunctionNameFromParent(node: NodePath<Node>): string | null
+// - getFunctionName(node: NodePath<FunctionLike>): string | null
+
 /**
  * Returns the name of the function if it is a function declaration with a name or
  * a [arrow] function expression with a variable declarator parent.
