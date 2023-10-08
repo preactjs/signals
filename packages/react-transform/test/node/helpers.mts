@@ -397,18 +397,6 @@ function variableComp(config: TestCaseConfig): TestCase[] {
 		});
 	}
 
-	const hocComponents = withCallExpWrappers(config);
-	for (const c of hocComponents) {
-		testCases.push({
-			name: c.name + " assigned to variable declaration",
-			...generateCode({
-				type: "Variable",
-				name: "VarComp",
-				body: c,
-			}),
-		});
-	}
-
 	if (!config.auto) {
 		testCases.push({
 			name: `${config.name} func expression assigned to variable declaration with improper name`,
@@ -434,53 +422,20 @@ function variableComp(config: TestCaseConfig): TestCase[] {
 				}),
 			}),
 		});
+	}
 
+	// With HoC wrappers, we are testing the logic to find the component name. So
+	// only generate tests where the function body is correct ("auto" is true) and
+	// the name is either correct or improper.
+	const hocComponents = withCallExpWrappers({ ...config, auto: true });
+	const suffix = config.auto ? "" : " with improper name";
+	for (const c of hocComponents) {
 		testCases.push({
-			name: `${config.name} func expression assigned to variable declaration with improper name wrapped in memo and forwardRef`,
+			name: `${c.name} assigned to variable declaration${suffix}`,
 			...generateCode({
 				type: "Variable",
-				name: "render",
-				body: generateCode({
-					type: "CallExp",
-					name: "memo",
-					args: [
-						generateCode({
-							type: "CallExp",
-							name: "forwardRef",
-							args: [
-								generateCode({
-									type: "FuncExpComp",
-									body: "return <div>{signal.value}</div>",
-								}),
-							],
-						}),
-					],
-				}),
-			}),
-		});
-
-		testCases.push({
-			name: `${config.name} arrow func expression assigned to variable declaration with improper name wrapped in memo and forwardRef`,
-			...generateCode({
-				type: "Variable",
-				name: "render",
-				body: generateCode({
-					type: "CallExp",
-					name: "memo",
-					args: [
-						generateCode({
-							type: "CallExp",
-							name: "forwardRef",
-							args: [
-								generateCode({
-									type: "ArrowComp",
-									return: "expression",
-									body: "<div>{signal.value}</div>",
-								}),
-							],
-						}),
-					],
-				}),
+				name: config.auto ? "VarComp" : "render",
+				body: c,
 			}),
 		});
 	}
@@ -493,18 +448,6 @@ function assignmentComp(config: TestCaseConfig): TestCase[] {
 
 	const components = expressionComponents(config);
 	for (const c of components) {
-		testCases.push({
-			name: c.name + " assigned to variable",
-			...generateCode({
-				type: "Assignment",
-				name: "AssignComp",
-				body: c,
-			}),
-		});
-	}
-
-	const hocComponents = withCallExpWrappers(config);
-	for (const c of hocComponents) {
 		testCases.push({
 			name: c.name + " assigned to variable",
 			...generateCode({
@@ -540,53 +483,20 @@ function assignmentComp(config: TestCaseConfig): TestCase[] {
 				}),
 			}),
 		});
+	}
 
+	// With HoC wrappers, we are testing the logic to find the component name. So
+	// only generate tests where the function body is correct ("auto" is true) and
+	// the name is either correct or improper.
+	const hocComponents = withCallExpWrappers({ ...config, auto: true });
+	const suffix = config.auto ? "" : " with improper name";
+	for (const c of hocComponents) {
 		testCases.push({
-			name: `${config.name} func expression assigned to variable with improper name wrapped in memo and forwardRef`,
+			name: `${c.name} assigned to variable${suffix}`,
 			...generateCode({
 				type: "Assignment",
-				name: "render",
-				body: generateCode({
-					type: "CallExp",
-					name: "memo",
-					args: [
-						generateCode({
-							type: "CallExp",
-							name: "forwardRef",
-							args: [
-								generateCode({
-									type: "FuncExpComp",
-									body: "return <div>{signal.value}</div>",
-								}),
-							],
-						}),
-					],
-				}),
-			}),
-		});
-
-		testCases.push({
-			name: `${config.name} arrow func expression assigned to variable with improper name wrapped in memo and forwardRef`,
-			...generateCode({
-				type: "Assignment",
-				name: "render",
-				body: generateCode({
-					type: "CallExp",
-					name: "memo",
-					args: [
-						generateCode({
-							type: "CallExp",
-							name: "forwardRef",
-							args: [
-								generateCode({
-									type: "ArrowComp",
-									return: "expression",
-									body: "<div>{signal.value}</div>",
-								}),
-							],
-						}),
-					],
-				}),
+				name: config.auto ? "AssignComp" : "render",
+				body: c,
 			}),
 		});
 	}
@@ -599,18 +509,6 @@ function objectPropertyComp(config: TestCaseConfig): TestCase[] {
 
 	const components = expressionComponents(config);
 	for (const c of components) {
-		testCases.push({
-			name: c.name + " assigned to object property",
-			...generateCode({
-				type: "ObjectProperty",
-				name: "ObjComp",
-				body: c,
-			}),
-		});
-	}
-
-	const hocComponents = withCallExpWrappers(config);
-	for (const c of hocComponents) {
 		testCases.push({
 			name: c.name + " assigned to object property",
 			...generateCode({
@@ -646,53 +544,20 @@ function objectPropertyComp(config: TestCaseConfig): TestCase[] {
 				}),
 			}),
 		});
+	}
 
+	// With HoC wrappers, we are testing the logic to find the component name. So
+	// only generate tests where the function body is correct ("auto" is true) and
+	// the name is either correct or improper.
+	const hocComponents = withCallExpWrappers({ ...config, auto: true });
+	const suffix = config.auto ? "" : " with improper name";
+	for (const c of hocComponents) {
 		testCases.push({
-			name: `${config.name} func expression assigned to object prop with improper name wrapped in memo and forwardRef`,
+			name: `${c.name} assigned to object property${suffix}`,
 			...generateCode({
 				type: "ObjectProperty",
-				name: "render_prop",
-				body: generateCode({
-					type: "CallExp",
-					name: "memo",
-					args: [
-						generateCode({
-							type: "CallExp",
-							name: "forwardRef",
-							args: [
-								generateCode({
-									type: "FuncExpComp",
-									body: "return <div>{signal.value}</div>",
-								}),
-							],
-						}),
-					],
-				}),
-			}),
-		});
-
-		testCases.push({
-			name: `${config.name} arrow func expression assigned to object prop with improper name wrapped in memo and forwardRef`,
-			...generateCode({
-				type: "ObjectProperty",
-				name: "render_prop",
-				body: generateCode({
-					type: "CallExp",
-					name: "memo",
-					args: [
-						generateCode({
-							type: "CallExp",
-							name: "forwardRef",
-							args: [
-								generateCode({
-									type: "ArrowComp",
-									return: "expression",
-									body: "<div>{signal.value}</div>",
-								}),
-							],
-						}),
-					],
-				}),
+				name: config.auto ? "ObjComp" : "render_prop",
+				body: c,
 			}),
 		});
 	}
@@ -700,6 +565,9 @@ function objectPropertyComp(config: TestCaseConfig): TestCase[] {
 	return testCases;
 }
 
+// ExportDefaultDeclaration is a different AST node type from
+// ExpressionStatement so add separate tests for it even though we can reuse the
+// expressionComponents generator.
 function exportDefaultComp(config: TestCaseConfig): TestCase[] {
 	const testCases: TestCase[] = [];
 
@@ -728,14 +596,17 @@ function exportDefaultComp(config: TestCaseConfig): TestCase[] {
 	return testCases;
 }
 
+// ExportNamedDeclaration is a different AST node type from VariableDeclaration
+// or FunctionDeclaration so add separate tests for it even though we can reuse
+// the variable and function declaration generators.
 function exportNamedComp(config: TestCaseConfig): TestCase[] {
 	const testCases: TestCase[] = [];
 
-	const varComponents = variableComp(config);
-	for (const c of varComponents) {
+	const funcComponents = declarationComp(config);
+	for (const c of funcComponents) {
 		const name = c.name.replace(" assigned to variable declaration", "");
 		testCases.push({
-			name: name + " exported as named",
+			name: `${name} exported as named`,
 			...generateCode({
 				type: "ExportNamed",
 				body: c,
@@ -743,11 +614,11 @@ function exportNamedComp(config: TestCaseConfig): TestCase[] {
 		});
 	}
 
-	const funcComponents = declarationComp(config);
-	for (const c of funcComponents) {
+	const varComponents = variableComp(config);
+	for (const c of varComponents) {
 		const name = c.name.replace(" assigned to variable declaration", "");
 		testCases.push({
-			name: name + " exported as named",
+			name: `${name} exported as named`,
 			...generateCode({
 				type: "ExportNamed",
 				body: c,
