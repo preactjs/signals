@@ -7,6 +7,7 @@ interface InputOutput {
 	transformed: string;
 }
 
+type VariableKind = "var" | "let" | "const";
 type ParamsConfig = 0 | 1 | 2 | 3 | undefined;
 
 interface FuncDeclComponent {
@@ -36,13 +37,57 @@ interface CallExp {
 	args: Array<InputOutput>;
 }
 
-type Node = FuncDeclComponent | FuncExpComponent | ArrowFuncComponent | CallExp;
+interface Variable {
+	type: "Variable";
+	name: string;
+	body: InputOutput;
+	kind?: VariableKind;
+}
+
+interface Assignment {
+	type: "Assignment";
+	name: string;
+	body: InputOutput;
+	kind?: VariableKind;
+}
+
+interface ObjectProperty {
+	type: "ObjectProperty";
+	name: string;
+	body: InputOutput;
+}
+
+interface ExportDefault {
+	type: "ExportDefault";
+	body: InputOutput;
+}
+
+interface ExportNamed {
+	type: "ExportNamed";
+	body: InputOutput;
+}
+
+type Node =
+	| FuncDeclComponent
+	| FuncExpComponent
+	| ArrowFuncComponent
+	| CallExp
+	| Variable
+	| Assignment
+	| ObjectProperty
+	| ExportDefault
+	| ExportNamed;
 
 interface NodeTypes {
 	FuncDeclComp: FuncDeclComponent;
 	FuncExpComp: FuncExpComponent;
 	ArrowComp: ArrowFuncComponent;
 	CallExp: CallExp;
+	ExportDefault: ExportDefault;
+	ExportNamed: ExportNamed;
+	Variable: Variable;
+	Assignment: Assignment;
+	ObjectProperty: ObjectProperty;
 }
 
 type Generators = {
@@ -103,6 +148,38 @@ const codeGenerators: Generators = {
 				.join(", ")})`,
 		};
 	},
+	Variable(config) {
+		const kind = config.kind ?? "const";
+		return {
+			input: `${kind} ${config.name} = ${config.body.input}`,
+			transformed: `${kind} ${config.name} = ${config.body.transformed}`,
+		};
+	},
+	Assignment(config) {
+		const kind = config.kind ?? "let";
+		return {
+			input: `${kind} ${config.name};\n ${config.name} = ${config.body.input}`,
+			transformed: `${kind} ${config.name};\n ${config.name} = ${config.body.transformed}`,
+		};
+	},
+	ObjectProperty(config) {
+		return {
+			input: `{\n ${config.name}: ${config.body.input} \n}`,
+			transformed: `{\n ${config.name}: ${config.body.transformed} \n}`,
+		};
+	},
+	ExportDefault(config) {
+		return {
+			input: `export default ${config.body.input}`,
+			transformed: `export default ${config.body.transformed}`,
+		};
+	},
+	ExportNamed(config) {
+		return {
+			input: `export ${config.body.input}`,
+			transformed: `export ${config.body.transformed}`,
+		};
+	},
 };
 
 function generateCode(config: Node): InputOutput {
@@ -117,53 +194,6 @@ interface TestCaseConfig {
 	name: string;
 	auto: boolean;
 	params?: ParamsConfig;
-}
-
-function declarationComponents(config: TestCaseConfig): TestCase[] {
-	const { name: baseName, params } = config;
-	if (config.auto) {
-		return [
-			{
-				name: baseName + " func declaration",
-				...generateCode({
-					type: "FuncDeclComp",
-					name: "App",
-					body: "return <>{signal.value}</>",
-					params,
-				}),
-			},
-		];
-	} else {
-		return [
-			{
-				name: baseName + " func declaration with improper name",
-				...generateCode({
-					type: "FuncDeclComp",
-					name: "app",
-					body: "return <div>{signal.value}</div>",
-					params,
-				}),
-			},
-			{
-				name: baseName + " func declaration with no JSX",
-				...generateCode({
-					type: "FuncDeclComp",
-					name: "App",
-					body: "return signal.value",
-					params,
-				}),
-			},
-			{
-				name: baseName + " func declaration with no signals",
-				...generateCode({
-					type: "FuncDeclComp",
-					name: "App",
-					body: "return <div>Hello World</div>",
-					params,
-				}),
-			},
-		];
-	}
 }
 
 function expressionComponents(config: TestCaseConfig): TestCase[] {
@@ -208,6 +238,15 @@ function expressionComponents(config: TestCaseConfig): TestCase[] {
 		];
 	} else {
 		return [
+			{
+				name: baseName + " func expression with bad name",
+				...generateCode({
+					type: "FuncExpComp",
+					name: "app",
+					body: "return signal.value",
+					params,
+				}),
+			},
 			{
 				name: baseName + " func expression with no JSX",
 				...generateCode({
@@ -296,17 +335,462 @@ function withCallExpWrappers(config: TestCaseConfig): TestCase[] {
 	return testCases;
 }
 
+function declarationComp(config: TestCaseConfig): TestCase[] {
+	const { name: baseName, params } = config;
+	if (config.auto) {
+		return [
+			{
+				name: baseName + " func declaration",
+				...generateCode({
+					type: "FuncDeclComp",
+					name: "App",
+					body: "return <>{signal.value}</>",
+					params,
+				}),
+			},
+		];
+	} else {
+		return [
+			{
+				name: baseName + " func declaration with improper name",
+				...generateCode({
+					type: "FuncDeclComp",
+					name: "app",
+					body: "return <div>{signal.value}</div>",
+					params,
+				}),
+			},
+			{
+				name: baseName + " func declaration with no JSX",
+				...generateCode({
+					type: "FuncDeclComp",
+					name: "App",
+					body: "return signal.value",
+					params,
+				}),
+			},
+			{
+				name: baseName + " func declaration with no signals",
+				...generateCode({
+					type: "FuncDeclComp",
+					name: "App",
+					body: "return <div>Hello World</div>",
+					params,
+				}),
+			},
+		];
+	}
+}
+
+function variableComp(config: TestCaseConfig): TestCase[] {
+	const testCases: TestCase[] = [];
+
+	const components = expressionComponents(config);
+	for (const c of components) {
+		testCases.push({
+			name: c.name + " assigned to variable declaration",
+			...generateCode({
+				type: "Variable",
+				name: "VarComp",
+				body: c,
+			}),
+		});
+	}
+
+	const hocComponents = withCallExpWrappers(config);
+	for (const c of hocComponents) {
+		testCases.push({
+			name: c.name + " assigned to variable declaration",
+			...generateCode({
+				type: "Variable",
+				name: "VarComp",
+				body: c,
+			}),
+		});
+	}
+
+	if (!config.auto) {
+		testCases.push({
+			name: `${config.name} func expression assigned to variable declaration with improper name`,
+			...generateCode({
+				type: "Variable",
+				name: "render",
+				body: generateCode({
+					type: "FuncExpComp",
+					body: "return <div>{signal.value}</div>",
+				}),
+			}),
+		});
+
+		testCases.push({
+			name: `${config.name} arrow func expression assigned to variable declaration with improper name`,
+			...generateCode({
+				type: "Variable",
+				name: "render",
+				body: generateCode({
+					type: "ArrowComp",
+					return: "expression",
+					body: "<div>{signal.value}</div>",
+				}),
+			}),
+		});
+
+		testCases.push({
+			name: `${config.name} func expression assigned to variable declaration with improper name wrapped in memo and forwardRef`,
+			...generateCode({
+				type: "Variable",
+				name: "render",
+				body: generateCode({
+					type: "CallExp",
+					name: "memo",
+					args: [
+						generateCode({
+							type: "CallExp",
+							name: "forwardRef",
+							args: [
+								generateCode({
+									type: "FuncExpComp",
+									body: "return <div>{signal.value}</div>",
+								}),
+							],
+						}),
+					],
+				}),
+			}),
+		});
+
+		testCases.push({
+			name: `${config.name} arrow func expression assigned to variable declaration with improper name wrapped in memo and forwardRef`,
+			...generateCode({
+				type: "Variable",
+				name: "render",
+				body: generateCode({
+					type: "CallExp",
+					name: "memo",
+					args: [
+						generateCode({
+							type: "CallExp",
+							name: "forwardRef",
+							args: [
+								generateCode({
+									type: "ArrowComp",
+									return: "expression",
+									body: "<div>{signal.value}</div>",
+								}),
+							],
+						}),
+					],
+				}),
+			}),
+		});
+	}
+
+	return testCases;
+}
+
+function assignmentComp(config: TestCaseConfig): TestCase[] {
+	const testCases: TestCase[] = [];
+
+	const components = expressionComponents(config);
+	for (const c of components) {
+		testCases.push({
+			name: c.name + " assigned to variable",
+			...generateCode({
+				type: "Assignment",
+				name: "AssignComp",
+				body: c,
+			}),
+		});
+	}
+
+	const hocComponents = withCallExpWrappers(config);
+	for (const c of hocComponents) {
+		testCases.push({
+			name: c.name + " assigned to variable",
+			...generateCode({
+				type: "Assignment",
+				name: "AssignComp",
+				body: c,
+			}),
+		});
+	}
+
+	if (!config.auto) {
+		testCases.push({
+			name: `${config.name} func expression assigned to variable with improper name`,
+			...generateCode({
+				type: "Assignment",
+				name: "render",
+				body: generateCode({
+					type: "FuncExpComp",
+					body: "return <div>{signal.value}</div>",
+				}),
+			}),
+		});
+
+		testCases.push({
+			name: `${config.name} arrow func expression assigned to variable with improper name`,
+			...generateCode({
+				type: "Assignment",
+				name: "render",
+				body: generateCode({
+					type: "ArrowComp",
+					return: "expression",
+					body: "<div>{signal.value}</div>",
+				}),
+			}),
+		});
+
+		testCases.push({
+			name: `${config.name} func expression assigned to variable with improper name wrapped in memo and forwardRef`,
+			...generateCode({
+				type: "Assignment",
+				name: "render",
+				body: generateCode({
+					type: "CallExp",
+					name: "memo",
+					args: [
+						generateCode({
+							type: "CallExp",
+							name: "forwardRef",
+							args: [
+								generateCode({
+									type: "FuncExpComp",
+									body: "return <div>{signal.value}</div>",
+								}),
+							],
+						}),
+					],
+				}),
+			}),
+		});
+
+		testCases.push({
+			name: `${config.name} arrow func expression assigned to variable with improper name wrapped in memo and forwardRef`,
+			...generateCode({
+				type: "Assignment",
+				name: "render",
+				body: generateCode({
+					type: "CallExp",
+					name: "memo",
+					args: [
+						generateCode({
+							type: "CallExp",
+							name: "forwardRef",
+							args: [
+								generateCode({
+									type: "ArrowComp",
+									return: "expression",
+									body: "<div>{signal.value}</div>",
+								}),
+							],
+						}),
+					],
+				}),
+			}),
+		});
+	}
+
+	return testCases;
+}
+
+function objectPropertyComp(config: TestCaseConfig): TestCase[] {
+	const testCases: TestCase[] = [];
+
+	const components = expressionComponents(config);
+	for (const c of components) {
+		testCases.push({
+			name: c.name + " assigned to object property",
+			...generateCode({
+				type: "ObjectProperty",
+				name: "ObjComp",
+				body: c,
+			}),
+		});
+	}
+
+	const hocComponents = withCallExpWrappers(config);
+	for (const c of hocComponents) {
+		testCases.push({
+			name: c.name + " assigned to object property",
+			...generateCode({
+				type: "ObjectProperty",
+				name: "ObjComp",
+				body: c,
+			}),
+		});
+	}
+
+	if (!config.auto) {
+		testCases.push({
+			name: `${config.name} func expression assigned to object prop with improper name`,
+			...generateCode({
+				type: "ObjectProperty",
+				name: "render_prop",
+				body: generateCode({
+					type: "FuncExpComp",
+					body: "return <div>{signal.value}</div>",
+				}),
+			}),
+		});
+
+		testCases.push({
+			name: `${config.name} arrow func expression assigned to object prop with improper name`,
+			...generateCode({
+				type: "ObjectProperty",
+				name: "render_prop",
+				body: generateCode({
+					type: "ArrowComp",
+					return: "expression",
+					body: "<div>{signal.value}</div>",
+				}),
+			}),
+		});
+
+		testCases.push({
+			name: `${config.name} func expression assigned to object prop with improper name wrapped in memo and forwardRef`,
+			...generateCode({
+				type: "ObjectProperty",
+				name: "render_prop",
+				body: generateCode({
+					type: "CallExp",
+					name: "memo",
+					args: [
+						generateCode({
+							type: "CallExp",
+							name: "forwardRef",
+							args: [
+								generateCode({
+									type: "FuncExpComp",
+									body: "return <div>{signal.value}</div>",
+								}),
+							],
+						}),
+					],
+				}),
+			}),
+		});
+
+		testCases.push({
+			name: `${config.name} arrow func expression assigned to object prop with improper name wrapped in memo and forwardRef`,
+			...generateCode({
+				type: "ObjectProperty",
+				name: "render_prop",
+				body: generateCode({
+					type: "CallExp",
+					name: "memo",
+					args: [
+						generateCode({
+							type: "CallExp",
+							name: "forwardRef",
+							args: [
+								generateCode({
+									type: "ArrowComp",
+									return: "expression",
+									body: "<div>{signal.value}</div>",
+								}),
+							],
+						}),
+					],
+				}),
+			}),
+		});
+	}
+
+	return testCases;
+}
+
+function exportDefaultComp(config: TestCaseConfig): TestCase[] {
+	const testCases: TestCase[] = [];
+
+	const components = expressionComponents(config);
+	for (const c of components) {
+		testCases.push({
+			name: c.name + " exported as default",
+			...generateCode({
+				type: "ExportDefault",
+				body: c,
+			}),
+		});
+	}
+
+	const hocComponents = withCallExpWrappers(config);
+	for (const c of hocComponents) {
+		testCases.push({
+			name: c.name + " exported as default",
+			...generateCode({
+				type: "ExportDefault",
+				body: c,
+			}),
+		});
+	}
+
+	return testCases;
+}
+
+function exportNamedComp(config: TestCaseConfig): TestCase[] {
+	const testCases: TestCase[] = [];
+
+	const varComponents = variableComp(config);
+	for (const c of varComponents) {
+		const name = c.name.replace(" assigned to variable declaration", "");
+		testCases.push({
+			name: name + " exported as named",
+			...generateCode({
+				type: "ExportNamed",
+				body: c,
+			}),
+		});
+	}
+
+	const funcComponents = declarationComp(config);
+	for (const c of funcComponents) {
+		const name = c.name.replace(" assigned to variable declaration", "");
+		testCases.push({
+			name: name + " exported as named",
+			...generateCode({
+				type: "ExportNamed",
+				body: c,
+			}),
+		});
+	}
+
+	return testCases;
+}
+
 const format = (code: string) => prettier.format(code, { parser: "babel" });
 
 async function run() {
-	for (const testCase of [
+	console.log("generating...");
+	console.time("generated");
+	const testCases: TestCase[] = [
 		// ...declarationComponents({ name: "transforms a", auto: true }),
 		// ...declarationComponents({ name: "does not transform a", auto: false }),
+		//
 		// ...expressionComponents({ name: "transforms a", auto: true }),
 		// ...expressionComponents({ name: "does not transform a", auto: false }),
-		...withCallExpWrappers({ name: "transforms a", auto: true }),
-		...withCallExpWrappers({ name: "does not transform a", auto: false }),
-	]) {
+		//
+		// ...withCallExpWrappers({ name: "transforms a", auto: true }),
+		// ...withCallExpWrappers({ name: "does not transform a", auto: false }),
+		//
+		...variableComp({ name: "transforms a", auto: true }),
+		...variableComp({ name: "does not transform a", auto: false }),
+
+		...assignmentComp({ name: "transforms a", auto: true }),
+		...assignmentComp({ name: "does not transform a", auto: false }),
+
+		...objectPropertyComp({ name: "transforms a", auto: true }),
+		...objectPropertyComp({ name: "does not transform a", auto: false }),
+
+		...exportDefaultComp({ name: "transforms a", auto: true }),
+		...exportDefaultComp({ name: "does not transform a", auto: false }),
+
+		...exportNamedComp({ name: "transforms a", auto: true }),
+		...exportNamedComp({ name: "does not transform a", auto: false }),
+	];
+	console.timeEnd("generated");
+
+	for (const testCase of testCases) {
 		console.log("=".repeat(80));
 		console.log(testCase.name);
 		console.log("input:");
