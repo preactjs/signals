@@ -44,13 +44,18 @@ function dedent(str: string) {
 
 const toSpaces = (str: string) => str.replace(/\t/g, "  ");
 
-function transformCode(code: string, options?: PluginOptions) {
+function transformCode(
+	code: string,
+	options?: PluginOptions,
+	filename?: string
+) {
 	const signalsPluginConfig: any[] = [signalsTransform];
 	if (options) {
 		signalsPluginConfig.push(options);
 	}
 
 	const result = transform(code, {
+		filename,
 		plugins: [signalsPluginConfig, "@babel/plugin-syntax-jsx"],
 	});
 
@@ -73,6 +78,8 @@ interface TestCaseConfig {
 	useValidAutoMode: boolean;
 	/** Whether to assert that the plugin transforms the code (true) or not (false) */
 	expectTransformed: boolean;
+	/** A filename to run transforms under  */
+	filename: string;
 	/** Options to pass to the babel plugin */
 	options: PluginOptions;
 }
@@ -116,40 +123,39 @@ function runTestCases(config: TestCaseConfig, testCases: TestCase[]) {
 				expected = input;
 			}
 
-			const output = transformCode(input, config.options);
+			const output = transformCode(input, config.options, config.filename);
 			expect(format(output)).to.equal(format(expected));
 		});
 	}
 }
 
 function runGeneratedTestCases(config: TestCaseConfig) {
-	// function C() {}
+	// e.g. function C() {}
 	describe("function components", () => {
 		runTestCases(config, declarationComp({ auto: config.useValidAutoMode }));
 	});
 
-	// const C = () => {};
+	// e.g. const C = () => {};
 	describe("variable declared components", () => {
 		runTestCases(config, variableComp({ auto: config.useValidAutoMode }));
 	});
 
-	// let C; C = () => {};
+	// e.g. let C; C = () => {};
 	describe("assigned to variable components", () => {
 		runTestCases(config, assignmentComp({ auto: config.useValidAutoMode }));
 	});
 
-	// const obj = { C: () => {} };
+	// e.g. const obj = { C: () => {} };
 	describe.skip("object property components", () => {
 		runTestCases(config, objectPropertyComp({ auto: config.useValidAutoMode }));
 	});
 
-	// TODO: Determine a way to specify the file name...
-	// export default () => {};
-	describe.skip("default exported components", () => {
+	// e.g. export default () => {};
+	describe(`default exported components (filename: ${config.filename})`, () => {
 		runTestCases(config, exportDefaultComp({ auto: config.useValidAutoMode }));
 	});
 
-	// export function C() {}
+	// e.g. export function C() {}
 	describe("named exported components", () => {
 		runTestCases(config, exportNamedComp({ auto: config.useValidAutoMode }));
 	});
@@ -160,6 +166,7 @@ describe.only("React Signals Babel Transform", () => {
 		runGeneratedTestCases({
 			useValidAutoMode: true,
 			expectTransformed: true,
+			filename: "/path/to/Component.js",
 			options: { mode: "auto" },
 		});
 	});
@@ -168,6 +175,7 @@ describe.only("React Signals Babel Transform", () => {
 		runGeneratedTestCases({
 			useValidAutoMode: false,
 			expectTransformed: false,
+			filename: "C:\\path\\to\\lowercase.js",
 			options: { mode: "auto" },
 		});
 	});

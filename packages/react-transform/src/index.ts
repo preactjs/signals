@@ -59,6 +59,14 @@ type FunctionLike =
 // - getFunctionName(node: NodePath<FunctionLike>): string | null
 
 /**
+ * Simple "best effort" to get the base name of a file path. Not fool proof but
+ * works in browsers and servers. Good enough for our purposes.
+ */
+function basename(filename: string | undefined): string | undefined {
+	return filename?.split(/[\\/]/).pop();
+}
+
+/**
  * Returns the name of the function if it is a function declaration with a name or
  * a [arrow] function expression with a variable declarator parent.
  */
@@ -156,25 +164,23 @@ function getIndirectFunctionName(
 
 function fnNameStartsWithCapital(
 	path: NodePath<FunctionLike>,
-	filename: string | undefined | undefined
+	filename: string | undefined
 ): boolean {
 	const name = getIndirectFunctionName(path);
 	if (!name) return false;
 	if (name === DefaultExportSymbol) {
-		// TODO: Investigate if filename is the basename or a full path
-		return filename?.match(/^[A-Z]/) != null ?? false;
+		return basename(filename)?.match(/^[A-Z]/) != null ?? false;
 	}
 	return name.match(/^[A-Z]/) != null;
 }
 function fnNameStartsWithUse(
 	path: NodePath<FunctionLike>,
-	filename: string | undefined | undefined
+	filename: string | undefined
 ): boolean {
 	const name = getIndirectFunctionName(path);
 	if (!name) return false;
 	if (name === DefaultExportSymbol) {
-		// TODO: Investigate if filename is the basename or a full path
-		return filename?.match(/^use[A-Z]/) != null ?? false;
+		return basename(filename)?.match(/^use[A-Z]/) != null ?? false;
 	}
 
 	return name.match(/^use[A-Z]/) != null;

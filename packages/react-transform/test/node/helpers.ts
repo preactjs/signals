@@ -65,6 +65,9 @@ interface ExportNamed {
 	body: InputOutput;
 }
 
+// TODO: add object method & member expression assignments? Note object prop and
+// obj method can have computed keys of arbitrary expressions. Probably can't
+// handle those automatically. Would need a comment to opt-in.
 type Node =
 	| FuncDeclComponent
 	| FuncExpComponent
@@ -669,4 +672,4 @@ async function debug() {
 	}
 }
 
-debug();
+// debug();
