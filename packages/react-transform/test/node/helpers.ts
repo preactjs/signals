@@ -117,8 +117,8 @@ function generateParams(count?: ParamsConfig): string {
 }
 
 function generateComment(comment?: CommentKind): string {
-	if (comment === "opt-out") return "// @noTrackSignals\n";
-	if (comment === "opt-in") return "// @trackSignals\n";
+	if (comment === "opt-out") return "/* @noTrackSignals */\n";
+	if (comment === "opt-in") return "/* @trackSignals */\n";
 	return "";
 }
 
