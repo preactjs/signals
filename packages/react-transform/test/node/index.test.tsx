@@ -73,12 +73,11 @@ function runTestCases(config: TestCaseConfig, testCases: GeneratedCode[]) {
 			// // following lines and set `debugTestId` to the test id of the test case
 			// // you want to debug
 			//
-			// const debugTestId = "";
-			// if (debugTestId == testId) {
+			// const debugTestIds: string[] = [];
+			// if (debugTestIds.includes(testId)) {
 			// 	console.log(testCase.input.replace(/\s+/g, " ")); // eslint-disable-line no-console
 			// 	debugger; // eslint-disable-line no-debugger
 			// }
-			// console.log(testCase.input.replace(/\s+/g, " ")); // eslint-disable-line no-console
 
 			const input = testCase.input;
 			let expected = "";
