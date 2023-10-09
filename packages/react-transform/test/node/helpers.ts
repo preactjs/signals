@@ -1,5 +1,3 @@
-/* eslint no-console: 0 */
-
 interface InputOutput {
 	input: string;
 	transformed: string;
@@ -206,30 +204,30 @@ function generateCode(config: Node): InputOutput {
 	return codeGenerators[config.type](config as any);
 }
 
-export interface TestCase extends InputOutput {
+export interface GeneratedCode extends InputOutput {
 	name: string;
 }
 
-interface TestCaseConfig {
+interface CodeConfig {
 	/** Whether to output source code that auto should transform  */
 	auto: boolean;
 	/** What kind of opt-in or opt-out to include if any */
 	comment?: CommentKind;
-	/** Test case name for including in `it` */
+	/** Name of the generated code (useful for test case titles) */
 	name?: string;
 	/** Number of parameters the component function should have */
 	params?: ParamsConfig;
 }
 
-const testName = (...parts: Array<string | undefined>) =>
+const codeTitle = (...parts: Array<string | undefined>) =>
 	parts.filter(Boolean).join(" ");
 
-function expressionComponents(config: TestCaseConfig): TestCase[] {
+function expressionComponents(config: CodeConfig): GeneratedCode[] {
 	const { name: baseName, params } = config;
 	if (config.auto) {
 		return [
 			{
-				name: testName(baseName, "as function without inline name"),
+				name: codeTitle(baseName, "as function without inline name"),
 				...generateCode({
 					type: "FuncExpComp",
 					body: "return <div>{signal.value}</div>",
@@ -237,7 +235,7 @@ function expressionComponents(config: TestCaseConfig): TestCase[] {
 				}),
 			},
 			{
-				name: testName(baseName, "as function with proper inline name"),
+				name: codeTitle(baseName, "as function with proper inline name"),
 				...generateCode({
 					type: "FuncExpComp",
 					name: "App",
@@ -246,7 +244,7 @@ function expressionComponents(config: TestCaseConfig): TestCase[] {
 				}),
 			},
 			{
-				name: testName(baseName, "as arrow function with statement body"),
+				name: codeTitle(baseName, "as arrow function with statement body"),
 				...generateCode({
 					type: "ArrowComp",
 					return: "statement",
@@ -255,7 +253,7 @@ function expressionComponents(config: TestCaseConfig): TestCase[] {
 				}),
 			},
 			{
-				name: testName(baseName, "as arrow function with expression body"),
+				name: codeTitle(baseName, "as arrow function with expression body"),
 				...generateCode({
 					type: "ArrowComp",
 					return: "expression",
@@ -267,7 +265,7 @@ function expressionComponents(config: TestCaseConfig): TestCase[] {
 	} else {
 		return [
 			{
-				name: testName(baseName, "as function with bad inline name"),
+				name: codeTitle(baseName, "as function with bad inline name"),
 				...generateCode({
 					type: "FuncExpComp",
 					name: "app",
@@ -276,7 +274,7 @@ function expressionComponents(config: TestCaseConfig): TestCase[] {
 				}),
 			},
 			{
-				name: testName(baseName, "as function with no JSX"),
+				name: codeTitle(baseName, "as function with no JSX"),
 				...generateCode({
 					type: "FuncExpComp",
 					body: "return signal.value",
@@ -284,7 +282,7 @@ function expressionComponents(config: TestCaseConfig): TestCase[] {
 				}),
 			},
 			{
-				name: testName(baseName, "as function with no signals"),
+				name: codeTitle(baseName, "as function with no signals"),
 				...generateCode({
 					type: "FuncExpComp",
 					body: "return <div>Hello World</div>",
@@ -292,7 +290,7 @@ function expressionComponents(config: TestCaseConfig): TestCase[] {
 				}),
 			},
 			{
-				name: testName(baseName, "as arrow function with no JSX"),
+				name: codeTitle(baseName, "as arrow function with no JSX"),
 				...generateCode({
 					type: "ArrowComp",
 					return: "expression",
@@ -301,7 +299,7 @@ function expressionComponents(config: TestCaseConfig): TestCase[] {
 				}),
 			},
 			{
-				name: testName(baseName, "as arrow function with no signals"),
+				name: codeTitle(baseName, "as arrow function with no signals"),
 				...generateCode({
 					type: "ArrowComp",
 					return: "expression",
@@ -313,13 +311,13 @@ function expressionComponents(config: TestCaseConfig): TestCase[] {
 	}
 }
 
-function withCallExpWrappers(config: TestCaseConfig): TestCase[] {
-	const testCases: TestCase[] = [];
+function withCallExpWrappers(config: CodeConfig): GeneratedCode[] {
+	const codeCases: GeneratedCode[] = [];
 
 	// Simulate a component wrapped memo
 	const memoedComponents = expressionComponents({ ...config, params: 1 });
 	for (let component of memoedComponents) {
-		testCases.push({
+		codeCases.push({
 			name: component.name + " wrapped in memo",
 			...generateCode({
 				type: "CallExp",
@@ -332,7 +330,7 @@ function withCallExpWrappers(config: TestCaseConfig): TestCase[] {
 	// Simulate a component wrapped in forwardRef
 	const forwardRefComponents = expressionComponents({ ...config, params: 2 });
 	for (let component of forwardRefComponents) {
-		testCases.push({
+		codeCases.push({
 			name: component.name + " wrapped in forwardRef",
 			...generateCode({
 				type: "CallExp",
@@ -344,7 +342,7 @@ function withCallExpWrappers(config: TestCaseConfig): TestCase[] {
 
 	//Simulate components wrapped in both memo and forwardRef
 	for (let component of forwardRefComponents) {
-		testCases.push({
+		codeCases.push({
 			name: component.name + " wrapped in memo and forwardRef",
 			...generateCode({
 				type: "CallExp",
@@ -360,15 +358,15 @@ function withCallExpWrappers(config: TestCaseConfig): TestCase[] {
 		});
 	}
 
-	return testCases;
+	return codeCases;
 }
 
-export function declarationComp(config: TestCaseConfig): TestCase[] {
+export function declarationComp(config: CodeConfig): GeneratedCode[] {
 	const { name: baseName, params, comment } = config;
 	if (config.auto) {
 		return [
 			{
-				name: testName(baseName, "with proper name, jsx, and signal usage"),
+				name: codeTitle(baseName, "with proper name, jsx, and signal usage"),
 				...generateCode({
 					type: "FuncDeclComp",
 					name: "App",
@@ -381,7 +379,7 @@ export function declarationComp(config: TestCaseConfig): TestCase[] {
 	} else {
 		return [
 			{
-				name: testName(baseName, "with bad name"),
+				name: codeTitle(baseName, "with bad name"),
 				...generateCode({
 					type: "FuncDeclComp",
 					name: "app",
@@ -391,7 +389,7 @@ export function declarationComp(config: TestCaseConfig): TestCase[] {
 				}),
 			},
 			{
-				name: testName(baseName, "with no JSX"),
+				name: codeTitle(baseName, "with no JSX"),
 				...generateCode({
 					type: "FuncDeclComp",
 					name: "App",
@@ -401,7 +399,7 @@ export function declarationComp(config: TestCaseConfig): TestCase[] {
 				}),
 			},
 			{
-				name: testName(baseName, "with no signals"),
+				name: codeTitle(baseName, "with no signals"),
 				...generateCode({
 					type: "FuncDeclComp",
 					name: "App",
@@ -414,14 +412,14 @@ export function declarationComp(config: TestCaseConfig): TestCase[] {
 	}
 }
 
-export function variableComp(config: TestCaseConfig): TestCase[] {
+export function variableComp(config: CodeConfig): GeneratedCode[] {
 	const { name: baseName, comment } = config;
-	const testCases: TestCase[] = [];
+	const codeCases: GeneratedCode[] = [];
 
 	const components = expressionComponents(config);
 	for (const c of components) {
-		testCases.push({
-			name: testName(c.name),
+		codeCases.push({
+			name: codeTitle(c.name),
 			...generateCode({
 				type: "Variable",
 				name: "VarComp",
@@ -432,8 +430,8 @@ export function variableComp(config: TestCaseConfig): TestCase[] {
 	}
 
 	if (!config.auto) {
-		testCases.push({
-			name: testName(baseName, `as function with bad variable name`),
+		codeCases.push({
+			name: codeTitle(baseName, `as function with bad variable name`),
 			...generateCode({
 				type: "Variable",
 				name: "render",
@@ -445,8 +443,8 @@ export function variableComp(config: TestCaseConfig): TestCase[] {
 			}),
 		});
 
-		testCases.push({
-			name: testName(baseName, `as arrow function with bad variable name`),
+		codeCases.push({
+			name: codeTitle(baseName, `as arrow function with bad variable name`),
 			...generateCode({
 				type: "Variable",
 				name: "render",
@@ -469,8 +467,8 @@ export function variableComp(config: TestCaseConfig): TestCase[] {
 	});
 	const suffix = config.auto ? "" : "with bad variable name";
 	for (const c of hocComponents) {
-		testCases.push({
-			name: testName(c.name, suffix),
+		codeCases.push({
+			name: codeTitle(c.name, suffix),
 			...generateCode({
 				type: "Variable",
 				name: config.auto ? "VarComp" : "render",
@@ -480,17 +478,17 @@ export function variableComp(config: TestCaseConfig): TestCase[] {
 		});
 	}
 
-	return testCases;
+	return codeCases;
 }
 
-export function assignmentComp(config: TestCaseConfig): TestCase[] {
+export function assignmentComp(config: CodeConfig): GeneratedCode[] {
 	const { name: baseName, comment } = config;
-	const testCases: TestCase[] = [];
+	const codeCases: GeneratedCode[] = [];
 
 	const components = expressionComponents(config);
 	for (const c of components) {
-		testCases.push({
-			name: testName(c.name),
+		codeCases.push({
+			name: codeTitle(c.name),
 			...generateCode({
 				type: "Assignment",
 				name: "AssignComp",
@@ -501,8 +499,8 @@ export function assignmentComp(config: TestCaseConfig): TestCase[] {
 	}
 
 	if (!config.auto) {
-		testCases.push({
-			name: testName(baseName, "function component with bad variable name"),
+		codeCases.push({
+			name: codeTitle(baseName, "function component with bad variable name"),
 			...generateCode({
 				type: "Assignment",
 				name: "render",
@@ -514,8 +512,8 @@ export function assignmentComp(config: TestCaseConfig): TestCase[] {
 			}),
 		});
 
-		testCases.push({
-			name: testName(baseName, "arrow function with bad variable name"),
+		codeCases.push({
+			name: codeTitle(baseName, "arrow function with bad variable name"),
 			...generateCode({
 				type: "Assignment",
 				name: "render",
@@ -538,8 +536,8 @@ export function assignmentComp(config: TestCaseConfig): TestCase[] {
 	});
 	const suffix = config.auto ? "" : "with bad variable name";
 	for (const c of hocComponents) {
-		testCases.push({
-			name: testName(c.name, suffix),
+		codeCases.push({
+			name: codeTitle(c.name, suffix),
 			...generateCode({
 				type: "Assignment",
 				name: config.auto ? "AssignComp" : "render",
@@ -549,16 +547,16 @@ export function assignmentComp(config: TestCaseConfig): TestCase[] {
 		});
 	}
 
-	return testCases;
+	return codeCases;
 }
 
-export function objectPropertyComp(config: TestCaseConfig): TestCase[] {
+export function objectPropertyComp(config: CodeConfig): GeneratedCode[] {
 	const { name: baseName, comment } = config;
-	const testCases: TestCase[] = [];
+	const codeCases: GeneratedCode[] = [];
 
 	const components = expressionComponents(config);
 	for (const c of components) {
-		testCases.push({
+		codeCases.push({
 			name: c.name,
 			...generateCode({
 				type: "ObjectProperty",
@@ -570,8 +568,8 @@ export function objectPropertyComp(config: TestCaseConfig): TestCase[] {
 	}
 
 	if (!config.auto) {
-		testCases.push({
-			name: testName(baseName, "function component with bad property name"),
+		codeCases.push({
+			name: codeTitle(baseName, "function component with bad property name"),
 			...generateCode({
 				type: "ObjectProperty",
 				name: "render_prop",
@@ -583,8 +581,8 @@ export function objectPropertyComp(config: TestCaseConfig): TestCase[] {
 			}),
 		});
 
-		testCases.push({
-			name: testName(baseName, "arrow function with bad property name"),
+		codeCases.push({
+			name: codeTitle(baseName, "arrow function with bad property name"),
 			...generateCode({
 				type: "ObjectProperty",
 				name: "render_prop",
@@ -607,8 +605,8 @@ export function objectPropertyComp(config: TestCaseConfig): TestCase[] {
 	});
 	const suffix = config.auto ? "" : "with bad property name";
 	for (const c of hocComponents) {
-		testCases.push({
-			name: testName(c.name, suffix),
+		codeCases.push({
+			name: codeTitle(c.name, suffix),
 			...generateCode({
 				type: "ObjectProperty",
 				name: config.auto ? "ObjComp" : "render_prop",
@@ -618,16 +616,16 @@ export function objectPropertyComp(config: TestCaseConfig): TestCase[] {
 		});
 	}
 
-	return testCases;
+	return codeCases;
 }
 
-export function exportDefaultComp(config: TestCaseConfig): TestCase[] {
+export function exportDefaultComp(config: CodeConfig): GeneratedCode[] {
 	const { comment } = config;
-	const testCases: TestCase[] = [];
+	const codeCases: GeneratedCode[] = [];
 
 	const components = expressionComponents(config);
 	for (const c of components) {
-		testCases.push({
+		codeCases.push({
 			name: c.name + " exported as default",
 			...generateCode({
 				type: "ExportDefault",
@@ -639,7 +637,7 @@ export function exportDefaultComp(config: TestCaseConfig): TestCase[] {
 
 	const hocComponents = withCallExpWrappers(config);
 	for (const c of hocComponents) {
-		testCases.push({
+		codeCases.push({
 			name: c.name + " exported as default",
 			...generateCode({
 				type: "ExportDefault",
@@ -649,18 +647,18 @@ export function exportDefaultComp(config: TestCaseConfig): TestCase[] {
 		});
 	}
 
-	return testCases;
+	return codeCases;
 }
 
-export function exportNamedComp(config: TestCaseConfig): TestCase[] {
+export function exportNamedComp(config: CodeConfig): GeneratedCode[] {
 	const { comment } = config;
-	const testCases: TestCase[] = [];
+	const codeCases: GeneratedCode[] = [];
 
 	// `declarationComp` will put the comment on the function declaration, but in
 	// this case we want to put it on the export statement.
 	const funcComponents = declarationComp({ ...config, comment: undefined });
 	for (const c of funcComponents) {
-		testCases.push({
+		codeCases.push({
 			name: `function declaration ${c.name}`,
 			...generateCode({
 				type: "ExportNamed",
@@ -675,7 +673,7 @@ export function exportNamedComp(config: TestCaseConfig): TestCase[] {
 	const varComponents = variableComp({ ...config, comment: undefined });
 	for (const c of varComponents) {
 		const name = c.name.replace(" variable ", " exported ");
-		testCases.push({
+		codeCases.push({
 			name: `variable ${name}`,
 			...generateCode({
 				type: "ExportNamed",
@@ -685,9 +683,10 @@ export function exportNamedComp(config: TestCaseConfig): TestCase[] {
 		});
 	}
 
-	return testCases;
+	return codeCases;
 }
 
+/* eslint-disable no-console */
 // Command to use to debug the generated code
 // ../../../../node_modules/.bin/tsc --target es2020 --module es2020 --moduleResolution node --esModuleInterop --outDir . helpers.ts; mv helpers.js helpers.mjs; node helpers.mjs
 async function debug() {
@@ -696,7 +695,7 @@ async function debug() {
 	const format = (code: string) => prettier.format(code, { parser: "babel" });
 	console.log("generating...");
 	console.time("generated");
-	const testCases: TestCase[] = [
+	const codeCases: GeneratedCode[] = [
 		// ...declarationComponents({ name: "transforms a", auto: true }),
 		// ...declarationComponents({ name: "does not transform a", auto: false }),
 		//
@@ -723,13 +722,13 @@ async function debug() {
 	];
 	console.timeEnd("generated");
 
-	for (const testCase of testCases) {
+	for (const code of codeCases) {
 		console.log("=".repeat(80));
-		console.log(testCase.name);
+		console.log(code.name);
 		console.log("input:");
-		console.log(await format(testCase.input));
+		console.log(await format(code.input));
 		console.log("transformed:");
-		console.log(await format(testCase.transformed));
+		console.log(await format(code.transformed));
 		console.log();
 	}
 }

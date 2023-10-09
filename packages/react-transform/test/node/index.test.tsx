@@ -5,12 +5,11 @@ import prettier from "prettier";
 import signalsTransform, { PluginOptions } from "../../src/index";
 import {
 	CommentKind,
-	TestCase,
+	GeneratedCode,
 	assignmentComp,
 	declarationComp,
 	exportDefaultComp,
 	exportNamedComp,
-	objectPropertyComp,
 	variableComp,
 } from "./helpers";
 
@@ -87,14 +86,8 @@ interface TestCaseConfig {
 
 let testCount = 0;
 const getTestId = () => (testCount++).toString().padStart(3, "0");
-const makeOneLine = (str: string) => str.replace(/\s+/g, " ");
 
-function runTestCases(config: TestCaseConfig, testCases: TestCase[]) {
-	// Experiment with using input code as test case name...
-	// testCases = testCases
-	// 	.map(t => ({ ...t, input: makeOneLine(format(t.input)) }))
-	// 	.sort((a, b) => (a.input < b.input ? -1 : 1));
-
+function runTestCases(config: TestCaseConfig, testCases: GeneratedCode[]) {
 	testCases = testCases
 		.map(t => ({
 			...t,
@@ -106,13 +99,15 @@ function runTestCases(config: TestCaseConfig, testCases: TestCase[]) {
 	for (const testCase of testCases) {
 		let testId = getTestId();
 		it(`(${testId}) ${testCase.name}`, () => {
-			// To help interactively debug a specific test case, set this to the test
-			// id of the test case you want to debug
-			const debugTestId = "";
-			if (debugTestId == testId) {
-				console.log(makeOneLine(testCase.input)); // eslint-disable-line no-console
-				debugger; // eslint-disable-line no-debugger
-			}
+			// // To help interactively debug a specific test case, uncomment the
+			// // following lines and set `debugTestId` to the test id of the test case
+			// // you want to debug
+			//
+			// const debugTestId = "";
+			// if (debugTestId == testId) {
+			// 	console.log(testCase.input.replace(/\s+/g, " ")); // eslint-disable-line no-console
+			// 	debugger; // eslint-disable-line no-debugger
+			// }
 
 			const input = testCase.input;
 			let expected = "";
@@ -152,10 +147,11 @@ function runGeneratedTestCases(config: TestCaseConfig) {
 		runTestCases(config, assignmentComp(codeConfig));
 	});
 
-	// e.g. const obj = { C: () => {} };
-	describe.skip("object property components", () => {
-		runTestCases(config, objectPropertyComp(codeConfig));
-	});
+	// TODO: Support object property components
+	// // e.g. const obj = { C: () => {} };
+	// describe("object property components", () => {
+	// 	runTestCases(config, objectPropertyComp(codeConfig));
+	// });
 
 	// e.g. export default () => {};
 	describe(`default exported components`, () => {
