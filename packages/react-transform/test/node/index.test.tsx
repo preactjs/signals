@@ -78,6 +78,7 @@ function runTestCases(config: TestCaseConfig, testCases: GeneratedCode[]) {
 			// 	console.log(testCase.input.replace(/\s+/g, " ")); // eslint-disable-line no-console
 			// 	debugger; // eslint-disable-line no-debugger
 			// }
+			// console.log(testCase.input.replace(/\s+/g, " ")); // eslint-disable-line no-console
 
 			const input = testCase.input;
 			let expected = "";
@@ -143,6 +144,20 @@ describe.only("React Signals Babel Transform", () => {
 	});
 
 	describe("auto mode doesn't transform", () => {
+		it("useEffect callbacks that use signals", () => {
+			const inputCode = `
+				function App() {
+					useEffect(() => {
+						signal.value = <span>Hi</span>;
+					}, []);
+					return <div>Hello World</div>;
+				}
+			`;
+
+			const expectedOutput = inputCode;
+			runTest(inputCode, expectedOutput);
+		});
+
 		runGeneratedTestCases({
 			useValidAutoMode: false,
 			expectTransformed: false,
@@ -151,6 +166,22 @@ describe.only("React Signals Babel Transform", () => {
 	});
 
 	describe("auto mode supports opting out of transforming", () => {
+		it("opt-out comment overrides opt-in comment", () => {
+			const inputCode = `
+				/**
+				 * @noTrackSignals
+				 * @trackSignals
+				 */
+				function MyComponent() {
+					return <div>{signal.value}</div>;
+				};
+			`;
+
+			const expectedOutput = inputCode;
+
+			runTest(inputCode, expectedOutput, { mode: "auto" });
+		});
+
 		runGeneratedTestCases({
 			useValidAutoMode: true,
 			expectTransformed: false,
@@ -169,6 +200,20 @@ describe.only("React Signals Babel Transform", () => {
 	});
 
 	describe("manual mode doesn't transform anything by default", () => {
+		it("useEffect callbacks that use signals", () => {
+			const inputCode = `
+				function App() {
+					useEffect(() => {
+						signal.value = <span>Hi</span>;
+					}, []);
+					return <div>Hello World</div>;
+				}
+			`;
+
+			const expectedOutput = inputCode;
+			runTest(inputCode, expectedOutput);
+		});
+
 		runGeneratedTestCases({
 			useValidAutoMode: true,
 			expectTransformed: false,
@@ -177,6 +222,22 @@ describe.only("React Signals Babel Transform", () => {
 	});
 
 	describe("manual mode opts into transforming", () => {
+		it("opt-out comment overrides opt-in comment", () => {
+			const inputCode = `
+				/**
+				 * @noTrackSignals
+				 * @trackSignals
+				 */
+				function MyComponent() {
+					return <div>{signal.value}</div>;
+				};
+			`;
+
+			const expectedOutput = inputCode;
+
+			runTest(inputCode, expectedOutput, { mode: "auto" });
+		});
+
 		runGeneratedTestCases({
 			useValidAutoMode: true,
 			expectTransformed: true,
@@ -277,30 +338,6 @@ describe("React Signals Babel Transform", () => {
 						_effect.f();
 					}
 				};
-			`;
-
-			runTest(inputCode, expectedOutput, { mode: "manual" });
-		});
-
-		it("transforms default exported function declaration components with leading opt-in JSDoc comment", () => {
-			const inputCode = `
-				/** @trackSignals */
-				export default function MyComponent() {
-					return <div>Hello World</div>;
-				}
-			`;
-
-			const expectedOutput = `
-				import { useSignals as _useSignals } from "@preact/signals-react/runtime";
-				/** @trackSignals */
-				export default function MyComponent() {
-					var _effect = _useSignals();
-					try {
-						return <div>Hello World</div>;
-					} finally {
-						_effect.f();
-					}
-				}
 			`;
 
 			runTest(inputCode, expectedOutput, { mode: "manual" });
@@ -450,22 +487,6 @@ describe("React Signals Babel Transform", () => {
 	});
 
 	describe("auto mode opt-out transformations", () => {
-		it("opt-out comment overrides opt-in comment", () => {
-			const inputCode = `
-				/**
-				 * @noTrackSignals
-				 * @trackSignals
-				 */
-				const MyComponent = () => {
-					return <div>{signal.value}</div>;
-				};
-			`;
-
-			const expectedOutput = inputCode;
-
-			runTest(inputCode, expectedOutput, { mode: "auto" });
-		});
-
 		it("skips transforming arrow function component with leading opt-out JSDoc comment before arrow function", () => {
 			const inputCode = `
 				const MyComponent = /** @noTrackSignals */() => {
@@ -478,19 +499,6 @@ describe("React Signals Babel Transform", () => {
 			runTest(inputCode, expectedOutput, {
 				mode: "auto",
 			});
-		});
-
-		it("skips transforming default exported function declaration components with leading opt-out JSDoc comment", () => {
-			const inputCode = `
-				/** @noTrackSignals */
-				export default function MyComponent() {
-					return <div>{signal.value}</div>;
-				}
-			`;
-
-			const expectedOutput = inputCode;
-
-			runTest(inputCode, expectedOutput, { mode: "auto" });
 		});
 
 		it("skips transforming arrow function custom hook with leading opt-out JSDoc comment before variable declaration", () => {
@@ -586,20 +594,6 @@ describe("React Signals Babel Transform", () => {
 			const inputCode = `
 				function usecustomHook() {
 					return signal.value;
-				}
-			`;
-
-			const expectedOutput = inputCode;
-			runTest(inputCode, expectedOutput);
-		});
-
-		it("does not transform useEffect callbacks that use signals", () => {
-			const inputCode = `
-				function App() {
-					useEffect(() => {
-						signal.value = <span>Hi</span>;
-					}, []);
-					return <div>Hello World</div>;
 				}
 			`;
 

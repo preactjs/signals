@@ -623,20 +623,13 @@ export function exportDefaultComp(config: CodeConfig): GeneratedCode[] {
 	const { comment } = config;
 	const codeCases: GeneratedCode[] = [];
 
-	const components = expressionComponents(config);
-	for (const c of components) {
-		codeCases.push({
-			name: c.name + " exported as default",
-			...generateCode({
-				type: "ExportDefault",
-				body: c,
-				comment,
-			}),
-		});
-	}
+	const components = [
+		...declarationComp({ ...config, comment: undefined }),
+		...expressionComponents(config),
+		...withCallExpWrappers(config),
+	];
 
-	const hocComponents = withCallExpWrappers(config);
-	for (const c of hocComponents) {
+	for (const c of components) {
 		codeCases.push({
 			name: c.name + " exported as default",
 			...generateCode({
