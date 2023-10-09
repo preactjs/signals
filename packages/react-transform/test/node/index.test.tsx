@@ -343,7 +343,7 @@ describe("React Signals Babel Transform", () => {
 			runTest(inputCode, expectedOutput, { mode: "manual" });
 		});
 
-		it("transforms arrow function custom hook with leading opt-in JSDoc comment before variable declaration", () => {
+		it("transforms custom hook arrow function with leading opt-in JSDoc comment before variable declaration", () => {
 			const inputCode = `
 				/** @trackSignals */
 				const useCustomHook = () => {
@@ -363,7 +363,7 @@ describe("React Signals Babel Transform", () => {
 			runTest(inputCode, expectedOutput, { mode: "manual" });
 		});
 
-		it("transforms default exported function declaration custom hooks with leading opt-in JSDoc comment", () => {
+		it("transforms custom hook exported as default function declaration with leading opt-in JSDoc comment", () => {
 			const inputCode = `
 				/** @trackSignals */
 				export default function useCustomHook() {
@@ -383,7 +383,7 @@ describe("React Signals Babel Transform", () => {
 			runTest(inputCode, expectedOutput, { mode: "manual" });
 		});
 
-		it("transforms name exported function declaration custom hooks with leading opt-in JSDoc comment", () => {
+		it("transforms custom hooks exported as named function declaration with leading opt-in JSDoc comment", () => {
 			const inputCode = `
 				/** @trackSignals */
 				export function useCustomHook() {
@@ -403,7 +403,7 @@ describe("React Signals Babel Transform", () => {
 			runTest(inputCode, expectedOutput, { mode: "manual" });
 		});
 
-		it("transforms functions declared as object properties with leading opt-in JSDoc comments", () => {
+		it("transforms object properties declared as functions with leading opt-in JSDoc comments", () => {
 			const inputCode = `
 				var obj = {
 					/** @trackSignals */
@@ -445,7 +445,7 @@ describe("React Signals Babel Transform", () => {
 			runTest(inputCode, expectedOutput, { mode: "manual" });
 		});
 
-		it("transforms functions assigned to object properties with leading opt-in JSDoc comments", () => {
+		it("transforms object properties assigned to functions with leading opt-in JSDoc comments", () => {
 			const inputCode = `
 				var obj = {};
 				/** @trackSignals */
@@ -501,7 +501,7 @@ describe("React Signals Babel Transform", () => {
 			});
 		});
 
-		it("skips transforming arrow function custom hook with leading opt-out JSDoc comment before variable declaration", () => {
+		it("skips transforming custom hook arrow function with leading opt-out JSDoc comment before variable declaration", () => {
 			const inputCode = `
 				/** @noTrackSignals */
 				const useCustomHook = () => {
@@ -514,7 +514,7 @@ describe("React Signals Babel Transform", () => {
 			runTest(inputCode, expectedOutput, { mode: "auto" });
 		});
 
-		it("skips transforming default exported function declaration custom hooks with leading opt-out JSDoc comment", () => {
+		it("skips transforming custom hooks exported as default function declaration with leading opt-out JSDoc comment", () => {
 			const inputCode = `
 				/** @noTrackSignals */
 				export default function useCustomHook() {
@@ -527,7 +527,7 @@ describe("React Signals Babel Transform", () => {
 			runTest(inputCode, expectedOutput, { mode: "auto" });
 		});
 
-		it("skips transforming name exported function declaration custom hooks with leading opt-out JSDoc comment", () => {
+		it("skips transforming custom hooks exported as named function declaration with leading opt-out JSDoc comment", () => {
 			const inputCode = `
 				/** @noTrackSignals */
 				export function useCustomHook() {
@@ -540,7 +540,7 @@ describe("React Signals Babel Transform", () => {
 			runTest(inputCode, expectedOutput, { mode: "auto" });
 		});
 
-		it("skips transforming functions declared as object properties with leading opt-out JSDoc comments", () => {
+		it("skips transforming object properties declared as functions with leading opt-out JSDoc comments", () => {
 			const inputCode = `
 				var obj = {
 					/** @noTrackSignals */
@@ -557,7 +557,7 @@ describe("React Signals Babel Transform", () => {
 			runTest(inputCode, expectedOutput, { mode: "auto" });
 		});
 
-		it("skips transforming functions assigned to object properties with leading opt-out JSDoc comments", () => {
+		it("skips transforming object properties assigned to functions with leading opt-out JSDoc comments", () => {
 			const inputCode = `
 				var obj = {};
 				/** @noTrackSignals */
@@ -579,7 +579,7 @@ describe("React Signals Babel Transform", () => {
 	});
 
 	describe("auto mode no transformations", () => {
-		it("does not transform custom hook function declarations that don't use signals", () => {
+		it("skips transforming custom hook function declarations that don't use signals", () => {
 			const inputCode = `
 				function useCustomHook() {
 					return useState(0);
@@ -590,7 +590,7 @@ describe("React Signals Babel Transform", () => {
 			runTest(inputCode, expectedOutput);
 		});
 
-		it("does not transform incorrectly named custom hook function declarations", () => {
+		it("skips transforming custom hook function declarations incorrectly named", () => {
 			const inputCode = `
 				function usecustomHook() {
 					return signal.value;
