@@ -203,7 +203,7 @@ describe.only("React Signals Babel Transform", () => {
 		});
 	});
 
-	describe("manual mode doesn't transform anything", () => {
+	describe("manual mode doesn't transform anything by default", () => {
 		runGeneratedTestCases({
 			useValidAutoMode: true,
 			expectTransformed: false,

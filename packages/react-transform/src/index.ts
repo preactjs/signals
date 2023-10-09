@@ -209,6 +209,7 @@ function isOptedIntoSignalTracking(path: NodePath | null): boolean {
 		case "VariableDeclarator":
 		case "VariableDeclaration":
 		case "AssignmentExpression":
+		case "CallExpression":
 			return (
 				hasLeadingOptInComment(path) ||
 				isOptedIntoSignalTracking(path.parentPath)
@@ -233,6 +234,7 @@ function isOptedOutOfSignalTracking(path: NodePath | null): boolean {
 		case "VariableDeclarator":
 		case "VariableDeclaration":
 		case "AssignmentExpression":
+		case "CallExpression":
 			return (
 				hasLeadingOptOutComment(path) ||
 				isOptedOutOfSignalTracking(path.parentPath)
