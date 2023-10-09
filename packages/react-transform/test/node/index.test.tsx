@@ -4,6 +4,7 @@ import type { Scope } from "@babel/traverse";
 import prettier from "prettier";
 import signalsTransform, { PluginOptions } from "../../src/index";
 import {
+	CommentKind,
 	TestCase,
 	assignmentComp,
 	declarationComp,
@@ -78,8 +79,8 @@ interface TestCaseConfig {
 	useValidAutoMode: boolean;
 	/** Whether to assert that the plugin transforms the code (true) or not (false) */
 	expectTransformed: boolean;
-	/** A filename to run transforms under  */
-	filename: string;
+	/** What kind of opt-in or opt-out to include if any */
+	comment?: CommentKind;
 	/** Options to pass to the babel plugin */
 	options: PluginOptions;
 }
@@ -123,41 +124,47 @@ function runTestCases(config: TestCaseConfig, testCases: TestCase[]) {
 				expected = input;
 			}
 
-			const output = transformCode(input, config.options, config.filename);
+			const filename = config.useValidAutoMode
+				? "/path/to/Component.js"
+				: "C:\\path\\to\\lowercase.js";
+
+			const output = transformCode(input, config.options, filename);
 			expect(format(output)).to.equal(format(expected));
 		});
 	}
 }
 
 function runGeneratedTestCases(config: TestCaseConfig) {
+	const codeConfig = { auto: config.useValidAutoMode, comment: config.comment };
+
 	// e.g. function C() {}
 	describe("function components", () => {
-		runTestCases(config, declarationComp({ auto: config.useValidAutoMode }));
+		runTestCases(config, declarationComp(codeConfig));
 	});
 
 	// e.g. const C = () => {};
 	describe("variable declared components", () => {
-		runTestCases(config, variableComp({ auto: config.useValidAutoMode }));
+		runTestCases(config, variableComp(codeConfig));
 	});
 
 	// e.g. let C; C = () => {};
 	describe("assigned to variable components", () => {
-		runTestCases(config, assignmentComp({ auto: config.useValidAutoMode }));
+		runTestCases(config, assignmentComp(codeConfig));
 	});
 
 	// e.g. const obj = { C: () => {} };
 	describe.skip("object property components", () => {
-		runTestCases(config, objectPropertyComp({ auto: config.useValidAutoMode }));
+		runTestCases(config, objectPropertyComp(codeConfig));
 	});
 
 	// e.g. export default () => {};
-	describe(`default exported components (filename: ${config.filename})`, () => {
-		runTestCases(config, exportDefaultComp({ auto: config.useValidAutoMode }));
+	describe(`default exported components`, () => {
+		runTestCases(config, exportDefaultComp(codeConfig));
 	});
 
 	// e.g. export function C() {}
 	describe("named exported components", () => {
-		runTestCases(config, exportNamedComp({ auto: config.useValidAutoMode }));
+		runTestCases(config, exportNamedComp(codeConfig));
 	});
 }
 
@@ -166,7 +173,6 @@ describe.only("React Signals Babel Transform", () => {
 		runGeneratedTestCases({
 			useValidAutoMode: true,
 			expectTransformed: true,
-			filename: "/path/to/Component.js",
 			options: { mode: "auto" },
 		});
 	});
@@ -175,17 +181,43 @@ describe.only("React Signals Babel Transform", () => {
 		runGeneratedTestCases({
 			useValidAutoMode: false,
 			expectTransformed: false,
-			filename: "C:\\path\\to\\lowercase.js",
 			options: { mode: "auto" },
 		});
 	});
 
 	describe("auto mode supports opting out of transforming", () => {
-		// TODO: implement
+		runGeneratedTestCases({
+			useValidAutoMode: true,
+			expectTransformed: false,
+			comment: "opt-out",
+			options: { mode: "auto" },
+		});
+	});
+
+	describe("auto mode supports opting into transformation", () => {
+		runGeneratedTestCases({
+			useValidAutoMode: false,
+			expectTransformed: true,
+			comment: "opt-in",
+			options: { mode: "auto" },
+		});
+	});
+
+	describe("manual mode doesn't transform anything", () => {
+		runGeneratedTestCases({
+			useValidAutoMode: true,
+			expectTransformed: false,
+			options: { mode: "manual" },
+		});
 	});
 
 	describe("manual mode opts into transforming", () => {
-		// TODO: implement
+		runGeneratedTestCases({
+			useValidAutoMode: true,
+			expectTransformed: true,
+			comment: "opt-in",
+			options: { mode: "manual" },
+		});
 	});
 });
 

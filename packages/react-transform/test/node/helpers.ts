@@ -5,6 +5,7 @@ interface InputOutput {
 	transformed: string;
 }
 
+export type CommentKind = "opt-in" | "opt-out" | undefined;
 type VariableKind = "var" | "let" | "const";
 type ParamsConfig = 0 | 1 | 2 | 3 | undefined;
 
@@ -13,6 +14,7 @@ interface FuncDeclComponent {
 	name?: string;
 	body: string;
 	params?: ParamsConfig;
+	comment?: CommentKind;
 }
 
 interface FuncExpComponent {
@@ -40,6 +42,7 @@ interface Variable {
 	name: string;
 	body: InputOutput;
 	kind?: VariableKind;
+	comment?: CommentKind;
 }
 
 interface Assignment {
@@ -47,22 +50,26 @@ interface Assignment {
 	name: string;
 	body: InputOutput;
 	kind?: VariableKind;
+	comment?: CommentKind;
 }
 
 interface ObjectProperty {
 	type: "ObjectProperty";
 	name: string;
 	body: InputOutput;
+	comment?: CommentKind;
 }
 
 interface ExportDefault {
 	type: "ExportDefault";
 	body: InputOutput;
+	comment?: CommentKind;
 }
 
 interface ExportNamed {
 	type: "ExportNamed";
 	body: InputOutput;
+	comment?: CommentKind;
 }
 
 // TODO: add object method & member expression assignments? Note object prop and
@@ -111,14 +118,21 @@ function generateParams(count?: ParamsConfig): string {
 	return Array.from({ length: count }, (_, i) => `arg${i}`).join(", ");
 }
 
+function generateComment(comment?: CommentKind): string {
+	if (comment === "opt-out") return "// @noTrackSignals\n";
+	if (comment === "opt-in") return "// @trackSignals\n";
+	return "";
+}
+
 const codeGenerators: Generators = {
 	FuncDeclComp(config) {
 		const params = generateParams(config.params);
 		const inputBody = config.body;
 		const outputBody = applyTransform(config.body);
+		let comment = generateComment(config.comment);
 		return {
-			input: `function ${config.name}(${params}) {\n${inputBody}\n}`,
-			transformed: `function ${config.name}(${params}) {\n${outputBody}\n}`,
+			input: `${comment}function ${config.name}(${params}) {\n${inputBody}\n}`,
+			transformed: `${comment}function ${config.name}(${params}) {\n${outputBody}\n}`,
 		};
 	},
 	FuncExpComp(config) {
@@ -151,34 +165,39 @@ const codeGenerators: Generators = {
 	},
 	Variable(config) {
 		const kind = config.kind ?? "const";
+		const comment = generateComment(config.comment);
 		return {
-			input: `${kind} ${config.name} = ${config.body.input}`,
-			transformed: `${kind} ${config.name} = ${config.body.transformed}`,
+			input: `${comment}${kind} ${config.name} = ${config.body.input}`,
+			transformed: `${comment}${kind} ${config.name} = ${config.body.transformed}`,
 		};
 	},
 	Assignment(config) {
 		const kind = config.kind ?? "let";
+		const comment = generateComment(config.comment);
 		return {
-			input: `${kind} ${config.name};\n ${config.name} = ${config.body.input}`,
-			transformed: `${kind} ${config.name};\n ${config.name} = ${config.body.transformed}`,
+			input: `${kind} ${config.name};\n ${comment}${config.name} = ${config.body.input}`,
+			transformed: `${kind} ${config.name};\n ${comment}${config.name} = ${config.body.transformed}`,
 		};
 	},
 	ObjectProperty(config) {
+		const comment = generateComment(config.comment);
 		return {
-			input: `{\n ${config.name}: ${config.body.input} \n}`,
-			transformed: `{\n ${config.name}: ${config.body.transformed} \n}`,
+			input: `{\n ${comment}${config.name}: ${config.body.input} \n}`,
+			transformed: `{\n ${comment}${config.name}: ${config.body.transformed} \n}`,
 		};
 	},
 	ExportDefault(config) {
+		const comment = generateComment(config.comment);
 		return {
-			input: `export default ${config.body.input}`,
-			transformed: `export default ${config.body.transformed}`,
+			input: `${comment}export default ${config.body.input}`,
+			transformed: `${comment}export default ${config.body.transformed}`,
 		};
 	},
 	ExportNamed(config) {
+		const comment = generateComment(config.comment);
 		return {
-			input: `export ${config.body.input}`,
-			transformed: `export ${config.body.transformed}`,
+			input: `${comment}export ${config.body.input}`,
+			transformed: `${comment}export ${config.body.transformed}`,
 		};
 	},
 };
@@ -192,8 +211,13 @@ export interface TestCase extends InputOutput {
 }
 
 interface TestCaseConfig {
+	/** Whether to output source code that auto should transform  */
 	auto: boolean;
+	/** What kind of opt-in or opt-out to include if any */
+	comment?: CommentKind;
+	/** Test case name for including in `it` */
 	name?: string;
+	/** Number of parameters the component function should have */
 	params?: ParamsConfig;
 }
 
@@ -340,7 +364,7 @@ function withCallExpWrappers(config: TestCaseConfig): TestCase[] {
 }
 
 export function declarationComp(config: TestCaseConfig): TestCase[] {
-	const { name: baseName, params } = config;
+	const { name: baseName, params, comment } = config;
 	if (config.auto) {
 		return [
 			{
@@ -350,6 +374,7 @@ export function declarationComp(config: TestCaseConfig): TestCase[] {
 					name: "App",
 					body: "return <>{signal.value}</>",
 					params,
+					comment,
 				}),
 			},
 		];
@@ -362,6 +387,7 @@ export function declarationComp(config: TestCaseConfig): TestCase[] {
 					name: "app",
 					body: "return <div>{signal.value}</div>",
 					params,
+					comment,
 				}),
 			},
 			{
@@ -371,6 +397,7 @@ export function declarationComp(config: TestCaseConfig): TestCase[] {
 					name: "App",
 					body: "return signal.value",
 					params,
+					comment,
 				}),
 			},
 			{
@@ -380,6 +407,7 @@ export function declarationComp(config: TestCaseConfig): TestCase[] {
 					name: "App",
 					body: "return <div>Hello World</div>",
 					params,
+					comment,
 				}),
 			},
 		];
@@ -387,6 +415,7 @@ export function declarationComp(config: TestCaseConfig): TestCase[] {
 }
 
 export function variableComp(config: TestCaseConfig): TestCase[] {
+	const { name: baseName, comment } = config;
 	const testCases: TestCase[] = [];
 
 	const components = expressionComponents(config);
@@ -397,16 +426,18 @@ export function variableComp(config: TestCaseConfig): TestCase[] {
 				type: "Variable",
 				name: "VarComp",
 				body: c,
+				comment,
 			}),
 		});
 	}
 
 	if (!config.auto) {
 		testCases.push({
-			name: testName(config.name, `as function with bad variable name`),
+			name: testName(baseName, `as function with bad variable name`),
 			...generateCode({
 				type: "Variable",
 				name: "render",
+				comment,
 				body: generateCode({
 					type: "FuncExpComp",
 					body: "return <div>{signal.value}</div>",
@@ -415,10 +446,11 @@ export function variableComp(config: TestCaseConfig): TestCase[] {
 		});
 
 		testCases.push({
-			name: testName(config.name, `as arrow function with bad variable name`),
+			name: testName(baseName, `as arrow function with bad variable name`),
 			...generateCode({
 				type: "Variable",
 				name: "render",
+				comment,
 				body: generateCode({
 					type: "ArrowComp",
 					return: "expression",
@@ -431,7 +463,10 @@ export function variableComp(config: TestCaseConfig): TestCase[] {
 	// With HoC wrappers, we are testing the logic to find the component name. So
 	// only generate tests where the function body is correct ("auto" is true) and
 	// the name is either correct or bad.
-	const hocComponents = withCallExpWrappers({ ...config, auto: true });
+	const hocComponents = withCallExpWrappers({
+		...config,
+		auto: true,
+	});
 	const suffix = config.auto ? "" : "with bad variable name";
 	for (const c of hocComponents) {
 		testCases.push({
@@ -440,6 +475,7 @@ export function variableComp(config: TestCaseConfig): TestCase[] {
 				type: "Variable",
 				name: config.auto ? "VarComp" : "render",
 				body: c,
+				comment,
 			}),
 		});
 	}
@@ -448,6 +484,7 @@ export function variableComp(config: TestCaseConfig): TestCase[] {
 }
 
 export function assignmentComp(config: TestCaseConfig): TestCase[] {
+	const { name: baseName, comment } = config;
 	const testCases: TestCase[] = [];
 
 	const components = expressionComponents(config);
@@ -458,16 +495,18 @@ export function assignmentComp(config: TestCaseConfig): TestCase[] {
 				type: "Assignment",
 				name: "AssignComp",
 				body: c,
+				comment,
 			}),
 		});
 	}
 
 	if (!config.auto) {
 		testCases.push({
-			name: testName(config.name, "function component with bad variable name"),
+			name: testName(baseName, "function component with bad variable name"),
 			...generateCode({
 				type: "Assignment",
 				name: "render",
+				comment,
 				body: generateCode({
 					type: "FuncExpComp",
 					body: "return <div>{signal.value}</div>",
@@ -476,10 +515,11 @@ export function assignmentComp(config: TestCaseConfig): TestCase[] {
 		});
 
 		testCases.push({
-			name: testName(config.name, "arrow function with bad variable name"),
+			name: testName(baseName, "arrow function with bad variable name"),
 			...generateCode({
 				type: "Assignment",
 				name: "render",
+				comment,
 				body: generateCode({
 					type: "ArrowComp",
 					return: "expression",
@@ -492,7 +532,10 @@ export function assignmentComp(config: TestCaseConfig): TestCase[] {
 	// With HoC wrappers, we are testing the logic to find the component name. So
 	// only generate tests where the function body is correct ("auto" is true) and
 	// the name is either correct or bad.
-	const hocComponents = withCallExpWrappers({ ...config, auto: true });
+	const hocComponents = withCallExpWrappers({
+		...config,
+		auto: true,
+	});
 	const suffix = config.auto ? "" : "with bad variable name";
 	for (const c of hocComponents) {
 		testCases.push({
@@ -501,6 +544,7 @@ export function assignmentComp(config: TestCaseConfig): TestCase[] {
 				type: "Assignment",
 				name: config.auto ? "AssignComp" : "render",
 				body: c,
+				comment,
 			}),
 		});
 	}
@@ -509,6 +553,7 @@ export function assignmentComp(config: TestCaseConfig): TestCase[] {
 }
 
 export function objectPropertyComp(config: TestCaseConfig): TestCase[] {
+	const { name: baseName, comment } = config;
 	const testCases: TestCase[] = [];
 
 	const components = expressionComponents(config);
@@ -519,16 +564,18 @@ export function objectPropertyComp(config: TestCaseConfig): TestCase[] {
 				type: "ObjectProperty",
 				name: "ObjComp",
 				body: c,
+				comment,
 			}),
 		});
 	}
 
 	if (!config.auto) {
 		testCases.push({
-			name: testName(config.name, "function component with bad property name"),
+			name: testName(baseName, "function component with bad property name"),
 			...generateCode({
 				type: "ObjectProperty",
 				name: "render_prop",
+				comment,
 				body: generateCode({
 					type: "FuncExpComp",
 					body: "return <div>{signal.value}</div>",
@@ -537,10 +584,11 @@ export function objectPropertyComp(config: TestCaseConfig): TestCase[] {
 		});
 
 		testCases.push({
-			name: testName(config.name, "arrow function with bad property name"),
+			name: testName(baseName, "arrow function with bad property name"),
 			...generateCode({
 				type: "ObjectProperty",
 				name: "render_prop",
+				comment,
 				body: generateCode({
 					type: "ArrowComp",
 					return: "expression",
@@ -553,7 +601,10 @@ export function objectPropertyComp(config: TestCaseConfig): TestCase[] {
 	// With HoC wrappers, we are testing the logic to find the component name. So
 	// only generate tests where the function body is correct ("auto" is true) and
 	// the name is either correct or bad.
-	const hocComponents = withCallExpWrappers({ ...config, auto: true });
+	const hocComponents = withCallExpWrappers({
+		...config,
+		auto: true,
+	});
 	const suffix = config.auto ? "" : "with bad property name";
 	for (const c of hocComponents) {
 		testCases.push({
@@ -562,6 +613,7 @@ export function objectPropertyComp(config: TestCaseConfig): TestCase[] {
 				type: "ObjectProperty",
 				name: config.auto ? "ObjComp" : "render_prop",
 				body: c,
+				comment,
 			}),
 		});
 	}
@@ -570,6 +622,7 @@ export function objectPropertyComp(config: TestCaseConfig): TestCase[] {
 }
 
 export function exportDefaultComp(config: TestCaseConfig): TestCase[] {
+	const { comment } = config;
 	const testCases: TestCase[] = [];
 
 	const components = expressionComponents(config);
@@ -579,6 +632,7 @@ export function exportDefaultComp(config: TestCaseConfig): TestCase[] {
 			...generateCode({
 				type: "ExportDefault",
 				body: c,
+				comment,
 			}),
 		});
 	}
@@ -590,6 +644,7 @@ export function exportDefaultComp(config: TestCaseConfig): TestCase[] {
 			...generateCode({
 				type: "ExportDefault",
 				body: c,
+				comment,
 			}),
 		});
 	}
@@ -598,20 +653,26 @@ export function exportDefaultComp(config: TestCaseConfig): TestCase[] {
 }
 
 export function exportNamedComp(config: TestCaseConfig): TestCase[] {
+	const { comment } = config;
 	const testCases: TestCase[] = [];
 
-	const funcComponents = declarationComp(config);
+	// `declarationComp` will put the comment on the function declaration, but in
+	// this case we want to put it on the export statement.
+	const funcComponents = declarationComp({ ...config, comment: undefined });
 	for (const c of funcComponents) {
 		testCases.push({
 			name: `function declaration ${c.name}`,
 			...generateCode({
 				type: "ExportNamed",
 				body: c,
+				comment,
 			}),
 		});
 	}
 
-	const varComponents = variableComp(config);
+	// `variableComp` will put the comment on the function declaration, but in
+	// this case we want to put it on the export statement.
+	const varComponents = variableComp({ ...config, comment: undefined });
 	for (const c of varComponents) {
 		const name = c.name.replace(" variable ", " exported ");
 		testCases.push({
@@ -619,6 +680,7 @@ export function exportNamedComp(config: TestCaseConfig): TestCase[] {
 			...generateCode({
 				type: "ExportNamed",
 				body: c,
+				comment,
 			}),
 		});
 	}
