@@ -13,36 +13,7 @@ import {
 	variableComp,
 } from "./helpers";
 
-function dedent(str: string) {
-	let result = str;
-
-	const lines = str.split("\n");
-	let minIndent: number = Number.MAX_SAFE_INTEGER;
-	lines.forEach(function (l) {
-		const m = l.match(/^(\s+)\S+/);
-		if (m) {
-			const indent = m[1].length;
-			if (!minIndent) {
-				// this is the first indented line
-				minIndent = indent;
-			} else {
-				minIndent = Math.min(minIndent, indent);
-			}
-		}
-	});
-
-	if (minIndent !== null) {
-		result = lines
-			.map(function (l) {
-				return l[0] === " " || l[0] === "\t" ? l.slice(minIndent) : l;
-			})
-			.join("\n");
-	}
-
-	return result.trim();
-}
-
-const toSpaces = (str: string) => str.replace(/\t/g, "  ");
+const format = (code: string) => prettier.format(code, { parser: "babel" });
 
 function transformCode(
 	code: string,
@@ -65,13 +36,12 @@ function transformCode(
 function runTest(
 	input: string,
 	expected: string,
-	options: PluginOptions = { mode: "auto" }
+	options: PluginOptions = { mode: "auto" },
+	filename?: string
 ) {
-	const output = transformCode(input, options);
-	expect(toSpaces(output)).to.equal(toSpaces(dedent(expected)));
+	const output = transformCode(input, options, filename);
+	expect(format(output)).to.equal(format(expected));
 }
-
-const format = (code: string) => prettier.format(code, { parser: "babel" });
 
 interface TestCaseConfig {
 	/** Whether to use components whose body contains valid code auto mode would transform (true) or not (false) */
@@ -123,8 +93,7 @@ function runTestCases(config: TestCaseConfig, testCases: GeneratedCode[]) {
 				? "/path/to/Component.js"
 				: "C:\\path\\to\\lowercase.js";
 
-			const output = transformCode(input, config.options, filename);
-			expect(format(output)).to.equal(format(expected));
+			runTest(input, expected, config.options, filename);
 		});
 	}
 }
