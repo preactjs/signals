@@ -58,6 +58,11 @@ interface TestCaseConfig {
 let testCount = 0;
 const getTestId = () => (testCount++).toString().padStart(3, "0");
 
+// To help interactively debug a specific test case, add the test ids of the
+// test cases you want to debug to the `debugTestIds` array, e.g. (["258",
+// "259"])
+const debugTestIds: string[] = [];
+
 function runTestCases(config: TestCaseConfig, testCases: GeneratedCode[]) {
 	testCases = testCases
 		.map(t => ({
@@ -69,18 +74,15 @@ function runTestCases(config: TestCaseConfig, testCases: GeneratedCode[]) {
 
 	for (const testCase of testCases) {
 		let testId = getTestId();
-		// To run a single generated test case, put its test id in the following
-		// if (testId !== "258") continue;
+
+		// Only run tests in debugTestIds
+		if (debugTestIds.length > 0 && !debugTestIds.includes(testId)) continue;
+
 		it(`(${testId}) ${testCase.name}`, () => {
-			// // To help interactively debug a specific test case, uncomment the
-			// // following lines and add the test id of the test case you want to debug
-			// // to the `debugTestIds` array
-			//
-			// const debugTestIds: string[] = [];
-			// if (debugTestIds.includes(testId)) {
-			// 	console.log(testCase.input.replace(/\s+/g, " ")); // eslint-disable-line no-console
-			// 	debugger; // eslint-disable-line no-debugger
-			// }
+			if (debugTestIds.length > 0 && debugTestIds.includes(testId)) {
+				console.log(testCase.input.replace(/\s+/g, " ")); // eslint-disable-line no-console
+				debugger; // eslint-disable-line no-debugger
+			}
 
 			const input = testCase.input;
 			let expected = "";
@@ -133,7 +135,6 @@ function runGeneratedTestCases(config: TestCaseConfig) {
 		runTestCases(config, assignmentComp(codeConfig));
 	});
 
-	// TODO: Support obj property auto mode transformations
 	// e.g. const obj = { C: () => {} };
 	if (config.comment !== undefined) {
 		describe("object property components", () => {
@@ -266,7 +267,6 @@ describe.only("React Signals Babel Transform", () => {
 });
 
 // TODO:
-// - migrate object property assignments tests
 // - migrate hook tests
 
 describe("React Signals Babel Transform", () => {
