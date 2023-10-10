@@ -1,3 +1,33 @@
+/**
+ * This file generates test cases for the transform. It generates a bunch of
+ * different components and then generates the source code for them. The
+ * generated source code is then used as the input for the transform. The test
+ * can then assert whether the transform should transform the code into the
+ * expected output or leave it untouched.
+ *
+ * Many of the language constructs generated here are to test the logic that
+ * finds the component name. For example, the transform should be able to find
+ * the component name even if the component is wrapped in a memo or forwardRef
+ * call. So we generate a bunch of components wrapped in those calls.
+ *
+ * We also generate constructs to test where users may place the comment to opt
+ * in or out of tracking signals. For example, the comment may be placed on the
+ * function declaration, the variable declaration, or the export statement.
+ *
+ * Some common abbreviations you may see in this file:
+ * - Comp: component
+ * - Exp: expression
+ * - Decl: declaration
+ * - Var: variable
+ * - Obj: object
+ * - Prop: property
+ */
+
+/**
+ * Interface representing the input and transformed output. A test may choose
+ * to use the transformed output or ignore it if the test is asserting the
+ * plugin does nothing
+ */
 interface InputOutput {
 	input: string;
 	transformed: string;
@@ -9,7 +39,7 @@ type ParamsConfig = 0 | 1 | 2 | 3 | undefined;
 
 interface FuncDeclComponent {
 	type: "FuncDeclComp";
-	name?: string;
+	name: string;
 	body: string;
 	params?: ParamsConfig;
 	comment?: CommentKind;
@@ -101,7 +131,12 @@ type Generators = {
 	[key in keyof NodeTypes]: (config: NodeTypes[key]) => InputOutput;
 };
 
-function applyTransform(body: string, addReturn = false): string {
+function transformBody(
+	config: FuncDeclComponent | FuncExpComponent | ArrowFuncComponent
+): string {
+	const { type, body } = config;
+	const addReturn = type === "ArrowComp" && config.return === "expression";
+
 	return `var _effect = _useSignals();
 	try {
 		${addReturn ? "return " : ""}${body}
@@ -127,7 +162,7 @@ const codeGenerators: Generators = {
 	FuncDeclComp(config) {
 		const params = generateParams(config.params);
 		const inputBody = config.body;
-		const outputBody = applyTransform(config.body);
+		const outputBody = transformBody(config);
 		let comment = generateComment(config.comment);
 		return {
 			input: `${comment}function ${config.name}(${params}) {\n${inputBody}\n}`,
@@ -138,7 +173,7 @@ const codeGenerators: Generators = {
 		const name = config.name ?? "";
 		const params = generateParams(config.params);
 		const inputBody = config.body;
-		const outputBody = applyTransform(config.body);
+		const outputBody = transformBody(config);
 		return {
 			input: `(function ${name}(${params}) {\n${inputBody}\n})`,
 			transformed: `(function ${name}(${params}) {\n${outputBody}\n})`,
@@ -148,7 +183,7 @@ const codeGenerators: Generators = {
 		const params = generateParams(config.params);
 		const isExpBody = config.return === "expression";
 		const inputBody = isExpBody ? config.body : `{\n${config.body}\n}`;
-		const outputBody = applyTransform(config.body, isExpBody);
+		const outputBody = transformBody(config);
 		return {
 			input: `(${params}) => ${inputBody}`,
 			transformed: `(${params}) => {\n${outputBody}\n}`,
