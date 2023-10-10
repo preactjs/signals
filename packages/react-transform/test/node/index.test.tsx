@@ -10,6 +10,7 @@ import {
 	declarationComp,
 	exportDefaultComp,
 	exportNamedComp,
+	objectPropertyComp,
 	variableComp,
 } from "./helpers";
 
@@ -132,11 +133,13 @@ function runGeneratedTestCases(config: TestCaseConfig) {
 		runTestCases(config, assignmentComp(codeConfig));
 	});
 
-	// TODO: Support object property components
-	// // e.g. const obj = { C: () => {} };
-	// describe("object property components", () => {
-	// 	runTestCases(config, objectPropertyComp(codeConfig));
-	// });
+	// TODO: Support obj property auto mode transformations
+	// e.g. const obj = { C: () => {} };
+	if (config.comment !== undefined) {
+		describe("object property components", () => {
+			runTestCases(config, objectPropertyComp(codeConfig));
+		});
+	}
 
 	// e.g. export default () => {};
 	describe(`default exported components`, () => {
@@ -263,8 +266,8 @@ describe.only("React Signals Babel Transform", () => {
 });
 
 // TODO:
+// - migrate object property assignments tests
 // - migrate hook tests
-// - migrate object property tests
 
 describe("React Signals Babel Transform", () => {
 	describe("auto mode transformations", () => {
@@ -400,48 +403,6 @@ describe("React Signals Babel Transform", () => {
 			runTest(inputCode, expectedOutput, { mode: "manual" });
 		});
 
-		it("transforms object properties declared as functions with leading opt-in JSDoc comments", () => {
-			const inputCode = `
-				var obj = {
-					/** @trackSignals */
-					a: () => {},
-					/** @trackSignals */
-					b: function () {},
-					/** @trackSignals */
-					c: function c() {},
-				};
-			`;
-
-			const expectedOutput = `
-				import { useSignals as _useSignals } from "@preact/signals-react/runtime";
-				var obj = {
-					/** @trackSignals */
-					a: () => {
-						var _effect = _useSignals();
-						try {} finally {
-							_effect.f();
-						}
-					},
-					/** @trackSignals */
-					b: function () {
-						var _effect2 = _useSignals();
-						try {} finally {
-							_effect2.f();
-						}
-					},
-					/** @trackSignals */
-					c: function c() {
-						var _effect3 = _useSignals();
-						try {} finally {
-							_effect3.f();
-						}
-					}
-				};
-			`;
-
-			runTest(inputCode, expectedOutput, { mode: "manual" });
-		});
-
 		it("transforms object properties assigned to functions with leading opt-in JSDoc comments", () => {
 			const inputCode = `
 				var obj = {};
@@ -516,23 +477,6 @@ describe("React Signals Babel Transform", () => {
 				export function useCustomHook() {
 					return useState(0);
 				}
-			`;
-
-			const expectedOutput = inputCode;
-
-			runTest(inputCode, expectedOutput, { mode: "auto" });
-		});
-
-		it("skips transforming object properties declared as functions with leading opt-out JSDoc comments", () => {
-			const inputCode = `
-				var obj = {
-					/** @noTrackSignals */
-					a: () => {},
-					/** @noTrackSignals */
-					b: function () {},
-					/** @noTrackSignals */
-					c: function c() {}
-				};
 			`;
 
 			const expectedOutput = inputCode;

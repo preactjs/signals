@@ -182,8 +182,8 @@ const codeGenerators: Generators = {
 	ObjectProperty(config) {
 		const comment = generateComment(config.comment);
 		return {
-			input: `{\n ${comment}${config.name}: ${config.body.input} \n}`,
-			transformed: `{\n ${comment}${config.name}: ${config.body.transformed} \n}`,
+			input: `var o = {\n ${comment}${config.name}: ${config.body.input} \n}`,
+			transformed: `var o = {\n ${comment}${config.name}: ${config.body.transformed} \n}`,
 		};
 	},
 	ExportDefault(config) {
