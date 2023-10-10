@@ -68,10 +68,12 @@ function runTestCases(config: TestCaseConfig, testCases: GeneratedCode[]) {
 
 	for (const testCase of testCases) {
 		let testId = getTestId();
+		// To run a single generated test case, put its test id in the following
+		// if (testId !== "258") continue;
 		it(`(${testId}) ${testCase.name}`, () => {
 			// // To help interactively debug a specific test case, uncomment the
-			// // following lines and set `debugTestId` to the test id of the test case
-			// // you want to debug
+			// // following lines and add the test id of the test case you want to debug
+			// // to the `debugTestIds` array
 			//
 			// const debugTestIds: string[] = [];
 			// if (debugTestIds.includes(testId)) {
@@ -110,6 +112,20 @@ function runGeneratedTestCases(config: TestCaseConfig) {
 	describe("variable declared components", () => {
 		runTestCases(config, variableComp(codeConfig));
 	});
+
+	if (config.comment !== undefined) {
+		// e.g. const C = () => {};
+		describe("variable declared components (inline comment)", () => {
+			runTestCases(
+				config,
+				variableComp({
+					...codeConfig,
+					comment: undefined,
+					inlineComment: config.comment,
+				})
+			);
+		});
+	}
 
 	// e.g. let C; C = () => {};
 	describe("assigned to variable components", () => {
@@ -246,6 +262,10 @@ describe.only("React Signals Babel Transform", () => {
 	});
 });
 
+// TODO:
+// - migrate hook tests
+// - migrate object property tests
+
 describe("React Signals Babel Transform", () => {
 	describe("auto mode transformations", () => {
 		it("transforms custom hook arrow functions with return statement", () => {
@@ -320,28 +340,6 @@ describe("React Signals Babel Transform", () => {
 	});
 
 	describe("manual mode opt-in transformations", () => {
-		it("transforms arrow function component with leading opt-in JSDoc comment before arrow function", () => {
-			const inputCode = `
-				const MyComponent = /** @trackSignals */() => {
-					return <div>Hello World</div>;
-				};
-			`;
-
-			const expectedOutput = `
-				import { useSignals as _useSignals } from "@preact/signals-react/runtime";
-				const MyComponent = /** @trackSignals */() => {
-					var _effect = _useSignals();
-					try {
-						return <div>Hello World</div>;
-					} finally {
-						_effect.f();
-					}
-				};
-			`;
-
-			runTest(inputCode, expectedOutput, { mode: "manual" });
-		});
-
 		it("transforms custom hook arrow function with leading opt-in JSDoc comment before variable declaration", () => {
 			const inputCode = `
 				/** @trackSignals */
@@ -486,20 +484,6 @@ describe("React Signals Babel Transform", () => {
 	});
 
 	describe("auto mode opt-out transformations", () => {
-		it("skips transforming arrow function component with leading opt-out JSDoc comment before arrow function", () => {
-			const inputCode = `
-				const MyComponent = /** @noTrackSignals */() => {
-					return <div>{signal.value}</div>;
-				};
-			`;
-
-			const expectedOutput = inputCode;
-
-			runTest(inputCode, expectedOutput, {
-				mode: "auto",
-			});
-		});
-
 		it("skips transforming custom hook arrow function with leading opt-out JSDoc comment before variable declaration", () => {
 			const inputCode = `
 				/** @noTrackSignals */

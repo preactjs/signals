@@ -41,6 +41,7 @@ interface Variable {
 	body: InputOutput;
 	kind?: VariableKind;
 	comment?: CommentKind;
+	inlineComment?: CommentKind;
 }
 
 interface Assignment {
@@ -164,9 +165,10 @@ const codeGenerators: Generators = {
 	Variable(config) {
 		const kind = config.kind ?? "const";
 		const comment = generateComment(config.comment);
+		const inlineComment = generateComment(config.inlineComment)?.trim();
 		return {
-			input: `${comment}${kind} ${config.name} = ${config.body.input}`,
-			transformed: `${comment}${kind} ${config.name} = ${config.body.transformed}`,
+			input: `${comment}${kind} ${config.name} = ${inlineComment}${config.body.input}`,
+			transformed: `${comment}${kind} ${config.name} = ${inlineComment}${config.body.transformed}`,
 		};
 	},
 	Assignment(config) {
@@ -217,6 +219,10 @@ interface CodeConfig {
 	name?: string;
 	/** Number of parameters the component function should have */
 	params?: ParamsConfig;
+}
+
+interface VariableCodeConfig extends CodeConfig {
+	inlineComment?: CommentKind;
 }
 
 const codeTitle = (...parts: Array<string | undefined>) =>
@@ -412,8 +418,8 @@ export function declarationComp(config: CodeConfig): GeneratedCode[] {
 	}
 }
 
-export function variableComp(config: CodeConfig): GeneratedCode[] {
-	const { name: baseName, comment } = config;
+export function variableComp(config: VariableCodeConfig): GeneratedCode[] {
+	const { name: baseName, comment, inlineComment } = config;
 	const codeCases: GeneratedCode[] = [];
 
 	const components = expressionComponents(config);
@@ -425,6 +431,7 @@ export function variableComp(config: CodeConfig): GeneratedCode[] {
 				name: "VarComp",
 				body: c,
 				comment,
+				inlineComment,
 			}),
 		});
 	}
@@ -436,6 +443,7 @@ export function variableComp(config: CodeConfig): GeneratedCode[] {
 				type: "Variable",
 				name: "render",
 				comment,
+				inlineComment,
 				body: generateCode({
 					type: "FuncExpComp",
 					body: "return <div>{signal.value}</div>",
@@ -449,6 +457,7 @@ export function variableComp(config: CodeConfig): GeneratedCode[] {
 				type: "Variable",
 				name: "render",
 				comment,
+				inlineComment,
 				body: generateCode({
 					type: "ArrowComp",
 					return: "expression",
@@ -474,6 +483,7 @@ export function variableComp(config: CodeConfig): GeneratedCode[] {
 				name: config.auto ? "VarComp" : "render",
 				body: c,
 				comment,
+				inlineComment,
 			}),
 		});
 	}
