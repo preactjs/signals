@@ -23,6 +23,8 @@
  * - Prop: property
  */
 
+// TODO: consider separating into a codeGenerators.ts file and a caseGenerators.ts file
+
 /**
  * Interface representing the input and transformed output. A test may choose
  * to use the transformed output or ignore it if the test is asserting the
@@ -45,11 +47,24 @@ interface FuncDeclComponent {
 	comment?: CommentKind;
 }
 
+interface FuncDeclHook {
+	type: "FuncDeclHook";
+	name: string;
+	body: string;
+	comment?: CommentKind;
+}
+
 interface FuncExpComponent {
 	type: "FuncExpComp";
 	name?: string;
 	body: string;
 	params?: ParamsConfig;
+}
+
+interface FuncExpHook {
+	type: "FuncExpHook";
+	name?: string;
+	body: string;
 }
 
 interface ArrowFuncComponent {
@@ -65,6 +80,12 @@ interface ObjMethodComponent {
 	body: string;
 	params?: ParamsConfig;
 	comment?: CommentKind;
+}
+
+interface ArrowFuncHook {
+	type: "ArrowFuncHook";
+	return: "statement" | "expression";
+	body: string;
 }
 
 interface CallExp {
@@ -118,9 +139,12 @@ interface ExportNamed {
 
 interface NodeTypes {
 	FuncDeclComp: FuncDeclComponent;
+	FuncDeclHook: FuncDeclHook;
 	FuncExpComp: FuncExpComponent;
+	FuncExpHook: FuncExpHook;
 	ArrowComp: ArrowFuncComponent;
 	ObjectMethodComp: ObjMethodComponent;
+	ArrowFuncHook: ArrowFuncHook;
 	CallExp: CallExp;
 	ExportDefault: ExportDefault;
 	ExportNamed: ExportNamed;
@@ -154,6 +178,16 @@ function transformComponent(
 	}`;
 }
 
+function transformHook(
+	config: FuncDeclHook | FuncExpHook | ArrowFuncHook
+): string {
+	const { type, body } = config;
+	const addReturn = type === "ArrowFuncHook" && config.return === "expression";
+
+	return `_useSignals();
+	${addReturn ? "return " : ""}${body}`;
+}
+
 function generateParams(count?: ParamsConfig): string {
 	if (count == null || count === 0) return "";
 	if (count === 1) return "props";
@@ -178,6 +212,15 @@ const codeGenerators: Generators = {
 			transformed: `${comment}function ${config.name}(${params}) {\n${outputBody}\n}`,
 		};
 	},
+	FuncDeclHook(config) {
+		const inputBody = config.body;
+		const outputBody = transformHook(config);
+		let comment = generateComment(config.comment);
+		return {
+			input: `${comment}function ${config.name}() {\n${inputBody}\n}`,
+			transformed: `${comment}function ${config.name}() {\n${outputBody}\n}`,
+		};
+	},
 	FuncExpComp(config) {
 		const name = config.name ?? "";
 		const params = generateParams(config.params);
@@ -186,6 +229,15 @@ const codeGenerators: Generators = {
 		return {
 			input: `(function ${name}(${params}) {\n${inputBody}\n})`,
 			transformed: `(function ${name}(${params}) {\n${outputBody}\n})`,
+		};
+	},
+	FuncExpHook(config) {
+		const name = config.name ?? "";
+		const inputBody = config.body;
+		const outputBody = transformHook(config);
+		return {
+			input: `(function ${name}() {\n${inputBody}\n})`,
+			transformed: `(function ${name}() {\n${outputBody}\n})`,
 		};
 	},
 	ArrowComp(config) {
@@ -206,6 +258,15 @@ const codeGenerators: Generators = {
 		return {
 			input: `var o = {\n${comment}${config.name}(${params}) {\n${inputBody}\n}\n};`,
 			transformed: `var o = {\n${comment}${config.name}(${params}) {\n${outputBody}\n}\n};`,
+		};
+	},
+	ArrowFuncHook(config) {
+		const isExpBody = config.return === "expression";
+		const inputBody = isExpBody ? config.body : `{\n${config.body}\n}`;
+		const outputBody = transformHook(config);
+		return {
+			input: `() => ${inputBody}`,
+			transformed: `() => {\n${outputBody}\n}`,
 		};
 	},
 	CallExp(config) {
@@ -964,6 +1025,220 @@ export function exportNamedComp(config: CodeConfig): GeneratedCode[] {
 	// this case we want to put it on the export statement.
 	const varComponents = variableComp({ ...config, comment: undefined });
 	for (const c of varComponents) {
+		const name = c.name.replace(" variable ", " exported ");
+		codeCases.push({
+			name: `variable ${name}`,
+			...generateCode({
+				type: "ExportNamed",
+				body: c,
+				comment,
+			}),
+		});
+	}
+
+	return codeCases;
+}
+
+function expressionHooks(config: CodeConfig): GeneratedCode[] {
+	const { name } = config;
+	if (config.auto) {
+		return [
+			{
+				name: codeTitle(name, "as function without inline name"),
+				...generateCode({
+					type: "FuncExpHook",
+					body: "return signal.value",
+				}),
+			},
+			{
+				name: codeTitle(name, "as function with proper inline name"),
+				...generateCode({
+					type: "FuncExpHook",
+					name: "useCustomHook",
+					body: "return signal.value",
+				}),
+			},
+			{
+				name: codeTitle(name, "as arrow function with with statement body"),
+				...generateCode({
+					type: "ArrowFuncHook",
+					return: "statement",
+					body: "return signal.value",
+				}),
+			},
+			{
+				name: codeTitle(name, "as arrow function with with expression body"),
+				...generateCode({
+					type: "ArrowFuncHook",
+					return: "expression",
+					body: "signal.value",
+				}),
+			},
+		];
+	} else {
+		return [
+			{
+				name: codeTitle(name, "as function with bad inline name"),
+				...generateCode({
+					type: "FuncExpHook",
+					name: "usecustomHook",
+					body: "return signal.value",
+				}),
+			},
+			{
+				name: codeTitle(name, "as function with no signals"),
+				...generateCode({
+					type: "FuncExpHook",
+					body: "return useState(0)",
+				}),
+			},
+			{
+				name: codeTitle(name, "as arrow function with no signals"),
+				...generateCode({
+					type: "ArrowFuncHook",
+					return: "expression",
+					body: "useState(0)",
+				}),
+			},
+		];
+	}
+}
+
+export function declarationHooks(config: CodeConfig): GeneratedCode[] {
+	const { name, comment } = config;
+	if (config.auto) {
+		return [
+			{
+				name: codeTitle(name, "with proper name and signal usage"),
+				...generateCode({
+					type: "FuncDeclHook",
+					name: "useCustomHook",
+					comment,
+					body: "return signal.value",
+				}),
+			},
+		];
+	} else {
+		return [
+			{
+				name: codeTitle(name, "with bad name"),
+				...generateCode({
+					type: "FuncDeclHook",
+					name: "usecustomHook",
+					comment,
+					body: "return signal.value",
+				}),
+			},
+			{
+				name: codeTitle(name, "with no signals"),
+				...generateCode({
+					type: "FuncDeclHook",
+					name: "useCustomHook",
+					comment,
+					body: "return useState(0)",
+				}),
+			},
+		];
+	}
+}
+
+export function variableHooks(config: VariableCodeConfig): GeneratedCode[] {
+	const { name, comment, inlineComment } = config;
+	const codeCases: GeneratedCode[] = [];
+
+	const hooks = expressionHooks(config);
+	for (const h of hooks) {
+		codeCases.push({
+			name: codeTitle(h.name),
+			...generateCode({
+				type: "Variable",
+				name: "useCustomHook",
+				comment,
+				inlineComment,
+				body: h,
+			}),
+		});
+	}
+
+	if (!config.auto) {
+		codeCases.push({
+			name: codeTitle(name, "as function with bad variable name"),
+			...generateCode({
+				type: "Variable",
+				name: "usecustomHook",
+				comment,
+				inlineComment,
+				body: generateCode({
+					type: "FuncExpHook",
+					body: "return signal.value",
+				}),
+			}),
+		});
+
+		codeCases.push({
+			name: codeTitle(name, "as arrow function with bad variable name"),
+			...generateCode({
+				type: "Variable",
+				name: "usecustomHook",
+				comment,
+				inlineComment,
+				body: generateCode({
+					type: "ArrowFuncHook",
+					return: "expression",
+					body: "signal.value",
+				}),
+			}),
+		});
+	}
+
+	return codeCases;
+}
+
+export function exportDefaultHooks(config: CodeConfig): GeneratedCode[] {
+	const { comment } = config;
+	const codeCases: GeneratedCode[] = [];
+
+	const components = [
+		...declarationHooks({ ...config, comment: undefined }),
+		...expressionHooks(config),
+	];
+
+	for (const c of components) {
+		codeCases.push({
+			name: c.name + " exported as default",
+			...generateCode({
+				type: "ExportDefault",
+				body: c,
+				comment,
+			}),
+		});
+	}
+
+	return codeCases;
+}
+
+export function exportNamedHooks(config: CodeConfig): GeneratedCode[] {
+	const { comment } = config;
+	const codeCases: GeneratedCode[] = [];
+
+	// `declarationHooks` will put the comment on the function declaration, but in
+	// this case we want to put it on the export statement.
+	const funcHooks = declarationHooks({ ...config, comment: undefined });
+	for (const c of funcHooks) {
+		codeCases.push({
+			name: `function declaration ${c.name}`,
+			...generateCode({
+				type: "ExportNamed",
+				body: c,
+				comment,
+			}),
+		});
+	}
+
+	// `variableHooks` will put the comment on the function declaration, but in
+	// this case we want to put it on the export statement.
+	const varHooks = variableHooks({ ...config, comment: undefined });
+	for (const c of varHooks) {
 		const name = c.name.replace(" variable ", " exported ");
 		codeCases.push({
 			name: `variable ${name}`,
