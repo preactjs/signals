@@ -390,6 +390,46 @@ describe("React Signals babel transfrom - browser E2E tests", () => {
 		expect(scratch.innerHTML).to.equal("<div>Hello Jane</div>");
 	});
 
+	it("should work when an ambiguous function is manually transformed and used as a hook", async () => {
+		const { App, greeting, name } = await createComponent(`
+			import { signal } from "@preact/signals-core";
+
+			export const greeting = signal("Hello");
+			export const name = signal("John");
+
+			// Ambiguous if this function is gonna be a hook or component
+			/** @trackSignals */
+			function usename() {
+				return name.value;
+			}
+
+			export function App() {
+				const name = usename();
+				return <div>{greeting.value} {name}</div>;
+			}`);
+
+		await render(<App name={name} />);
+		expect(scratch.innerHTML).to.equal("<div>Hello John</div>");
+
+		await act(() => {
+			greeting.value = "Hi";
+		});
+		expect(scratch.innerHTML).to.equal("<div>Hi John</div>");
+
+		await act(() => {
+			name.value = "Jane";
+		});
+		expect(scratch.innerHTML).to.equal("<div>Hi Jane</div>");
+
+		await act(() => {
+			batch(() => {
+				greeting.value = "Hello";
+				name.value = "John";
+			});
+		});
+		expect(scratch.innerHTML).to.equal("<div>Hello John</div>");
+	});
+
 	it("loads useSignals from a custom source", async () => {
 		const { App } = await createComponent(
 			`
