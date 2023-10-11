@@ -419,4 +419,27 @@ describe("useSignals", () => {
 		});
 		expect(scratch.innerHTML).to.equal("<div>Hello John!</div>");
 	});
+
+	describe("nested useSignals", () => {
+		// true = useSignals + try/finally
+		// false = bare useSignals()
+		//
+		// - 🟢 component with useSignals(true) calling hook with useSignals(true) // Transform case
+		// - 🟡 component with useSignals(true) calling hook with useSignals(false) // ??? - component useSignal.f() called while last hook is still "currentStore".
+		// - 🟡 component with useSignals(true) calling hook with useSignals(false) & second component with useSignals(?) // ??? - see above
+		// - 🔴 component with useSignals(false) calling hook with useSignals(true) // Ahh!! useSignals(true) will end the component effect early
+		// - 🔵 component with useSignals(false) calling hook with useSignals(false)
+		// - 🔵 component with useSignals(false) calling hook with useSignals(false) & second component with useSignals(?)
+		//
+		// - 🟢 component with useSignals(true) calling hook with useSignals(true) & hook with useSignals(true) // Transform case
+		// - 🟡 component with useSignals(true) calling hook with useSignals(true) & hook with useSignals(false) // component useSignal.f() called while last hook is still currentStore.
+		// - 🟡 component with useSignals(true) calling hook with useSignals(true) & hook with useSignals(false) & second component with useSignals(?) // see above
+		// - 🟢 component with useSignals(true) calling hook with useSignals(false) & hook with useSignals(true)
+		// - 🔵 component with useSignals(false) calling hook with useSignals(false) & hook with useSignals(false)
+		// - 🔴 component with useSignals(false) calling hook with useSignals(false) & hook with useSignals(true) // Ahh!!! Last useSignals(true) ends the component effect early
+		// - 🔴 component with useSignals(false) calling hook with useSignals(true) & hook with useSignals(false) // Ahh!!! First useSignals(true) will end the component effect early and any signals between it and the second useSignals(false) will not be tracked.
+		//
+		// TODO: Nested hook calls
+		// e.g. component useSignals(true) > hook useSignals(true) > hook useSignals(false)
+	});
 });
