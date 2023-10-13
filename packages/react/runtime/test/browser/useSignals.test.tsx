@@ -10,12 +10,43 @@ import {
 	checkConsoleErrorLogs,
 } from "../../../test/shared/utils";
 
+const MANAGED_COMPONENT = 1;
+const MANAGED_HOOK = 2;
+
 describe("useSignals", () => {
 	let scratch: HTMLDivElement;
 	let root: Root;
 
 	async function render(element: Parameters<Root["render"]>[0]) {
 		await act(() => root.render(element));
+	}
+
+	async function runTest(
+		element: React.ReactElement,
+		...signals: Signal<number>[]
+	) {
+		const values = signals.map(() => 0);
+
+		await render(element);
+		expect(scratch.innerHTML).to.equal(`<p>${values.join(",")}</p>`);
+
+		for (let i = 0; i < signals.length; i++) {
+			await act(() => {
+				signals[i].value += 1;
+			});
+			values[i] += 1;
+			expect(scratch.innerHTML).to.equal(`<p>${values.join(",")}</p>`);
+		}
+
+		await act(() => {
+			batch(() => {
+				for (let i = 0; i < signals.length; i++) {
+					signals[i].value += 1;
+					values[i] += 1;
+				}
+			});
+		});
+		expect(scratch.innerHTML).to.equal(`<p>${values.join(",")}</p>`);
 	}
 
 	beforeEach(async () => {
@@ -420,7 +451,7 @@ describe("useSignals", () => {
 		expect(scratch.innerHTML).to.equal("<div>Hello John!</div>");
 	});
 
-	describe("nested useSignals", () => {
+	describe("using hooks that call useSignal in components that call useSignals", () => {
 		// true = useSignals + try/finally
 		// false = bare useSignals()
 		//
@@ -441,5 +472,257 @@ describe("useSignals", () => {
 		//
 		// TODO: Nested hook calls
 		// e.g. component useSignals(true) > hook useSignals(true) > hook useSignals(false)
+
+		let unmanagedHookSignal = signal(0);
+		function useUnmanagedHook() {
+			useSignals();
+			return unmanagedHookSignal.value;
+		}
+
+		let managedHookSignal = signal(0);
+		function useManagedHook() {
+			const e = useSignals(MANAGED_HOOK);
+			try {
+				return managedHookSignal.value;
+			} finally {
+				e.f();
+			}
+		}
+
+		let componentSignal = signal(0);
+		function ManagedComponent({ hooks }: { hooks: Array<() => number> }) {
+			const e = useSignals(MANAGED_COMPONENT);
+			try {
+				const componentValue = componentSignal;
+				const hookValues = hooks.map(hook => hook());
+				return <p>{[componentValue, ...hookValues].join(",")}</p>;
+			} finally {
+				e.f();
+			}
+		}
+
+		function UnmanagedComponent({ hooks }: { hooks: Array<() => number> }) {
+			useSignals();
+			const componentValue = componentSignal;
+			const hookValues = hooks.map(hook => hook());
+			return <p>{[componentValue, ...hookValues].join(",")}</p>;
+		}
+
+		beforeEach(() => {
+			componentSignal = signal(0);
+			unmanagedHookSignal = signal(0);
+			managedHookSignal = signal(0);
+		});
+
+		[ManagedComponent, UnmanagedComponent].forEach(Component => {
+			const componentName = Component.name;
+
+			it(`${componentName} > managed hook`, async () => {
+				await runTest(
+					<Component hooks={[useManagedHook]} />,
+					componentSignal,
+					managedHookSignal
+				);
+			});
+
+			it(`${componentName} > unmanaged hook`, async () => {
+				await runTest(
+					<Component hooks={[useUnmanagedHook]} />,
+					componentSignal,
+					unmanagedHookSignal
+				);
+			});
+		});
+
+		[ManagedComponent, UnmanagedComponent].forEach(Component => {
+			const componentName = Component.name;
+
+			it(`${componentName} > managed hook + managed hook`, async () => {
+				let managedHookSignal2 = signal(0);
+				function useManagedHook2() {
+					const e = useSignals(MANAGED_HOOK);
+					try {
+						return managedHookSignal2.value;
+					} finally {
+						e.f();
+					}
+				}
+
+				await runTest(
+					<Component hooks={[useManagedHook, useManagedHook2]} />,
+					componentSignal,
+					managedHookSignal,
+					managedHookSignal2
+				);
+			});
+
+			it(`${componentName} > managed hook + unmanaged hook`, async () => {
+				await runTest(
+					<Component hooks={[useManagedHook, useUnmanagedHook]} />,
+					componentSignal,
+					managedHookSignal,
+					unmanagedHookSignal
+				);
+			});
+
+			it(`${componentName} > unmanaged hook + managed hook`, async () => {
+				await runTest(
+					<Component hooks={[useUnmanagedHook, useManagedHook]} />,
+					componentSignal,
+					unmanagedHookSignal,
+					managedHookSignal
+				);
+			});
+
+			it(`${componentName} > unmanaged hook + unmanaged hook`, async () => {
+				let unmanagedHookSignal2 = signal(0);
+				function useUnmanagedHook2() {
+					useSignals();
+					return unmanagedHookSignal2.value;
+				}
+
+				await runTest(
+					<Component hooks={[useUnmanagedHook, useUnmanagedHook2]} />,
+					componentSignal,
+					unmanagedHookSignal,
+					unmanagedHookSignal2
+				);
+			});
+		});
+	});
+
+	describe("using nested hooks that each call useSignals in components that call useSignals", () => {
+		type UseHookValProps = { useHookVal: () => number[] };
+
+		let componentSignal = signal(0);
+		function ManagedComponent({ useHookVal }: UseHookValProps) {
+			const e = useSignals(MANAGED_COMPONENT);
+			try {
+				const val1 = componentSignal.value;
+				const hookVal = useHookVal();
+				return <p>{[val1, ...hookVal].join(",")}</p>;
+			} finally {
+				e.f();
+			}
+		}
+
+		function UnmanagedComponent({ useHookVal }: UseHookValProps) {
+			useSignals();
+			const val1 = componentSignal.value;
+			const hookVal = useHookVal();
+			return <p>{[val1, ...hookVal].join(",")}</p>;
+		}
+
+		beforeEach(() => {
+			componentSignal = signal(0);
+		});
+
+		[ManagedComponent, UnmanagedComponent].forEach(Component => {
+			const componentName = Component.name;
+
+			it(`${componentName} > managed hook > managed hook`, async () => {
+				let managedHookSignal2 = signal(0);
+				function useManagedHook() {
+					const e = useSignals(MANAGED_HOOK);
+					try {
+						return managedHookSignal2.value;
+					} finally {
+						e.f();
+					}
+				}
+
+				let managedHookSignal1 = signal(0);
+				function useManagedManagedHook() {
+					const e = useSignals(MANAGED_HOOK);
+					try {
+						const nestedVal = useManagedHook();
+						return [managedHookSignal1.value, nestedVal];
+					} finally {
+						e.f();
+					}
+				}
+
+				await runTest(
+					<Component useHookVal={useManagedManagedHook} />,
+					componentSignal,
+					managedHookSignal1,
+					managedHookSignal2
+				);
+			});
+
+			it(`${componentName} > managed hook > unmanaged hook`, async () => {
+				let unmanagedHookSignal = signal(0);
+				function useUnmanagedHook() {
+					useSignals();
+					return unmanagedHookSignal.value;
+				}
+
+				let managedHookSignal = signal(0);
+				function useManagedUnmanagedHook() {
+					const e = useSignals(MANAGED_HOOK);
+					try {
+						const nestedVal = useUnmanagedHook();
+						return [managedHookSignal.value, nestedVal];
+					} finally {
+						e.f();
+					}
+				}
+
+				await runTest(
+					<Component useHookVal={useManagedUnmanagedHook} />,
+					componentSignal,
+					managedHookSignal,
+					unmanagedHookSignal
+				);
+			});
+
+			it(`${componentName} > unmanaged hook > managed hook`, async () => {
+				let managedHookSignal = signal(0);
+				function useManagedHook() {
+					const e = useSignals(MANAGED_HOOK);
+					try {
+						return managedHookSignal.value;
+					} finally {
+						e.f();
+					}
+				}
+
+				let unmanagedHookSignal = signal(0);
+				function useUnmanagedManagedHook() {
+					useSignals();
+					const nestedVal = useManagedHook();
+					return [unmanagedHookSignal.value, nestedVal];
+				}
+
+				await runTest(
+					<Component useHookVal={useUnmanagedManagedHook} />,
+					componentSignal,
+					unmanagedHookSignal,
+					managedHookSignal
+				);
+			});
+
+			it(`${componentName} > unmanaged hook > unmanaged hook`, async () => {
+				let unmanagedHookSignal2 = signal(0);
+				function useUnmanagedHook() {
+					useSignals();
+					return unmanagedHookSignal2.value;
+				}
+
+				let unmanagedHookSignal1 = signal(0);
+				function useUnmanagedUnmanagedHook() {
+					useSignals();
+					const nestedVal = useUnmanagedHook();
+					return [unmanagedHookSignal1.value, nestedVal];
+				}
+
+				await runTest(
+					<Component useHookVal={useUnmanagedUnmanagedHook} />,
+					componentSignal,
+					unmanagedHookSignal1,
+					unmanagedHookSignal2
+				);
+			});
+		});
 	});
 });
