@@ -10,6 +10,8 @@ import {
 	checkConsoleErrorLogs,
 } from "../../../test/shared/utils";
 
+let testId = 0;
+const getTestId = () => `${++testId}`.padStart(2, "0");
 const MANAGED_COMPONENT = 1;
 const MANAGED_HOOK = 2;
 
@@ -517,7 +519,7 @@ describe("useSignals", () => {
 		[ManagedComponent, UnmanagedComponent].forEach(Component => {
 			const componentName = Component.name;
 
-			it(`${componentName} > managed hook`, async () => {
+			it(`(${getTestId()}) ${componentName} > managed hook`, async () => {
 				await runTest(
 					<Component hooks={[useManagedHook]} />,
 					componentSignal,
@@ -525,7 +527,7 @@ describe("useSignals", () => {
 				);
 			});
 
-			it(`${componentName} > unmanaged hook`, async () => {
+			it(`(${getTestId()}) ${componentName} > unmanaged hook`, async () => {
 				await runTest(
 					<Component hooks={[useUnmanagedHook]} />,
 					componentSignal,
@@ -537,7 +539,7 @@ describe("useSignals", () => {
 		[ManagedComponent, UnmanagedComponent].forEach(Component => {
 			const componentName = Component.name;
 
-			it(`${componentName} > managed hook + managed hook`, async () => {
+			it(`(${getTestId()}) ${componentName} > managed hook + managed hook`, async () => {
 				let managedHookSignal2 = signal(0);
 				function useManagedHook2() {
 					const e = useSignals(MANAGED_HOOK);
@@ -556,7 +558,7 @@ describe("useSignals", () => {
 				);
 			});
 
-			it(`${componentName} > managed hook + unmanaged hook`, async () => {
+			it(`(${getTestId()}) ${componentName} > managed hook + unmanaged hook`, async () => {
 				await runTest(
 					<Component hooks={[useManagedHook, useUnmanagedHook]} />,
 					componentSignal,
@@ -565,7 +567,7 @@ describe("useSignals", () => {
 				);
 			});
 
-			it(`${componentName} > unmanaged hook + managed hook`, async () => {
+			it(`(${getTestId()}) ${componentName} > unmanaged hook + managed hook`, async () => {
 				await runTest(
 					<Component hooks={[useUnmanagedHook, useManagedHook]} />,
 					componentSignal,
@@ -574,7 +576,7 @@ describe("useSignals", () => {
 				);
 			});
 
-			it(`${componentName} > unmanaged hook + unmanaged hook`, async () => {
+			it(`(${getTestId()}) ${componentName} > unmanaged hook + unmanaged hook`, async () => {
 				let unmanagedHookSignal2 = signal(0);
 				function useUnmanagedHook2() {
 					useSignals();
@@ -620,7 +622,7 @@ describe("useSignals", () => {
 		[ManagedComponent, UnmanagedComponent].forEach(Component => {
 			const componentName = Component.name;
 
-			it(`${componentName} > managed hook > managed hook`, async () => {
+			it(`(${getTestId()}) ${componentName} > managed hook > managed hook`, async () => {
 				let managedHookSignal2 = signal(0);
 				function useManagedHook() {
 					const e = useSignals(MANAGED_HOOK);
@@ -650,7 +652,7 @@ describe("useSignals", () => {
 				);
 			});
 
-			it(`${componentName} > managed hook > unmanaged hook`, async () => {
+			it(`(${getTestId()}) ${componentName} > managed hook > unmanaged hook`, async () => {
 				let unmanagedHookSignal = signal(0);
 				function useUnmanagedHook() {
 					useSignals();
@@ -676,7 +678,7 @@ describe("useSignals", () => {
 				);
 			});
 
-			it(`${componentName} > unmanaged hook > managed hook`, async () => {
+			it(`(${getTestId()}) ${componentName} > unmanaged hook > managed hook`, async () => {
 				let managedHookSignal = signal(0);
 				function useManagedHook() {
 					const e = useSignals(MANAGED_HOOK);
@@ -702,7 +704,7 @@ describe("useSignals", () => {
 				);
 			});
 
-			it(`${componentName} > unmanaged hook > unmanaged hook`, async () => {
+			it(`(${getTestId()}) ${componentName} > unmanaged hook > unmanaged hook`, async () => {
 				let unmanagedHookSignal2 = signal(0);
 				function useUnmanagedHook() {
 					useSignals();
