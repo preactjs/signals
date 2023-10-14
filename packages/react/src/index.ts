@@ -4,6 +4,7 @@ import {
 	useEffect,
 	Component,
 	type FunctionComponent,
+	ForwardRefExoticComponent,
 } from "react";
 import React from "react";
 import jsxRuntime from "react/jsx-runtime";
@@ -25,9 +26,14 @@ const Empty = [] as const;
 const ReactElemType = Symbol.for("react.element"); // https://github.com/facebook/react/blob/346c7d4c43a0717302d446da9e7423a8e28d8996/packages/shared/ReactSymbols.js#L15
 const ReactMemoType = Symbol.for("react.memo"); // https://github.com/facebook/react/blob/346c7d4c43a0717302d446da9e7423a8e28d8996/packages/shared/ReactSymbols.js#L30
 const ReactLazyType = Symbol.for("react.lazy"); // https://github.com/facebook/react/blob/346c7d4c43a0717302d446da9e7423a8e28d8996/packages/shared/ReactSymbols.js#L31
+const ReactForwardRefType: symbol = Symbol.for("react.forward_ref"); // https://github.com/facebook/react/blob/346c7d4c43a0717302d446da9e7423a8e28d8996/packages/shared/ReactSymbols.js#L25
 const ProxyInstance = new WeakMap<
 	FunctionComponent<any>,
 	FunctionComponent<any>
+>();
+const ProxyForwardRef = new WeakMap<
+	ForwardRefExoticComponent<any>,
+	ForwardRefExoticComponent<any>
 >();
 const SupportsProxy = typeof Proxy === "function";
 
@@ -67,6 +73,22 @@ const ProxyHandlers = {
 
 function ProxyFunctionalComponent(Component: FunctionComponent<any>) {
 	return ProxyInstance.get(Component) || WrapWithProxy(Component);
+}
+function ProxyForwardRefComponent(Component: ForwardRefExoticComponent<any>) {
+	const current = ProxyForwardRef.get(Component);
+	if (current) {
+		return current;
+	}
+	const WrappedComponent: ForwardRefExoticComponent<any> = {
+		$$typeof: ReactForwardRefType,
+		// @ts-expect-error React lies about ForwardRefExtoricComponent type
+		render: ProxyFunctionalComponent(Component.render),
+	};
+
+	ProxyForwardRef.set(Component, WrappedComponent);
+	ProxyForwardRef.set(WrappedComponent, WrappedComponent);
+
+	return WrappedComponent;
 }
 function WrapWithProxy(Component: FunctionComponent<any>) {
 	if (SupportsProxy) {
@@ -168,7 +190,19 @@ function WrapJsx<T>(jsx: T): T {
 		}
 
 		if (type && typeof type === "object" && type.$$typeof === ReactLazyType) {
-			return jsx.call(jsx, ProxyFunctionalComponent(type._init(type._payload)), props, ...rest);
+			return jsx.call(
+				jsx,
+				ProxyFunctionalComponent(type._init(type._payload)),
+				props,
+				...rest
+			);
+		}
+		if (
+			type &&
+			typeof type === "object" &&
+			type.$$typeof === ReactForwardRefType
+		) {
+			return jsx.call(jsx, ProxyForwardRefComponent(type), props, ...rest);
 		}
 
 		if (typeof type === "string" && props) {
