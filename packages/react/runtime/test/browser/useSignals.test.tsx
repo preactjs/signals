@@ -1,4 +1,4 @@
-import { createElement, Fragment } from "react";
+import { useRef, createElement, Fragment } from "react";
 import { Signal, signal, batch } from "@preact/signals-core";
 import { useSignals } from "@preact/signals-react/runtime";
 import {
@@ -451,6 +451,78 @@ describe("useSignals", () => {
 			});
 		});
 		expect(scratch.innerHTML).to.equal("<div>Hello John!</div>");
+	});
+
+	it("(managed) should work with components that use render props", async () => {
+		function AutoFocusWithin({
+			children,
+		}: {
+			children: (setRef: (...args: any[]) => void) => any;
+		}) {
+			const setRef = useRef(() => {}).current;
+			return children(setRef);
+		}
+
+		const name = signal("John");
+		function App() {
+			const e = useSignals();
+			try {
+				return (
+					<AutoFocusWithin>
+						{setRef => <div ref={setRef}>Hello {name.value}</div>}
+					</AutoFocusWithin>
+				);
+			} finally {
+				e.f();
+			}
+		}
+
+		await render(<App />);
+		expect(scratch.innerHTML).to.equal("<div>Hello John</div>");
+
+		await act(() => {
+			name.value = "Jane";
+		});
+		expect(scratch.innerHTML).to.equal("<div>Hello Jane</div>");
+
+		await act(() => {
+			name.value = "John";
+		});
+		expect(scratch.innerHTML).to.equal("<div>Hello John</div>");
+	});
+
+	it("(unmanaged) should work with components that use render props", async () => {
+		function AutoFocusWithin({
+			children,
+		}: {
+			children: (setRef: (...args: any[]) => void) => any;
+		}) {
+			const setRef = useRef(() => {}).current;
+			return children(setRef);
+		}
+
+		const name = signal("John");
+		function App() {
+			useSignals();
+			return (
+				<AutoFocusWithin>
+					{setRef => <div ref={setRef}>Hello {name.value}</div>}
+				</AutoFocusWithin>
+			);
+		}
+
+		await render(<App />);
+		expect(scratch.innerHTML).to.equal("<div>Hello John</div>");
+
+		await act(() => {
+			name.value = "Jane";
+		});
+		expect(scratch.innerHTML).to.equal("<div>Hello Jane</div>");
+
+		await act(() => {
+			name.value = "John";
+		});
+		expect(scratch.innerHTML).to.equal("<div>Hello John</div>");
 	});
 
 	describe("using hooks that call useSignal in components that call useSignals", () => {
