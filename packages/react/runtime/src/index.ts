@@ -76,25 +76,7 @@ export interface EffectStore {
 	[symDispose](): void;
 }
 
-let finishUpdate: (() => void) | undefined;
-
-function setCurrentStore(store?: EffectStore) {
-	// TODO: Clear out finishUpdate before invoking it, since calling finishUpdate
-	// could invoke additional rerenders if signals were updated while this store was active.
-	//
-	// let prevFinishUpdate = finishUpdate;
-	// finishUpdate = undefined;
-	// // end tracking for the current update:
-	// if (prevFinishUpdate) prevFinishUpdate();
-
-	// end tracking for the current update:
-	if (finishUpdate) finishUpdate();
-
-	// start tracking the new update:
-	finishUpdate = store && store.effect._start();
-}
-
-const clearCurrentStore = () => setCurrentStore();
+let currentStore: EffectStore | undefined;
 
 /**
  * A redux-like store whose store value is a positive 32bit integer (a
@@ -119,6 +101,7 @@ const clearCurrentStore = () => setCurrentStore();
  */
 function createEffectStore(_usage?: EffectStoreUsage): EffectStore {
 	let effectInstance!: Effect;
+	let endEffect: (() => void) | undefined;
 	let version = 0;
 	let onChangeNotifyReact: (() => void) | undefined;
 
@@ -173,12 +156,21 @@ function createEffectStore(_usage?: EffectStoreUsage): EffectStore {
 			// - 2 -> 0: ? do nothing since it'll be captured by current effect store?
 			// - 2 -> 1: capture & restore (e.g. hook calls renderToStaticMarkup)
 			// - 2 -> 2: capture & restore (e.g. nested hook calls)
+
+			currentStore?.f();
+
+			endEffect = effectInstance._start();
+			currentStore = this;
 		},
 		f() {
-			clearCurrentStore();
+			endEffect?.();
+			endEffect = undefined;
+			if (currentStore == this) {
+				currentStore = undefined;
+			}
 		},
 		[symDispose]() {
-			clearCurrentStore();
+			this.f();
 		},
 	};
 }
@@ -207,8 +199,17 @@ function createEmptyEffectStore(): EffectStore {
 
 const emptyEffectStore = createEmptyEffectStore();
 
-let finalCleanup: Promise<void> | undefined;
 const _queueMicroTask = Promise.prototype.then.bind(Promise.resolve());
+
+let finalCleanup: Promise<void> | undefined;
+export function ensureFinalCleanup() {
+	if (!finalCleanup) {
+		finalCleanup = _queueMicroTask(() => {
+			finalCleanup = undefined;
+			currentStore?.f();
+		});
+	}
+}
 
 /**
  * Custom hook to create the effect to track signals used during render and
@@ -217,13 +218,7 @@ const _queueMicroTask = Promise.prototype.then.bind(Promise.resolve());
 export function _useSignalsImplementation(
 	_usage?: EffectStoreUsage
 ): EffectStore {
-	clearCurrentStore();
-	if (!finalCleanup) {
-		finalCleanup = _queueMicroTask(() => {
-			finalCleanup = undefined;
-			clearCurrentStore();
-		});
-	}
+	ensureFinalCleanup();
 
 	const storeRef = useRef<EffectStore>();
 	if (storeRef.current == null) {
@@ -232,7 +227,7 @@ export function _useSignalsImplementation(
 
 	const store = storeRef.current;
 	useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
-	setCurrentStore(store);
+	store._start();
 
 	return store;
 }
