@@ -79,8 +79,17 @@ export interface EffectStore {
 let finishUpdate: (() => void) | undefined;
 
 function setCurrentStore(store?: EffectStore) {
+	// TODO: Clear out finishUpdate before invoking it, since calling finishUpdate
+	// could invoke additional rerenders if signals were updated while this store was active.
+	//
+	// let prevFinishUpdate = finishUpdate;
+	// finishUpdate = undefined;
+	// // end tracking for the current update:
+	// if (prevFinishUpdate) prevFinishUpdate();
+
 	// end tracking for the current update:
 	if (finishUpdate) finishUpdate();
+
 	// start tracking the new update:
 	finishUpdate = store && store.effect._start();
 }
