@@ -1,4 +1,4 @@
-import { useRef, createElement, Fragment } from "react";
+import { useRef, createElement, Fragment, useState } from "react";
 import { Signal, signal, batch } from "@preact/signals-core";
 import { useSignals } from "@preact/signals-react/runtime";
 import {
@@ -523,6 +523,74 @@ describe("useSignals", () => {
 			name.value = "John";
 		});
 		expect(scratch.innerHTML).to.equal("<div>Hello John</div>");
+	});
+
+	it.only("(unmanaged) should work with rerenders that update signals before async final cleanup", async () => {
+		// Cursed/problematic ordering:
+		// 1. onClick callback
+		// 1a. call setState (queues sync work at end of event handler in React)
+		// 2b. await Promise.resolve();
+		// 3. React flushes sync callbacks and rerenders component
+		// 3a. Start useSignals effect & start batch
+		// 4. Resolve promises resumes and sets signal value
+		// 4a. In batch, so mark subscribers as needing update
+		// 5. useSignals finalCleanup runs
+		// 5a. finishEffect runs
+		// 5aa. endBatch and call subscribers with signal update
+		// 5ab. usSignals + useSyncExternalStore calls onChangeNotifyReact
+		// 5ac. React sync rerenders component
+		// 5ad. useSignals effect runs
+		// 5ae. finishEffect called again (evalContext == null but this == effectInstance)
+		// BOOM! Error thrown
+
+		let asyncOp: Promise<void>;
+		// const delay = (ms = 0) => new Promise(r => setTimeout(r, ms));
+		const delay = () => Promise.resolve();
+		async function testAsync(cb: () => any) {
+			asyncOp = delay().then(() => cb());
+		}
+
+		const count = signal(0);
+
+		function C() {
+			console.log("rendering C");
+			useSignals();
+			const [loading, setLoading] = useState(false);
+
+			const onClick = () => {
+				setLoading(true);
+				console.log("onClick");
+				testAsync(() => {
+					console.log("setSignal");
+					count.value += 1;
+					// setLoading(false);
+				});
+			};
+
+			return (
+				<>
+					<p>{count.value}</p>
+					<button disabled={loading} onClick={onClick}>
+						{loading ? "loading..." : "increment"}
+					</button>
+				</>
+			);
+		}
+
+		await render(<C />);
+		expect(scratch.innerHTML).to.equal("<p>0</p><button>increment</button>");
+
+		await act(() => {
+			scratch.querySelector("button")!.click();
+		});
+		expect(scratch.innerHTML).to.equal(
+			`<p>0</p><button disabled="">loading...</button>`
+		);
+
+		console.log("wait start");
+		await asyncOp!;
+		console.log("wait finish");
+		expect(scratch.innerHTML).to.equal("<p>1</p><button>increment</button>");
 	});
 
 	describe("using hooks that call useSignal in components that call useSignals", () => {
