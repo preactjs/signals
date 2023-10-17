@@ -546,24 +546,22 @@ describe("useSignals", () => {
 		const count = signal(0);
 
 		function C() {
-			console.log("rendering C");
 			useSignals();
-			const [loading, setLoading] = useState(false);
+			const [, setState] = useState(false);
 
 			const onClick = async () => {
-				setLoading(true);
-				console.log("onClick");
+				setState(true);
 				await Promise.resolve();
-				console.log("setSignal");
 				count.value += 1;
+				// Note, don't set state here cuz it'll cause an early rerender that
+				// won't trigger the bug. The rerender needs to happen during the
+				// finalCleanup's call to endEffect.
 			};
 
 			return (
 				<>
 					<p>{count.value}</p>
-					<button disabled={loading} onClick={onClick}>
-						{loading ? "loading..." : "increment"}
-					</button>
+					<button onClick={onClick}>increment</button>
 				</>
 			);
 		}
@@ -574,12 +572,7 @@ describe("useSignals", () => {
 		await act(() => {
 			scratch.querySelector("button")!.click();
 		});
-		expect(scratch.innerHTML).to.equal(
-			`<p>0</p><button disabled="">loading...</button>`
-		);
-
-		// Do I need to do something here before this assertion?
-		expect(scratch.innerHTML).to.equal("<p>1</p><button>increment</button>");
+		expect(scratch.innerHTML).to.equal(`<p>1</p><button>increment</button>`);
 	});
 
 	describe("using hooks that call useSignal in components that call useSignals", () => {
