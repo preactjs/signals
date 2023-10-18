@@ -172,30 +172,65 @@ function createEffectStore(_usage: EffectStoreUsage): EffectStore {
 			return version;
 		},
 		_start() {
-			// TODO: Expand this documentation
+			// In general, we want to support two kinds of usages of useSignals:
+			//
+			// 1. Managed: calling useSignals in a component or hook body wrapped in a
+			//    try/finally (like what the react-transform plugin does)
+			//
+			// 2. Unmanaged: Calling useSignals directly without wrapping in a
+			//    try/finally
+			//
+			// For #1 we finish the effect in the finally block of the component or
+			// hook body. For #2 we finish the effect in the next useSignals call or
+			// after a microtask.
+			//
+			// There are different tradeoffs which each approach. Using a try/finally
+			// ensures that only signals used in the component or hook body are
+			// tracked. However, signals accessed in render props are missed because
+			// the render prop is invoked in another component that may or may not
+			// realize it is rendering signals accessed in the render prop it is
+			// given.
+			//
+			// The other approach is to call useSignals directly without wrapping in a
+			// try/finally. This approach is easier to manually write in situations
+			// where a build step isn't available but does open up the possibility of
+			// catching signals accessed in other code before the effect is closed
+			// (e.g. in a layout effect). Most situations where this could happen are
+			// generally consider bad patterns or bugs. For example, using a signal in
+			// a component and not having a call to `useSignals` would be an bug. Or
+			// using a signal in `useLayoutEffect` is generally not recommended since
+			// that layout effect won't update when the signals' value change.
+			//
+			// To support both approaches, we need to track how each invocation of
+			// useSignals is used, so we can properly transition between different
+			// kinds of usages.
+			//
+			// The following table shows the different scenarios and how we should
+			// handle them. See the comments for `EffectStoreUsage` for description of
+			// each number, which corresponds to a value in that enum.
+			//
+			// prev -> this: action
 			//
 			// - 0 -> 0: finish previous effect (unknown to unknown)
 			//
 			// - 0 -> 1: finish previous effect
-			//   Assume previous invocation was another component or hook from another
-			//   component. Nested component renders (renderToStaticMarkup) not
-			//   supported with bare useSignals calls.
 			//
-			//   TODO: this breaks the workaround for render props that contain signals.
-			//   If a component renders a managed child, then a component with a render
-			//   prop, the signal in the render prop won't be tracked by the parents
-			//   useSignals call.
+			//   Assume previous invocation was another component or hook from another
+			//   component. Nested component renders (renderToStaticMarkup within a
+			//   component's render) not supported with bare useSignals calls.
+			//
 			//
 			// - 0 -> 2: capture & restore
+			//
 			//   Previous invocation could be a component or a hook. Either way,
 			//   restore it after our invocation so that it can continue to capture
 			//   any signals after we exit.
 			//
-			// - 1 -> 0: ? do nothing since it'll be captured by current effect store?
+			// - 1 -> 0: Do nothing. Signals already captured by current effect store
 			// - 1 -> 1: capture & restore (e.g. component calls renderToStaticMarkup)
 			// - 1 -> 2: capture & restore (e.g. hook)
 			//
-			// - 2 -> 0: ? do nothing since it'll be captured by current effect store?
+			// - 2 -> 0: Do nothing. Signals already captured by current effect store
 			// - 2 -> 1: capture & restore (e.g. hook calls renderToStaticMarkup)
 			// - 2 -> 2: capture & restore (e.g. nested hook calls)
 
