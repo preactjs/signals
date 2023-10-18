@@ -92,6 +92,25 @@ export interface EffectStore {
 
 let currentStore: EffectStore | undefined;
 
+function startComponentEffect(
+	prevStore: EffectStore | undefined,
+	nextStore: EffectStore
+) {
+	const endEffect = nextStore.effect._start();
+	currentStore = nextStore;
+
+	return finishComponentEffect.bind(nextStore, prevStore, endEffect);
+}
+
+function finishComponentEffect(
+	this: EffectStore,
+	prevStore: EffectStore | undefined,
+	endEffect: () => void
+) {
+	endEffect();
+	currentStore = prevStore;
+}
+
 /**
  * A redux-like store whose store value is a positive 32bit integer (a
  * 'version').
@@ -115,12 +134,9 @@ let currentStore: EffectStore | undefined;
  */
 function createEffectStore(_usage: EffectStoreUsage): EffectStore {
 	let effectInstance!: Effect;
+	let endEffect: (() => void) | undefined;
 	let version = 0;
 	let onChangeNotifyReact: (() => void) | undefined;
-
-	let doRestore = false;
-	let prevStore: EffectStore | undefined;
-	let endEffect: (() => void) | undefined;
 
 	let unsubscribe = effect(function (this: Effect) {
 		effectInstance = this;
@@ -156,7 +172,7 @@ function createEffectStore(_usage: EffectStoreUsage): EffectStore {
 			return version;
 		},
 		_start() {
-			// TODO: implement state machine to transition between effect stores:
+			// TODO: Expand this documentation
 			//
 			// - 0 -> 0: finish previous effect (unknown to unknown)
 			//
@@ -183,22 +199,8 @@ function createEffectStore(_usage: EffectStoreUsage): EffectStore {
 			// - 2 -> 1: capture & restore (e.g. hook calls renderToStaticMarkup)
 			// - 2 -> 2: capture & restore (e.g. nested hook calls)
 
-			// ------------------------------
-
-			// currentStore?.f();
-			// endEffect = effectInstance._start();
-			// currentStore = this;
-
-			// ------------------------------
-
 			if (currentStore == undefined) {
-				doRestore = true;
-				prevStore = undefined;
-
-				// first effect store
-				endEffect = effectInstance._start();
-				currentStore = this;
-
+				endEffect = startComponentEffect(undefined, this);
 				return;
 			}
 
@@ -209,14 +211,9 @@ function createEffectStore(_usage: EffectStoreUsage): EffectStore {
 				(prevUsage == UNMANAGED && thisUsage == UNMANAGED) || // 0 -> 0
 				(prevUsage == UNMANAGED && thisUsage == MANAGED_COMPONENT) // 0 -> 1
 			) {
-				// finish previous effect (unknown to unknown)
+				// finish previous effect
 				currentStore.f();
-
-				doRestore = true;
-				prevStore = undefined;
-
-				endEffect = effectInstance._start();
-				currentStore = this;
+				endEffect = startComponentEffect(undefined, this);
 			} else if (
 				(prevUsage == MANAGED_COMPONENT && thisUsage == UNMANAGED) || // 1 -> 0
 				(prevUsage == MANAGED_HOOK && thisUsage == UNMANAGED) // 2 -> 0
@@ -224,22 +221,12 @@ function createEffectStore(_usage: EffectStoreUsage): EffectStore {
 				// Do nothing since it'll be captured by current effect store
 			} else {
 				// nested scenarios, so capture and restore the previous effect store
-				doRestore = true;
-				prevStore = currentStore;
-
-				endEffect = effectInstance._start();
-				currentStore = this;
+				endEffect = startComponentEffect(currentStore, this);
 			}
 		},
 		f() {
 			endEffect?.();
-			if (doRestore) {
-				currentStore = prevStore;
-			}
-
-			prevStore = undefined;
 			endEffect = undefined;
-			doRestore = false;
 		},
 		[symDispose]() {
 			this.f();
