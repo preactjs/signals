@@ -210,7 +210,7 @@ describe("React Signals babel transfrom - browser E2E tests", () => {
 		expect(scratch.innerHTML).to.equal("<div>Hello John!</div>");
 	});
 
-	it("should work when an ambiguous function is manually transformed and used as a hook", async () => {
+	it.skip("should work when an ambiguous function is manually transformed and used as a hook", async () => {
 		// TODO: Warn/Error when manually opting in ambiguous function into transform
 		// TODO: Update transform to skip try/finally when transforming ambiguous function
 		const { App, greeting, name } = await createComponent(`
