@@ -43,21 +43,35 @@ interface Effect {
 }
 
 /**
- * An enum defining how this store is used:
- * - 0: unknown usage (bare useSignals call )
- *
- * - 1: component usage + try/finally
- *
- *   Invoked directly in a component's render method whose body is wrapped in a
- *   try/finally that finishes the effect store returned by the hook (e.g. what
- *   react-transform does)
- *
- * - 2: hook usage + try/finally
- *
- *   Invoked in a hook whose body is wrapped in a try/finally that finishes the
- *   effect store returned by the hook (e.g. what react-transform does)
+ * Use this flag to represent a bare `useSignals` call that doesn't manually
+ * close its effect store and relies on auto-closing when the next useSignals is
+ * called or after a microtask
  */
-type EffectStoreUsage = 0 | 1 | 2;
+const UNMANAGED = 0;
+/**
+ * Use this flag to represent a `useSignals` call that is manually closed by a
+ * try/finally block in a component's render method. This is the default usage
+ * that the react-transform plugin uses.
+ */
+const MANAGED_COMPONENT = 1;
+/**
+ * Use this flag to represent a `useSignals` call that is manually closed by a
+ * try/finally block in a hook body. This is the default usage that the
+ * react-transform plugin uses.
+ */
+const MANAGED_HOOK = 2;
+
+/**
+ * An enum defining how this store is used. See the documentation for each enum
+ * member for more details.
+ * @see {@link UNMANAGED}
+ * @see {@link MANAGED_COMPONENT}
+ * @see {@link MANAGED_HOOK}
+ */
+type EffectStoreUsage =
+	| typeof UNMANAGED
+	| typeof MANAGED_COMPONENT
+	| typeof MANAGED_HOOK;
 
 export interface EffectStore {
 	/**
@@ -65,8 +79,8 @@ export interface EffectStore {
 	 * component's body or hook body. See the comment on `EffectStoreUsage` for
 	 * more details.
 	 */
-	_usage?: EffectStoreUsage;
-	effect: Effect;
+	readonly _usage: EffectStoreUsage;
+	readonly effect: Effect;
 	subscribe(onStoreChange: () => void): () => void;
 	getSnapshot(): number;
 	/** startEffect - begin tracking signals used in this component */
@@ -99,11 +113,14 @@ let currentStore: EffectStore | undefined;
  * invoked in a component's body or hook body. See the comment on
  * `EffectStoreUsage` for more details.
  */
-function createEffectStore(_usage?: EffectStoreUsage): EffectStore {
+function createEffectStore(_usage: EffectStoreUsage): EffectStore {
 	let effectInstance!: Effect;
-	let endEffect: (() => void) | undefined;
 	let version = 0;
 	let onChangeNotifyReact: (() => void) | undefined;
+
+	let doRestore = false;
+	let prevStore: EffectStore | undefined;
+	let endEffect: (() => void) | undefined;
 
 	let unsubscribe = effect(function (this: Effect) {
 		effectInstance = this;
@@ -142,32 +159,87 @@ function createEffectStore(_usage?: EffectStoreUsage): EffectStore {
 			// TODO: implement state machine to transition between effect stores:
 			//
 			// - 0 -> 0: finish previous effect (unknown to unknown)
+			//
 			// - 0 -> 1: finish previous effect
 			//   Assume previous invocation was another component or hook from another
 			//   component. Nested component renders (renderToStaticMarkup) not
 			//   supported with bare useSignals calls.
+			//
+			//   TODO: this breaks the workaround for render props that contain signals.
+			//   If a component renders a managed child, then a component with a render
+			//   prop, the signal in the render prop won't be tracked by the parents
+			//   useSignals call.
+			//
 			// - 0 -> 2: capture & restore
 			//   Previous invocation could be a component or a hook. Either way,
 			//   restore it after our invocation so that it can continue to capture
 			//   any signals after we exit.
+			//
 			// - 1 -> 0: ? do nothing since it'll be captured by current effect store?
 			// - 1 -> 1: capture & restore (e.g. component calls renderToStaticMarkup)
 			// - 1 -> 2: capture & restore (e.g. hook)
+			//
 			// - 2 -> 0: ? do nothing since it'll be captured by current effect store?
 			// - 2 -> 1: capture & restore (e.g. hook calls renderToStaticMarkup)
 			// - 2 -> 2: capture & restore (e.g. nested hook calls)
 
-			currentStore?.f();
+			// ------------------------------
 
-			endEffect = effectInstance._start();
-			currentStore = this;
+			// currentStore?.f();
+			// endEffect = effectInstance._start();
+			// currentStore = this;
+
+			// ------------------------------
+
+			if (currentStore == undefined) {
+				doRestore = true;
+				prevStore = undefined;
+
+				// first effect store
+				endEffect = effectInstance._start();
+				currentStore = this;
+
+				return;
+			}
+
+			const prevUsage = currentStore._usage;
+			const thisUsage = this._usage;
+
+			if (
+				(prevUsage == UNMANAGED && thisUsage == UNMANAGED) || // 0 -> 0
+				(prevUsage == UNMANAGED && thisUsage == MANAGED_COMPONENT) // 0 -> 1
+			) {
+				// finish previous effect (unknown to unknown)
+				currentStore.f();
+
+				doRestore = true;
+				prevStore = undefined;
+
+				endEffect = effectInstance._start();
+				currentStore = this;
+			} else if (
+				(prevUsage == MANAGED_COMPONENT && thisUsage == UNMANAGED) || // 1 -> 0
+				(prevUsage == MANAGED_HOOK && thisUsage == UNMANAGED) // 2 -> 0
+			) {
+				// Do nothing since it'll be captured by current effect store
+			} else {
+				// nested scenarios, so capture and restore the previous effect store
+				doRestore = true;
+				prevStore = currentStore;
+
+				endEffect = effectInstance._start();
+				currentStore = this;
+			}
 		},
 		f() {
 			endEffect?.();
-			endEffect = undefined;
-			if (currentStore == this) {
-				currentStore = undefined;
+			if (doRestore) {
+				currentStore = prevStore;
 			}
+
+			prevStore = undefined;
+			endEffect = undefined;
+			doRestore = false;
 		},
 		[symDispose]() {
 			this.f();
@@ -177,6 +249,7 @@ function createEffectStore(_usage?: EffectStoreUsage): EffectStore {
 
 function createEmptyEffectStore(): EffectStore {
 	return {
+		_usage: UNMANAGED,
 		effect: {
 			_sources: undefined,
 			_callback() {},
@@ -216,7 +289,7 @@ export function ensureFinalCleanup() {
  * subscribe to changes to rerender the component when the signals change.
  */
 export function _useSignalsImplementation(
-	_usage?: EffectStoreUsage
+	_usage: EffectStoreUsage = UNMANAGED
 ): EffectStore {
 	ensureFinalCleanup();
 
