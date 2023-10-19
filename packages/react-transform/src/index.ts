@@ -193,7 +193,7 @@ function isValueMemberExpression(
 	);
 }
 
-const tryCatchTemplate = template.statements`var STORE_IDENTIFIER = HOOK_IDENTIFIER();
+const tryCatchTemplate = template.statements`var STORE_IDENTIFIER = HOOK_IDENTIFIER(HOOK_USAGE);
 try {
 	BODY
 } finally {
@@ -212,6 +212,11 @@ function wrapInTryFinally(
 		tryCatchTemplate({
 			STORE_IDENTIFIER: stopTrackingIdentifier,
 			HOOK_IDENTIFIER: get(state, getHookIdentifier)(),
+			HOOK_USAGE: isCustomHook(path)
+				? "2"
+				: isComponentFunction(path)
+				? "1"
+				: "",
 			BODY: t.isBlockStatement(path.node.body)
 				? path.node.body.body // TODO: Is it okay to elide the block statement here?
 				: t.returnStatement(path.node.body),
