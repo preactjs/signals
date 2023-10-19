@@ -296,7 +296,7 @@ export function useSignals(_usage: EffectStoreUsage = UNMANAGED): EffectStore {
  * A wrapper component that renders a Signal's value directly as a Text node or JSX.
  */
 function SignalValue({ data }: { data: Signal }) {
-	const store = useSignals();
+	const store = useSignals(1);
 	try {
 		return data.value;
 	} finally {
