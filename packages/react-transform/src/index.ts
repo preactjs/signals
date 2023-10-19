@@ -284,7 +284,7 @@ function isValueMemberExpression(
 	);
 }
 
-const tryCatchTemplate = template.statements`var STORE_IDENTIFIER = HOOK_IDENTIFIER();
+const tryCatchTemplate = template.statements`var STORE_IDENTIFIER = HOOK_IDENTIFIER(HOOK_USAGE);
 try {
 	BODY
 } finally {
@@ -294,7 +294,8 @@ try {
 function wrapInTryFinally(
 	t: typeof BabelTypes,
 	path: NodePath<FunctionLike>,
-	state: PluginPass
+	state: PluginPass,
+	functionName: string | null
 ): FunctionLike {
 	const stopTrackingIdentifier = path.scope.generateUidIdentifier("effect");
 
@@ -303,6 +304,11 @@ function wrapInTryFinally(
 		tryCatchTemplate({
 			STORE_IDENTIFIER: stopTrackingIdentifier,
 			HOOK_IDENTIFIER: get(state, getHookIdentifier)(),
+			HOOK_USAGE: isCustomHookName(functionName)
+				? "2"
+				: isComponentName(functionName)
+				? "1"
+				: "",
 			BODY: t.isBlockStatement(path.node.body)
 				? path.node.body.body // TODO: Is it okay to elide the block statement here?
 				: t.returnStatement(path.node.body),
@@ -349,7 +355,7 @@ function transformFunction(
 		// signals for us instead.
 		newFunction = prependUseSignals(t, path, state);
 	} else if (isComponentName(functionName)) {
-		newFunction = wrapInTryFinally(t, path, state);
+		newFunction = wrapInTryFinally(t, path, state, functionName);
 	} else {
 		// Since we can't determine if this function is a component/hook or not,
 		// we'll just prepend the useSignals call so it will work as either

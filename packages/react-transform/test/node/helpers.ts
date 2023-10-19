@@ -160,18 +160,17 @@ interface NodeTypes {
 }
 
 type Node = NodeTypes[keyof NodeTypes];
+type ComponentNode = NodeTypes[
+	| "FuncDeclComp"
+	| "FuncExpComp"
+	| "ArrowComp"
+	| "ObjectMethodComp"];
 
 type Generators = {
 	[key in keyof NodeTypes]: (config: NodeTypes[key]) => InputOutput;
 };
 
-function transformComponent(
-	config:
-		| FuncDeclComponent
-		| FuncExpComponent
-		| ArrowFuncComponent
-		| ObjMethodComponent
-): string {
+function transformComponent(config: ComponentNode): string {
 	const { type, body } = config;
 	const addReturn = type === "ArrowComp" && config.return === "expression";
 
@@ -179,7 +178,7 @@ function transformComponent(
 		return `_useSignals();
 		${addReturn ? "return " : ""}${body}`;
 	} else {
-		return `var _effect = _useSignals();
+		return `var _effect = _useSignals(1);
 		try {
 			${addReturn ? "return " : ""}${body}
 		} finally {
