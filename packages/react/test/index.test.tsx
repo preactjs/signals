@@ -2,7 +2,16 @@
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
 import { signal, useComputed, useSignalEffect } from "@preact/signals-react";
-import { createElement, useMemo, memo, StrictMode, createRef } from "react";
+import {
+	createElement,
+	useMemo,
+	memo,
+	StrictMode,
+	createRef,
+	forwardRef,
+	lazy,
+	Suspense,
+} from "react";
 import { createRoot, Root } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { act } from "react-dom/test-utils";
@@ -160,6 +169,79 @@ describe("@preact/signals-react", () => {
 			expect(scratch.textContent).to.equal("bar");
 		});
 
+		it("should update components wrapped with memo via signals", async () => {
+			const sig = signal("foo");
+
+			const Inner = memo(() => {
+				const value = sig.value;
+				return <p>{value}</p>;
+			});
+
+			function App() {
+				return <Inner />;
+			}
+
+			render(<App />);
+			expect(scratch.textContent).to.equal("foo");
+
+			act(() => {
+				sig.value = "bar";
+			});
+			expect(scratch.textContent).to.equal("bar");
+		});
+		it("should update components wrapped with lazy via signals", async () => {
+			const sig = signal("foo");
+
+			const _Inner = () => {
+				const value = sig.value;
+				return <p>{value}</p>;
+			};
+			let pr: undefined | Promise<unknown>;
+			const Inner = lazy(() => (pr = Promise.resolve({ default: _Inner })));
+
+			function App() {
+				return (
+					<Suspense>
+						<Inner />
+					</Suspense>
+				);
+			}
+
+			render(<App />);
+			expect(pr).instanceOf(Promise);
+			expect(scratch.textContent).not.to.equal("foo");
+			await act(async () => {
+				await pr;
+			});
+			expect(scratch.textContent).to.equal("foo");
+
+			act(() => {
+				sig.value = "bar";
+			});
+			expect(scratch.textContent).to.equal("bar");
+		});
+
+		it("should update components wrapped with forwardRef via signals", async () => {
+			const sig = signal("foo");
+
+			const Inner = forwardRef(() => {
+				const value = sig.value;
+				return <p>{value}</p>;
+			});
+
+			function App() {
+				return <Inner />;
+			}
+
+			render(<App />);
+			expect(scratch.textContent).to.equal("foo");
+
+			act(() => {
+				sig.value = "bar";
+			});
+			expect(scratch.textContent).to.equal("bar");
+		});
+
 		it("should consistently rerender in strict mode", async () => {
 			const sig = signal<string>(null!);
 
@@ -184,6 +266,26 @@ describe("@preact/signals-react", () => {
 			const sig = signal<string>(null!);
 
 			const Test = memo(() => <p>{sig.value}</p>);
+			const App = () => (
+				<StrictMode>
+					<Test />
+				</StrictMode>
+			);
+
+			for (let i = 0; i < 3; i++) {
+				const value = `${i}`;
+
+				act(() => {
+					sig.value = value;
+					render(<App />);
+				});
+				expect(scratch.textContent).to.equal(value);
+			}
+		});
+		it("should consistently rerender in strict mode (with forwardRef)", async () => {
+			const sig = signal<string>(null!);
+
+			const Test = forwardRef(() => <p>{sig.value}</p>);
 			const App = () => (
 				<StrictMode>
 					<Test />
