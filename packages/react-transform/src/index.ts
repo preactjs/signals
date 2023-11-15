@@ -8,10 +8,6 @@ import {
 } from "@babel/core";
 import { isModule, addNamed } from "@babel/helper-module-imports";
 
-// TODO:
-// - how to trigger rerenders on attributes change if transform never sees
-//   `.value`?
-
 interface PluginArgs {
 	types: typeof BabelTypes;
 	template: typeof BabelTemplate;
@@ -53,11 +49,6 @@ type FunctionLike =
 	| BabelTypes.FunctionExpression
 	| BabelTypes.FunctionDeclaration;
 
-// TODO: Change these functions to instead be:
-// - getFunctionNodeName(node: NodePath<FunctionLike>): string | null
-// - getFunctionNameFromParent(node: NodePath<Node>): string | null
-// - getFunctionName(node: NodePath<FunctionLike>): string | null
-
 /**
  * Simple "best effort" to get the base name of a file path. Not fool proof but
  * works in browsers and servers. Good enough for our purposes.
@@ -66,54 +57,30 @@ function basename(filename: string | undefined): string | undefined {
 	return filename?.split(/[\\/]/).pop();
 }
 
-/**
- * Returns the name of the function if it is a function declaration with a name or
- * a [arrow] function expression with a variable declarator parent.
- */
-function getDirectFunctionName<T extends FunctionLike>(
-	path: NodePath<T>
-): string | null {
-	const parentPath = path.parentPath;
-	if (path.node.type === "FunctionDeclaration") {
-		return path.node.id?.name ?? null;
-	} else if (
-		(path.node.type === "ArrowFunctionExpression" ||
-			path.node.type === "FunctionExpression") &&
-		parentPath.node.type === "VariableDeclarator" &&
-		parentPath.node.id.type === "Identifier"
-	) {
-		return parentPath.node.id.name;
-	} else {
-		return null;
-	}
-}
-
 const DefaultExportSymbol = Symbol("DefaultExportSymbol");
 
 /**
- * Gets the name of the function if it is a function declaration with a name or
- * a [arrow] function expression with a variable declarator parent. If the
- * function is an inline default export (e.g. `export default () => {}`),
- * returns a symbol indicating it is a default export. If the function is an
- * anonymous function wrapped in higher order functions (e.g. memo(() => {}))
- * we'll climb through the higher order functions to find the name of the
- * variable that the function is assigned to, if any. Else returns null.
+ * If the function node has a name (i.e. is a function declaration with a
+ * name), return that. Else return null.
  */
-function getIndirectFunctionName(
-	path: NodePath<FunctionLike>
+function getFunctionNodeName(node: NodePath<FunctionLike>): string | null {
+	return node.node.type === "FunctionDeclaration" && node.node.id
+		? node.node.id.name
+		: null;
+}
+
+/**
+ * Given a function path's parent path, determine the "name" associated with the
+ * function. If the function is an inline default export (e.g. `export default
+ * () => {}`), returns a symbol indicating it is a default export. If the
+ * function is an anonymous function wrapped in higher order functions (e.g.
+ * memo(() => {})) we'll climb through the higher order functions to find the
+ * name of the variable that the function is assigned to, if any. Other cases
+ * handled too (see implementation). Else returns null.
+ */
+function getFunctionNameFromParent(
+	parentPath: NodePath<BabelTypes.Node>
 ): string | null | typeof DefaultExportSymbol {
-	let directName;
-	if (
-		path.node.type === "FunctionDeclaration" ||
-		path.node.type === "ArrowFunctionExpression" ||
-		path.node.type === "FunctionExpression"
-	) {
-		directName = getDirectFunctionName(path);
-	}
-
-	if (directName) return directName;
-
-	let parentPath = path.parentPath;
 	if (
 		parentPath.node.type === "VariableDeclarator" &&
 		parentPath.node.id.type === "Identifier"
@@ -126,47 +93,37 @@ function getIndirectFunctionName(
 		return parentPath.node.left.name;
 	} else if (parentPath.node.type === "ExportDefaultDeclaration") {
 		return DefaultExportSymbol;
-	} else if (parentPath.node.type === "CallExpression") {
+	} else if (
+		parentPath.node.type === "CallExpression" &&
+		parentPath.parentPath != null
+	) {
 		// If our parent is a Call Expression, then this function expression is
-		// wrapped in some higher order functions. Loop through the higher order
+		// wrapped in some higher order functions. Recurse through the higher order
 		// functions to determine if this expression is assigned to a name we can
 		// use as the function name
-		parentPath = path.parentPath;
-		while (parentPath.node.type === "CallExpression") {
-			if (parentPath.parentPath) {
-				parentPath = parentPath.parentPath;
-			} else {
-				return null;
-			}
-		}
-
-		// Now check again to see if we are at a variable declarator or assignment,
-		// or export default declaration
-		if (
-			parentPath.node.type === "VariableDeclarator" &&
-			parentPath.node.id.type === "Identifier"
-		) {
-			return parentPath.node.id.name;
-		} else if (
-			parentPath.node.type === "AssignmentExpression" &&
-			parentPath.node.left.type === "Identifier"
-		) {
-			return parentPath.node.left.name;
-		} else if (parentPath.node.type === "ExportDefaultDeclaration") {
-			return DefaultExportSymbol;
-		} else {
-			return null;
-		}
+		return getFunctionNameFromParent(parentPath.parentPath);
 	} else {
 		return null;
 	}
+}
+
+/* Determine the name of a function */
+function getFunctionName(
+	path: NodePath<FunctionLike>
+): string | typeof DefaultExportSymbol | null {
+	let nodeName = getFunctionNodeName(path);
+	if (nodeName) {
+		return nodeName;
+	}
+
+	return getFunctionNameFromParent(path.parentPath);
 }
 
 function fnNameStartsWithCapital(
 	path: NodePath<FunctionLike>,
 	filename: string | undefined
 ): boolean {
-	const name = getIndirectFunctionName(path);
+	const name = getFunctionName(path);
 	if (!name) return false;
 	if (name === DefaultExportSymbol) {
 		return basename(filename)?.match(/^[A-Z]/) != null ?? false;
@@ -177,7 +134,7 @@ function fnNameStartsWithUse(
 	path: NodePath<FunctionLike>,
 	filename: string | undefined
 ): boolean {
-	const name = getIndirectFunctionName(path);
+	const name = getFunctionName(path);
 	if (!name) return false;
 	if (name === DefaultExportSymbol) {
 		return basename(filename)?.match(/^use[A-Z]/) != null ?? false;
@@ -254,48 +211,6 @@ function isComponentFunction(
 	filename: string | undefined
 ): boolean {
 	return (
-		// Consider: Could also check length of node.params. Should be
-		// - 0: no props
-		// - 1: has props
-		// - 2: props + context, or props + ref
-		//
-		// TODO: Add tests for these cases:
-		//
-		// Examples for auto detect, auto opt-out, and manual opt-in:
-		// ```jsx
-		// const ReactMemoTest = memo(() => <p>{sig.value}</p>);
-		// const ReactMemoTest2 = memo(function () { return <p>{sig.value}</p>; });
-		// // Note: testing func expression with/without name
-		// const ReactMemoTest3 = memo(function A () { return <p>{sig.value}</p>; });
-		// export default memo(() => <p>{sig.value}</p>);
-		// export default () => {};
-		// export default function () {};
-		//
-		// // Plus other function types
-		// const Combined = forwardRef(memo(function A () { return <p>{sig.value}</p>; }));
-		//
-		// // Plus other function types
-		// let App;
-		// App = function () {}
-		// App = () => {}
-		// App = memo(() => <p>{sig.value}</p>);
-		//
-		// // Plus non-top-level functions
-		// it("should work", () => {
-		//   const Inner = memo(() => <p>{sig.value}</p>);
-		//   return <Inner />;
-		// });
-		//
-		// ```
-		//
-		// In general: Func declarations exist by themselves. Top level structures
-		// around [arrow] func expressions:
-		// - None, Export default, export named, object property, expression
-		//   statement, variable declarator, variable declaration, assignment
-		//   expression
-		// - all func expressions could be wrapped in call expressions
-		// - func expressions could have a name or not
-		// - arrows can have implicit return or not
 		getData(path.scope, containsJSX) === true && // Function contains JSX
 		fnNameStartsWithCapital(path, filename) // Function name indicates it's a component
 	);

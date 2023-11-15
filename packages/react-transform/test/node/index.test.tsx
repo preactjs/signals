@@ -266,8 +266,7 @@ describe.only("React Signals Babel Transform", () => {
 	});
 });
 
-// TODO:
-// - migrate hook tests
+// TODO: migrate hook tests
 
 describe("React Signals Babel Transform", () => {
 	describe("auto mode transformations", () => {

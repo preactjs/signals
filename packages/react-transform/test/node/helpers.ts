@@ -131,7 +131,7 @@ type Generators = {
 	[key in keyof NodeTypes]: (config: NodeTypes[key]) => InputOutput;
 };
 
-function transformBody(
+function transformComponent(
 	config: FuncDeclComponent | FuncExpComponent | ArrowFuncComponent
 ): string {
 	const { type, body } = config;
@@ -162,7 +162,7 @@ const codeGenerators: Generators = {
 	FuncDeclComp(config) {
 		const params = generateParams(config.params);
 		const inputBody = config.body;
-		const outputBody = transformBody(config);
+		const outputBody = transformComponent(config);
 		let comment = generateComment(config.comment);
 		return {
 			input: `${comment}function ${config.name}(${params}) {\n${inputBody}\n}`,
@@ -173,7 +173,7 @@ const codeGenerators: Generators = {
 		const name = config.name ?? "";
 		const params = generateParams(config.params);
 		const inputBody = config.body;
-		const outputBody = transformBody(config);
+		const outputBody = transformComponent(config);
 		return {
 			input: `(function ${name}(${params}) {\n${inputBody}\n})`,
 			transformed: `(function ${name}(${params}) {\n${outputBody}\n})`,
@@ -183,7 +183,7 @@ const codeGenerators: Generators = {
 		const params = generateParams(config.params);
 		const isExpBody = config.return === "expression";
 		const inputBody = isExpBody ? config.body : `{\n${config.body}\n}`;
-		const outputBody = transformBody(config);
+		const outputBody = transformComponent(config);
 		return {
 			input: `(${params}) => ${inputBody}`,
 			transformed: `(${params}) => {\n${outputBody}\n}`,
