@@ -1,4 +1,10 @@
-import { signal, computed, effect, Signal } from "@preact/signals-core";
+import {
+	signal,
+	computed,
+	effect,
+	Signal,
+	ReadonlySignal,
+} from "@preact/signals-core";
 import { useRef, useMemo, useEffect } from "react";
 import { useSyncExternalStore } from "use-sync-external-store/shim/index.js";
 import { isAutoSignalTrackingInstalled } from "./auto";
@@ -191,22 +197,22 @@ Object.defineProperties(Signal.prototype, {
 	ref: { configurable: true, value: null },
 });
 
-export function useSignals() {
+export function useSignals(): EffectStore {
 	if (isAutoSignalTrackingInstalled) return emptyEffectStore;
 	return _useSignalsImplementation();
 }
 
-export function useSignal<T>(value: T) {
+export function useSignal<T>(value: T): Signal<T> {
 	return useMemo(() => signal<T>(value), Empty);
 }
 
-export function useComputed<T>(compute: () => T) {
+export function useComputed<T>(compute: () => T): ReadonlySignal<T> {
 	const $compute = useRef(compute);
 	$compute.current = compute;
 	return useMemo(() => computed<T>(() => $compute.current()), Empty);
 }
 
-export function useSignalEffect(cb: () => void | (() => void)) {
+export function useSignalEffect(cb: () => void | (() => void)): void {
 	const callback = useRef(cb);
 	callback.current = cb;
 
