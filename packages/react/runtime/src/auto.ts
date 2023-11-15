@@ -6,7 +6,7 @@ import {
 import React from "react";
 import jsxRuntime from "react/jsx-runtime";
 import jsxRuntimeDev from "react/jsx-dev-runtime";
-import { EffectStore, useSignals, wrapJsx } from "./index";
+import { EffectStore, wrapJsx, _useSignalsImplementation } from "./index";
 
 export interface ReactDispatcher {
 	useRef: typeof React.useRef;
@@ -146,11 +146,15 @@ const dispatcherMachinePROD = createMachine({
 ```
 */
 
+export let isAutoSignalTrackingInstalled = false;
+
 let store: EffectStore | null = null;
 let lock = false;
 let currentDispatcher: ReactDispatcher | null = null;
 
 function installCurrentDispatcherHook() {
+	isAutoSignalTrackingInstalled = true;
+
 	Object.defineProperty(ReactInternals.ReactCurrentDispatcher, "current", {
 		get() {
 			return currentDispatcher;
@@ -171,7 +175,7 @@ function installCurrentDispatcherHook() {
 				isEnteringComponentRender(currentDispatcherType, nextDispatcherType)
 			) {
 				lock = true;
-				store = useSignals();
+				store = _useSignalsImplementation();
 				lock = false;
 			} else if (
 				isExitingComponentRender(currentDispatcherType, nextDispatcherType)
