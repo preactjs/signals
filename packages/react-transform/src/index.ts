@@ -145,16 +145,12 @@ function isOptedOutOfSignalTracking(path: NodePath | null): boolean {
 function isComponentFunction(path: NodePath<FunctionLike>): boolean {
 	return (
 		fnNameStartsWithCapital(path) && // Function name indicates it's a component
-		getData(path.scope, containsJSX) === true && // Function contains JSX
-		path.scope.parent === path.scope.getProgramParent() // Function is top-level
+		getData(path.scope, containsJSX) === true // Function contains JSX
 	);
 }
 
 function isCustomHook(path: NodePath<FunctionLike>): boolean {
-	return (
-		fnNameStartsWithUse(path) && // Function name indicates it's a hook
-		path.scope.parent === path.scope.getProgramParent()
-	); // Function is top-level
+	return fnNameStartsWithUse(path); // Function name indicates it's a hook
 }
 
 function shouldTransform(
