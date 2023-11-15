@@ -82,6 +82,13 @@ interface Assignment {
 	comment?: CommentKind;
 }
 
+interface MemberExpAssign {
+	type: "MemberExpAssign";
+	property: string;
+	body: InputOutput;
+	comment?: CommentKind;
+}
+
 interface ObjectProperty {
 	type: "ObjectProperty";
 	name: string;
@@ -101,19 +108,9 @@ interface ExportNamed {
 	comment?: CommentKind;
 }
 
-// TODO: add object method & member expression assignments? Note object prop and
-// obj method can have computed keys of arbitrary expressions. Probably can't
-// handle those automatically. Would need a comment to opt-in.
-type Node =
-	| FuncDeclComponent
-	| FuncExpComponent
-	| ArrowFuncComponent
-	| CallExp
-	| Variable
-	| Assignment
-	| ObjectProperty
-	| ExportDefault
-	| ExportNamed;
+// TODO: add object method? Note object prop and obj method can have computed
+// keys of arbitrary expressions. Probably can't handle those automatically.
+// Would need a comment to opt-in.
 
 interface NodeTypes {
 	FuncDeclComp: FuncDeclComponent;
@@ -124,8 +121,11 @@ interface NodeTypes {
 	ExportNamed: ExportNamed;
 	Variable: Variable;
 	Assignment: Assignment;
+	MemberExpAssign: MemberExpAssign;
 	ObjectProperty: ObjectProperty;
 }
+
+type Node = NodeTypes[keyof NodeTypes];
 
 type Generators = {
 	[key in keyof NodeTypes]: (config: NodeTypes[key]) => InputOutput;
@@ -212,6 +212,15 @@ const codeGenerators: Generators = {
 		return {
 			input: `${kind} ${config.name};\n ${comment}${config.name} = ${config.body.input}`,
 			transformed: `${kind} ${config.name};\n ${comment}${config.name} = ${config.body.transformed}`,
+		};
+	},
+	MemberExpAssign(config) {
+		const comment = generateComment(config.comment);
+		const isComputed = config.property.startsWith("[");
+		const property = isComputed ? config.property : `.${config.property}`;
+		return {
+			input: `${comment}obj.prop1${property} = ${config.body.input}`,
+			transformed: `${comment}obj.prop1${property} = ${config.body.transformed}`,
 		};
 	},
 	ObjectProperty(config) {
@@ -595,6 +604,123 @@ export function assignmentComp(config: CodeConfig): GeneratedCode[] {
 	return codeCases;
 }
 
+export function objAssignComp(config: CodeConfig): GeneratedCode[] {
+	const { name: baseName, comment } = config;
+	const codeCases: GeneratedCode[] = [];
+
+	const components = expressionComponents(config);
+	for (const c of components) {
+		codeCases.push({
+			name: codeTitle(c.name),
+			...generateCode({
+				type: "MemberExpAssign",
+				property: "Comp",
+				body: c,
+				comment,
+			}),
+		});
+	}
+
+	if (!config.auto) {
+		codeCases.push({
+			name: codeTitle(baseName, "function component with bad property name"),
+			...generateCode({
+				type: "MemberExpAssign",
+				property: "render",
+				comment,
+				body: generateCode({
+					type: "FuncExpComp",
+					body: "return <div>{signal.value}</div>",
+				}),
+			}),
+		});
+
+		codeCases.push({
+			name: codeTitle(baseName, "arrow function with bad property name"),
+			...generateCode({
+				type: "MemberExpAssign",
+				property: "render",
+				comment,
+				body: generateCode({
+					type: "ArrowComp",
+					return: "expression",
+					body: "<div>{signal.value}</div>",
+				}),
+			}),
+		});
+
+		codeCases.push({
+			name: codeTitle(
+				baseName,
+				"function component with bad computed property name"
+			),
+			...generateCode({
+				type: "MemberExpAssign",
+				property: "['render']",
+				body: generateCode({
+					type: "FuncExpComp",
+					body: "return <div>{signal.value}</div>",
+				}),
+				comment,
+			}),
+		});
+
+		codeCases.push({
+			name: codeTitle(
+				baseName,
+				"function component with dynamic computed property name"
+			),
+			...generateCode({
+				type: "MemberExpAssign",
+				property: "['Comp' + '1']",
+				body: generateCode({
+					type: "FuncExpComp",
+					body: "return <div>{signal.value}</div>",
+				}),
+				comment,
+			}),
+		});
+	} else {
+		codeCases.push({
+			name: codeTitle(
+				baseName,
+				"function component with computed property name"
+			),
+			...generateCode({
+				type: "MemberExpAssign",
+				property: "['Comp']",
+				body: generateCode({
+					type: "FuncExpComp",
+					body: "return <div>{signal.value}</div>",
+				}),
+				comment,
+			}),
+		});
+	}
+
+	// With HoC wrappers, we are testing the logic to find the component name. So
+	// only generate tests where the function body is correct ("auto" is true) and
+	// the name is either correct or bad.
+	const hocComponents = withCallExpWrappers({
+		...config,
+		auto: true,
+	});
+	const suffix = config.auto ? "" : "with bad variable name";
+	for (const c of hocComponents) {
+		codeCases.push({
+			name: codeTitle(c.name, suffix),
+			...generateCode({
+				type: "MemberExpAssign",
+				property: config.auto ? "Comp" : "render",
+				body: c,
+				comment,
+			}),
+		});
+	}
+
+	return codeCases;
+}
+
 export function objectPropertyComp(config: CodeConfig): GeneratedCode[] {
 	const { name: baseName, comment } = config;
 	const codeCases: GeneratedCode[] = [];
@@ -724,9 +850,11 @@ export function exportNamedComp(config: CodeConfig): GeneratedCode[] {
 	return codeCases;
 }
 
-/* eslint-disable no-console */
 // Command to use to debug the generated code
 // ../../../../node_modules/.bin/tsc --target es2020 --module es2020 --moduleResolution node --esModuleInterop --outDir . helpers.ts; mv helpers.js helpers.mjs; node helpers.mjs
+/* eslint-disable no-console */
+// @ts-ignore
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function debug() {
 	// @ts-ignore
 	const prettier = await import("prettier");

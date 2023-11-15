@@ -7,12 +7,18 @@ import {
 	CommentKind,
 	GeneratedCode,
 	assignmentComp,
+	objAssignComp,
 	declarationComp,
 	exportDefaultComp,
 	exportNamedComp,
 	objectPropertyComp,
 	variableComp,
 } from "./helpers";
+
+// To help interactively debug a specific test case, add the test ids of the
+// test cases you want to debug to the `debugTestIds` array, e.g. (["258",
+// "259"]). Set to true to debug all tests.
+const DEBUG_TEST_IDS: string[] | true = [];
 
 const format = (code: string) => prettier.format(code, { parser: "babel" });
 
@@ -58,11 +64,6 @@ interface TestCaseConfig {
 let testCount = 0;
 const getTestId = () => (testCount++).toString().padStart(3, "0");
 
-// To help interactively debug a specific test case, add the test ids of the
-// test cases you want to debug to the `debugTestIds` array, e.g. (["258",
-// "259"])
-const debugTestIds: string[] = [];
-
 function runTestCases(config: TestCaseConfig, testCases: GeneratedCode[]) {
 	testCases = testCases
 		.map(t => ({
@@ -76,11 +77,17 @@ function runTestCases(config: TestCaseConfig, testCases: GeneratedCode[]) {
 		let testId = getTestId();
 
 		// Only run tests in debugTestIds
-		if (debugTestIds.length > 0 && !debugTestIds.includes(testId)) continue;
+		if (
+			Array.isArray(DEBUG_TEST_IDS) &&
+			DEBUG_TEST_IDS.length > 0 &&
+			!DEBUG_TEST_IDS.includes(testId)
+		) {
+			continue;
+		}
 
 		it(`(${testId}) ${testCase.name}`, () => {
-			if (debugTestIds.length > 0 && debugTestIds.includes(testId)) {
-				console.log(testCase.input.replace(/\s+/g, " ")); // eslint-disable-line no-console
+			if (DEBUG_TEST_IDS === true || DEBUG_TEST_IDS.includes(testId)) {
+				console.log("input :", testCase.input.replace(/\s+/g, " ")); // eslint-disable-line no-console
 				debugger; // eslint-disable-line no-debugger
 			}
 
@@ -130,9 +137,14 @@ function runGeneratedTestCases(config: TestCaseConfig) {
 		});
 	}
 
-	// e.g. let C; C = () => {};
+	// e.g. C = () => {};
 	describe("assigned to variable components", () => {
 		runTestCases(config, assignmentComp(codeConfig));
+	});
+
+	// e.g. obj.C = () => {};
+	describe("assigned to object property components", () => {
+		runTestCases(config, objAssignComp(codeConfig));
 	});
 
 	// e.g. const obj = { C: () => {} };

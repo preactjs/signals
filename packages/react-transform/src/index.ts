@@ -86,11 +86,26 @@ function getFunctionNameFromParent(
 		parentPath.node.id.type === "Identifier"
 	) {
 		return parentPath.node.id.name;
-	} else if (
-		parentPath.node.type === "AssignmentExpression" &&
-		parentPath.node.left.type === "Identifier"
-	) {
-		return parentPath.node.left.name;
+	} else if (parentPath.node.type === "AssignmentExpression") {
+		const left = parentPath.node.left;
+		if (left.type === "Identifier") {
+			return left.name;
+		} else if (left.type === "MemberExpression") {
+			let property = left.property;
+			while (property.type === "MemberExpression") {
+				property = property.property;
+			}
+
+			if (property.type === "Identifier") {
+				return property.name;
+			} else if (property.type === "StringLiteral") {
+				return property.value;
+			}
+
+			return null;
+		} else {
+			return null;
+		}
 	} else if (parentPath.node.type === "ExportDefaultDeclaration") {
 		return DefaultExportSymbol;
 	} else if (
