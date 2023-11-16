@@ -13,12 +13,13 @@ import {
 	exportNamedComp,
 	objectPropertyComp,
 	variableComp,
+	objMethodComp,
 } from "./helpers";
 
 // To help interactively debug a specific test case, add the test ids of the
 // test cases you want to debug to the `debugTestIds` array, e.g. (["258",
 // "259"]). Set to true to debug all tests.
-const DEBUG_TEST_IDS: string[] | true = [];
+const DEBUG_TEST_IDS: string[] | true = true;
 
 const format = (code: string) => prettier.format(code, { parser: "babel" });
 
@@ -136,6 +137,10 @@ function runGeneratedTestCases(config: TestCaseConfig) {
 			);
 		});
 	}
+
+	describe.only("object method components", () => {
+		runTestCases(config, objMethodComp(codeConfig));
+	});
 
 	// e.g. C = () => {};
 	describe("assigned to variable components", () => {

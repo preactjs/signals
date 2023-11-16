@@ -47,7 +47,8 @@ function setOnFunctionScope(path: NodePath, key: string, value: any) {
 type FunctionLike =
 	| BabelTypes.ArrowFunctionExpression
 	| BabelTypes.FunctionExpression
-	| BabelTypes.FunctionDeclaration;
+	| BabelTypes.FunctionDeclaration
+	| BabelTypes.ObjectMethod;
 
 /**
  * Simple "best effort" to get the base name of a file path. Not fool proof but
@@ -63,10 +64,18 @@ const DefaultExportSymbol = Symbol("DefaultExportSymbol");
  * If the function node has a name (i.e. is a function declaration with a
  * name), return that. Else return null.
  */
-function getFunctionNodeName(node: NodePath<FunctionLike>): string | null {
-	return node.node.type === "FunctionDeclaration" && node.node.id
-		? node.node.id.name
-		: null;
+function getFunctionNodeName(path: NodePath<FunctionLike>): string | null {
+	if (path.node.type === "FunctionDeclaration" && path.node.id) {
+		return path.node.id.name;
+	} else if (path.node.type === "ObjectMethod") {
+		if (path.node.key.type === "Identifier") {
+			return path.node.key.name;
+		} else if (path.node.key.type === "StringLiteral") {
+			return path.node.key.value;
+		}
+	}
+
+	return null;
 }
 
 /**
@@ -178,6 +187,8 @@ function isOptedIntoSignalTracking(path: NodePath | null): boolean {
 		case "ArrowFunctionExpression":
 		case "FunctionExpression":
 		case "FunctionDeclaration":
+		case "ObjectMethod":
+		case "ObjectExpression":
 		case "VariableDeclarator":
 		case "VariableDeclaration":
 		case "AssignmentExpression":
@@ -203,6 +214,8 @@ function isOptedOutOfSignalTracking(path: NodePath | null): boolean {
 		case "ArrowFunctionExpression":
 		case "FunctionExpression":
 		case "FunctionDeclaration":
+		case "ObjectMethod":
+		case "ObjectExpression":
 		case "VariableDeclarator":
 		case "VariableDeclaration":
 		case "AssignmentExpression":
@@ -474,6 +487,14 @@ export default function signalsTransform(
 			},
 
 			FunctionDeclaration: {
+				exit(path, state) {
+					if (shouldTransform(path, this.filename, options)) {
+						transformFunction(t, options, path, this.filename, state);
+					}
+				},
+			},
+
+			ObjectMethod: {
 				exit(path, state) {
 					if (shouldTransform(path, this.filename, options)) {
 						transformFunction(t, options, path, this.filename, state);

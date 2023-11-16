@@ -59,6 +59,14 @@ interface ArrowFuncComponent {
 	params?: ParamsConfig;
 }
 
+interface ObjMethodComponent {
+	type: "ObjectMethodComp";
+	name: string;
+	body: string;
+	params?: ParamsConfig;
+	comment?: CommentKind;
+}
+
 interface CallExp {
 	type: "CallExp";
 	name: string;
@@ -108,14 +116,11 @@ interface ExportNamed {
 	comment?: CommentKind;
 }
 
-// TODO: add object method? Note object prop and obj method can have computed
-// keys of arbitrary expressions. Probably can't handle those automatically.
-// Would need a comment to opt-in.
-
 interface NodeTypes {
 	FuncDeclComp: FuncDeclComponent;
 	FuncExpComp: FuncExpComponent;
 	ArrowComp: ArrowFuncComponent;
+	ObjectMethodComp: ObjMethodComponent;
 	CallExp: CallExp;
 	ExportDefault: ExportDefault;
 	ExportNamed: ExportNamed;
@@ -132,7 +137,11 @@ type Generators = {
 };
 
 function transformComponent(
-	config: FuncDeclComponent | FuncExpComponent | ArrowFuncComponent
+	config:
+		| FuncDeclComponent
+		| FuncExpComponent
+		| ArrowFuncComponent
+		| ObjMethodComponent
 ): string {
 	const { type, body } = config;
 	const addReturn = type === "ArrowComp" && config.return === "expression";
@@ -187,6 +196,16 @@ const codeGenerators: Generators = {
 		return {
 			input: `(${params}) => ${inputBody}`,
 			transformed: `(${params}) => {\n${outputBody}\n}`,
+		};
+	},
+	ObjectMethodComp(config) {
+		const params = generateParams(config.params);
+		const inputBody = config.body;
+		const outputBody = transformComponent(config);
+		const comment = generateComment(config.comment);
+		return {
+			input: `var o = {\n${comment}${config.name}(${params}) {\n${inputBody}\n}\n};`,
+			transformed: `var o = {\n${comment}${config.name}(${params}) {\n${outputBody}\n}\n};`,
 		};
 	},
 	CallExp(config) {
@@ -452,6 +471,80 @@ export function declarationComp(config: CodeConfig): GeneratedCode[] {
 				name: codeTitle(baseName, "with no signals"),
 				...generateCode({
 					type: "FuncDeclComp",
+					name: "App",
+					body: "return <div>Hello World</div>",
+					params,
+					comment,
+				}),
+			},
+		];
+	}
+}
+
+export function objMethodComp(config: CodeConfig): GeneratedCode[] {
+	const { name: baseName, params, comment } = config;
+	if (config.auto) {
+		return [
+			{
+				name: codeTitle(baseName, "with proper name, jsx, and signal usage"),
+				...generateCode({
+					type: "ObjectMethodComp",
+					name: "App",
+					body: "return <>{signal.value}</>",
+					params,
+					comment,
+				}),
+			},
+			{
+				name: codeTitle(
+					baseName,
+					"with computed literal name, jsx, and signal usage"
+				),
+				...generateCode({
+					type: "ObjectMethodComp",
+					name: "['App']",
+					body: "return <>{signal.value}</>",
+					params,
+					comment,
+				}),
+			},
+		];
+	} else {
+		return [
+			{
+				name: codeTitle(baseName, "with bad name"),
+				...generateCode({
+					type: "ObjectMethodComp",
+					name: "app",
+					body: "return <div>{signal.value}</div>",
+					params,
+					comment,
+				}),
+			},
+			{
+				name: codeTitle(baseName, "with dynamic name"),
+				...generateCode({
+					type: "ObjectMethodComp",
+					name: "['App' + '1']",
+					body: "return <div>{signal.value}</div>",
+					params,
+					comment,
+				}),
+			},
+			{
+				name: codeTitle(baseName, "with no JSX"),
+				...generateCode({
+					type: "ObjectMethodComp",
+					name: "App",
+					body: "return signal.value",
+					params,
+					comment,
+				}),
+			},
+			{
+				name: codeTitle(baseName, "with no signals"),
+				...generateCode({
+					type: "ObjectMethodComp",
 					name: "App",
 					body: "return <div>Hello World</div>",
 					params,
