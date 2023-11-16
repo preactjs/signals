@@ -30,6 +30,9 @@ var localLaunchers = {
 	},
 };
 
+// TODO: Can we load this from src when MINIFY is false?
+const signalsTransformPath = require.resolve("./packages/react-transform");
+
 const subPkgPath = pkgName => {
 	if (!minify) {
 		return path.join(__dirname, pkgName, "src", "index.ts");
@@ -147,6 +150,21 @@ function createEsbuildPlugin() {
 						},
 					];
 
+					/** @type {any} */
+					let signalsTransform = false;
+					if (
+						args.path.includes("packages/react/test/shared") ||
+						args.path.includes("packages/react/runtime/test")
+					) {
+						console.log("applying transform:", args.path);
+						signalsTransform = [
+							signalsTransformPath,
+							{
+								mode: "auto",
+							},
+						];
+					}
+
 					const downlevelPlugin = [
 						"@babel/preset-env",
 						{
@@ -170,6 +188,7 @@ function createEsbuildPlugin() {
 						sourceMaps: "inline",
 						presets: downlevel ? [ts, jsx, downlevelPlugin] : [ts, jsx],
 						plugins: [
+							signalsTransform,
 							coverage && coveragePlugin,
 							minify && renamePlugin,
 						].filter(Boolean),
@@ -317,7 +336,7 @@ module.exports = function (config) {
 			jsx: "preserve",
 
 			// esbuild options
-			target: downlevel ? "es5" : "es2015",
+			target: downlevel ? "es5" : "es2020",
 			define: {
 				COVERAGE: coverage,
 				"process.env.NODE_ENV": JSON.stringify(process.env.NODE_ENV || ""),
