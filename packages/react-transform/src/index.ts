@@ -248,10 +248,7 @@ function isCustomHook(
 	path: NodePath<FunctionLike>,
 	filename: string | undefined
 ): boolean {
-	return (
-		path.scope.parent === path.scope.getProgramParent() && // Function is top-level
-		fnNameStartsWithUse(path, filename) // Function name indicates it's a hook
-	);
+	return fnNameStartsWithUse(path, filename); // Function name indicates it's a hook
 }
 
 function shouldTransform(
