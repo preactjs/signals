@@ -1,13 +1,9 @@
-// @ts-ignore-next-line
-globalThis.IS_REACT_ACT_ENVIRONMENT = true;
-
+import { signal, computed } from "@preact/signals-core";
 import {
-	signal,
-	computed,
 	useComputed,
-	useSignalEffect,
 	useSignal,
-} from "@preact/signals-react";
+	useSignalEffect,
+} from "@preact/signals-react/runtime";
 import type { Signal, ReadonlySignal } from "@preact/signals-react";
 import {
 	createElement,
@@ -24,31 +20,36 @@ import {
 	useRef,
 } from "react";
 import type { FunctionComponent } from "react";
-
 import { renderToStaticMarkup } from "react-dom/server";
+
 import {
-	createRoot,
-	Root,
 	act,
-	checkHangingAct,
+	createRoot,
 	isReact16,
 	isProd,
 	getConsoleErrorSpy,
 	checkConsoleErrorLogs,
-} from "../shared/utils";
+	checkHangingAct,
+	Root,
+} from "./utils";
 
-describe("@preact/signals-react updating", () => {
+export function updateSignalsTests() {
 	let scratch: HTMLDivElement;
 	let root: Root;
-
-	async function render(element: Parameters<Root["render"]>[0]) {
-		await act(() => root.render(element));
-	}
+	let render: Root["render"];
 
 	beforeEach(async () => {
 		scratch = document.createElement("div");
 		document.body.appendChild(scratch);
-		root = await createRoot(scratch);
+
+		const realRoot = await createRoot(scratch);
+		root = {
+			render: element => act(() => realRoot.render(element)),
+			unmount: () => act(() => realRoot.unmount()),
+		};
+
+		render = root.render.bind(root);
+
 		getConsoleErrorSpy().resetHistory();
 	});
 
@@ -838,4 +839,4 @@ describe("@preact/signals-react updating", () => {
 			expect(cleanup).to.have.been.calledWith("foo", isReact16 ? child : null);
 		});
 	});
-});
+}

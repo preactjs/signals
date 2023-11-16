@@ -62,6 +62,8 @@ function createEsbuildPlugin() {
 		"@preact/signals-core": subPkgPath("./packages/core"),
 		"@preact/signals": subPkgPath("./packages/preact"),
 		"@preact/signals-react": subPkgPath("./packages/react"),
+		"@preact/signals-react/auto": subPkgPath("./packages/react/auto"),
+		"@preact/signals-react/runtime": subPkgPath("./packages/react/runtime"),
 		"@preact/signals-react-transform": subPkgPath("./packages/react-transform"),
 	};
 
@@ -198,7 +200,14 @@ function createEsbuildPlugin() {
 	};
 }
 
-const pkgList = ["core", "preact", "react", "react/runtime", "react-transform"];
+const pkgList = [
+	"core",
+	"preact",
+	"react",
+	"react/auto",
+	"react/runtime",
+	"react-transform",
+];
 
 module.exports = function (config) {
 	config.set({

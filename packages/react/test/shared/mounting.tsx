@@ -1,25 +1,40 @@
-// @ts-ignore-next-line
-globalThis.IS_REACT_ACT_ENVIRONMENT = true;
-
-import {
-	signal,
-	computed,
-	useComputed,
-	useSignal,
-} from "@preact/signals-react";
+import { signal, computed } from "@preact/signals-core";
+import { useComputed, useSignal } from "@preact/signals-react/runtime";
 import { expect } from "chai";
 import { createElement, useReducer, StrictMode, useState } from "react";
 
-import { getConsoleErrorSpy, checkConsoleErrorLogs } from "./utils";
+import {
+	act,
+	getConsoleErrorSpy,
+	checkConsoleErrorLogs,
+	createRoot,
+	type Root,
+} from "./utils";
 
-export function mountSignalsTests(
-	render: (element: JSX.Element) => string | Promise<string>
-) {
+export function mountSignalsTests() {
+	let scratch: HTMLDivElement;
+	let root: Root;
+	let render: (element: JSX.Element) => Promise<string>;
+
 	beforeEach(async () => {
+		scratch = document.createElement("div");
+		document.body.appendChild(scratch);
 		getConsoleErrorSpy().resetHistory();
+
+		const realRoot = await createRoot(scratch);
+		root = {
+			render: (element: JSX.Element) => act(() => realRoot.render(element)),
+			unmount: () => act(() => realRoot.unmount()),
+		};
+
+		render = async (element: JSX.Element) => {
+			await root.render(element);
+			return scratch.innerHTML;
+		};
 	});
 
 	afterEach(async () => {
+		scratch.remove();
 		checkConsoleErrorLogs();
 	});
 
