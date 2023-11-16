@@ -1,11 +1,19 @@
-import { signal, computed, effect, Signal } from "@preact/signals-core";
+import {
+	signal,
+	computed,
+	effect,
+	Signal,
+	ReadonlySignal,
+} from "@preact/signals-core";
 import { useRef, useMemo, useEffect } from "react";
 import { useSyncExternalStore } from "use-sync-external-store/shim/index.js";
+import { isAutoSignalTrackingInstalled } from "./auto";
 
 export { installAutoSignalTracking } from "./auto";
 
 const Empty = [] as const;
 const ReactElemType = Symbol.for("react.element"); // https://github.com/facebook/react/blob/346c7d4c43a0717302d446da9e7423a8e28d8996/packages/shared/ReactSymbols.js#L15
+const noop = () => {};
 
 export function wrapJsx<T>(jsx: T): T {
 	if (typeof jsx !== "function") return jsx;
@@ -113,6 +121,29 @@ function createEffectStore(): EffectStore {
 	};
 }
 
+function createEmptyEffectStore(): EffectStore {
+	return {
+		effect: {
+			_sources: undefined,
+			_callback() {},
+			_start() {
+				return noop;
+			},
+			_dispose() {},
+		},
+		subscribe() {
+			return noop;
+		},
+		getSnapshot() {
+			return 0;
+		},
+		f() {},
+		[symDispose]() {},
+	};
+}
+
+const emptyEffectStore = createEmptyEffectStore();
+
 let finalCleanup: Promise<void> | undefined;
 const _queueMicroTask = Promise.prototype.then.bind(Promise.resolve());
 
@@ -120,7 +151,7 @@ const _queueMicroTask = Promise.prototype.then.bind(Promise.resolve());
  * Custom hook to create the effect to track signals used during render and
  * subscribe to changes to rerender the component when the signals change.
  */
-export function useSignals(): EffectStore {
+export function _useSignalsImplementation(): EffectStore {
 	clearCurrentStore();
 	if (!finalCleanup) {
 		finalCleanup = _queueMicroTask(() => {
@@ -145,7 +176,12 @@ export function useSignals(): EffectStore {
  * A wrapper component that renders a Signal's value directly as a Text node or JSX.
  */
 function SignalValue({ data }: { data: Signal }) {
-	return data.value;
+	const store = useSignals();
+	try {
+		return data.value;
+	} finally {
+		store.f();
+	}
 }
 
 // Decorate Signals so React renders them as <SignalValue> components.
@@ -161,17 +197,22 @@ Object.defineProperties(Signal.prototype, {
 	ref: { configurable: true, value: null },
 });
 
-export function useSignal<T>(value: T) {
+export function useSignals(): EffectStore {
+	if (isAutoSignalTrackingInstalled) return emptyEffectStore;
+	return _useSignalsImplementation();
+}
+
+export function useSignal<T>(value: T): Signal<T> {
 	return useMemo(() => signal<T>(value), Empty);
 }
 
-export function useComputed<T>(compute: () => T) {
+export function useComputed<T>(compute: () => T): ReadonlySignal<T> {
 	const $compute = useRef(compute);
 	$compute.current = compute;
 	return useMemo(() => computed<T>(() => $compute.current()), Empty);
 }
 
-export function useSignalEffect(cb: () => void | (() => void)) {
+export function useSignalEffect(cb: () => void | (() => void)): void {
 	const callback = useRef(cb);
 	callback.current = cb;
 
