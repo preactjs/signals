@@ -2,6 +2,7 @@ import * as signalsCore from "@preact/signals-core";
 import { batch, signal } from "@preact/signals-core";
 import { PluginOptions } from "@preact/signals-react-transform";
 import * as signalsRuntime from "@preact/signals-react/runtime";
+import * as React from "react";
 import { createElement } from "react";
 import * as jsxRuntime from "react/jsx-runtime";
 import {
@@ -17,6 +18,7 @@ const customSource = "useSignals-custom-source";
 const modules: Record<string, any> = {
 	"@preact/signals-core": signalsCore,
 	"@preact/signals-react/runtime": signalsRuntime,
+	react: React,
 	"react/jsx-runtime": jsxRuntime,
 	[customSource]: signalsRuntime,
 };
@@ -192,6 +194,151 @@ describe("React Signals babel transfrom - browser E2E tests", () => {
 			});
 		});
 		expect(scratch.innerHTML).to.equal("<div>Hello John!</div>");
+	});
+
+	it("should rerender components wrapped in memo", async () => {
+		const { MemoApp, name } = await createComponent(`
+			import { signal } from "@preact/signals-core";
+			import { memo } from "react";
+
+			export const name = signal("John");
+
+			function App({ name }) {
+				return <div>Hello {name.value}</div>;
+			}
+
+			export const MemoApp = memo(App);
+			`);
+
+		await render(<MemoApp name={name} />);
+		expect(scratch.innerHTML).to.equal("<div>Hello John</div>");
+
+		await act(() => {
+			name.value = "Jane";
+		});
+		expect(scratch.innerHTML).to.equal("<div>Hello Jane</div>");
+	});
+
+	it("should rerender components wrapped in memo inline", async () => {
+		const { MemoApp, name } = await createComponent(`
+			import { signal } from "@preact/signals-core";
+			import { memo } from "react";
+
+			export const name = signal("John");
+
+			export const MemoApp = memo(({ name }) => {
+				return <div>Hello {name.value}</div>;
+			});
+			`);
+
+		await render(<MemoApp name={name} />);
+		expect(scratch.innerHTML).to.equal("<div>Hello John</div>");
+
+		await act(() => {
+			name.value = "Jane";
+		});
+		expect(scratch.innerHTML).to.equal("<div>Hello Jane</div>");
+	});
+
+	it("should rerender components wrapped in forwardRef", async () => {
+		const { ForwardRefApp, name } = await createComponent(`
+			import { signal } from "@preact/signals-core";
+			import { forwardRef } from "react";
+
+			export const name = signal("John");
+
+			function App({ name }, ref) {
+				return <div ref={ref}>Hello {name.value}</div>;
+			}
+
+			export const ForwardRefApp = forwardRef(App);
+			`);
+
+		const ref = React.createRef<HTMLDivElement>();
+		await render(<ForwardRefApp name={name} ref={ref} />);
+		expect(scratch.innerHTML).to.equal("<div>Hello John</div>");
+		expect(ref.current).to.equal(scratch.firstChild);
+
+		await act(() => {
+			name.value = "Jane";
+		});
+		expect(scratch.innerHTML).to.equal("<div>Hello Jane</div>");
+		expect(ref.current).to.equal(scratch.firstChild);
+	});
+
+	it("should rerender components wrapped in forwardRef inline", async () => {
+		const { ForwardRefApp, name } = await createComponent(`
+			import { signal } from "@preact/signals-core";
+			import { forwardRef } from "react";
+
+			export const name = signal("John");
+
+			export const ForwardRefApp = forwardRef(({ name }, ref) => {
+				return <div ref={ref}>Hello {name.value}</div>;
+			});
+			`);
+
+		const ref = React.createRef<HTMLDivElement>();
+		await render(<ForwardRefApp name={name} ref={ref} />);
+		expect(scratch.innerHTML).to.equal("<div>Hello John</div>");
+		expect(ref.current).to.equal(scratch.firstChild);
+
+		await act(() => {
+			name.value = "Jane";
+		});
+		expect(scratch.innerHTML).to.equal("<div>Hello Jane</div>");
+		expect(ref.current).to.equal(scratch.firstChild);
+	});
+
+	it("should rerender components wrapped in forwardRef with memo", async () => {
+		const { MemoForwardRefApp, name } = await createComponent(`
+			import { signal } from "@preact/signals-core";
+			import { memo, forwardRef } from "react";
+
+			export const name = signal("John");
+
+			export const MemoForwardRefApp = memo(forwardRef(({ name }, ref) => {
+				return <div ref={ref}>Hello {name.value}</div>;
+			}));
+			`);
+
+		const ref = React.createRef<HTMLDivElement>();
+		await render(<MemoForwardRefApp name={name} ref={ref} />);
+		expect(scratch.innerHTML).to.equal("<div>Hello John</div>");
+		expect(ref.current).to.equal(scratch.firstChild);
+
+		await act(() => {
+			name.value = "Jane";
+		});
+		expect(scratch.innerHTML).to.equal("<div>Hello Jane</div>");
+		expect(ref.current).to.equal(scratch.firstChild);
+	});
+
+	it("should transform components authored inside a test's body", async () => {
+		const { name, App } = await createComponent(`
+			import { signal } from "@preact/signals-core";
+			import { memo } from "react";
+
+			export const name = signal("John");
+			export let App;
+
+			const it = (name, fn) => fn();
+
+			it('should work', () => {
+				App = () => {
+					return <div>Hello {name.value}</div>;
+				}
+			});
+			`);
+
+		await render(<App name={name} />);
+		expect(scratch.innerHTML).to.equal("<div>Hello John</div>");
+
+		await act(() => {
+			name.value = "Jane";
+		});
+
+		expect(scratch.innerHTML).to.equal("<div>Hello Jane</div>");
 	});
 
 	it("loads useSignals from a custom source", async () => {

@@ -283,6 +283,9 @@ importers:
       '@types/babel__helper-plugin-utils':
         specifier: ^7.10.0
         version: 7.10.0
+      '@types/prettier':
+        specifier: ^2.7.3
+        version: 2.7.3
       '@types/react':
         specifier: ^18.0.18
         version: 18.0.18
@@ -301,6 +304,9 @@ importers:
       path:
         specifier: ^0.12.7
         version: 0.12.7
+      prettier:
+        specifier: ^2.7.1
+        version: 2.7.1
       react:
         specifier: ^18.2.0
         version: 18.2.0
@@ -2419,6 +2425,10 @@ packages:
 
   /@types/parse-json@4.0.0:
     resolution: {integrity: sha512-//oorEZjL6sbPcKUaCdIGlIUeH26mgzimjBB77G6XRgnDl/L5wOnpyBGRe/Mmf5CVW3PwEBE1NjiMZ/ssFh4wA==}
+    dev: true
+
+  /@types/prettier@2.7.3:
+    resolution: {integrity: sha512-+68kP9yzs4LMp7VNh8gdzMSPZFL44MLGqiHWvttYJe+6qnuVr4Ek9wSBQoveqY/r+LwjCcU29kNVkidwim+kYA==}
     dev: true
 
   /@types/prop-types@15.7.5:
