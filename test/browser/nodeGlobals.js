@@ -9,3 +9,5 @@ window.process = {
 };
 
 window.Buffer = Buffer;
+
+// localStorage.debug = "signals:react-transform:*";

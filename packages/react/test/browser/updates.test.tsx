@@ -263,17 +263,16 @@ describe("@preact/signals-react updating", () => {
 		it("should update memo'ed component via signals", async () => {
 			const sig = signal("foo");
 
-			function Inner() {
+			function UseMemoTestInner() {
 				const value = sig.value;
 				return <p>{value}</p>;
 			}
 
-			function App() {
-				sig.value;
-				return useMemo(() => <Inner />, []);
+			function UseMemoTestApp() {
+				return useMemo(() => <UseMemoTestInner />, []);
 			}
 
-			await render(<App />);
+			await render(<UseMemoTestApp />);
 			expect(scratch.textContent).to.equal("foo");
 
 			await act(() => {
@@ -326,10 +325,10 @@ describe("@preact/signals-react updating", () => {
 		it("should consistently rerender in strict mode (with memo)", async () => {
 			const sig = signal(-1);
 
-			const Test = memo(() => <p>{sig.value}</p>);
+			const ReactMemoTest = memo(() => <p>{sig.value}</p>);
 			const App = () => (
 				<StrictMode>
-					<Test />
+					<ReactMemoTest />
 				</StrictMode>
 			);
 
@@ -347,7 +346,7 @@ describe("@preact/signals-react updating", () => {
 		it("should render static markup of a component", async () => {
 			const count = signal(0);
 
-			const Test = () => {
+			const StaticMarkupTest = () => {
 				return (
 					<pre>
 						{renderToStaticMarkup(<code>{count}</code>)}
@@ -356,7 +355,7 @@ describe("@preact/signals-react updating", () => {
 				);
 			};
 
-			await render(<Test />);
+			await render(<StaticMarkupTest />);
 			expect(scratch.textContent).to.equal("<code>0</code><code>0</code>");
 
 			for (let i = 0; i < 3; i++) {
