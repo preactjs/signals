@@ -30,8 +30,12 @@ var localLaunchers = {
 	},
 };
 
-// TODO: Can we load this from src when MINIFY is false?
+/* eslint-disable no-console */
 const signalsTransformPath = require.resolve("./packages/react-transform");
+console.log(`Transforming tests using ${signalsTransformPath}.`);
+console.log(
+	`Manually re-compile & re-run tests to validate changes to react-transform`
+);
 
 const subPkgPath = pkgName => {
 	if (!minify) {
@@ -156,7 +160,6 @@ function createEsbuildPlugin() {
 						args.path.includes("packages/react/test/shared") ||
 						args.path.includes("packages/react/runtime/test")
 					) {
-						console.log("applying transform:", args.path);
 						signalsTransform = [
 							signalsTransformPath,
 							{
