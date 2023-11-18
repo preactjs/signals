@@ -7,10 +7,8 @@ import {
 	template,
 } from "@babel/core";
 import { isModule, addNamed } from "@babel/helper-module-imports";
-
-// TODO:
-// - how to trigger rerenders on attributes change if transform never sees
-//   `.value`?
+import type { VisitNodeObject } from "@babel/traverse";
+import debug from "debug";
 
 interface PluginArgs {
 	types: typeof BabelTypes;
@@ -26,6 +24,11 @@ const getHookIdentifier = "getHookIdentifier";
 const maybeUsesSignal = "maybeUsesSignal";
 const containsJSX = "containsJSX";
 const alreadyTransformed = "alreadyTransformed";
+
+const logger = {
+	transformed: debug("signals:react-transform:transformed"),
+	skipped: debug("signals:react-transform:skipped"),
+};
 
 const get = (pass: PluginPass, name: any) =>
 	pass.get(`${dataNamespace}/${name}`);
@@ -51,35 +54,108 @@ function setOnFunctionScope(path: NodePath, key: string, value: any) {
 type FunctionLike =
 	| BabelTypes.ArrowFunctionExpression
 	| BabelTypes.FunctionExpression
-	| BabelTypes.FunctionDeclaration;
+	| BabelTypes.FunctionDeclaration
+	| BabelTypes.ObjectMethod;
 
-function testFunctionName<T extends FunctionLike>(
-	predicate: (name: string | null) => boolean
-): (path: NodePath<T>) => boolean {
-	return (path: NodePath<T>) => {
-		if (
-			path.node.type === "ArrowFunctionExpression" ||
-			path.node.type === "FunctionExpression"
-		) {
-			return (
-				path.parentPath.node.type === "VariableDeclarator" &&
-				path.parentPath.node.id.type === "Identifier" &&
-				predicate(path.parentPath.node.id.name)
-			);
-		} else if (path.node.type === "FunctionDeclaration") {
-			return predicate(path.node.id?.name ?? null);
-		} else {
-			return false;
-		}
-	};
+/**
+ * Simple "best effort" to get the base name of a file path. Not fool proof but
+ * works in browsers and servers. Good enough for our purposes.
+ */
+function basename(filename: string | undefined): string | undefined {
+	return filename?.split(/[\\/]/).pop();
 }
 
-const fnNameStartsWithCapital = testFunctionName(
-	name => name?.match(/^[A-Z]/) !== null
-);
-const fnNameStartsWithUse = testFunctionName(
-	name => name?.match(/^use[A-Z]/) !== null
-);
+const DefaultExportSymbol = Symbol("DefaultExportSymbol");
+
+/**
+ * If the function node has a name (i.e. is a function declaration with a
+ * name), return that. Else return null.
+ */
+function getFunctionNodeName(path: NodePath<FunctionLike>): string | null {
+	if (path.node.type === "FunctionDeclaration" && path.node.id) {
+		return path.node.id.name;
+	} else if (path.node.type === "ObjectMethod") {
+		if (path.node.key.type === "Identifier") {
+			return path.node.key.name;
+		} else if (path.node.key.type === "StringLiteral") {
+			return path.node.key.value;
+		}
+	}
+
+	return null;
+}
+
+/**
+ * Given a function path's parent path, determine the "name" associated with the
+ * function. If the function is an inline default export (e.g. `export default
+ * () => {}`), returns a symbol indicating it is a default export. If the
+ * function is an anonymous function wrapped in higher order functions (e.g.
+ * memo(() => {})) we'll climb through the higher order functions to find the
+ * name of the variable that the function is assigned to, if any. Other cases
+ * handled too (see implementation). Else returns null.
+ */
+function getFunctionNameFromParent(
+	parentPath: NodePath<BabelTypes.Node>
+): string | null | typeof DefaultExportSymbol {
+	if (
+		parentPath.node.type === "VariableDeclarator" &&
+		parentPath.node.id.type === "Identifier"
+	) {
+		return parentPath.node.id.name;
+	} else if (parentPath.node.type === "AssignmentExpression") {
+		const left = parentPath.node.left;
+		if (left.type === "Identifier") {
+			return left.name;
+		} else if (left.type === "MemberExpression") {
+			let property = left.property;
+			while (property.type === "MemberExpression") {
+				property = property.property;
+			}
+
+			if (property.type === "Identifier") {
+				return property.name;
+			} else if (property.type === "StringLiteral") {
+				return property.value;
+			}
+
+			return null;
+		} else {
+			return null;
+		}
+	} else if (parentPath.node.type === "ExportDefaultDeclaration") {
+		return DefaultExportSymbol;
+	} else if (
+		parentPath.node.type === "CallExpression" &&
+		parentPath.parentPath != null
+	) {
+		// If our parent is a Call Expression, then this function expression is
+		// wrapped in some higher order functions. Recurse through the higher order
+		// functions to determine if this expression is assigned to a name we can
+		// use as the function name
+		return getFunctionNameFromParent(parentPath.parentPath);
+	} else {
+		return null;
+	}
+}
+
+/* Determine the name of a function */
+function getFunctionName(
+	path: NodePath<FunctionLike>
+): string | typeof DefaultExportSymbol | null {
+	let nodeName = getFunctionNodeName(path);
+	if (nodeName) {
+		return nodeName;
+	}
+
+	return getFunctionNameFromParent(path.parentPath);
+}
+
+function fnNameStartsWithCapital(name: string | null): boolean {
+	return name?.match(/^[A-Z]/) != null ?? false;
+}
+function fnNameStartsWithUse(name: string | null): boolean {
+	return name?.match(/^use[A-Z]/) != null ?? null;
+}
 
 function hasLeadingComment(path: NodePath, comment: RegExp): boolean {
 	const comments = path.node.leadingComments;
@@ -101,9 +177,12 @@ function isOptedIntoSignalTracking(path: NodePath | null): boolean {
 		case "ArrowFunctionExpression":
 		case "FunctionExpression":
 		case "FunctionDeclaration":
+		case "ObjectMethod":
+		case "ObjectExpression":
 		case "VariableDeclarator":
 		case "VariableDeclaration":
 		case "AssignmentExpression":
+		case "CallExpression":
 			return (
 				hasLeadingOptInComment(path) ||
 				isOptedIntoSignalTracking(path.parentPath)
@@ -125,9 +204,12 @@ function isOptedOutOfSignalTracking(path: NodePath | null): boolean {
 		case "ArrowFunctionExpression":
 		case "FunctionExpression":
 		case "FunctionDeclaration":
+		case "ObjectMethod":
+		case "ObjectExpression":
 		case "VariableDeclarator":
 		case "VariableDeclaration":
 		case "AssignmentExpression":
+		case "CallExpression":
 			return (
 				hasLeadingOptOutComment(path) ||
 				isOptedOutOfSignalTracking(path.parentPath)
@@ -142,41 +224,39 @@ function isOptedOutOfSignalTracking(path: NodePath | null): boolean {
 	}
 }
 
-function isComponentFunction(path: NodePath<FunctionLike>): boolean {
+function isComponentFunction(
+	path: NodePath<FunctionLike>,
+	functionName: string | null
+): boolean {
 	return (
-		fnNameStartsWithCapital(path) && // Function name indicates it's a component
 		getData(path.scope, containsJSX) === true && // Function contains JSX
-		path.scope.parent === path.scope.getProgramParent() // Function is top-level
+		fnNameStartsWithCapital(functionName) // Function name indicates it's a component
 	);
 }
 
-function isCustomHook(path: NodePath<FunctionLike>): boolean {
-	return (
-		fnNameStartsWithUse(path) && // Function name indicates it's a hook
-		path.scope.parent === path.scope.getProgramParent()
-	); // Function is top-level
+function isCustomHook(functionName: string | null): boolean {
+	return fnNameStartsWithUse(functionName); // Function name indicates it's a hook
 }
 
 function shouldTransform(
 	path: NodePath<FunctionLike>,
+	functionName: string | null,
 	options: PluginOptions
 ): boolean {
-	if (getData(path, alreadyTransformed) === true) return false;
-
 	// Opt-out takes first precedence
 	if (isOptedOutOfSignalTracking(path)) return false;
 	// Opt-in opts in to transformation regardless of mode
 	if (isOptedIntoSignalTracking(path)) return true;
 
 	if (options.mode === "all") {
-		return isComponentFunction(path);
+		return isComponentFunction(path, functionName);
 	}
 
 	if (options.mode == null || options.mode === "auto") {
 		return (
-			(isComponentFunction(path) || isCustomHook(path)) &&
-			getData(path.scope, maybeUsesSignal) === true
-		); // Function appears to use signals;
+			getData(path.scope, maybeUsesSignal) === true && // Function appears to use signals;
+			(isComponentFunction(path, functionName) || isCustomHook(functionName))
+		);
 	}
 
 	return false;
@@ -246,10 +326,11 @@ function transformFunction(
 	t: typeof BabelTypes,
 	options: PluginOptions,
 	path: NodePath<FunctionLike>,
+	functionName: string | null,
 	state: PluginPass
 ) {
 	let newFunction: FunctionLike;
-	if (isCustomHook(path) || options.experimental?.noTryFinally) {
+	if (isCustomHook(functionName) || options.experimental?.noTryFinally) {
 		// For custom hooks, we don't need to wrap the function body in a
 		// try/finally block because later code in the function's render body could
 		// read signals and we want to track and associate those signals with this
@@ -339,10 +420,70 @@ export interface PluginOptions {
 	};
 }
 
+function log(
+	transformed: boolean,
+	path: NodePath<FunctionLike>,
+	functionName: string | null,
+	currentFile: string | undefined
+) {
+	if (!logger.transformed.enabled && !logger.skipped.enabled) return;
+
+	let cwd = "";
+	if (typeof process !== undefined && typeof process.cwd == "function") {
+		cwd = process.cwd().replace(/\\([^ ])/g, "/$1");
+		cwd = cwd.endsWith("/") ? cwd : cwd + "/";
+	}
+
+	const relativePath = currentFile?.replace(cwd, "") ?? "";
+	const lineNum = path.node.loc?.start.line;
+	functionName = functionName ?? "<anonymous>";
+
+	if (transformed) {
+		logger.transformed(`${functionName} (${relativePath}:${lineNum})`);
+	} else {
+		logger.skipped(`${functionName} (${relativePath}:${lineNum}) %o`, {
+			hasSignals: getData(path.scope, maybeUsesSignal) ?? false,
+			hasJSX: getData(path.scope, containsJSX) ?? false,
+		});
+	}
+}
+
+function isComponentLike(
+	path: NodePath<FunctionLike>,
+	functionName: string | null
+): boolean {
+	return (
+		!getData(path, alreadyTransformed) && fnNameStartsWithCapital(functionName)
+	);
+}
+
 export default function signalsTransform(
 	{ types: t }: PluginArgs,
 	options: PluginOptions
 ): PluginObj {
+	// TODO: Consider alternate implementation, where on enter of a function
+	// expression, we run our own manual scan the AST to determine if the
+	// function uses signals and is a component. This manual scan once upon
+	// seeing a function would probably be faster than running an entire
+	// babel pass with plugins on components twice.
+	const visitFunction: VisitNodeObject<PluginPass, FunctionLike> = {
+		exit(path, state) {
+			if (getData(path, alreadyTransformed) === true) return false;
+
+			let functionName = getFunctionName(path);
+			if (functionName === DefaultExportSymbol) {
+				functionName = basename(this.filename) ?? null;
+			}
+
+			if (shouldTransform(path, functionName, state.opts)) {
+				transformFunction(t, state.opts, path, functionName, state);
+				log(true, path, functionName, this.filename);
+			} else if (isComponentLike(path, functionName)) {
+				log(false, path, functionName, this.filename);
+			}
+		},
+	};
+
 	return {
 		name: "@preact/signals-transform",
 		visitor: {
@@ -366,34 +507,10 @@ export default function signalsTransform(
 				},
 			},
 
-			ArrowFunctionExpression: {
-				// TODO: Consider alternate implementation, where on enter of a function
-				// expression, we run our own manual scan the AST to determine if the
-				// function uses signals and is a component. This manual scan once upon
-				// seeing a function would probably be faster than running an entire
-				// babel pass with plugins on components twice.
-				exit(path, state) {
-					if (shouldTransform(path, options)) {
-						transformFunction(t, options, path, state);
-					}
-				},
-			},
-
-			FunctionExpression: {
-				exit(path, state) {
-					if (shouldTransform(path, options)) {
-						transformFunction(t, options, path, state);
-					}
-				},
-			},
-
-			FunctionDeclaration: {
-				exit(path, state) {
-					if (shouldTransform(path, options)) {
-						transformFunction(t, options, path, state);
-					}
-				},
-			},
+			ArrowFunctionExpression: visitFunction,
+			FunctionExpression: visitFunction,
+			FunctionDeclaration: visitFunction,
+			ObjectMethod: visitFunction,
 
 			MemberExpression(path) {
 				if (isValueMemberExpression(path)) {
