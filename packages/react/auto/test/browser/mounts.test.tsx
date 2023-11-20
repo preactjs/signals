@@ -12,29 +12,31 @@ import {
 
 import "@preact/signals-react/auto";
 
-describe("@preact/signals-react/auto mounting", () => {
-	let scratch: HTMLDivElement;
-	let root: Root;
+describe("@preact/signals-react/auto", () => {
+	describe("mounting", () => {
+		let scratch: HTMLDivElement;
+		let root: Root;
 
-	async function render(element: JSX.Element): Promise<string> {
-		await act(() => {
-			root.render(element);
+		async function render(element: JSX.Element): Promise<string> {
+			await act(() => {
+				root.render(element);
+			});
+			return scratch.innerHTML;
+		}
+
+		beforeEach(async () => {
+			scratch = document.createElement("div");
+			document.body.appendChild(scratch);
+			getConsoleErrorSpy().resetHistory();
+
+			root = await createRoot(scratch);
 		});
-		return scratch.innerHTML;
-	}
 
-	beforeEach(async () => {
-		scratch = document.createElement("div");
-		document.body.appendChild(scratch);
-		getConsoleErrorSpy().resetHistory();
+		afterEach(async () => {
+			scratch.remove();
+			checkConsoleErrorLogs();
+		});
 
-		root = await createRoot(scratch);
+		mountSignalsTests(render);
 	});
-
-	afterEach(async () => {
-		scratch.remove();
-		checkConsoleErrorLogs();
-	});
-
-	mountSignalsTests(render);
 });

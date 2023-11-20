@@ -3,20 +3,22 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { mountSignalsTests } from "../../../test/shared/mounting";
 
-describe("renderToStaticMarkup", () => {
-	mountSignalsTests(el => Promise.resolve(renderToStaticMarkup(el)));
+describe("@preact/signals-react/auto", () => {
+	describe("renderToStaticMarkup", () => {
+		mountSignalsTests(el => Promise.resolve(renderToStaticMarkup(el)));
 
-	it("should not invoke useSignalEffect", async () => {
-		const spy = sinon.spy();
-		const sig = signal("foo");
+		it("should not invoke useSignalEffect", async () => {
+			const spy = sinon.spy();
+			const sig = signal("foo");
 
-		function App() {
-			useSignalEffect(() => spy(sig.value));
-			return <p>{sig.value}</p>;
-		}
+			function App() {
+				useSignalEffect(() => spy(sig.value));
+				return <p>{sig.value}</p>;
+			}
 
-		const html = await renderToStaticMarkup(<App />);
-		expect(html).to.equal("<p>foo</p>");
-		expect(spy.called).to.be.false;
+			const html = await renderToStaticMarkup(<App />);
+			expect(html).to.equal("<p>foo</p>");
+			expect(spy.called).to.be.false;
+		});
 	});
 });
