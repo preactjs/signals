@@ -1,16 +1,18 @@
 // @ts-ignore-next-line
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
-import { mountSignalsTests } from "../../test/shared/mounting";
+import { mountSignalsTests } from "../../../test/shared/mounting";
 import {
 	act,
 	getConsoleErrorSpy,
 	checkConsoleErrorLogs,
 	createRoot,
 	type Root,
-} from "../../test/shared/utils.js";
+} from "../../../test/shared/utils.js";
 
-describe("@preact/signals-react/runtime mounting", () => {
+import "@preact/signals-react/auto";
+
+describe("@preact/signals-react/auto mounting", () => {
 	let scratch: HTMLDivElement;
 	let root: Root;
 

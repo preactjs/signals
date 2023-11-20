@@ -1,7 +1,7 @@
 import { signal, useSignalEffect } from "@preact/signals-react";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { mountSignalsTests } from "../shared/mounting";
+import { mountSignalsTests } from "../../../test/shared/mounting";
 
 describe("renderToStaticMarkup", () => {
 	mountSignalsTests(el => Promise.resolve(renderToStaticMarkup(el)));
