@@ -51,7 +51,7 @@
     "README.md"
   ],
   "scripts": {
-    "prepublishOnly": "cd ../.. && pnpm build:react-runtime && pnpm build:react"
+    "prepublishOnly": "cd ../.. && pnpm build:react-runtime && pnpm build:react-auto && pnpm build:react"
   },
   "dependencies": {
     "@preact/signals-core": "workspace:^1.4.0",

@@ -1,13 +1,9 @@
-// @ts-ignore-next-line
-globalThis.IS_REACT_ACT_ENVIRONMENT = true;
-
+import { signal, computed } from "@preact/signals-core";
 import {
-	signal,
-	computed,
 	useComputed,
-	useSignalEffect,
 	useSignal,
-} from "@preact/signals-react";
+	useSignalEffect,
+} from "@preact/signals-react/runtime";
 import type { Signal, ReadonlySignal } from "@preact/signals-react";
 import {
 	createElement,
@@ -24,31 +20,36 @@ import {
 	useRef,
 } from "react";
 import type { FunctionComponent } from "react";
-
 import { renderToStaticMarkup } from "react-dom/server";
+
 import {
-	createRoot,
-	Root,
 	act,
-	checkHangingAct,
+	createRoot,
 	isReact16,
 	isProd,
 	getConsoleErrorSpy,
 	checkConsoleErrorLogs,
-} from "../shared/utils";
+	checkHangingAct,
+	Root,
+} from "./utils";
 
-describe("@preact/signals-react updating", () => {
+export function updateSignalsTests(usingTransform = false) {
 	let scratch: HTMLDivElement;
 	let root: Root;
-
-	async function render(element: Parameters<Root["render"]>[0]) {
-		await act(() => root.render(element));
-	}
+	let render: Root["render"];
 
 	beforeEach(async () => {
 		scratch = document.createElement("div");
 		document.body.appendChild(scratch);
-		root = await createRoot(scratch);
+
+		const realRoot = await createRoot(scratch);
+		root = {
+			render: element => act(() => realRoot.render(element)),
+			unmount: () => act(() => realRoot.unmount()),
+		};
+
+		render = root.render.bind(root);
+
 		getConsoleErrorSpy().resetHistory();
 	});
 
@@ -197,23 +198,26 @@ describe("@preact/signals-react updating", () => {
 			expect(scratch.innerHTML).to.equal("<div>1</div><div>1</div>");
 		});
 
-		it("should subscribe to signals passed as props to DOM elements", async () => {
-			const className = signal("foo");
-			function App() {
-				// @ts-expect-error React types don't allow signals on DOM elements :/
-				return <div className={className} />;
-			}
+		// React transform doesn't support this yet.
+		if (!usingTransform) {
+			it("should subscribe to signals passed as props to DOM elements", async () => {
+				const className = signal("foo");
+				function App() {
+					// @ts-expect-error React types don't allow signals on DOM elements :/
+					return <div className={className} />;
+				}
 
-			await render(<App />);
+				await render(<App />);
 
-			expect(scratch.innerHTML).to.equal('<div class="foo"></div>');
+				expect(scratch.innerHTML).to.equal('<div class="foo"></div>');
 
-			await act(() => {
-				className.value = "bar";
+				await act(() => {
+					className.value = "bar";
+				});
+
+				expect(scratch.innerHTML).to.equal('<div class="bar"></div>');
 			});
-
-			expect(scratch.innerHTML).to.equal('<div class="bar"></div>');
-		});
+		}
 
 		it("should activate signal accessed in render", async () => {
 			const sig = signal(null);
@@ -343,30 +347,36 @@ describe("@preact/signals-react updating", () => {
 			}
 		});
 
-		it("should render static markup of a component", async () => {
-			const count = signal(0);
+		// Babel transform doesn't yet support this case.
+		if (!usingTransform) {
+			it("should render static markup of a component", async () => {
+				const count = signal(0);
 
-			const StaticMarkupTest = () => {
-				return (
-					<pre>
-						{renderToStaticMarkup(<code>{count}</code>)}
-						{renderToStaticMarkup(<code>{count.value}</code>)}
-					</pre>
-				);
-			};
+				// In this test, the {count} signal is rendered as a SignalValue text
+				// synchronously during the render of StaticMarkupTest. This situation
+				// trips up some of our previous integrations into React.
+				const StaticMarkupTest = () => {
+					return (
+						<pre>
+							{renderToStaticMarkup(<code>{count}</code>)}
+							{renderToStaticMarkup(<code>{count.value}</code>)}
+						</pre>
+					);
+				};
 
-			await render(<StaticMarkupTest />);
-			expect(scratch.textContent).to.equal("<code>0</code><code>0</code>");
+				await render(<StaticMarkupTest />);
+				expect(scratch.textContent).to.equal("<code>0</code><code>0</code>");
 
-			for (let i = 0; i < 3; i++) {
-				await act(async () => {
-					count.value += 1;
-				});
-				expect(scratch.textContent).to.equal(
-					`<code>${count.value}</code><code>${count.value}</code>`
-				);
-			}
-		});
+				for (let i = 0; i < 3; i++) {
+					await act(async () => {
+						count.value += 1;
+					});
+					expect(scratch.textContent).to.equal(
+						`<code>${count.value}</code><code>${count.value}</code>`
+					);
+				}
+			});
+		}
 
 		it("should correctly render components that have useReducer()", async () => {
 			const count = signal(0);
@@ -838,4 +848,4 @@ describe("@preact/signals-react updating", () => {
 			expect(cleanup).to.have.been.calledWith("foo", isReact16 ? child : null);
 		});
 	});
-});
+}

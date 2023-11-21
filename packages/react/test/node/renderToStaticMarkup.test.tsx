@@ -4,7 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { mountSignalsTests } from "../shared/mounting";
 
 describe("renderToStaticMarkup", () => {
-	mountSignalsTests(renderToStaticMarkup);
+	mountSignalsTests(el => Promise.resolve(renderToStaticMarkup(el)));
 
 	it("should not invoke useSignalEffect", async () => {
 		const spy = sinon.spy();

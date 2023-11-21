@@ -30,6 +30,13 @@ var localLaunchers = {
 	},
 };
 
+/* eslint-disable no-console */
+const signalsTransformPath = require.resolve("./packages/react-transform");
+console.log(`Transforming tests using ${signalsTransformPath}.`);
+console.log(
+	`Manually re-compile & re-run tests to validate changes to react-transform`
+);
+
 const subPkgPath = pkgName => {
 	if (!minify) {
 		return path.join(__dirname, pkgName, "src", "index.ts");
@@ -62,6 +69,8 @@ function createEsbuildPlugin() {
 		"@preact/signals-core": subPkgPath("./packages/core"),
 		"@preact/signals": subPkgPath("./packages/preact"),
 		"@preact/signals-react": subPkgPath("./packages/react"),
+		"@preact/signals-react/auto": subPkgPath("./packages/react/auto"),
+		"@preact/signals-react/runtime": subPkgPath("./packages/react/runtime"),
 		"@preact/signals-react-transform": subPkgPath("./packages/react-transform"),
 	};
 
@@ -145,6 +154,20 @@ function createEsbuildPlugin() {
 						},
 					];
 
+					/** @type {any} */
+					let signalsTransform = false;
+					if (
+						args.path.includes("packages/react/test/shared") ||
+						args.path.includes("packages/react/runtime/test")
+					) {
+						signalsTransform = [
+							signalsTransformPath,
+							{
+								mode: "auto",
+							},
+						];
+					}
+
 					const downlevelPlugin = [
 						"@babel/preset-env",
 						{
@@ -168,6 +191,7 @@ function createEsbuildPlugin() {
 						sourceMaps: "inline",
 						presets: downlevel ? [ts, jsx, downlevelPlugin] : [ts, jsx],
 						plugins: [
+							signalsTransform,
 							coverage && coveragePlugin,
 							minify && renamePlugin,
 						].filter(Boolean),
@@ -198,7 +222,14 @@ function createEsbuildPlugin() {
 	};
 }
 
-const pkgList = ["core", "preact", "react", "react/runtime", "react-transform"];
+const pkgList = [
+	"core",
+	"preact",
+	"react",
+	"react/auto",
+	"react/runtime",
+	"react-transform",
+];
 
 module.exports = function (config) {
 	config.set({

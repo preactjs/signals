@@ -1,28 +1,11 @@
-// @ts-ignore-next-line
-globalThis.IS_REACT_ACT_ENVIRONMENT = true;
-
-import {
-	signal,
-	computed,
-	useComputed,
-	useSignal,
-} from "@preact/signals-react";
+import { signal, computed } from "@preact/signals-core";
+import { useComputed, useSignal } from "@preact/signals-react/runtime";
 import { expect } from "chai";
 import { createElement, useReducer, StrictMode, useState } from "react";
 
-import { getConsoleErrorSpy, checkConsoleErrorLogs } from "./utils";
-
 export function mountSignalsTests(
-	render: (element: JSX.Element) => string | Promise<string>
+	render: (element: JSX.Element) => Promise<string>
 ) {
-	beforeEach(async () => {
-		getConsoleErrorSpy().resetHistory();
-	});
-
-	afterEach(async () => {
-		checkConsoleErrorLogs();
-	});
-
 	describe("mount text bindings", () => {
 		it("should render text without signals", async () => {
 			const html = await render(<span>test</span>);
