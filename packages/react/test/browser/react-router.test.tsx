@@ -1,4 +1,4 @@
-// @ts-ignore-next-line
+// @ts-expect-error
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
 import { signal } from "@preact/signals-react";
