@@ -33,6 +33,7 @@ npm install @preact/signals-core
     - [Attribute optimization (experimental)](./packages/preact/README.md#attribute-optimization-experimental)
 - [React Integration](./packages/react/README.md#react-integration)
   - [Hooks](./packages/react/README.md#hooks)
+  - [Rendering optimizations](./packages/react/README.md#rendering-optimizations)
 - [License](#license)
 
 ## Guide / API
