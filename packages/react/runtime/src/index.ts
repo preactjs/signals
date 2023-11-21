@@ -42,10 +42,35 @@ interface Effect {
 	_dispose(): void;
 }
 
+/**
+ * An enum defining how this store is used:
+ * - 0: unknown usage (bare useSignals call )
+ *
+ * - 1: component usage + try/finally
+ *
+ *   Invoked directly in a component's render method whose body is wrapped in a
+ *   try/finally that finishes the effect store returned by the hook (e.g. what
+ *   react-transform does)
+ *
+ * - 2: hook usage + try/finally
+ *
+ *   Invoked in a hook whose body is wrapped in a try/finally that finishes the
+ *   effect store returned by the hook (e.g. what react-transform does)
+ */
+type EffectStoreUsage = 0 | 1 | 2;
+
 export interface EffectStore {
+	/**
+	 * An enum defining how this hook is used and whether it is invoked in a
+	 * component's body or hook body. See the comment on `EffectStoreUsage` for
+	 * more details.
+	 */
+	_usage?: EffectStoreUsage;
 	effect: Effect;
 	subscribe(onStoreChange: () => void): () => void;
 	getSnapshot(): number;
+	/** startEffect - begin tracking signals used in this component */
+	_start(): void;
 	/** finishEffect - stop tracking the signals used in this component */
 	f(): void;
 	[symDispose](): void;
@@ -63,19 +88,27 @@ function setCurrentStore(store?: EffectStore) {
 const clearCurrentStore = () => setCurrentStore();
 
 /**
- * A redux-like store whose store value is a positive 32bit integer (a 'version').
+ * A redux-like store whose store value is a positive 32bit integer (a
+ * 'version').
  *
  * React subscribes to this store and gets a snapshot of the current 'version',
- * whenever the 'version' changes, we tell React it's time to update the component (call 'onStoreChange').
+ * whenever the 'version' changes, we tell React it's time to update the
+ * component (call 'onStoreChange').
  *
- * How we achieve this is by creating a binding with an 'effect', when the `effect._callback' is called,
- * we update our store version and tell React to re-render the component ([1] We don't really care when/how React does it).
+ * How we achieve this is by creating a binding with an 'effect', when the
+ * `effect._callback' is called, we update our store version and tell React to
+ * re-render the component ([1] We don't really care when/how React does it).
  *
  * [1]
  * @see https://react.dev/reference/react/useSyncExternalStore
- * @see https://github.com/reactjs/rfcs/blob/main/text/0214-use-sync-external-store.md
+ * @see
+ * https://github.com/reactjs/rfcs/blob/main/text/0214-use-sync-external-store.md
+ *
+ * @param _usage An enum defining how this hook is used and whether it is
+ * invoked in a component's body or hook body. See the comment on
+ * `EffectStoreUsage` for more details.
  */
-function createEffectStore(): EffectStore {
+function createEffectStore(_usage?: EffectStoreUsage): EffectStore {
 	let effectInstance!: Effect;
 	let version = 0;
 	let onChangeNotifyReact: (() => void) | undefined;
@@ -89,6 +122,7 @@ function createEffectStore(): EffectStore {
 	};
 
 	return {
+		_usage,
 		effect: effectInstance,
 		subscribe(onStoreChange) {
 			onChangeNotifyReact = onStoreChange;
@@ -111,6 +145,25 @@ function createEffectStore(): EffectStore {
 		},
 		getSnapshot() {
 			return version;
+		},
+		_start() {
+			// TODO: implement state machine to transition between effect stores:
+			//
+			// - 0 -> 0: finish previous effect (unknown to unknown)
+			// - 0 -> 1: finish previous effect
+			//   Assume previous invocation was another component or hook from another
+			//   component. Nested component renders (renderToStaticMarkup) not
+			//   supported with bare useSignals calls.
+			// - 0 -> 2: capture & restore
+			//   Previous invocation could be a component or a hook. Either way,
+			//   restore it after our invocation so that it can continue to capture
+			//   any signals after we exit.
+			// - 1 -> 0: ? do nothing since it'll be captured by current effect store?
+			// - 1 -> 1: capture & restore (e.g. component calls renderToStaticMarkup)
+			// - 1 -> 2: capture & restore (e.g. hook)
+			// - 2 -> 0: ? do nothing since it'll be captured by current effect store?
+			// - 2 -> 1: capture & restore (e.g. hook calls renderToStaticMarkup)
+			// - 2 -> 2: capture & restore (e.g. nested hook calls)
 		},
 		f() {
 			clearCurrentStore();
@@ -137,6 +190,7 @@ function createEmptyEffectStore(): EffectStore {
 		getSnapshot() {
 			return 0;
 		},
+		_start() {},
 		f() {},
 		[symDispose]() {},
 	};
@@ -151,7 +205,9 @@ const _queueMicroTask = Promise.prototype.then.bind(Promise.resolve());
  * Custom hook to create the effect to track signals used during render and
  * subscribe to changes to rerender the component when the signals change.
  */
-export function _useSignalsImplementation(): EffectStore {
+export function _useSignalsImplementation(
+	_usage?: EffectStoreUsage
+): EffectStore {
 	clearCurrentStore();
 	if (!finalCleanup) {
 		finalCleanup = _queueMicroTask(() => {
@@ -162,7 +218,7 @@ export function _useSignalsImplementation(): EffectStore {
 
 	const storeRef = useRef<EffectStore>();
 	if (storeRef.current == null) {
-		storeRef.current = createEffectStore();
+		storeRef.current = createEffectStore(_usage);
 	}
 
 	const store = storeRef.current;
@@ -197,9 +253,9 @@ Object.defineProperties(Signal.prototype, {
 	ref: { configurable: true, value: null },
 });
 
-export function useSignals(): EffectStore {
+export function useSignals(usage?: EffectStoreUsage): EffectStore {
 	if (isAutoSignalTrackingInstalled) return emptyEffectStore;
-	return _useSignalsImplementation();
+	return _useSignalsImplementation(usage);
 }
 
 export function useSignal<T>(value: T): Signal<T> {
