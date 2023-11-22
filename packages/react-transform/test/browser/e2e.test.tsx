@@ -314,6 +314,39 @@ describe("React Signals babel transfrom - browser E2E tests", () => {
 		expect(ref.current).to.equal(scratch.firstChild);
 	});
 
+	it("should rerender registry-style declared components", async () => {
+		const { App, name, lang } = await createComponent(`
+			import { signal } from "@preact/signals-core";
+			import { memo } from "react";
+
+			const Greeting = {
+				English: memo(({ name }) => <div>Hello {name.value}</div>),
+				["Espanol"]: memo(({ name }) => <div>Hola {name.value}</div>),
+			};
+
+			export const name = signal("John");
+			export const lang = signal("English");
+
+			export function App() {
+				const Component = Greeting[lang.value];
+				return <Component name={name} />;
+			}
+			`);
+
+		await render(<App />);
+		expect(scratch.innerHTML).to.equal("<div>Hello John</div>");
+
+		await act(() => {
+			name.value = "Jane";
+		});
+		expect(scratch.innerHTML).to.equal("<div>Hello Jane</div>");
+
+		await act(() => {
+			lang.value = "Espanol";
+		});
+		expect(scratch.innerHTML).to.equal("<div>Hola Jane</div>");
+	});
+
 	it("should transform components authored inside a test's body", async () => {
 		const { name, App } = await createComponent(`
 			import { signal } from "@preact/signals-core";
