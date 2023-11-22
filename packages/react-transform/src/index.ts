@@ -160,10 +160,10 @@ function getFunctionName(
 	return getFunctionNameFromParent(path.parentPath);
 }
 
-function fnNameStartsWithCapital(name: string | null): boolean {
+function isComponentName(name: string | null): boolean {
 	return name?.match(/^[A-Z]/) != null ?? false;
 }
-function fnNameStartsWithUse(name: string | null): boolean {
+function isCustomHookName(name: string | null): boolean {
 	return name?.match(/^use[A-Z]/) != null ?? null;
 }
 
@@ -240,12 +240,8 @@ function isComponentFunction(
 ): boolean {
 	return (
 		getData(path.scope, containsJSX) === true && // Function contains JSX
-		fnNameStartsWithCapital(functionName) // Function name indicates it's a component
+		isComponentName(functionName) // Function name indicates it's a component
 	);
-}
-
-function isCustomHook(functionName: string | null): boolean {
-	return fnNameStartsWithUse(functionName); // Function name indicates it's a hook
 }
 
 function shouldTransform(
@@ -265,7 +261,8 @@ function shouldTransform(
 	if (options.mode == null || options.mode === "auto") {
 		return (
 			getData(path.scope, maybeUsesSignal) === true && // Function appears to use signals;
-			(isComponentFunction(path, functionName) || isCustomHook(functionName))
+			(isComponentFunction(path, functionName) ||
+				isCustomHookName(functionName))
 		);
 	}
 
@@ -340,7 +337,7 @@ function transformFunction(
 	state: PluginPass
 ) {
 	let newFunction: FunctionLike;
-	if (isCustomHook(functionName) || options.experimental?.noTryFinally) {
+	if (isCustomHookName(functionName) || options.experimental?.noTryFinally) {
 		// For custom hooks, we don't need to wrap the function body in a
 		// try/finally block because later code in the function's render body could
 		// read signals and we want to track and associate those signals with this
@@ -462,9 +459,7 @@ function isComponentLike(
 	path: NodePath<FunctionLike>,
 	functionName: string | null
 ): boolean {
-	return (
-		!getData(path, alreadyTransformed) && fnNameStartsWithCapital(functionName)
-	);
+	return !getData(path, alreadyTransformed) && isComponentName(functionName);
 }
 
 export default function signalsTransform(
