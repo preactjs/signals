@@ -1,5 +1,24 @@
 # @preact/signals-react-transform
 
+## 0.1.1
+
+### Patch Changes
+
+- [#439](https://github.com/preactjs/signals/pull/439) [`fb6b050`](https://github.com/preactjs/signals/commit/fb6b050be305294fa3ea5b883c51a375f1720f78) Thanks [@andrewiggins](https://github.com/andrewiggins)! - Remove top-level requirement from react-transform
+
+* [#413](https://github.com/preactjs/signals/pull/413) [`ad6305c`](https://github.com/preactjs/signals/commit/ad6305c973160fb1272b6ad2e3783e6e3410f9de) Thanks [@XantreGodlike](https://github.com/XantreGodlike)! - Added 'module:' prefix to readme to babel recognized plugin correctly
+
+- [#421](https://github.com/preactjs/signals/pull/421) [`f80b251`](https://github.com/preactjs/signals/commit/f80b251d7333e1a1d82e537969a15ba17657c82f) Thanks [@andrewiggins](https://github.com/andrewiggins)! - Add an "all" mode to the react transform that transforms all components to be reactive to signals
+
+* [#441](https://github.com/preactjs/signals/pull/441) [`4c433c3`](https://github.com/preactjs/signals/commit/4c433c32469d3a79b1a3e4d523f111b6bec3a187) Thanks [@andrewiggins](https://github.com/andrewiggins)! - Add support for auto-transforming more ways to specify components: object methods, member assignments, export default components, components wrapped in HoCs like memo and forwardRef
+
+- [#444](https://github.com/preactjs/signals/pull/444) [`2939812`](https://github.com/preactjs/signals/commit/2939812a972b62830e0a839dcc9a8024ab5c7bc8) Thanks [@andrewiggins](https://github.com/andrewiggins)! - Add support for auto transforming Components declared as object properties
+
+* [#442](https://github.com/preactjs/signals/pull/442) [`76babcb`](https://github.com/preactjs/signals/commit/76babcb520594bb200fd69ac4840a7df5f259752) Thanks [@andrewiggins](https://github.com/andrewiggins)! - Add debug logging to inspect what components are transformed by plugin
+
+* Updated dependencies [[`020982d`](https://github.com/preactjs/signals/commit/020982d2f3039817527aaa000a5697486a870c9d), [`fb6b050`](https://github.com/preactjs/signals/commit/fb6b050be305294fa3ea5b883c51a375f1720f78)]:
+  - @preact/signals-react@1.3.7
+
 ## 0.1.0
 
 ### Minor Changes

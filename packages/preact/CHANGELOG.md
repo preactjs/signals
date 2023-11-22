@@ -1,5 +1,11 @@
 # @preact/signals
 
+## 1.2.2
+
+### Patch Changes
+
+- [#415](https://github.com/preactjs/signals/pull/415) [`79efe32`](https://github.com/preactjs/signals/commit/79efe32437784a2f7583fc727f9f99324289d11d) Thanks [@prinsss](https://github.com/prinsss)! - Fix error when using `useSignal` with UMD builds of `@preact/signals`.
+
 ## 1.2.1
 
 ### Patch Changes

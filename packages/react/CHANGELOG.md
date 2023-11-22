@@ -1,5 +1,13 @@
 # @preact/signals-react
 
+## 1.3.7
+
+### Patch Changes
+
+- [#443](https://github.com/preactjs/signals/pull/443) [`020982d`](https://github.com/preactjs/signals/commit/020982d2f3039817527aaa000a5697486a870c9d) Thanks [@andrewiggins](https://github.com/andrewiggins)! - Setup internal infrastructure for upcoming major change
+
+* [#439](https://github.com/preactjs/signals/pull/439) [`fb6b050`](https://github.com/preactjs/signals/commit/fb6b050be305294fa3ea5b883c51a375f1720f78) Thanks [@andrewiggins](https://github.com/andrewiggins)! - Fix rendering signals as text when using react-transform
+
 ## 1.3.6
 
 ### Patch Changes
