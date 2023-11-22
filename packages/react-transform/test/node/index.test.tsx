@@ -153,11 +153,9 @@ function runGeneratedTestCases(config: TestCaseConfig) {
 	});
 
 	// e.g. const obj = { C: () => {} };
-	if (config.comment !== undefined) {
-		describe("object property components", () => {
-			runTestCases(config, objectPropertyComp(codeConfig));
-		});
-	}
+	describe("object property components", () => {
+		runTestCases(config, objectPropertyComp(codeConfig));
+	});
 
 	// e.g. export default () => {};
 	describe(`default exported components`, () => {

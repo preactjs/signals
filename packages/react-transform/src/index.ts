@@ -122,6 +122,13 @@ function getFunctionNameFromParent(
 		} else {
 			return null;
 		}
+	} else if (parentPath.node.type === "ObjectProperty") {
+		if (parentPath.node.key.type === "Identifier") {
+			return parentPath.node.key.name;
+		} else if (parentPath.node.key.type === "StringLiteral") {
+			return parentPath.node.key.value;
+		}
+		return null;
 	} else if (parentPath.node.type === "ExportDefaultDeclaration") {
 		return DefaultExportSymbol;
 	} else if (
