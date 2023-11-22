@@ -331,7 +331,7 @@ export function _useSignalsImplementation(
  * A wrapper component that renders a Signal's value directly as a Text node or JSX.
  */
 function SignalValue({ data }: { data: Signal }) {
-	const store = useSignals();
+	const store = _useSignalsImplementation(1);
 	try {
 		return data.value;
 	} finally {
