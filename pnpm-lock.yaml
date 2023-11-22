@@ -265,7 +265,7 @@ importers:
         specifier: ^7.22.5
         version: 7.22.5
       '@preact/signals-react':
-        specifier: workspace:^1.3.6
+        specifier: workspace:^1.3.7
         version: link:../react
       debug:
         specifier: ^4.3.4
