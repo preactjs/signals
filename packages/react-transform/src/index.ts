@@ -67,6 +67,18 @@ function basename(filename: string | undefined): string | undefined {
 
 const DefaultExportSymbol = Symbol("DefaultExportSymbol");
 
+function getObjectPropertyKey(
+	node: BabelTypes.ObjectProperty | BabelTypes.ObjectMethod
+): string | null {
+	if (node.key.type === "Identifier") {
+		return node.key.name;
+	} else if (node.key.type === "StringLiteral") {
+		return node.key.value;
+	}
+
+	return null;
+}
+
 /**
  * If the function node has a name (i.e. is a function declaration with a
  * name), return that. Else return null.
@@ -75,11 +87,7 @@ function getFunctionNodeName(path: NodePath<FunctionLike>): string | null {
 	if (path.node.type === "FunctionDeclaration" && path.node.id) {
 		return path.node.id.name;
 	} else if (path.node.type === "ObjectMethod") {
-		if (path.node.key.type === "Identifier") {
-			return path.node.key.name;
-		} else if (path.node.key.type === "StringLiteral") {
-			return path.node.key.value;
-		}
+		return getObjectPropertyKey(path.node);
 	}
 
 	return null;
@@ -123,12 +131,7 @@ function getFunctionNameFromParent(
 			return null;
 		}
 	} else if (parentPath.node.type === "ObjectProperty") {
-		if (parentPath.node.key.type === "Identifier") {
-			return parentPath.node.key.name;
-		} else if (parentPath.node.key.type === "StringLiteral") {
-			return parentPath.node.key.value;
-		}
-		return null;
+		return getObjectPropertyKey(parentPath.node);
 	} else if (parentPath.node.type === "ExportDefaultDeclaration") {
 		return DefaultExportSymbol;
 	} else if (
