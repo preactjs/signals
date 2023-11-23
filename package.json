@@ -76,7 +76,7 @@
     "eslint": "^8.21.0",
     "eslint-config-prettier": "^8.5.0",
     "husky": "^8.0.1",
-    "karma": "6.3.16",
+    "karma": "6.4.2",
     "karma-chai-sinon": "^0.1.5",
     "karma-chrome-launcher": "^3.1.1",
     "karma-coverage": "^2.2.0",
@@ -106,6 +106,9 @@
     "patchedDependencies": {
       "microbundle@0.15.1": "patches/microbundle@0.15.1.patch",
       "@babel/plugin-transform-typescript@7.19.1": "patches/@babel__plugin-transform-typescript@7.19.1.patch"
+    },
+    "overrides": {
+      "socket.io": "~4.7.2"
     }
   },
   "volta": {
