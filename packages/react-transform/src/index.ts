@@ -84,7 +84,11 @@ function getObjectPropertyKey(
  * name), return that. Else return null.
  */
 function getFunctionNodeName(path: NodePath<FunctionLike>): string | null {
-	if (path.node.type === "FunctionDeclaration" && path.node.id) {
+	if (
+		(path.node.type === "FunctionDeclaration" ||
+			path.node.type === "FunctionExpression") &&
+		path.node.id
+	) {
 		return path.node.id.name;
 	} else if (path.node.type === "ObjectMethod") {
 		return getObjectPropertyKey(path.node);

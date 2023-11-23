@@ -291,23 +291,19 @@ interface VariableCodeConfig extends CodeConfig {
 const codeTitle = (...parts: Array<string | undefined>) =>
 	parts.filter(Boolean).join(" ");
 
-function expressionComponents(config: CodeConfig): GeneratedCode[] {
+function expressionComponents(
+	config: CodeConfig,
+	properInlineName?: boolean
+): GeneratedCode[] {
 	const { name: baseName, params } = config;
+
+	let components: GeneratedCode[];
 	if (config.auto) {
-		return [
+		components = [
 			{
 				name: codeTitle(baseName, "as function without inline name"),
 				...generateCode({
 					type: "FuncExpComp",
-					body: "return <div>{signal.value}</div>",
-					params,
-				}),
-			},
-			{
-				name: codeTitle(baseName, "as function with proper inline name"),
-				...generateCode({
-					type: "FuncExpComp",
-					name: "App",
 					body: "return <div>{signal.value}</div>",
 					params,
 				}),
@@ -332,16 +328,7 @@ function expressionComponents(config: CodeConfig): GeneratedCode[] {
 			},
 		];
 	} else {
-		return [
-			{
-				name: codeTitle(baseName, "as function with bad inline name"),
-				...generateCode({
-					type: "FuncExpComp",
-					name: "app",
-					body: "return signal.value",
-					params,
-				}),
-			},
+		components = [
 			{
 				name: codeTitle(baseName, "as function with no JSX"),
 				...generateCode({
@@ -378,13 +365,46 @@ function expressionComponents(config: CodeConfig): GeneratedCode[] {
 			},
 		];
 	}
+
+	if (
+		(properInlineName != null && properInlineName === false) ||
+		config.auto === false
+	) {
+		components.push({
+			name: codeTitle(baseName, "as function with bad inline name"),
+			...generateCode({
+				type: "FuncExpComp",
+				name: "app",
+				body: "return <div>{signal.value}</div>",
+				params,
+			}),
+		});
+	} else {
+		components.push({
+			name: codeTitle(baseName, "as function with proper inline name"),
+			...generateCode({
+				type: "FuncExpComp",
+				name: "App",
+				body: "return <div>{signal.value}</div>",
+				params,
+			}),
+		});
+	}
+
+	return components;
 }
 
-function withCallExpWrappers(config: CodeConfig): GeneratedCode[] {
+function withCallExpWrappers(
+	config: CodeConfig,
+	properInlineName?: boolean
+): GeneratedCode[] {
 	const codeCases: GeneratedCode[] = [];
 
 	// Simulate a component wrapped memo
-	const memoedComponents = expressionComponents({ ...config, params: 1 });
+	const memoedComponents = expressionComponents(
+		{ ...config, params: 1 },
+		properInlineName
+	);
 	for (let component of memoedComponents) {
 		codeCases.push({
 			name: component.name + " wrapped in memo",
@@ -397,7 +417,10 @@ function withCallExpWrappers(config: CodeConfig): GeneratedCode[] {
 	}
 
 	// Simulate a component wrapped in forwardRef
-	const forwardRefComponents = expressionComponents({ ...config, params: 2 });
+	const forwardRefComponents = expressionComponents(
+		{ ...config, params: 2 },
+		properInlineName
+	);
 	for (let component of forwardRefComponents) {
 		codeCases.push({
 			name: component.name + " wrapped in forwardRef",
@@ -607,10 +630,13 @@ export function variableComp(config: VariableCodeConfig): GeneratedCode[] {
 	// With HoC wrappers, we are testing the logic to find the component name. So
 	// only generate tests where the function body is correct ("auto" is true) and
 	// the name is either correct or bad.
-	const hocComponents = withCallExpWrappers({
-		...config,
-		auto: true,
-	});
+	const hocComponents = withCallExpWrappers(
+		{
+			...config,
+			auto: true,
+		},
+		config.auto
+	);
 	const suffix = config.auto ? "" : "with bad variable name";
 	for (const c of hocComponents) {
 		codeCases.push({
@@ -677,10 +703,13 @@ export function assignmentComp(config: CodeConfig): GeneratedCode[] {
 	// With HoC wrappers, we are testing the logic to find the component name. So
 	// only generate tests where the function body is correct ("auto" is true) and
 	// the name is either correct or bad.
-	const hocComponents = withCallExpWrappers({
-		...config,
-		auto: true,
-	});
+	const hocComponents = withCallExpWrappers(
+		{
+			...config,
+			auto: true,
+		},
+		config.auto
+	);
 	const suffix = config.auto ? "" : "with bad variable name";
 	for (const c of hocComponents) {
 		codeCases.push({
@@ -794,10 +823,13 @@ export function objAssignComp(config: CodeConfig): GeneratedCode[] {
 	// With HoC wrappers, we are testing the logic to find the component name. So
 	// only generate tests where the function body is correct ("auto" is true) and
 	// the name is either correct or bad.
-	const hocComponents = withCallExpWrappers({
-		...config,
-		auto: true,
-	});
+	const hocComponents = withCallExpWrappers(
+		{
+			...config,
+			auto: true,
+		},
+		config.auto
+	);
 	const suffix = config.auto ? "" : "with bad variable name";
 	for (const c of hocComponents) {
 		codeCases.push({
@@ -863,10 +895,13 @@ export function objectPropertyComp(config: CodeConfig): GeneratedCode[] {
 	// With HoC wrappers, we are testing the logic to find the component name. So
 	// only generate tests where the function body is correct ("auto" is true) and
 	// the name is either correct or bad.
-	const hocComponents = withCallExpWrappers({
-		...config,
-		auto: true,
-	});
+	const hocComponents = withCallExpWrappers(
+		{
+			...config,
+			auto: true,
+		},
+		config.auto
+	);
 	const suffix = config.auto ? "" : "with bad property name";
 	for (const c of hocComponents) {
 		codeCases.push({
