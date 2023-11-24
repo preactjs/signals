@@ -74,6 +74,12 @@ interface ArrowFuncComponent {
 	params?: ParamsConfig;
 }
 
+interface ArrowFuncHook {
+	type: "ArrowFuncHook";
+	return: "statement" | "expression";
+	body: string;
+}
+
 interface ObjMethodComponent {
 	type: "ObjectMethodComp";
 	name: string;
@@ -82,11 +88,12 @@ interface ObjMethodComponent {
 	comment?: CommentKind;
 }
 
-interface ArrowFuncHook {
-	type: "ArrowFuncHook";
-	return: "statement" | "expression";
-	body: string;
-}
+// TOOD: Add object method hook tests
+// interface ObjMethodHook {
+//	type: "ObjectMethodHook";
+// 	name: string;
+// 	body: string;
+// }
 
 interface CallExp {
 	type: "CallExp";
@@ -250,6 +257,15 @@ const codeGenerators: Generators = {
 			transformed: `(${params}) => {\n${outputBody}\n}`,
 		};
 	},
+	ArrowFuncHook(config) {
+		const isExpBody = config.return === "expression";
+		const inputBody = isExpBody ? config.body : `{\n${config.body}\n}`;
+		const outputBody = transformHook(config);
+		return {
+			input: `() => ${inputBody}`,
+			transformed: `() => {\n${outputBody}\n}`,
+		};
+	},
 	ObjectMethodComp(config) {
 		const params = generateParams(config.params);
 		const inputBody = config.body;
@@ -258,15 +274,6 @@ const codeGenerators: Generators = {
 		return {
 			input: `var o = {\n${comment}${config.name}(${params}) {\n${inputBody}\n}\n};`,
 			transformed: `var o = {\n${comment}${config.name}(${params}) {\n${outputBody}\n}\n};`,
-		};
-	},
-	ArrowFuncHook(config) {
-		const isExpBody = config.return === "expression";
-		const inputBody = isExpBody ? config.body : `{\n${config.body}\n}`;
-		const outputBody = transformHook(config);
-		return {
-			input: `() => ${inputBody}`,
-			transformed: `() => {\n${outputBody}\n}`,
 		};
 	},
 	CallExp(config) {
