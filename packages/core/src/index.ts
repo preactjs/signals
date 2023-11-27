@@ -781,6 +781,6 @@ export {
 	effect,
 	batch,
 	Signal,
-	type ReadonlySignal,
+	ReadonlySignal,
 	untracked,
 };
