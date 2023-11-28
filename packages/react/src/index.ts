@@ -13,7 +13,7 @@ import {
 	useComputed,
 	useSignalEffect,
 	installAutoSignalTracking,
-} from "../runtime/src/index"; // TODO: This duplicates runtime code between main and sub runtime packages
+} from "../runtime"; // TODO: This duplicates runtime code between main and sub runtime packages
 
 export {
 	signal,
