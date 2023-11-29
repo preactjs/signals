@@ -2,4 +2,4 @@
 "@preact/signals-react": patch
 ---
 
-Fixed typescript error from resolving unspecified in exports map .ts file
+Ensure types are resolved against built `.d.ts` rather than source `.ts`
