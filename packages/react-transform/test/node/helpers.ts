@@ -958,6 +958,54 @@ export function objectPropertyComp(config: CodeConfig): GeneratedCode[] {
 				}),
 			}),
 		});
+
+		codeCases.push({
+			name: codeTitle(
+				baseName,
+				"function component with bad computed property name"
+			),
+			...generateCode({
+				type: "ObjectProperty",
+				name: "['render']",
+				comment,
+				body: generateCode({
+					type: "FuncExpComp",
+					body: "return <div>{signal.value}</div>",
+				}),
+			}),
+		});
+
+		codeCases.push({
+			name: codeTitle(
+				baseName,
+				"function component with dynamic computed property name"
+			),
+			...generateCode({
+				type: "ObjectProperty",
+				name: "['Comp' + '1']",
+				comment,
+				body: generateCode({
+					type: "FuncExpComp",
+					body: "return <div>{signal.value}</div>",
+				}),
+			}),
+		});
+	} else {
+		codeCases.push({
+			name: codeTitle(
+				baseName,
+				"function component with computed property name"
+			),
+			...generateCode({
+				type: "ObjectProperty",
+				name: "['Comp']",
+				comment,
+				body: generateCode({
+					type: "FuncExpComp",
+					body: "return <div>{signal.value}</div>",
+				}),
+			}),
+		});
 	}
 
 	// With HoC wrappers, we are testing the logic to find the component name. So

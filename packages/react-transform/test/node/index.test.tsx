@@ -188,22 +188,22 @@ function runGeneratedHookTestCases(config: TestCaseConfig): void {
 	};
 
 	// e.g. function useCustomHook() {}
-	describe.only("function hooks", () => {
+	describe("function hooks", () => {
 		runTestCases(config, declarationHooks(codeConfig));
 	});
 
 	// e.g. const useCustomHook = () => {}
-	describe.only("variable declared hooks", () => {
+	describe("variable declared hooks", () => {
 		runTestCases(config, variableHooks(codeConfig));
 	});
 
 	// e.g. export default () => {}
-	describe.only("default exported hooks", () => {
+	describe("default exported hooks", () => {
 		runTestCases(config, exportDefaultHooks(codeConfig));
 	});
 
 	// e.g. export function useCustomHook() {}
-	describe.only("named exported hooks", () => {
+	describe("named exported hooks", () => {
 		runTestCases(config, exportNamedHooks(codeConfig));
 	});
 }
