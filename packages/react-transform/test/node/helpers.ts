@@ -39,12 +39,17 @@ export type CommentKind = "opt-in" | "opt-out" | undefined;
 type VariableKind = "var" | "let" | "const";
 type ParamsConfig = 0 | 1 | 2 | 3 | undefined;
 
-interface FuncDeclComponent {
-	type: "FuncDeclComp";
-	name: string;
+interface ComponentConfig {
+	name?: string;
 	body: string;
 	params?: ParamsConfig;
 	comment?: CommentKind;
+	prepend?: boolean;
+}
+
+interface FuncDeclComponent extends ComponentConfig {
+	type: "FuncDeclComp";
+	name: string;
 }
 
 interface FuncDeclHook {
@@ -54,11 +59,8 @@ interface FuncDeclHook {
 	comment?: CommentKind;
 }
 
-interface FuncExpComponent {
+interface FuncExpComponent extends ComponentConfig {
 	type: "FuncExpComp";
-	name?: string;
-	body: string;
-	params?: ParamsConfig;
 }
 
 interface FuncExpHook {
@@ -67,11 +69,10 @@ interface FuncExpHook {
 	body: string;
 }
 
-interface ArrowFuncComponent {
+interface ArrowFuncComponent extends ComponentConfig {
 	type: "ArrowComp";
 	return: "statement" | "expression";
-	body: string;
-	params?: ParamsConfig;
+	name?: undefined;
 }
 
 interface ArrowFuncHook {
@@ -80,12 +81,9 @@ interface ArrowFuncHook {
 	body: string;
 }
 
-interface ObjMethodComponent {
+interface ObjMethodComponent extends ComponentConfig {
 	type: "ObjectMethodComp";
 	name: string;
-	body: string;
-	params?: ParamsConfig;
-	comment?: CommentKind;
 }
 
 // TOOD: Add object method hook tests
@@ -177,12 +175,17 @@ function transformComponent(
 	const { type, body } = config;
 	const addReturn = type === "ArrowComp" && config.return === "expression";
 
-	return `var _effect = _useSignals();
-	try {
-		${addReturn ? "return " : ""}${body}
-	} finally {
-		_effect.f();
-	}`;
+	if (config.prepend) {
+		return `_useSignals();
+		${addReturn ? "return " : ""}${body}`;
+	} else {
+		return `var _effect = _useSignals();
+		try {
+			${addReturn ? "return " : ""}${body}
+		} finally {
+			_effect.f();
+		}`;
+	}
 }
 
 function transformHook(
@@ -352,6 +355,11 @@ interface CodeConfig {
 	params?: ParamsConfig;
 }
 
+interface ComponentCodeConfig extends CodeConfig {
+	properInlineName?: boolean;
+	prepend?: boolean;
+}
+
 interface VariableCodeConfig extends CodeConfig {
 	inlineComment?: CommentKind;
 }
@@ -359,10 +367,7 @@ interface VariableCodeConfig extends CodeConfig {
 const codeTitle = (...parts: Array<string | undefined>) =>
 	parts.filter(Boolean).join(" ");
 
-function expressionComponents(
-	config: CodeConfig,
-	properInlineName?: boolean
-): GeneratedCode[] {
+function expressionComponents(config: ComponentCodeConfig): GeneratedCode[] {
 	const { name: baseName, params } = config;
 
 	let components: GeneratedCode[];
@@ -374,6 +379,7 @@ function expressionComponents(
 					type: "FuncExpComp",
 					body: "return <div>{signal.value}</div>",
 					params,
+					prepend: config.prepend,
 				}),
 			},
 			{
@@ -383,6 +389,7 @@ function expressionComponents(
 					return: "statement",
 					body: "return <div>{signal.value}</div>",
 					params,
+					prepend: config.prepend,
 				}),
 			},
 			{
@@ -392,6 +399,7 @@ function expressionComponents(
 					return: "expression",
 					body: "<div>{signal.value}</div>",
 					params,
+					prepend: config.prepend,
 				}),
 			},
 		];
@@ -403,6 +411,7 @@ function expressionComponents(
 					type: "FuncExpComp",
 					body: "return signal.value",
 					params,
+					prepend: config.prepend,
 				}),
 			},
 			{
@@ -411,6 +420,7 @@ function expressionComponents(
 					type: "FuncExpComp",
 					body: "return <div>Hello World</div>",
 					params,
+					prepend: config.prepend,
 				}),
 			},
 			{
@@ -420,6 +430,7 @@ function expressionComponents(
 					return: "expression",
 					body: "signal.value",
 					params,
+					prepend: config.prepend,
 				}),
 			},
 			{
@@ -429,13 +440,14 @@ function expressionComponents(
 					return: "expression",
 					body: "<div>Hello World</div>",
 					params,
+					prepend: config.prepend,
 				}),
 			},
 		];
 	}
 
 	if (
-		(properInlineName != null && properInlineName === false) ||
+		(config.properInlineName != null && config.properInlineName === false) ||
 		config.auto === false
 	) {
 		components.push({
@@ -445,6 +457,7 @@ function expressionComponents(
 				name: "app",
 				body: "return <div>{signal.value}</div>",
 				params,
+				prepend: true,
 			}),
 		});
 	} else {
@@ -455,6 +468,7 @@ function expressionComponents(
 				name: "App",
 				body: "return <div>{signal.value}</div>",
 				params,
+				prepend: config.prepend,
 			}),
 		});
 	}
@@ -462,17 +476,11 @@ function expressionComponents(
 	return components;
 }
 
-function withCallExpWrappers(
-	config: CodeConfig,
-	properInlineName?: boolean
-): GeneratedCode[] {
+function withCallExpWrappers(config: ComponentCodeConfig): GeneratedCode[] {
 	const codeCases: GeneratedCode[] = [];
 
 	// Simulate a component wrapped memo
-	const memoedComponents = expressionComponents(
-		{ ...config, params: 1 },
-		properInlineName
-	);
+	const memoedComponents = expressionComponents({ ...config, params: 1 });
 	for (let component of memoedComponents) {
 		codeCases.push({
 			name: component.name + " wrapped in memo",
@@ -485,10 +493,7 @@ function withCallExpWrappers(
 	}
 
 	// Simulate a component wrapped in forwardRef
-	const forwardRefComponents = expressionComponents(
-		{ ...config, params: 2 },
-		properInlineName
-	);
+	const forwardRefComponents = expressionComponents({ ...config, params: 2 });
 	for (let component of forwardRefComponents) {
 		codeCases.push({
 			name: component.name + " wrapped in forwardRef",
@@ -546,6 +551,7 @@ export function declarationComp(config: CodeConfig): GeneratedCode[] {
 					body: "return <div>{signal.value}</div>",
 					params,
 					comment,
+					prepend: true,
 				}),
 			},
 			{
@@ -610,6 +616,7 @@ export function objMethodComp(config: CodeConfig): GeneratedCode[] {
 					body: "return <div>{signal.value}</div>",
 					params,
 					comment,
+					prepend: true,
 				}),
 			},
 			{
@@ -620,6 +627,7 @@ export function objMethodComp(config: CodeConfig): GeneratedCode[] {
 					body: "return <div>{signal.value}</div>",
 					params,
 					comment,
+					prepend: true,
 				}),
 			},
 			{
@@ -675,6 +683,7 @@ export function variableComp(config: VariableCodeConfig): GeneratedCode[] {
 				body: generateCode({
 					type: "FuncExpComp",
 					body: "return <div>{signal.value}</div>",
+					prepend: true,
 				}),
 			}),
 		});
@@ -690,6 +699,7 @@ export function variableComp(config: VariableCodeConfig): GeneratedCode[] {
 					type: "ArrowComp",
 					return: "expression",
 					body: "<div>{signal.value}</div>",
+					prepend: true,
 				}),
 			}),
 		});
@@ -698,13 +708,12 @@ export function variableComp(config: VariableCodeConfig): GeneratedCode[] {
 	// With HoC wrappers, we are testing the logic to find the component name. So
 	// only generate tests where the function body is correct ("auto" is true) and
 	// the name is either correct or bad.
-	const hocComponents = withCallExpWrappers(
-		{
-			...config,
-			auto: true,
-		},
-		config.auto
-	);
+	const hocComponents = withCallExpWrappers({
+		...config,
+		auto: true,
+		prepend: !config.auto,
+		properInlineName: config.auto,
+	});
 	const suffix = config.auto ? "" : "with bad variable name";
 	for (const c of hocComponents) {
 		codeCases.push({
@@ -749,6 +758,7 @@ export function assignmentComp(config: CodeConfig): GeneratedCode[] {
 				body: generateCode({
 					type: "FuncExpComp",
 					body: "return <div>{signal.value}</div>",
+					prepend: true,
 				}),
 			}),
 		});
@@ -763,6 +773,7 @@ export function assignmentComp(config: CodeConfig): GeneratedCode[] {
 					type: "ArrowComp",
 					return: "expression",
 					body: "<div>{signal.value}</div>",
+					prepend: true,
 				}),
 			}),
 		});
@@ -771,13 +782,12 @@ export function assignmentComp(config: CodeConfig): GeneratedCode[] {
 	// With HoC wrappers, we are testing the logic to find the component name. So
 	// only generate tests where the function body is correct ("auto" is true) and
 	// the name is either correct or bad.
-	const hocComponents = withCallExpWrappers(
-		{
-			...config,
-			auto: true,
-		},
-		config.auto
-	);
+	const hocComponents = withCallExpWrappers({
+		...config,
+		auto: true,
+		prepend: !config.auto,
+		properInlineName: config.auto,
+	});
 	const suffix = config.auto ? "" : "with bad variable name";
 	for (const c of hocComponents) {
 		codeCases.push({
@@ -821,6 +831,7 @@ export function objAssignComp(config: CodeConfig): GeneratedCode[] {
 				body: generateCode({
 					type: "FuncExpComp",
 					body: "return <div>{signal.value}</div>",
+					prepend: true,
 				}),
 			}),
 		});
@@ -835,6 +846,7 @@ export function objAssignComp(config: CodeConfig): GeneratedCode[] {
 					type: "ArrowComp",
 					return: "expression",
 					body: "<div>{signal.value}</div>",
+					prepend: true,
 				}),
 			}),
 		});
@@ -850,6 +862,7 @@ export function objAssignComp(config: CodeConfig): GeneratedCode[] {
 				body: generateCode({
 					type: "FuncExpComp",
 					body: "return <div>{signal.value}</div>",
+					prepend: true,
 				}),
 				comment,
 			}),
@@ -866,6 +879,7 @@ export function objAssignComp(config: CodeConfig): GeneratedCode[] {
 				body: generateCode({
 					type: "FuncExpComp",
 					body: "return <div>{signal.value}</div>",
+					prepend: true,
 				}),
 				comment,
 			}),
@@ -891,13 +905,12 @@ export function objAssignComp(config: CodeConfig): GeneratedCode[] {
 	// With HoC wrappers, we are testing the logic to find the component name. So
 	// only generate tests where the function body is correct ("auto" is true) and
 	// the name is either correct or bad.
-	const hocComponents = withCallExpWrappers(
-		{
-			...config,
-			auto: true,
-		},
-		config.auto
-	);
+	const hocComponents = withCallExpWrappers({
+		...config,
+		auto: true,
+		prepend: !config.auto,
+		properInlineName: config.auto,
+	});
 	const suffix = config.auto ? "" : "with bad variable name";
 	for (const c of hocComponents) {
 		codeCases.push({
@@ -941,6 +954,7 @@ export function objectPropertyComp(config: CodeConfig): GeneratedCode[] {
 				body: generateCode({
 					type: "FuncExpComp",
 					body: "return <div>{signal.value}</div>",
+					prepend: true,
 				}),
 			}),
 		});
@@ -955,6 +969,7 @@ export function objectPropertyComp(config: CodeConfig): GeneratedCode[] {
 					type: "ArrowComp",
 					return: "expression",
 					body: "<div>{signal.value}</div>",
+					prepend: true,
 				}),
 			}),
 		});
@@ -971,6 +986,7 @@ export function objectPropertyComp(config: CodeConfig): GeneratedCode[] {
 				body: generateCode({
 					type: "FuncExpComp",
 					body: "return <div>{signal.value}</div>",
+					prepend: true,
 				}),
 			}),
 		});
@@ -987,6 +1003,7 @@ export function objectPropertyComp(config: CodeConfig): GeneratedCode[] {
 				body: generateCode({
 					type: "FuncExpComp",
 					body: "return <div>{signal.value}</div>",
+					prepend: true,
 				}),
 			}),
 		});
@@ -1011,13 +1028,12 @@ export function objectPropertyComp(config: CodeConfig): GeneratedCode[] {
 	// With HoC wrappers, we are testing the logic to find the component name. So
 	// only generate tests where the function body is correct ("auto" is true) and
 	// the name is either correct or bad.
-	const hocComponents = withCallExpWrappers(
-		{
-			...config,
-			auto: true,
-		},
-		config.auto
-	);
+	const hocComponents = withCallExpWrappers({
+		...config,
+		auto: true,
+		prepend: !config.auto,
+		properInlineName: config.auto,
+	});
 	const suffix = config.auto ? "" : "with bad property name";
 	for (const c of hocComponents) {
 		codeCases.push({
@@ -1040,8 +1056,8 @@ export function exportDefaultComp(config: CodeConfig): GeneratedCode[] {
 
 	const components = [
 		...declarationComp({ ...config, comment: undefined }),
-		...expressionComponents(config),
-		...withCallExpWrappers(config),
+		...expressionComponents({ ...config, prepend: !config.auto }),
+		...withCallExpWrappers({ ...config, prepend: !config.auto }),
 	];
 
 	for (const c of components) {

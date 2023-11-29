@@ -52,8 +52,6 @@ function runTest(
 	filename?: string
 ) {
 	const output = transformCode(input, options, filename);
-	console.log("\t", format(input).replace(/\s+/g, " "));
-	console.log("\t", format(output).replace(/\s+/g, " "));
 	expect(format(output)).to.equal(format(expected));
 }
 
@@ -96,7 +94,7 @@ function runTestCases(config: TestCaseConfig, testCases: GeneratedCode[]) {
 
 		it(`(${testId}) ${testCase.name}`, () => {
 			if (DEBUG_TEST_IDS === true || DEBUG_TEST_IDS.includes(testId)) {
-				console.log("input :", testCase.input.replace(/\s+/g, " ")); // eslint-disable-line no-console
+				console.log("input:", testCase.input.replace(/\s+/g, " ")); // eslint-disable-line no-console
 				debugger; // eslint-disable-line no-debugger
 			}
 
