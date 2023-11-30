@@ -9,11 +9,15 @@ import {
 	assignmentComp,
 	objAssignComp,
 	declarationComp,
+	declarationHooks,
 	exportDefaultComp,
+	exportDefaultHooks,
 	exportNamedComp,
+	exportNamedHooks,
 	objectPropertyComp,
 	variableComp,
 	objMethodComp,
+	variableHooks,
 } from "./helpers";
 
 // To help interactively debug a specific test case, add the test ids of the
@@ -60,6 +64,8 @@ interface TestCaseConfig {
 	comment?: CommentKind;
 	/** Options to pass to the babel plugin */
 	options: PluginOptions;
+	/** The filename to run the transform under */
+	filename?: string;
 }
 
 let testCount = 0;
@@ -88,7 +94,7 @@ function runTestCases(config: TestCaseConfig, testCases: GeneratedCode[]) {
 
 		it(`(${testId}) ${testCase.name}`, () => {
 			if (DEBUG_TEST_IDS === true || DEBUG_TEST_IDS.includes(testId)) {
-				console.log("input :", testCase.input.replace(/\s+/g, " ")); // eslint-disable-line no-console
+				console.log("input:", testCase.input.replace(/\s+/g, " ")); // eslint-disable-line no-console
 				debugger; // eslint-disable-line no-debugger
 			}
 
@@ -102,17 +108,19 @@ function runTestCases(config: TestCaseConfig, testCases: GeneratedCode[]) {
 				expected = input;
 			}
 
-			const filename = config.useValidAutoMode
-				? "/path/to/Component.js"
-				: "C:\\path\\to\\lowercase.js";
-
-			runTest(input, expected, config.options, filename);
+			runTest(input, expected, config.options, config.filename);
 		});
 	}
 }
 
-function runGeneratedTestCases(config: TestCaseConfig) {
+function runGeneratedComponentTestCases(config: TestCaseConfig): void {
 	const codeConfig = { auto: config.useValidAutoMode, comment: config.comment };
+	config = {
+		...config,
+		filename: config.useValidAutoMode
+			? "/path/to/Component.js"
+			: "C:\\path\\to\\lowercase.js",
+	};
 
 	// e.g. function C() {}
 	describe("function components", () => {
@@ -166,6 +174,41 @@ function runGeneratedTestCases(config: TestCaseConfig) {
 	describe("named exported components", () => {
 		runTestCases(config, exportNamedComp(codeConfig));
 	});
+}
+
+function runGeneratedHookTestCases(config: TestCaseConfig): void {
+	const codeConfig = { auto: config.useValidAutoMode, comment: config.comment };
+	config = {
+		...config,
+		filename: config.useValidAutoMode
+			? "/path/to/useCustomHook.js"
+			: "C:\\path\\to\\usecustomHook.js",
+	};
+
+	// e.g. function useCustomHook() {}
+	describe("function hooks", () => {
+		runTestCases(config, declarationHooks(codeConfig));
+	});
+
+	// e.g. const useCustomHook = () => {}
+	describe("variable declared hooks", () => {
+		runTestCases(config, variableHooks(codeConfig));
+	});
+
+	// e.g. export default () => {}
+	describe("default exported hooks", () => {
+		runTestCases(config, exportDefaultHooks(codeConfig));
+	});
+
+	// e.g. export function useCustomHook() {}
+	describe("named exported hooks", () => {
+		runTestCases(config, exportNamedHooks(codeConfig));
+	});
+}
+
+function runGeneratedTestCases(config: TestCaseConfig): void {
+	runGeneratedComponentTestCases(config);
+	runGeneratedHookTestCases(config);
 }
 
 describe("React Signals Babel Transform", () => {
@@ -281,208 +324,7 @@ describe("React Signals Babel Transform", () => {
 	});
 });
 
-// TODO: migrate hook tests
-
 describe("React Signals Babel Transform", () => {
-	describe("auto mode transformations", () => {
-		it("transforms custom hook arrow functions with return statement", () => {
-			const inputCode = `
-				const useCustomHook = () => {
-					return signal.value;
-				};
-			`;
-
-			const expectedOutput = `
-				import { useSignals as _useSignals } from "@preact/signals-react/runtime";
-				const useCustomHook = () => {
-					_useSignals();
-					return signal.value;
-				};
-			`;
-
-			runTest(inputCode, expectedOutput);
-		});
-
-		it("transforms custom hook arrow functions with inline return statement", () => {
-			const inputCode = `
-				const useCustomHook = () => name.value;
-			`;
-
-			const expectedOutput = `
-				import { useSignals as _useSignals } from "@preact/signals-react/runtime";
-				const useCustomHook = () => {
-					_useSignals();
-					return name.value;
-				};
-			`;
-
-			runTest(inputCode, expectedOutput);
-		});
-
-		it("transforms custom hook function declarations", () => {
-			const inputCode = `
-				function useCustomHook() {
-					return signal.value;
-				}
-			`;
-
-			const expectedOutput = `
-				import { useSignals as _useSignals } from "@preact/signals-react/runtime";
-				function useCustomHook() {
-					_useSignals();
-					return signal.value;
-				}
-			`;
-
-			runTest(inputCode, expectedOutput);
-		});
-
-		it("transforms custom hook function expressions", () => {
-			const inputCode = `
-				const useCustomHook = function () {
-					return signal.value;
-				}
-			`;
-
-			const expectedOutput = `
-				import { useSignals as _useSignals } from "@preact/signals-react/runtime";
-				const useCustomHook = function () {
-					_useSignals();
-					return signal.value;
-				};
-			`;
-
-			runTest(inputCode, expectedOutput);
-		});
-	});
-
-	describe("manual mode opt-in transformations", () => {
-		it("transforms custom hook arrow function with leading opt-in JSDoc comment before variable declaration", () => {
-			const inputCode = `
-				/** @trackSignals */
-				const useCustomHook = () => {
-					return useState(0);
-				};
-			`;
-
-			const expectedOutput = `
-				import { useSignals as _useSignals } from "@preact/signals-react/runtime";
-				/** @trackSignals */
-				const useCustomHook = () => {
-					_useSignals();
-					return useState(0);
-				};
-			`;
-
-			runTest(inputCode, expectedOutput, { mode: "manual" });
-		});
-
-		it("transforms custom hook exported as default function declaration with leading opt-in JSDoc comment", () => {
-			const inputCode = `
-				/** @trackSignals */
-				export default function useCustomHook() {
-					return useState(0);
-				}
-			`;
-
-			const expectedOutput = `
-				import { useSignals as _useSignals } from "@preact/signals-react/runtime";
-				/** @trackSignals */
-				export default function useCustomHook() {
-					_useSignals();
-					return useState(0);
-				}
-			`;
-
-			runTest(inputCode, expectedOutput, { mode: "manual" });
-		});
-
-		it("transforms custom hooks exported as named function declaration with leading opt-in JSDoc comment", () => {
-			const inputCode = `
-				/** @trackSignals */
-				export function useCustomHook() {
-					return useState(0);
-				}
-			`;
-
-			const expectedOutput = `
-				import { useSignals as _useSignals } from "@preact/signals-react/runtime";
-				/** @trackSignals */
-				export function useCustomHook() {
-					_useSignals();
-					return useState(0);
-				}
-			`;
-
-			runTest(inputCode, expectedOutput, { mode: "manual" });
-		});
-	});
-
-	describe("auto mode opt-out transformations", () => {
-		it("skips transforming custom hook arrow function with leading opt-out JSDoc comment before variable declaration", () => {
-			const inputCode = `
-				/** @noTrackSignals */
-				const useCustomHook = () => {
-					return useState(0);
-				};
-			`;
-
-			const expectedOutput = inputCode;
-
-			runTest(inputCode, expectedOutput, { mode: "auto" });
-		});
-
-		it("skips transforming custom hooks exported as default function declaration with leading opt-out JSDoc comment", () => {
-			const inputCode = `
-				/** @noTrackSignals */
-				export default function useCustomHook() {
-					return useState(0);
-				}
-			`;
-
-			const expectedOutput = inputCode;
-
-			runTest(inputCode, expectedOutput, { mode: "auto" });
-		});
-
-		it("skips transforming custom hooks exported as named function declaration with leading opt-out JSDoc comment", () => {
-			const inputCode = `
-				/** @noTrackSignals */
-				export function useCustomHook() {
-					return useState(0);
-				}
-			`;
-
-			const expectedOutput = inputCode;
-
-			runTest(inputCode, expectedOutput, { mode: "auto" });
-		});
-	});
-
-	describe("auto mode no transformations", () => {
-		it("skips transforming custom hook function declarations that don't use signals", () => {
-			const inputCode = `
-				function useCustomHook() {
-					return useState(0);
-				}
-			`;
-
-			const expectedOutput = inputCode;
-			runTest(inputCode, expectedOutput);
-		});
-
-		it("skips transforming custom hook function declarations incorrectly named", () => {
-			const inputCode = `
-				function usecustomHook() {
-					return signal.value;
-				}
-			`;
-
-			const expectedOutput = inputCode;
-			runTest(inputCode, expectedOutput);
-		});
-	});
-
 	// TODO: Figure out what to do with the following
 
 	describe("all mode transformations", () => {

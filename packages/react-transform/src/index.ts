@@ -348,8 +348,12 @@ function transformFunction(
 		// component. The try/finally in the component's body will stop tracking
 		// signals for us instead.
 		newFunction = prependUseSignals(t, path, state);
-	} else {
+	} else if (isComponentName(functionName)) {
 		newFunction = wrapInTryFinally(t, path, state);
+	} else {
+		// Since we can't determine if this function is a component/hook or not,
+		// we'll just prepend the useSignals call so it will work as either
+		newFunction = prependUseSignals(t, path, state);
 	}
 
 	// Using replaceWith keeps the existing leading comments already so
