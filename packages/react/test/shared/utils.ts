@@ -107,6 +107,12 @@ const messagesToIgnore = [
 	/AssertionError/,
 ];
 
+if (isReact16) {
+	// Ignore React 16 warning about useLayoutEffect on the server. The useSyncExternalStore
+	// shim uses useLayoutEffect and we don't care about this warning.
+	messagesToIgnore.push(/useLayoutEffect does nothing on the server/);
+}
+
 export function checkConsoleErrorLogs(): void {
 	const errorSpy = getConsoleErrorSpy();
 	if (errorSpy.called) {
