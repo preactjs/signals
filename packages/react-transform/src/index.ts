@@ -25,6 +25,14 @@ const maybeUsesSignal = "maybeUsesSignal";
 const containsJSX = "containsJSX";
 const alreadyTransformed = "alreadyTransformed";
 
+const UNMANAGED = "0";
+const MANAGED_COMPONENT = "1";
+const MANAGED_HOOK = "2";
+type HookUsage =
+	| typeof UNMANAGED
+	| typeof MANAGED_COMPONENT
+	| typeof MANAGED_HOOK;
+
 const logger = {
 	transformed: debug("signals:react-transform:transformed"),
 	skipped: debug("signals:react-transform:skipped"),
@@ -83,15 +91,15 @@ function getObjectPropertyKey(
  * If the function node has a name (i.e. is a function declaration with a
  * name), return that. Else return null.
  */
-function getFunctionNodeName(path: NodePath<FunctionLike>): string | null {
+function getFunctionNodeName(node: FunctionLike): string | null {
 	if (
-		(path.node.type === "FunctionDeclaration" ||
-			path.node.type === "FunctionExpression") &&
-		path.node.id
+		(node.type === "FunctionDeclaration" ||
+			node.type === "FunctionExpression") &&
+		node.id
 	) {
-		return path.node.id.name;
-	} else if (path.node.type === "ObjectMethod") {
-		return getObjectPropertyKey(path.node);
+		return node.id.name;
+	} else if (node.type === "ObjectMethod") {
+		return getObjectPropertyKey(node);
 	}
 
 	return null;
@@ -156,7 +164,7 @@ function getFunctionNameFromParent(
 function getFunctionName(
 	path: NodePath<FunctionLike>
 ): string | typeof DefaultExportSymbol | null {
-	let nodeName = getFunctionNodeName(path);
+	let nodeName = getFunctionNodeName(path.node);
 	if (nodeName) {
 		return nodeName;
 	}
@@ -295,7 +303,7 @@ function wrapInTryFinally(
 	t: typeof BabelTypes,
 	path: NodePath<FunctionLike>,
 	state: PluginPass,
-	functionName: string | null
+	hookUsage: HookUsage
 ): FunctionLike {
 	const stopTrackingIdentifier = path.scope.generateUidIdentifier("effect");
 
@@ -304,11 +312,7 @@ function wrapInTryFinally(
 		tryCatchTemplate({
 			STORE_IDENTIFIER: stopTrackingIdentifier,
 			HOOK_IDENTIFIER: get(state, getHookIdentifier)(),
-			HOOK_USAGE: isCustomHookName(functionName)
-				? "2"
-				: isComponentName(functionName)
-				? "1"
-				: "",
+			HOOK_USAGE: hookUsage,
 			BODY: t.isBlockStatement(path.node.body)
 				? path.node.body.body // TODO: Is it okay to elide the block statement here?
 				: t.returnStatement(path.node.body),
@@ -346,19 +350,20 @@ function transformFunction(
 	functionName: string | null,
 	state: PluginPass
 ) {
+	const isHook = isCustomHookName(functionName);
+	const isComponent = isComponentName(functionName);
+	const hookUsage = options.experimental?.noTryFinally
+		? UNMANAGED
+		: isHook
+		? MANAGED_HOOK
+		: isComponent
+		? MANAGED_COMPONENT
+		: UNMANAGED;
+
 	let newFunction: FunctionLike;
-	if (isCustomHookName(functionName) || options.experimental?.noTryFinally) {
-		// For custom hooks, we don't need to wrap the function body in a
-		// try/finally block because later code in the function's render body could
-		// read signals and we want to track and associate those signals with this
-		// component. The try/finally in the component's body will stop tracking
-		// signals for us instead.
-		newFunction = prependUseSignals(t, path, state);
-	} else if (isComponentName(functionName)) {
-		newFunction = wrapInTryFinally(t, path, state, functionName);
+	if (hookUsage !== UNMANAGED) {
+		newFunction = wrapInTryFinally(t, path, state, hookUsage);
 	} else {
-		// Since we can't determine if this function is a component/hook or not,
-		// we'll just prepend the useSignals call so it will work as either
 		newFunction = prependUseSignals(t, path, state);
 	}
 

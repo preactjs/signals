@@ -39,12 +39,13 @@ export type CommentKind = "opt-in" | "opt-out" | undefined;
 type VariableKind = "var" | "let" | "const";
 type ParamsConfig = 0 | 1 | 2 | 3 | undefined;
 
+type HookUsage = "" | "0" | "1" | "2";
 interface ComponentConfig {
-	name?: string;
+	name?: string | undefined;
 	body: string;
 	params?: ParamsConfig;
 	comment?: CommentKind;
-	prepend?: boolean;
+	usage?: HookUsage;
 }
 
 interface FuncDeclComponent extends ComponentConfig {
@@ -57,6 +58,7 @@ interface FuncDeclHook {
 	name: string;
 	body: string;
 	comment?: CommentKind;
+	usage?: HookUsage;
 }
 
 interface FuncExpComponent extends ComponentConfig {
@@ -67,6 +69,7 @@ interface FuncExpHook {
 	type: "FuncExpHook";
 	name?: string;
 	body: string;
+	usage?: HookUsage;
 }
 
 interface ArrowFuncComponent extends ComponentConfig {
@@ -79,6 +82,7 @@ interface ArrowFuncHook {
 	type: "ArrowFuncHook";
 	return: "statement" | "expression";
 	body: string;
+	usage?: HookUsage;
 }
 
 interface ObjMethodComponent extends ComponentConfig {
@@ -166,6 +170,8 @@ type ComponentNode = NodeTypes[
 	| "ArrowComp"
 	| "ObjectMethodComp"];
 
+type HookNode = NodeTypes["FuncDeclHook" | "FuncExpHook" | "ArrowFuncHook"];
+
 type Generators = {
 	[key in keyof NodeTypes]: (config: NodeTypes[key]) => InputOutput;
 };
@@ -174,11 +180,11 @@ function transformComponent(config: ComponentNode): string {
 	const { type, body } = config;
 	const addReturn = type === "ArrowComp" && config.return === "expression";
 
-	if (config.prepend) {
-		return `_useSignals();
+	if (config.usage === "" || config.usage === "0") {
+		return `_useSignals(${config.usage ?? ""});
 		${addReturn ? "return " : ""}${body}`;
 	} else {
-		return `var _effect = _useSignals(1);
+		return `var _effect = _useSignals(${config.usage ?? "1"});
 		try {
 			${addReturn ? "return " : ""}${body}
 		} finally {
@@ -187,14 +193,21 @@ function transformComponent(config: ComponentNode): string {
 	}
 }
 
-function transformHook(
-	config: FuncDeclHook | FuncExpHook | ArrowFuncHook
-): string {
+function transformHook(config: HookNode): string {
 	const { type, body } = config;
 	const addReturn = type === "ArrowFuncHook" && config.return === "expression";
 
-	return `_useSignals();
-	${addReturn ? "return " : ""}${body}`;
+	if (config.usage === "" || config.usage === "0") {
+		return `_useSignals(${config.usage ?? ""});
+		${addReturn ? "return " : ""}${body}`;
+	} else {
+		return `var _effect = _useSignals(${config.usage ?? "2"});
+		try {
+			${addReturn ? "return " : ""}${body}
+		} finally {
+			_effect.f();
+		}`;
+	}
 }
 
 function generateParams(count?: ParamsConfig): string {
@@ -356,7 +369,11 @@ interface CodeConfig {
 
 interface ComponentCodeConfig extends CodeConfig {
 	properInlineName?: boolean;
-	prepend?: boolean;
+	usage?: HookUsage;
+}
+
+interface HookCodeConfig extends CodeConfig {
+	usage?: HookUsage;
 }
 
 interface VariableCodeConfig extends CodeConfig {
@@ -367,7 +384,7 @@ const codeTitle = (...parts: Array<string | undefined>) =>
 	parts.filter(Boolean).join(" ");
 
 function expressionComponents(config: ComponentCodeConfig): GeneratedCode[] {
-	const { name: baseName, params } = config;
+	const { name: baseName, params, usage } = config;
 
 	let components: GeneratedCode[];
 	if (config.auto) {
@@ -378,7 +395,7 @@ function expressionComponents(config: ComponentCodeConfig): GeneratedCode[] {
 					type: "FuncExpComp",
 					body: "return <div>{signal.value}</div>",
 					params,
-					prepend: config.prepend,
+					usage,
 				}),
 			},
 			{
@@ -388,7 +405,7 @@ function expressionComponents(config: ComponentCodeConfig): GeneratedCode[] {
 					return: "statement",
 					body: "return <div>{signal.value}</div>",
 					params,
-					prepend: config.prepend,
+					usage,
 				}),
 			},
 			{
@@ -398,7 +415,7 @@ function expressionComponents(config: ComponentCodeConfig): GeneratedCode[] {
 					return: "expression",
 					body: "<div>{signal.value}</div>",
 					params,
-					prepend: config.prepend,
+					usage,
 				}),
 			},
 		];
@@ -410,7 +427,7 @@ function expressionComponents(config: ComponentCodeConfig): GeneratedCode[] {
 					type: "FuncExpComp",
 					body: "return signal.value",
 					params,
-					prepend: config.prepend,
+					usage,
 				}),
 			},
 			{
@@ -419,7 +436,7 @@ function expressionComponents(config: ComponentCodeConfig): GeneratedCode[] {
 					type: "FuncExpComp",
 					body: "return <div>Hello World</div>",
 					params,
-					prepend: config.prepend,
+					usage,
 				}),
 			},
 			{
@@ -429,7 +446,7 @@ function expressionComponents(config: ComponentCodeConfig): GeneratedCode[] {
 					return: "expression",
 					body: "signal.value",
 					params,
-					prepend: config.prepend,
+					usage,
 				}),
 			},
 			{
@@ -439,7 +456,7 @@ function expressionComponents(config: ComponentCodeConfig): GeneratedCode[] {
 					return: "expression",
 					body: "<div>Hello World</div>",
 					params,
-					prepend: config.prepend,
+					usage,
 				}),
 			},
 		];
@@ -456,7 +473,7 @@ function expressionComponents(config: ComponentCodeConfig): GeneratedCode[] {
 				name: "app",
 				body: "return <div>{signal.value}</div>",
 				params,
-				prepend: true,
+				usage: "",
 			}),
 		});
 	} else {
@@ -467,7 +484,7 @@ function expressionComponents(config: ComponentCodeConfig): GeneratedCode[] {
 				name: "App",
 				body: "return <div>{signal.value}</div>",
 				params,
-				prepend: config.prepend,
+				usage,
 			}),
 		});
 	}
@@ -504,7 +521,7 @@ function withCallExpWrappers(config: ComponentCodeConfig): GeneratedCode[] {
 		});
 	}
 
-	//Simulate components wrapped in both memo and forwardRef
+	// Simulate components wrapped in both memo and forwardRef
 	for (let component of forwardRefComponents) {
 		codeCases.push({
 			name: component.name + " wrapped in memo and forwardRef",
@@ -550,7 +567,7 @@ export function declarationComp(config: CodeConfig): GeneratedCode[] {
 					body: "return <div>{signal.value}</div>",
 					params,
 					comment,
-					prepend: true,
+					usage: "",
 				}),
 			},
 			{
@@ -615,7 +632,7 @@ export function objMethodComp(config: CodeConfig): GeneratedCode[] {
 					body: "return <div>{signal.value}</div>",
 					params,
 					comment,
-					prepend: true,
+					usage: "",
 				}),
 			},
 			{
@@ -626,7 +643,7 @@ export function objMethodComp(config: CodeConfig): GeneratedCode[] {
 					body: "return <div>{signal.value}</div>",
 					params,
 					comment,
-					prepend: true,
+					usage: "",
 				}),
 			},
 			{
@@ -682,7 +699,7 @@ export function variableComp(config: VariableCodeConfig): GeneratedCode[] {
 				body: generateCode({
 					type: "FuncExpComp",
 					body: "return <div>{signal.value}</div>",
-					prepend: true,
+					usage: "",
 				}),
 			}),
 		});
@@ -698,7 +715,7 @@ export function variableComp(config: VariableCodeConfig): GeneratedCode[] {
 					type: "ArrowComp",
 					return: "expression",
 					body: "<div>{signal.value}</div>",
-					prepend: true,
+					usage: "",
 				}),
 			}),
 		});
@@ -710,7 +727,7 @@ export function variableComp(config: VariableCodeConfig): GeneratedCode[] {
 	const hocComponents = withCallExpWrappers({
 		...config,
 		auto: true,
-		prepend: !config.auto,
+		usage: config.auto ? "1" : "",
 		properInlineName: config.auto,
 	});
 	const suffix = config.auto ? "" : "with bad variable name";
@@ -757,7 +774,7 @@ export function assignmentComp(config: CodeConfig): GeneratedCode[] {
 				body: generateCode({
 					type: "FuncExpComp",
 					body: "return <div>{signal.value}</div>",
-					prepend: true,
+					usage: "",
 				}),
 			}),
 		});
@@ -772,7 +789,7 @@ export function assignmentComp(config: CodeConfig): GeneratedCode[] {
 					type: "ArrowComp",
 					return: "expression",
 					body: "<div>{signal.value}</div>",
-					prepend: true,
+					usage: "",
 				}),
 			}),
 		});
@@ -784,7 +801,7 @@ export function assignmentComp(config: CodeConfig): GeneratedCode[] {
 	const hocComponents = withCallExpWrappers({
 		...config,
 		auto: true,
-		prepend: !config.auto,
+		usage: config.auto ? "1" : "",
 		properInlineName: config.auto,
 	});
 	const suffix = config.auto ? "" : "with bad variable name";
@@ -830,7 +847,7 @@ export function objAssignComp(config: CodeConfig): GeneratedCode[] {
 				body: generateCode({
 					type: "FuncExpComp",
 					body: "return <div>{signal.value}</div>",
-					prepend: true,
+					usage: "",
 				}),
 			}),
 		});
@@ -845,7 +862,7 @@ export function objAssignComp(config: CodeConfig): GeneratedCode[] {
 					type: "ArrowComp",
 					return: "expression",
 					body: "<div>{signal.value}</div>",
-					prepend: true,
+					usage: "",
 				}),
 			}),
 		});
@@ -861,7 +878,7 @@ export function objAssignComp(config: CodeConfig): GeneratedCode[] {
 				body: generateCode({
 					type: "FuncExpComp",
 					body: "return <div>{signal.value}</div>",
-					prepend: true,
+					usage: "",
 				}),
 				comment,
 			}),
@@ -878,7 +895,7 @@ export function objAssignComp(config: CodeConfig): GeneratedCode[] {
 				body: generateCode({
 					type: "FuncExpComp",
 					body: "return <div>{signal.value}</div>",
-					prepend: true,
+					usage: "",
 				}),
 				comment,
 			}),
@@ -907,7 +924,7 @@ export function objAssignComp(config: CodeConfig): GeneratedCode[] {
 	const hocComponents = withCallExpWrappers({
 		...config,
 		auto: true,
-		prepend: !config.auto,
+		usage: config.auto ? "1" : "",
 		properInlineName: config.auto,
 	});
 	const suffix = config.auto ? "" : "with bad variable name";
@@ -953,7 +970,7 @@ export function objectPropertyComp(config: CodeConfig): GeneratedCode[] {
 				body: generateCode({
 					type: "FuncExpComp",
 					body: "return <div>{signal.value}</div>",
-					prepend: true,
+					usage: "",
 				}),
 			}),
 		});
@@ -968,7 +985,7 @@ export function objectPropertyComp(config: CodeConfig): GeneratedCode[] {
 					type: "ArrowComp",
 					return: "expression",
 					body: "<div>{signal.value}</div>",
-					prepend: true,
+					usage: "",
 				}),
 			}),
 		});
@@ -985,7 +1002,7 @@ export function objectPropertyComp(config: CodeConfig): GeneratedCode[] {
 				body: generateCode({
 					type: "FuncExpComp",
 					body: "return <div>{signal.value}</div>",
-					prepend: true,
+					usage: "",
 				}),
 			}),
 		});
@@ -1002,7 +1019,7 @@ export function objectPropertyComp(config: CodeConfig): GeneratedCode[] {
 				body: generateCode({
 					type: "FuncExpComp",
 					body: "return <div>{signal.value}</div>",
-					prepend: true,
+					usage: "",
 				}),
 			}),
 		});
@@ -1030,7 +1047,7 @@ export function objectPropertyComp(config: CodeConfig): GeneratedCode[] {
 	const hocComponents = withCallExpWrappers({
 		...config,
 		auto: true,
-		prepend: !config.auto,
+		usage: config.auto ? "1" : "",
 		properInlineName: config.auto,
 	});
 	const suffix = config.auto ? "" : "with bad property name";
@@ -1053,10 +1070,11 @@ export function exportDefaultComp(config: CodeConfig): GeneratedCode[] {
 	const { comment } = config;
 	const codeCases: GeneratedCode[] = [];
 
+	const usage = config.auto ? "1" : "";
 	const components = [
 		...declarationComp({ ...config, comment: undefined }),
-		...expressionComponents({ ...config, prepend: !config.auto }),
-		...withCallExpWrappers({ ...config, prepend: !config.auto }),
+		...expressionComponents({ ...config, usage }),
+		...withCallExpWrappers({ ...config, usage }),
 	];
 
 	for (const c of components) {
@@ -1109,8 +1127,8 @@ export function exportNamedComp(config: CodeConfig): GeneratedCode[] {
 	return codeCases;
 }
 
-function expressionHooks(config: CodeConfig): GeneratedCode[] {
-	const { name } = config;
+function expressionHooks(config: HookCodeConfig): GeneratedCode[] {
+	const { name, usage } = config;
 	if (config.auto) {
 		return [
 			{
@@ -1118,6 +1136,7 @@ function expressionHooks(config: CodeConfig): GeneratedCode[] {
 				...generateCode({
 					type: "FuncExpHook",
 					body: "return signal.value",
+					usage,
 				}),
 			},
 			{
@@ -1126,6 +1145,7 @@ function expressionHooks(config: CodeConfig): GeneratedCode[] {
 					type: "FuncExpHook",
 					name: "useCustomHook",
 					body: "return signal.value",
+					usage: "2",
 				}),
 			},
 			{
@@ -1134,6 +1154,7 @@ function expressionHooks(config: CodeConfig): GeneratedCode[] {
 					type: "ArrowFuncHook",
 					return: "statement",
 					body: "return signal.value",
+					usage,
 				}),
 			},
 			{
@@ -1142,6 +1163,7 @@ function expressionHooks(config: CodeConfig): GeneratedCode[] {
 					type: "ArrowFuncHook",
 					return: "expression",
 					body: "signal.value",
+					usage,
 				}),
 			},
 		];
@@ -1153,6 +1175,7 @@ function expressionHooks(config: CodeConfig): GeneratedCode[] {
 					type: "FuncExpHook",
 					name: "usecustomHook",
 					body: "return signal.value",
+					usage: "",
 				}),
 			},
 			{
@@ -1160,6 +1183,7 @@ function expressionHooks(config: CodeConfig): GeneratedCode[] {
 				...generateCode({
 					type: "FuncExpHook",
 					body: "return useState(0)",
+					usage,
 				}),
 			},
 			{
@@ -1168,14 +1192,15 @@ function expressionHooks(config: CodeConfig): GeneratedCode[] {
 					type: "ArrowFuncHook",
 					return: "expression",
 					body: "useState(0)",
+					usage,
 				}),
 			},
 		];
 	}
 }
 
-export function declarationHooks(config: CodeConfig): GeneratedCode[] {
-	const { name, comment } = config;
+export function declarationHooks(config: HookCodeConfig): GeneratedCode[] {
+	const { name, comment, usage } = config;
 	if (config.auto) {
 		return [
 			{
@@ -1185,6 +1210,7 @@ export function declarationHooks(config: CodeConfig): GeneratedCode[] {
 					name: "useCustomHook",
 					comment,
 					body: "return signal.value",
+					usage: "2",
 				}),
 			},
 		];
@@ -1197,6 +1223,7 @@ export function declarationHooks(config: CodeConfig): GeneratedCode[] {
 					name: "usecustomHook",
 					comment,
 					body: "return signal.value",
+					usage: "",
 				}),
 			},
 			{
@@ -1206,6 +1233,7 @@ export function declarationHooks(config: CodeConfig): GeneratedCode[] {
 					name: "useCustomHook",
 					comment,
 					body: "return useState(0)",
+					usage,
 				}),
 			},
 		];
@@ -1241,6 +1269,7 @@ export function variableHooks(config: VariableCodeConfig): GeneratedCode[] {
 				body: generateCode({
 					type: "FuncExpHook",
 					body: "return signal.value",
+					usage: "",
 				}),
 			}),
 		});
@@ -1256,6 +1285,7 @@ export function variableHooks(config: VariableCodeConfig): GeneratedCode[] {
 					type: "ArrowFuncHook",
 					return: "expression",
 					body: "signal.value",
+					usage: "",
 				}),
 			}),
 		});
@@ -1268,9 +1298,10 @@ export function exportDefaultHooks(config: CodeConfig): GeneratedCode[] {
 	const { comment } = config;
 	const codeCases: GeneratedCode[] = [];
 
+	const usage = config.auto ? "2" : "";
 	const components = [
 		...declarationHooks({ ...config, comment: undefined }),
-		...expressionHooks(config),
+		...expressionHooks({ ...config, usage }),
 	];
 
 	for (const c of components) {
