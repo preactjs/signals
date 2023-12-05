@@ -174,51 +174,59 @@ function createEffectStore(_usage: EffectStoreUsage): EffectStore {
 		_start() {
 			// In general, we want to support two kinds of usages of useSignals:
 			//
-			// 1. Managed: calling useSignals in a component or hook body wrapped in a
+			// A) Managed: calling useSignals in a component or hook body wrapped in a
 			//    try/finally (like what the react-transform plugin does)
 			//
-			// 2. Unmanaged: Calling useSignals directly without wrapping in a
+			// B) Unmanaged: Calling useSignals directly without wrapping in a
 			//    try/finally
 			//
-			// For #1 we finish the effect in the finally block of the component or
-			// hook body. For #2 we finish the effect in the next useSignals call or
-			// after a microtask.
+			// For managed, we finish the effect in the finally block of the component
+			// or hook body. For unmanaged, we finish the effect in the next
+			// useSignals call or after a microtask.
 			//
-			// There are different tradeoffs which each approach. Using a try/finally
-			// ensures that only signals used in the component or hook body are
-			// tracked. However, signals accessed in render props are missed because
-			// the render prop is invoked in another component that may or may not
-			// realize it is rendering signals accessed in the render prop it is
+			// There are different tradeoffs which each approach. With managed, using
+			// a try/finally ensures that only signals used in the component or hook
+			// body are tracked. However, signals accessed in render props are missed
+			// because the render prop is invoked in another component that may or may
+			// not realize it is rendering signals accessed in the render prop it is
 			// given.
 			//
-			// The other approach is to call useSignals directly without wrapping in a
-			// try/finally. This approach is easier to manually write in situations
-			// where a build step isn't available but does open up the possibility of
-			// catching signals accessed in other code before the effect is closed
-			// (e.g. in a layout effect). Most situations where this could happen are
-			// generally consider bad patterns or bugs. For example, using a signal in
-			// a component and not having a call to `useSignals` would be an bug. Or
-			// using a signal in `useLayoutEffect` is generally not recommended since
-			// that layout effect won't update when the signals' value change.
+			// The other approach is "unmanaged": to call useSignals directly without
+			// wrapping in a try/finally. This approach is easier to manually write in
+			// situations where a build step isn't available but does open up the
+			// possibility of catching signals accessed in other code before the
+			// effect is closed (e.g. in a layout effect). Most situations where this
+			// could happen are generally consider bad patterns or bugs. For example,
+			// using a signal in a component and not having a call to `useSignals`
+			// would be an bug. Or using a signal in `useLayoutEffect` is generally
+			// not recommended since that layout effect won't update when the signals'
+			// value change.
 			//
 			// To support both approaches, we need to track how each invocation of
 			// useSignals is used, so we can properly transition between different
 			// kinds of usages.
 			//
 			// The following table shows the different scenarios and how we should
-			// handle them. See the comments for `EffectStoreUsage` for description of
-			// each number, which corresponds to a value in that enum.
+			// handle them.
 			//
-			// prev -> this: action
+			// Key:
+			// 0 = UNMANAGED
+			// 1 = MANAGED_COMPONENT
+			// 2 = MANAGED_HOOK
+			//
+			// Pattern:
+			// prev store usage -> this store usage: action to take
 			//
 			// - 0 -> 0: finish previous effect (unknown to unknown)
+			//
+			//   We don't know how the previous effect was used, so we need to finish
+			//   it before starting the next effect.
 			//
 			// - 0 -> 1: finish previous effect
 			//
 			//   Assume previous invocation was another component or hook from another
 			//   component. Nested component renders (renderToStaticMarkup within a
-			//   component's render) not supported with bare useSignals calls.
-			//
+			//   component's render) won't be supported with bare useSignals calls.
 			//
 			// - 0 -> 2: capture & restore
 			//
