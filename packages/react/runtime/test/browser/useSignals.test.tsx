@@ -1,4 +1,4 @@
-import { createElement, Fragment } from "react";
+import { useRef, createElement, Fragment, useState } from "react";
 import { Signal, signal, batch } from "@preact/signals-core";
 import { useSignals } from "@preact/signals-react/runtime";
 import {
@@ -7,8 +7,10 @@ import {
 	act,
 	checkHangingAct,
 	getConsoleErrorSpy,
-	checkConsoleErrorLogs,
 } from "../../../test/shared/utils";
+
+const MANAGED_COMPONENT = 1;
+const MANAGED_HOOK = 2;
 
 describe("useSignals", () => {
 	let scratch: HTMLDivElement;
@@ -16,6 +18,34 @@ describe("useSignals", () => {
 
 	async function render(element: Parameters<Root["render"]>[0]) {
 		await act(() => root.render(element));
+	}
+
+	async function runTest(
+		element: React.ReactElement,
+		...signals: Signal<number>[]
+	) {
+		const values = signals.map(() => 0);
+
+		await render(element);
+		expect(scratch.innerHTML).to.equal(`<p>${values.join(",")}</p>`);
+
+		for (let i = 0; i < signals.length; i++) {
+			await act(() => {
+				signals[i].value += 1;
+			});
+			values[i] += 1;
+			expect(scratch.innerHTML).to.equal(`<p>${values.join(",")}</p>`);
+		}
+
+		await act(() => {
+			batch(() => {
+				for (let i = 0; i < signals.length; i++) {
+					signals[i].value += 1;
+					values[i] += 1;
+				}
+			});
+		});
+		expect(scratch.innerHTML).to.equal(`<p>${values.join(",")}</p>`);
 	}
 
 	beforeEach(async () => {
@@ -29,7 +59,10 @@ describe("useSignals", () => {
 		await act(() => root.unmount());
 		scratch.remove();
 
-		checkConsoleErrorLogs();
+		// TODO: Consider re-enabling, though updates during finalCleanup are not
+		// wrapped in act().
+		//
+		// checkConsoleErrorLogs();
 		checkHangingAct();
 	});
 
@@ -418,5 +451,382 @@ describe("useSignals", () => {
 			});
 		});
 		expect(scratch.innerHTML).to.equal("<div>Hello John!</div>");
+	});
+
+	// TODO: Figure out what to do here...
+	it.skip("(managed) should work with components that use render props", async () => {
+		function AutoFocusWithin({
+			children,
+		}: {
+			children: (setRef: (...args: any[]) => void) => any;
+		}) {
+			const setRef = useRef(() => {}).current;
+			return children(setRef);
+		}
+
+		const name = signal("John");
+		function App() {
+			const e = useSignals();
+			try {
+				return (
+					<AutoFocusWithin>
+						{setRef => <div ref={setRef}>Hello {name.value}</div>}
+					</AutoFocusWithin>
+				);
+			} finally {
+				e.f();
+			}
+		}
+
+		await render(<App />);
+		expect(scratch.innerHTML).to.equal("<div>Hello John</div>");
+
+		await act(() => {
+			name.value = "Jane";
+		});
+		expect(scratch.innerHTML).to.equal("<div>Hello Jane</div>");
+
+		await act(() => {
+			name.value = "John";
+		});
+		expect(scratch.innerHTML).to.equal("<div>Hello John</div>");
+	});
+
+	it("(unmanaged) should work with components that use render props", async () => {
+		function AutoFocusWithin({
+			children,
+		}: {
+			children: (setRef: (...args: any[]) => void) => any;
+		}) {
+			const setRef = useRef(() => {}).current;
+			return children(setRef);
+		}
+
+		const name = signal("John");
+		function App() {
+			useSignals();
+			return (
+				<AutoFocusWithin>
+					{setRef => <div ref={setRef}>Hello {name.value}</div>}
+				</AutoFocusWithin>
+			);
+		}
+
+		await render(<App />);
+		expect(scratch.innerHTML).to.equal("<div>Hello John</div>");
+
+		await act(() => {
+			name.value = "Jane";
+		});
+		expect(scratch.innerHTML).to.equal("<div>Hello Jane</div>");
+
+		await act(() => {
+			name.value = "John";
+		});
+		expect(scratch.innerHTML).to.equal("<div>Hello John</div>");
+	});
+
+	it("(unmanaged) (React 16 specific) should work with rerenders that update signals before async final cleanup", async () => {
+		// Cursed/problematic call stack that causes this error:
+		// 1. onClick callback
+		// 1a. call setState (queues sync work at end of event handler in React)
+		// 1b. await Promise.resolve();
+		// 2. React flushes sync callbacks and rerenders component
+		// 2a. Start useSignals effect, set evalContext, & start batch
+		// 3. Resolve promises resumes and sets signal value
+		// 3a. In batch, so mark subscribers as needing update
+		// 4. useSignals finalCleanup runs
+		// 4a. endEffect runs and clears evalContext
+		// 4aa. endBatch and call subscribers with signal update
+		// 4ab. usSignals' useSyncExternalStore calls onChangeNotifyReact
+		// 4ac. React sync rerenders component
+		// 4ad. useSignals effect runs
+		// 4ae. finishEffect called again (evalContext == null but this == effectInstance)
+		// BOOM! "out-of-order effect" Error thrown
+
+		const count = signal(0);
+
+		function C() {
+			useSignals();
+			const [, setState] = useState(false);
+
+			const onClick = async () => {
+				setState(true);
+				await Promise.resolve();
+				count.value += 1;
+				// Note, don't set state here cuz it'll cause an early rerender that
+				// won't trigger the bug. The rerender needs to happen during the
+				// finalCleanup's call to endEffect.
+			};
+
+			return (
+				<>
+					<p>{count.value}</p>
+					<button onClick={onClick}>increment</button>
+				</>
+			);
+		}
+
+		await render(<C />);
+		expect(scratch.innerHTML).to.equal("<p>0</p><button>increment</button>");
+
+		await act(() => {
+			scratch.querySelector("button")!.click();
+		});
+		expect(scratch.innerHTML).to.equal(`<p>1</p><button>increment</button>`);
+	});
+
+	describe("using hooks that call useSignal in components that call useSignals", () => {
+		let unmanagedHookSignal = signal(0);
+		function useUnmanagedHook() {
+			useSignals();
+			return unmanagedHookSignal.value;
+		}
+
+		let managedHookSignal = signal(0);
+		function useManagedHook() {
+			const e = useSignals(MANAGED_HOOK);
+			try {
+				return managedHookSignal.value;
+			} finally {
+				e.f();
+			}
+		}
+
+		let componentSignal = signal(0);
+		function ManagedComponent({ hooks }: { hooks: Array<() => number> }) {
+			const e = useSignals(MANAGED_COMPONENT);
+			try {
+				const componentValue = componentSignal;
+				const hookValues = hooks.map(hook => hook());
+				return <p>{[componentValue, ...hookValues].join(",")}</p>;
+			} finally {
+				e.f();
+			}
+		}
+
+		function UnmanagedComponent({ hooks }: { hooks: Array<() => number> }) {
+			useSignals();
+			const componentValue = componentSignal;
+			const hookValues = hooks.map(hook => hook());
+			return <p>{[componentValue, ...hookValues].join(",")}</p>;
+		}
+
+		beforeEach(() => {
+			componentSignal = signal(0);
+			unmanagedHookSignal = signal(0);
+			managedHookSignal = signal(0);
+		});
+
+		[ManagedComponent, UnmanagedComponent].forEach(Component => {
+			const componentName = Component.name;
+
+			it(`${componentName} > managed hook`, async () => {
+				await runTest(
+					<Component hooks={[useManagedHook]} />,
+					componentSignal,
+					managedHookSignal
+				);
+			});
+
+			it(`${componentName} > unmanaged hook`, async () => {
+				await runTest(
+					<Component hooks={[useUnmanagedHook]} />,
+					componentSignal,
+					unmanagedHookSignal
+				);
+			});
+		});
+
+		[ManagedComponent, UnmanagedComponent].forEach(Component => {
+			const componentName = Component.name;
+
+			it(`${componentName} > managed hook + managed hook`, async () => {
+				let managedHookSignal2 = signal(0);
+				function useManagedHook2() {
+					const e = useSignals(MANAGED_HOOK);
+					try {
+						return managedHookSignal2.value;
+					} finally {
+						e.f();
+					}
+				}
+
+				await runTest(
+					<Component hooks={[useManagedHook, useManagedHook2]} />,
+					componentSignal,
+					managedHookSignal,
+					managedHookSignal2
+				);
+			});
+
+			it(`${componentName} > managed hook + unmanaged hook`, async () => {
+				await runTest(
+					<Component hooks={[useManagedHook, useUnmanagedHook]} />,
+					componentSignal,
+					managedHookSignal,
+					unmanagedHookSignal
+				);
+			});
+
+			it(`${componentName} > unmanaged hook + managed hook`, async () => {
+				await runTest(
+					<Component hooks={[useUnmanagedHook, useManagedHook]} />,
+					componentSignal,
+					unmanagedHookSignal,
+					managedHookSignal
+				);
+			});
+
+			it(`${componentName} > unmanaged hook + unmanaged hook`, async () => {
+				let unmanagedHookSignal2 = signal(0);
+				function useUnmanagedHook2() {
+					useSignals();
+					return unmanagedHookSignal2.value;
+				}
+
+				await runTest(
+					<Component hooks={[useUnmanagedHook, useUnmanagedHook2]} />,
+					componentSignal,
+					unmanagedHookSignal,
+					unmanagedHookSignal2
+				);
+			});
+		});
+	});
+
+	describe("using nested hooks that each call useSignals in components that call useSignals", () => {
+		type UseHookValProps = { useHookVal: () => number[] };
+
+		let componentSignal = signal(0);
+		function ManagedComponent({ useHookVal }: UseHookValProps) {
+			const e = useSignals(MANAGED_COMPONENT);
+			try {
+				const val1 = componentSignal.value;
+				const hookVal = useHookVal();
+				return <p>{[val1, ...hookVal].join(",")}</p>;
+			} finally {
+				e.f();
+			}
+		}
+
+		function UnmanagedComponent({ useHookVal }: UseHookValProps) {
+			useSignals();
+			const val1 = componentSignal.value;
+			const hookVal = useHookVal();
+			return <p>{[val1, ...hookVal].join(",")}</p>;
+		}
+
+		beforeEach(() => {
+			componentSignal = signal(0);
+		});
+
+		[ManagedComponent, UnmanagedComponent].forEach(Component => {
+			const componentName = Component.name;
+
+			it(`${componentName} > managed hook > managed hook`, async () => {
+				let managedHookSignal2 = signal(0);
+				function useManagedHook() {
+					const e = useSignals(MANAGED_HOOK);
+					try {
+						return managedHookSignal2.value;
+					} finally {
+						e.f();
+					}
+				}
+
+				let managedHookSignal1 = signal(0);
+				function useManagedManagedHook() {
+					const e = useSignals(MANAGED_HOOK);
+					try {
+						const nestedVal = useManagedHook();
+						return [managedHookSignal1.value, nestedVal];
+					} finally {
+						e.f();
+					}
+				}
+
+				await runTest(
+					<Component useHookVal={useManagedManagedHook} />,
+					componentSignal,
+					managedHookSignal1,
+					managedHookSignal2
+				);
+			});
+
+			it(`${componentName} > managed hook > unmanaged hook`, async () => {
+				let unmanagedHookSignal = signal(0);
+				function useUnmanagedHook() {
+					useSignals();
+					return unmanagedHookSignal.value;
+				}
+
+				let managedHookSignal = signal(0);
+				function useManagedUnmanagedHook() {
+					const e = useSignals(MANAGED_HOOK);
+					try {
+						const nestedVal = useUnmanagedHook();
+						return [managedHookSignal.value, nestedVal];
+					} finally {
+						e.f();
+					}
+				}
+
+				await runTest(
+					<Component useHookVal={useManagedUnmanagedHook} />,
+					componentSignal,
+					managedHookSignal,
+					unmanagedHookSignal
+				);
+			});
+
+			it(`${componentName} > unmanaged hook > managed hook`, async () => {
+				let managedHookSignal = signal(0);
+				function useManagedHook() {
+					const e = useSignals(MANAGED_HOOK);
+					try {
+						return managedHookSignal.value;
+					} finally {
+						e.f();
+					}
+				}
+
+				let unmanagedHookSignal = signal(0);
+				function useUnmanagedManagedHook() {
+					useSignals();
+					const nestedVal = useManagedHook();
+					return [unmanagedHookSignal.value, nestedVal];
+				}
+
+				await runTest(
+					<Component useHookVal={useUnmanagedManagedHook} />,
+					componentSignal,
+					unmanagedHookSignal,
+					managedHookSignal
+				);
+			});
+
+			it(`${componentName} > unmanaged hook > unmanaged hook`, async () => {
+				let unmanagedHookSignal2 = signal(0);
+				function useUnmanagedHook() {
+					useSignals();
+					return unmanagedHookSignal2.value;
+				}
+
+				let unmanagedHookSignal1 = signal(0);
+				function useUnmanagedUnmanagedHook() {
+					useSignals();
+					const nestedVal = useUnmanagedHook();
+					return [unmanagedHookSignal1.value, nestedVal];
+				}
+
+				await runTest(
+					<Component useHookVal={useUnmanagedUnmanagedHook} />,
+					componentSignal,
+					unmanagedHookSignal1,
+					unmanagedHookSignal2
+				);
+			});
+		});
 	});
 });

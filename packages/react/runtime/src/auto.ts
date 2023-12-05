@@ -175,7 +175,14 @@ function installCurrentDispatcherHook() {
 				isEnteringComponentRender(currentDispatcherType, nextDispatcherType)
 			) {
 				lock = true;
-				store = _useSignalsImplementation();
+				store = _useSignalsImplementation(1);
+				lock = false;
+			} else if (
+				isRestartingComponentRender(currentDispatcherType, nextDispatcherType)
+			) {
+				store?.f();
+				lock = true;
+				store = _useSignalsImplementation(1);
 				lock = false;
 			} else if (
 				isExitingComponentRender(currentDispatcherType, nextDispatcherType)
@@ -285,18 +292,6 @@ function isEnteringComponentRender(
 		// are used to warn when hooks are nested improperly and do not indicate
 		// entering a new component render.
 		return false;
-	} else if (nextDispatcherType & RerenderDispatcherType) {
-		// Any transition into the rerender dispatcher is the beginning of a
-		// component render, so we should invoke our hooks. Details below.
-		//
-		// ## In-place rerendering (e.g. Mount -> Rerender)
-		//
-		// If we are transitioning from the mount, update, or rerender dispatcher to
-		// the rerender dispatcher (e.g. HooksDispatcherOnMount to
-		// HooksDispatcherOnRerender), then this component is rerendering due to
-		// calling setState inside of its function body. We are re-entering a
-		// component's render method and so we should re-invoke our hooks.
-		return true;
 	} else {
 		// ## Resuming suspended mount edge case (Update -> Mount)
 		//
@@ -318,6 +313,28 @@ function isEnteringComponentRender(
 		// - HooksDispatcherOnUpdate -> HooksDispatcherOnUpdate
 		return false;
 	}
+}
+
+function isRestartingComponentRender(
+	currentDispatcherType: DispatcherType,
+	nextDispatcherType: DispatcherType
+): boolean {
+	// A transition from a valid browser dispatcher into the rerender dispatcher
+	// is the restart of a component render, so we should end the current
+	// component effect and re-invoke our hooks. Details below.
+	//
+	// ## In-place rerendering (e.g. Mount -> Rerender)
+	//
+	// If we are transitioning from the mount, update, or rerender dispatcher to
+	// the rerender dispatcher (e.g. HooksDispatcherOnMount to
+	// HooksDispatcherOnRerender), then this component is rerendering due to
+	// calling setState inside of its function body. We are re-entering a
+	// component's render method and so we should re-invoke our hooks.
+
+	return Boolean(
+		currentDispatcherType & BrowserClientDispatcherType &&
+			nextDispatcherType & RerenderDispatcherType
+	);
 }
 
 /**
