@@ -1,5 +1,11 @@
 # @preact/signals-core
 
+## 1.5.1
+
+### Patch Changes
+
+- [#451](https://github.com/preactjs/signals/pull/451) [`990f1eb`](https://github.com/preactjs/signals/commit/990f1eb36fa4ab5e30029f79ceeccf709137d14d) Thanks [@dcporter](https://github.com/dcporter)! - Removes backward-incompatible type export from signals core.
+
 ## 1.5.0
 
 ### Minor Changes

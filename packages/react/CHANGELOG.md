@@ -1,5 +1,14 @@
 # @preact/signals-react
 
+## 1.3.8
+
+### Patch Changes
+
+- [#456](https://github.com/preactjs/signals/pull/456) [`b0b2a5b`](https://github.com/preactjs/signals/commit/b0b2a5b54d0b512152171bb13c5bc4c593e7e444) Thanks [@XantreGodlike](https://github.com/XantreGodlike)! - Ensure types are resolved against built `.d.ts` rather than source `.ts`
+
+- Updated dependencies [[`990f1eb`](https://github.com/preactjs/signals/commit/990f1eb36fa4ab5e30029f79ceeccf709137d14d)]:
+  - @preact/signals-core@1.5.1
+
 ## 1.3.7
 
 ### Patch Changes
