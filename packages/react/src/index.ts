@@ -12,7 +12,6 @@ import {
 	useSignal,
 	useComputed,
 	useSignalEffect,
-	installAutoSignalTracking,
 } from "@preact/signals-react/runtime"; // TODO: This duplicates runtime code between main and sub runtime packages
 
 export {
@@ -33,5 +32,3 @@ declare module "@preact/signals-core" {
 	// eslint-disable-next-line @typescript-eslint/no-empty-interface
 	interface Signal extends ReactElement {}
 }
-
-installAutoSignalTracking();
