@@ -124,6 +124,10 @@ To opt into this optimization, simply pass the signal directly instead of access
 > **Note**
 > The content is wrapped in a React Fragment due to React 18's newer, more strict children types.
 
+## Limitations
+
+This version of React integration does not support passing signals as DOM attributes. Support for this may be added at a later date.
+
 ## License
 
 `MIT`, see the [LICENSE](../../LICENSE) file.
