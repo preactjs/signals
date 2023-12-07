@@ -1,5 +1,20 @@
 # @preact/signals-react-transform
 
+## 0.2.0
+
+### Minor Changes
+
+- [#458](https://github.com/preactjs/signals/pull/458) [`0c0d89f`](https://github.com/preactjs/signals/commit/0c0d89f181e7b38432d10ea0f79fa031774c2a27) Thanks [@andrewiggins](https://github.com/andrewiggins)! - Only prepend useSignals call if we can't determine whether a function is a component or hook
+
+* [#459](https://github.com/preactjs/signals/pull/459) [`06d4c10`](https://github.com/preactjs/signals/commit/06d4c10dbc2b3029ffe855d846afd7dc431ea749) Thanks [@andrewiggins](https://github.com/andrewiggins)! - Wrap custom hooks in try/finally when using react-transform
+
+- [#446](https://github.com/preactjs/signals/pull/446) [`09f3ed7`](https://github.com/preactjs/signals/commit/09f3ed7c5b7a5a3a86673dfc73cd868766e0eefc) Thanks [@andrewiggins](https://github.com/andrewiggins)! - Use function expression name to determine if it is a Component and should be transformed.
+
+### Patch Changes
+
+- Updated dependencies [[`b0b2a5b`](https://github.com/preactjs/signals/commit/b0b2a5b54d0b512152171bb13c5bc4c593e7e444)]:
+  - @preact/signals-react@1.3.8
+
 ## 0.1.1
 
 ### Patch Changes
