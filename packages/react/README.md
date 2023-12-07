@@ -26,15 +26,25 @@ npm install @preact/signals-react
 
 ## React Integration
 
-> Note: The React integration plugs into some React internals and may break unexpectedly in future versions of React. If you are using Signals with React and encounter errors such as "Rendered more hooks than during previous render", "Should have a queue. This is likely a bug in React." or "Cannot redefine property: createElement" please open an issue here.
-
 The React integration can be installed via:
 
 ```sh
 npm install @preact/signals-react
 ```
 
-Similar to the Preact integration, the React adapter allows you to access signals directly inside your components and will automatically subscribe to them.
+We have a couple of options for integrating Signals into React. The recommended approach is to use the Babel transform to automatically make your components that use signals reactive.
+
+### Babel Transform
+
+Install the Babel transform package (`npm i --save-dev @preact/signals-react-transform`) and add the following to your Babel config:
+
+```json
+{
+	"plugins": [["module:@preact/signals-react-transform"]]
+}
+```
+
+This will automatically transform your components to be reactive. You can then use signals directly inside your components.
 
 ```js
 import { signal } from "@preact/signals-react";
@@ -44,6 +54,23 @@ const count = signal(0);
 function CounterValue() {
 	// Whenever the `count` signal is updated, we'll
 	// re-render this component automatically for you
+	return <p>Value: {count.value}</p>;
+}
+```
+
+See the [Readme for the Babel plugin](../babel-plugin-signals-react/README.md) for more details about how the transform works and configuring it.
+
+### `useSignals` hook
+
+If you can't use the Babel transform, you can directly call the `useSignals` hook to make your components reactive.
+
+```js
+import { useSignals } from "@preact/signals-react";
+
+const count = signal(0);
+
+function CounterValue() {
+	useSignals();
 	return <p>Value: {count.value}</p>;
 }
 ```
