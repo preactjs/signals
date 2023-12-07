@@ -399,7 +399,7 @@ describe("React Signals babel transfrom - browser E2E tests", () => {
 			export const name = signal("John");
 
 			// Ambiguous if this function is gonna be a hook or component
-			/** @trackSignals */
+			/** @useSignals */
 			function usename() {
 				return name.value;
 			}

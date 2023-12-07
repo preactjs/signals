@@ -246,8 +246,8 @@ describe("React Signals Babel Transform", () => {
 		it("opt-out comment overrides opt-in comment", () => {
 			const inputCode = `
 				/**
-				 * @noTrackSignals
-				 * @trackSignals
+				 * @noUseSignals
+				 * @useSignals
 				 */
 				function MyComponent() {
 					return <div>{signal.value}</div>;
@@ -302,8 +302,8 @@ describe("React Signals Babel Transform", () => {
 		it("opt-out comment overrides opt-in comment", () => {
 			const inputCode = `
 				/**
-				 * @noTrackSignals
-				 * @trackSignals
+				 * @noUseSignals
+				 * @useSignals
 				 */
 				function MyComponent() {
 					return <div>{signal.value}</div>;
@@ -330,7 +330,7 @@ describe("React Signals Babel Transform", () => {
 	describe("all mode transformations", () => {
 		it("skips transforming arrow function component with leading opt-out JSDoc comment before variable declaration", () => {
 			const inputCode = `
-				/** @noTrackSignals */
+				/** @noUseSignals */
 				const MyComponent = () => {
 					return <div>{signal.value}</div>;
 				};
@@ -343,7 +343,7 @@ describe("React Signals Babel Transform", () => {
 
 		it("skips transforming function declaration components with leading opt-out JSDoc comment", () => {
 			const inputCode = `
-				/** @noTrackSignals */
+				/** @noUseSignals */
 				function MyComponent() {
 					return <div>{signal.value}</div>;
 				}

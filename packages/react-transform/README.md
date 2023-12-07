@@ -73,17 +73,17 @@ Currently we use the following heuristics to answer these questions:
 1. A function is a component if it has a capitalized name (e.g. `function MyComponent() {}`) and contains JSX.
 2. If a function's body includes a member expression referencing `.value` (i.e. `something.value`), we assume it's a signal.
 
-If your function/component meets these criteria, this plugin will transform it. If not, it will be left alone. If you have a function that uses signals but does not meet these criteria (e.g. a function that manually calls `createElement` instead of using JSX), you can add a comment with the string `@trackSignals` to instruct this plugin to transform this function. You can also manually opt-out of transforming a function by adding a comment with the string `@noTrackSignals`.
+If your function/component meets these criteria, this plugin will transform it. If not, it will be left alone. If you have a function that uses signals but does not meet these criteria (e.g. a function that manually calls `createElement` instead of using JSX), you can add a comment with the string `@useSignals` to instruct this plugin to transform this function. You can also manually opt-out of transforming a function by adding a comment with the string `@noUseSignals`.
 
 ```js
 // This function will be transformed
-/** @trackSignals */
+/** @useSignals */
 function MyComponent() {
 	return createElement("h1", null, signal.value);
 }
 
 // This function will not be transformed
-/** @noTrackSignals */
+/** @noUseSignals */
 function MyComponent() {
 	return <p>{signal.value}</p>;
 }
@@ -96,7 +96,7 @@ function MyComponent() {
 The `mode` option enables you to control how the plugin transforms your code. There are three modes:
 
 - `mode: "auto"` (default): This mode will automatically transform any function that meets the criteria described above. This is the easiest way to get started with signals.
-- `mode: "manual"`: This mode will only transform functions that have a comment with the string `@trackSignals`. This is useful if you want to manually control which functions are transformed.
+- `mode: "manual"`: This mode will only transform functions that have a comment with the string `@useSignals`. This is useful if you want to manually control which functions are transformed.
 - `mode: "all"`: This mode will transform all functions that appear to be Components, regardless of whether or not they use signals. This is useful if you are starting a new project and want to use signals everywhere.
 
 ```js
