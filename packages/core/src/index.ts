@@ -96,6 +96,34 @@ function batch<T>(callback: () => T): T {
 	}
 }
 
+// Each nested transaction stores snapshots of the signals it changed.
+const transactionSnapshots: Array<Map<Signal<unknown>, [number, unknown]>> = [];
+
+function transaction<T>(callback: () => T): T {
+	transactionSnapshots.push(new Map());
+
+	return batch(() => {
+		const globalVersionSnapshot = globalVersion;
+
+		try {
+			return callback();
+		} catch (error) {
+			// The transaction failed. Restore the original state.
+			globalVersion = globalVersionSnapshot;
+			transactionSnapshots[transactionSnapshots.length - 1].forEach(
+				([version, value], signal) => {
+					signal._value = value;
+					signal._version = version;
+				}
+			);
+
+			throw error;
+		} finally {
+			transactionSnapshots.pop();
+		}
+	});
+}
+
 // Currently evaluated computed or effect.
 let evalContext: Computed | Effect | undefined = undefined;
 
@@ -340,6 +368,13 @@ Object.defineProperty(Signal.prototype, "value", {
 		if (value !== this._value) {
 			if (batchIteration > 100) {
 				cycleDetected();
+			}
+
+			if (transactionSnapshots.length > 0) {
+				const snapshots = transactionSnapshots[transactionSnapshots.length - 1];
+				if (!snapshots.has(this)) {
+					snapshots.set(this, [this._version, this._value]);
+				}
 			}
 
 			this._value = value;
@@ -763,6 +798,10 @@ Effect.prototype._dispose = function () {
 };
 
 function effect(compute: () => unknown | EffectCleanup): () => void {
+	if (transactionSnapshots.length > 0) {
+		throw new Error("Transactions cannot have side-effects");
+	}
+
 	const effect = new Effect(compute);
 	try {
 		effect._callback();
@@ -780,6 +819,7 @@ export {
 	computed,
 	effect,
 	batch,
+	transaction,
 	Signal,
 	ReadonlySignal,
 	untracked,

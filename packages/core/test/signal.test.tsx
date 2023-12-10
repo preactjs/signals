@@ -1,4 +1,5 @@
 import {
+	transaction,
 	signal,
 	computed,
 	effect,
@@ -1944,5 +1945,152 @@ describe("batch/transaction", () => {
 			callCount = spy.callCount;
 		});
 		expect(callCount).to.equal(1);
+	});
+});
+
+describe("transaction", () => {
+	it("should return the value from the callback", () => {
+		expect(transaction(() => 123)).to.equal(123);
+	});
+
+	it("should throw any errors raised by the callback", () => {
+		const error = new Error("fail");
+		const callback = () => {
+			throw error;
+		};
+
+		expect(() => transaction(callback)).to.throw(error);
+	});
+
+	it("should apply any changes during the transaction", () => {
+		const a = signal(1);
+		const b = signal(2);
+
+		transaction(() => {
+			a.value = 10;
+			b.value = 20;
+		});
+
+		expect(a.value).to.equal(10);
+		expect(b.value).to.equal(20);
+	});
+
+	it("should roll back changes if the transaction fails", () => {
+		const count = signal(0);
+
+		const callback = () => {
+			count.value = 10;
+
+			// Changes were already applied, but the transaction failed. We must
+			// roll it back to avoid leaving the system in an inconsistent state.
+			throw new Error("Testing failed transactions");
+		};
+
+		expect(() => transaction(callback)).to.throw();
+		expect(count.value).to.equal(0);
+	});
+
+	it("should allow nested transactions", () => {
+		const a = signal(1);
+		const b = signal(2);
+
+		transaction(() => {
+			a.value = 10;
+			transaction(() => {
+				b.value = 20;
+			});
+		});
+
+		expect(a.value).to.equal(10);
+		expect(b.value).to.equal(20);
+	});
+
+	it("should roll back nested transactions if the error bubbles", () => {
+		const a = signal(1);
+		const b = signal(2);
+
+		const callback = () => {
+			a.value = 10;
+			transaction(() => {
+				b.value = 20;
+				throw new Error("Testing failed nested transactions");
+			});
+		};
+
+		expect(() => transaction(callback)).to.throw();
+		expect(b.value).to.equal(2);
+		expect(a.value).to.equal(1);
+	});
+
+	it("should not roll back parent transactions if the error is caught", () => {
+		const count = signal(0);
+
+		transaction(() => {
+			count.value = 10;
+			try {
+				transaction(() => {
+					count.value = 20;
+					throw new Error("Testing failed nested transactions");
+				});
+			} catch {
+				// pass
+			}
+		});
+
+		// Only the child transaction should have been rolled back.
+		expect(count.value).to.equal(10);
+	});
+
+	it("should not invoke observers if the transaction failed", () => {
+		const count = signal(0);
+		const spy = sinon.spy();
+
+		effect(() => spy(count.value));
+		expect(spy.callCount).to.equal(1);
+
+		const callback = () => {
+			count.value = 10;
+			throw new Error("Testing failed transactions");
+		};
+
+		expect(() => transaction(callback)).to.throw();
+
+		// Observers should not see intermediate states until they are committed.
+		expect(spy.callCount).to.equal(1);
+	});
+
+	it("should disallow effects inside transactions", () => {
+		const count = signal(0);
+
+		// If this were allowed, the effect would observe the rollback which
+		// violates the abstraction.
+		const callback = () => {
+			count.value += 1;
+			effect(() => count.value);
+		};
+
+		expect(() => transaction(callback)).to.throw(
+			"Transactions cannot have side-effects"
+		);
+
+		expect(count.value).to.equal(0);
+	});
+
+	it("should not memoize values from aborted transactions", () => {
+		const count = signal(0);
+		const added = computed(() => count.value + 1);
+
+		const callback = () => {
+			count.value += added.value;
+			count.value += added.value;
+			count.value += added.value;
+
+			throw new Error("Causing rollback");
+		};
+
+		expect(() => transaction(callback)).to.throw();
+
+		// Paranoid test: if the memoized value was captured, this would be 8.
+		expect(added.value).to.equal(1);
 	});
 });
