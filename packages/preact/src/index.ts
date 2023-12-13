@@ -40,7 +40,7 @@ function hook<T extends OptionsTypes>(hookName: T, hookFn: HookFn<T>) {
 }
 
 let currentComponent: AugmentedComponent | undefined;
-let finishUpdate: (() => void) | undefined;
+let finishUpdate: (() => unknown) | undefined;
 
 function setCurrentUpdater(updater?: Effect) {
 	// end tracking for the current update:
@@ -49,7 +49,7 @@ function setCurrentUpdater(updater?: Effect) {
 	finishUpdate = updater && updater._start();
 }
 
-function createUpdater(update: () => void) {
+function createUpdater(update: () => unknown) {
 	let updater!: Effect;
 	effect(function (this: Effect) {
 		updater = this;
@@ -356,7 +356,7 @@ export function useComputed<T>(compute: () => T) {
 	return useMemo(() => computed<T>(() => $compute.current()), []);
 }
 
-export function useSignalEffect(cb: () => void | (() => void)) {
+export function useSignalEffect(cb: () => unknown | (() => unknown)) {
 	const callback = useRef(cb);
 	callback.current = cb;
 
