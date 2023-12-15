@@ -128,6 +128,38 @@ To opt into this optimization, simply pass the signal directly instead of access
 
 This version of React integration does not support passing signals as DOM attributes. Support for this may be added at a later date.
 
+Using signals into render props is not recommended. In this situation, the component that reads the signal is the component that calls the render prop, which may or may not be hooked up to track signals. For example:
+
+```js
+const count = signal(0);
+
+function ShowCount({ getCount }) {
+	return <div>{getCount()}</div>;
+}
+
+function App() {
+	return <ShowCount getCount={() => count.value} />;
+}
+```
+
+Here, the `ShowCount` component is the one that accesses `count.value` at runtime since it invokes `getCount`, so it needs to be hooked up to track signals. However, since it doesn't statically access the signal, the Babel transform won't transform it by default. One fix is to set `mode: all` in the Babel plugin's config, which will transform all components. Another workaround is put the return of the render prop into it's own component and then return that from your render prop. In the following example, the `Count` component statically accesses the signal, so it will be transformed by default.
+
+```js
+const count = signal(0);
+
+function ShowCount({ getCount }) {
+	return <div>{getCount()}</div>;
+}
+
+const Count = () => <>{count.value}</>;
+
+function App() {
+	return <ShowCount getCount={() => <Count />} />;
+}
+```
+
+Similar issues exist with using object getters & setters. Since the it isn't easily statically analyzable that a getter or setter is backed by a signal, the Babel plugin may miss some components that use signals in this way. Similarly, setting Babel's plugin to `mode: all` will fix this issue.
+
 ## License
 
 `MIT`, see the [LICENSE](../../LICENSE) file.
