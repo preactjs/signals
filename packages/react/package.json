@@ -37,7 +37,14 @@
       "import": "./runtime/dist/runtime.mjs",
       "require": "./runtime/dist/runtime.js"
     },
-    "./runtime/package.json": "./runtime/package.json"
+    "./runtime/package.json": "./runtime/package.json",
+    "./auto": {
+      "types": "./auto/dist/index.d.ts",
+      "browser": "./auto/dist/auto.module.js",
+      "import": "./auto/dist/auto.mjs",
+      "require": "./auto/dist/auto.js"
+    },
+    "./auto/package.json": "./auto/package.json"
   },
   "mangle": "../../mangle.json",
   "files": [
@@ -46,6 +53,9 @@
     "runtime/dist",
     "runtime/src",
     "runtime/package.json",
+    "auto/dist",
+    "auto/src",
+    "auto/package.json",
     "CHANGELOG.md",
     "LICENSE",
     "README.md"

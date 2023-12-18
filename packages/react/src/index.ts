@@ -1,3 +1,11 @@
+// !!!!!!!!!!!!!!!!!!!!
+//
+// Imports to other packages (e.g. `react` or `@preact/signals-core`) or
+// subpackages (e.g. `@preact/signals-react/runtime`) in this file should be
+// listed as "external" in cmdline arguments passed to microbundle in the root
+// package.json script for this package so their contents aren't bundled into
+// the final source file.
+
 import {
 	signal,
 	computed,
@@ -12,8 +20,7 @@ import {
 	useSignal,
 	useComputed,
 	useSignalEffect,
-	installAutoSignalTracking,
-} from "@preact/signals-react/runtime"; // TODO: This duplicates runtime code between main and sub runtime packages
+} from "@preact/signals-react/runtime";
 
 export {
 	signal,
@@ -33,5 +40,3 @@ declare module "@preact/signals-core" {
 	// eslint-disable-next-line @typescript-eslint/no-empty-interface
 	interface Signal extends ReactElement {}
 }
-
-installAutoSignalTracking();

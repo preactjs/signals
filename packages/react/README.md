@@ -26,15 +26,25 @@ npm install @preact/signals-react
 
 ## React Integration
 
-> Note: The React integration plugs into some React internals and may break unexpectedly in future versions of React. If you are using Signals with React and encounter errors such as "Rendered more hooks than during previous render", "Should have a queue. This is likely a bug in React." or "Cannot redefine property: createElement" please open an issue here.
-
 The React integration can be installed via:
 
 ```sh
 npm install @preact/signals-react
 ```
 
-Similar to the Preact integration, the React adapter allows you to access signals directly inside your components and will automatically subscribe to them.
+We have a couple of options for integrating Signals into React. The recommended approach is to use the Babel transform to automatically make your components that use signals reactive.
+
+### Babel Transform
+
+Install the Babel transform package (`npm i --save-dev @preact/signals-react-transform`) and add the following to your Babel config:
+
+```json
+{
+	"plugins": [["module:@preact/signals-react-transform"]]
+}
+```
+
+This will automatically transform your components to be reactive. You can then use signals directly inside your components.
 
 ```js
 import { signal } from "@preact/signals-react";
@@ -44,6 +54,23 @@ const count = signal(0);
 function CounterValue() {
 	// Whenever the `count` signal is updated, we'll
 	// re-render this component automatically for you
+	return <p>Value: {count.value}</p>;
+}
+```
+
+See the [Readme for the Babel plugin](../babel-plugin-signals-react/README.md) for more details about how the transform works and configuring it.
+
+### `useSignals` hook
+
+If you can't use the Babel transform, you can directly call the `useSignals` hook to make your components reactive.
+
+```js
+import { useSignals } from "@preact/signals-react";
+
+const count = signal(0);
+
+function CounterValue() {
+	useSignals();
 	return <p>Value: {count.value}</p>;
 }
 ```
@@ -96,6 +123,42 @@ To opt into this optimization, simply pass the signal directly instead of access
 
 > **Note**
 > The content is wrapped in a React Fragment due to React 18's newer, more strict children types.
+
+## Limitations
+
+This version of React integration does not support passing signals as DOM attributes. Support for this may be added at a later date.
+
+Using signals into render props is not recommended. In this situation, the component that reads the signal is the component that calls the render prop, which may or may not be hooked up to track signals. For example:
+
+```js
+const count = signal(0);
+
+function ShowCount({ getCount }) {
+	return <div>{getCount()}</div>;
+}
+
+function App() {
+	return <ShowCount getCount={() => count.value} />;
+}
+```
+
+Here, the `ShowCount` component is the one that accesses `count.value` at runtime since it invokes `getCount`, so it needs to be hooked up to track signals. However, since it doesn't statically access the signal, the Babel transform won't transform it by default. One fix is to set `mode: all` in the Babel plugin's config, which will transform all components. Another workaround is put the return of the render prop into it's own component and then return that from your render prop. In the following example, the `Count` component statically accesses the signal, so it will be transformed by default.
+
+```js
+const count = signal(0);
+
+function ShowCount({ getCount }) {
+	return <div>{getCount()}</div>;
+}
+
+const Count = () => <>{count.value}</>;
+
+function App() {
+	return <ShowCount getCount={() => <Count />} />;
+}
+```
+
+Similar issues exist with using object getters & setters. Since the it isn't easily statically analyzable that a getter or setter is backed by a signal, the Babel plugin may miss some components that use signals in this way. Similarly, setting Babel's plugin to `mode: all` will fix this issue.
 
 ## License
 
