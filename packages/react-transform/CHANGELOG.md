@@ -1,5 +1,16 @@
 # @preact/signals-react-transform
 
+## 0.3.0
+
+### Minor Changes
+
+- [#467](https://github.com/preactjs/signals/pull/467) [`d7f43ef`](https://github.com/preactjs/signals/commit/d7f43ef5c9b6516cd93a12c3f647409cfd8c62be) Thanks [@andrewiggins](https://github.com/andrewiggins)! - Change opt-in/opt-out comment to `@useSignals` and `@noUseSignals`. Previous comments (`@trackSignals` & `@noTrackSignals`) still supported but deprecated.
+
+### Patch Changes
+
+- Updated dependencies [[`d7f43ef`](https://github.com/preactjs/signals/commit/d7f43ef5c9b6516cd93a12c3f647409cfd8c62be)]:
+  - @preact/signals-react@2.0.0
+
 ## 0.2.0
 
 ### Minor Changes

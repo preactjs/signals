@@ -1,6 +1,6 @@
 {
   "name": "@preact/signals-react-transform",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "license": "MIT",
   "description": "Manage state with style in React",
   "keywords": [
@@ -47,7 +47,7 @@
   "dependencies": {
     "@babel/helper-module-imports": "^7.22.5",
     "@babel/helper-plugin-utils": "^7.22.5",
-    "@preact/signals-react": "workspace:^1.3.8",
+    "@preact/signals-react": "workspace:^2.0.0",
     "debug": "^4.3.4",
     "use-sync-external-store": "^1.2.0"
   },
