@@ -5,11 +5,7 @@
   },
   "minify": {
     "mangle": {
-      "reserved": [
-        "useSignal",
-        "useComputed",
-        "useSignalEffect"
-      ],
+      "reserved": ["useSignal", "useComputed", "useSignalEffect"],
       "keep_classnames": true,
       "properties": {
         "regex": "^_[^_]",
@@ -25,7 +21,8 @@
     "compress": {
       "conditionals": false,
       "loops": false,
-      "sequences": false
+      "sequences": false,
+      "unsafe": true
     }
   },
   "props": {

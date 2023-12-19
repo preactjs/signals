@@ -1,10 +1,3 @@
-function cycleDetected(): never {
-	throw new Error("Cycle detected");
-}
-function mutationDetected(): never {
-	throw new Error("Computed cannot have side-effects");
-}
-
 const identifier = Symbol.for("preact-signals");
 
 // Flags for Computed and Effect.
@@ -259,13 +252,15 @@ function Signal(this: Signal, value?: unknown) {
 	this._targets = undefined;
 }
 
-Signal.prototype.brand = identifier;
+const signalProto = Signal.prototype;
 
-Signal.prototype._refresh = function () {
+signalProto.brand = identifier;
+
+signalProto._refresh = function () {
 	return true;
 };
 
-Signal.prototype._subscribe = function (node) {
+signalProto._subscribe = function (node) {
 	if (this._targets !== node && node._prevTarget === undefined) {
 		node._nextTarget = this._targets;
 		if (this._targets !== undefined) {
@@ -275,7 +270,7 @@ Signal.prototype._subscribe = function (node) {
 	}
 };
 
-Signal.prototype._unsubscribe = function (node) {
+signalProto._unsubscribe = function (node) {
 	// Only run the unsubscribe step if the signal has any subscribers to begin with.
 	if (this._targets !== undefined) {
 		const prev = node._prevTarget;
@@ -294,7 +289,7 @@ Signal.prototype._unsubscribe = function (node) {
 	}
 };
 
-Signal.prototype.subscribe = function (fn) {
+signalProto.subscribe = function (fn) {
 	const signal = this;
 	return effect(function (this: Effect) {
 		const value = signal.value;
@@ -308,23 +303,23 @@ Signal.prototype.subscribe = function (fn) {
 	});
 };
 
-Signal.prototype.valueOf = function () {
+signalProto.valueOf = function () {
 	return this.value;
 };
 
-Signal.prototype.toString = function () {
-	return this.value + "";
+signalProto.toString = function () {
+	return "" + this.value;
 };
 
-Signal.prototype.toJSON = function () {
+signalProto.toJSON = function () {
 	return this.value;
 };
 
-Signal.prototype.peek = function () {
+signalProto.peek = function () {
 	return this._value;
 };
 
-Object.defineProperty(Signal.prototype, "value", {
+Object.defineProperty(signalProto, "value", {
 	get() {
 		const node = addDependency(this);
 		if (node !== undefined) {
@@ -334,12 +329,12 @@ Object.defineProperty(Signal.prototype, "value", {
 	},
 	set(this: Signal, value) {
 		if (evalContext instanceof Computed) {
-			mutationDetected();
+			throw Error("Computed side effect detected");
 		}
 
 		if (value !== this._value) {
 			if (batchIteration > 100) {
-				cycleDetected();
+				throw Error("Cycle detected");
 			}
 
 			this._value = value;
@@ -490,7 +485,7 @@ declare class Computed<T = any> extends Signal<T> {
 }
 
 function Computed(this: Computed, compute: () => unknown) {
-	Signal.call(this, undefined);
+	Signal.call(this);
 
 	this._compute = compute;
 	this._sources = undefined;
@@ -498,9 +493,9 @@ function Computed(this: Computed, compute: () => unknown) {
 	this._flags = OUTDATED;
 }
 
-Computed.prototype = new Signal() as Computed;
+const computedProto = (Computed.prototype = new Signal() as Computed);
 
-Computed.prototype._refresh = function () {
+computedProto._refresh = function () {
 	this._flags &= ~NOTIFIED;
 
 	if (this._flags & RUNNING) {
@@ -553,7 +548,7 @@ Computed.prototype._refresh = function () {
 	return true;
 };
 
-Computed.prototype._subscribe = function (node) {
+computedProto._subscribe = function (node) {
 	if (this._targets === undefined) {
 		this._flags |= OUTDATED | TRACKING;
 
@@ -567,13 +562,13 @@ Computed.prototype._subscribe = function (node) {
 			node._source._subscribe(node);
 		}
 	}
-	Signal.prototype._subscribe.call(this, node);
+	signalProto._subscribe.call(this, node);
 };
 
-Computed.prototype._unsubscribe = function (node) {
+computedProto._unsubscribe = function (node) {
 	// Only run the unsubscribe step if the computed signal has any subscribers.
 	if (this._targets !== undefined) {
-		Signal.prototype._unsubscribe.call(this, node);
+		signalProto._unsubscribe.call(this, node);
 
 		// Computed signal unsubscribes from its dependencies when it loses its last subscriber.
 		// This makes it possible for unreferences subgraphs of computed signals to get garbage collected.
@@ -591,7 +586,7 @@ Computed.prototype._unsubscribe = function (node) {
 	}
 };
 
-Computed.prototype._notify = function () {
+computedProto._notify = function () {
 	if (!(this._flags & NOTIFIED)) {
 		this._flags |= OUTDATED | NOTIFIED;
 
@@ -605,9 +600,9 @@ Computed.prototype._notify = function () {
 	}
 };
 
-Computed.prototype.peek = function () {
+computedProto.peek = function () {
 	if (!this._refresh()) {
-		cycleDetected();
+		throw Error("Cycle detected");
 	}
 	if (this._flags & HAS_ERROR) {
 		throw this._value;
@@ -615,10 +610,10 @@ Computed.prototype.peek = function () {
 	return this._value;
 };
 
-Object.defineProperty(Computed.prototype, "value", {
+Object.defineProperty(computedProto, "value", {
 	get() {
 		if (this._flags & RUNNING) {
-			cycleDetected();
+			throw Error("Cycle detected");
 		}
 		const node = addDependency(this);
 		this._refresh();
@@ -733,7 +728,7 @@ Effect.prototype._callback = function () {
 
 Effect.prototype._start = function () {
 	if (this._flags & RUNNING) {
-		cycleDetected();
+		throw Error("Cycle detected");
 	}
 	this._flags |= RUNNING;
 	this._flags &= ~DISPOSED;
@@ -775,12 +770,4 @@ function effect(compute: () => unknown | EffectCleanup): () => void {
 	return effect._dispose.bind(effect);
 }
 
-export {
-	signal,
-	computed,
-	effect,
-	batch,
-	Signal,
-	ReadonlySignal,
-	untracked,
-};
+export { signal, computed, effect, batch, Signal, ReadonlySignal, untracked };
