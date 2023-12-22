@@ -6,7 +6,8 @@
 // package.json script for this package so their contents aren't bundled into
 // the final source file.
 
-import {
+import type { ReactElement } from "react";
+export {
 	signal,
 	computed,
 	batch,
@@ -15,25 +16,12 @@ import {
 	type ReadonlySignal,
 	untracked,
 } from "@preact/signals-core";
-import type { ReactElement } from "react";
-import {
+export {
 	useSignal,
+	useSignals,
 	useComputed,
 	useSignalEffect,
 } from "@preact/signals-react/runtime";
-
-export {
-	signal,
-	computed,
-	batch,
-	effect,
-	Signal,
-	type ReadonlySignal,
-	useSignal,
-	useComputed,
-	useSignalEffect,
-	untracked,
-};
 
 declare module "@preact/signals-core" {
 	// @ts-ignore internal Signal is viewed as function
