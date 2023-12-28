@@ -65,7 +65,7 @@ See the [Readme for the Babel plugin](../babel-plugin-signals-react/README.md) f
 If you can't use the Babel transform, you can directly call the `useSignals` hook to make your components reactive.
 
 ```js
-import { useSignals } from "@preact/signals-react";
+import { useSignals } from "@preact/signals-react/runtime";
 
 const count = signal(0);
 
