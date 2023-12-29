@@ -58,7 +58,7 @@ function CounterValue() {
 }
 ```
 
-See the [Readme for the Babel plugin](../babel-plugin-signals-react/README.md) for more details about how the transform works and configuring it.
+See the [Readme for the Babel plugin](../react-transform/README.md) for more details about how the transform works and configuring it.
 
 ### `useSignals` hook
 
