@@ -51,14 +51,18 @@ function CounterValue() {
 
 ### Hooks
 
-If you need to instantiate new signals inside your components, you can use the `useSignal` or `useComputed` hook.
+If you need to instantiate new signals or create new side effects on signal changes inside your components, you can use the `useSignal`, `useComputed` and `useSignalEffect` hooks.
 
 ```js
-import { useSignal, useComputed } from "@preact/signals";
+import { useSignal, useComputed, useSignalEffect } from "@preact/signals";
 
 function Counter() {
 	const count = useSignal(0);
 	const double = useComputed(() => count.value * 2);
+
+	useSignalEffect(() => {
+		console.log(`Value: ${count.value}, value x 2 = ${double.value}`);
+	});
 
 	return (
 		<button onClick={() => count.value++}>
