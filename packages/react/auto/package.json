@@ -4,14 +4,14 @@
   "private": true,
   "amdName": "reactSignalsAuto",
   "main": "dist/auto.js",
-  "module": "dist/auto.module.js",
+  "module": "dist/auto.mjs",
   "unpkg": "dist/auto.min.js",
   "types": "dist/index.d.ts",
   "mangle": "../../../mangle.json",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "browser": "./dist/auto.module.js",
+      "module": "./dist/auto.mjs",
       "import": "./dist/auto.mjs",
       "require": "./dist/auto.js"
     }
