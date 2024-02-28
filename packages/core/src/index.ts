@@ -99,19 +99,12 @@ function batch<T>(callback: () => T): T {
 // Currently evaluated computed or effect.
 let evalContext: Computed | Effect | undefined = undefined;
 
-let untrackedDepth = 0;
-
 function untracked<T>(callback: () => T): T {
-	if (untrackedDepth > 0) {
-		return callback();
-	}
 	const prevContext = evalContext;
 	evalContext = undefined;
-	untrackedDepth++;
 	try {
 		return callback();
 	} finally {
-		untrackedDepth--;
 		evalContext = prevContext;
 	}
 }
