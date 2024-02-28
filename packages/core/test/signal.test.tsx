@@ -1946,3 +1946,16 @@ describe("batch/transaction", () => {
 		expect(callCount).to.equal(1);
 	});
 });
+
+describe("untracked", () => {
+	it("should block tracking even when run inside effect run inside untracked", () => {
+		const s = signal(1);
+		const spy = sinon.spy(() => s.value);
+
+		untracked(() => effect(() => untracked(spy)));
+		expect(spy).to.be.calledOnce;
+
+		s.value = 2;
+		expect(spy).to.be.calledOnce;
+	});
+});
