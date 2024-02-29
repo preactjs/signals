@@ -605,7 +605,7 @@ describe("effect()", () => {
 				c.value;
 			});
 
-		expect(fn).to.throw(/Computed cannot have side-effects/);
+		expect(fn).to.throw(/Computed side effect detected/);
 	});
 
 	it("should allow disposing the effect multiple times", () => {
@@ -920,7 +920,7 @@ describe("computed()", () => {
 		const a: Signal = signal(v);
 		const c: Signal = computed(() => a.value++);
 
-		expect(() => c.value).to.throw(/Computed cannot have side-effects/);
+		expect(() => c.value).to.throw(/Computed side effect detected/);
 		expect(a.value).to.equal(v);
 	});
 
