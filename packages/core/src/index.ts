@@ -340,17 +340,14 @@ Object.defineProperty(Signal.prototype, "value", {
 			globalVersion++;
 
 			/**@__INLINE__*/ startBatch();
-			try {
-				for (
-					let node = this._targets;
-					node !== undefined;
-					node = node._nextTarget
-				) {
-					node._target._notify();
-				}
-			} finally {
-				endBatch();
+			for (
+				let node = this._targets;
+				node !== undefined;
+				node = node._nextTarget
+			) {
+				node._target._notify();
 			}
+			endBatch();
 		}
 	},
 });
@@ -768,12 +765,4 @@ function effect(compute: () => unknown | EffectCleanup): () => void {
 	return effect._dispose.bind(effect);
 }
 
-export {
-	signal,
-	computed,
-	effect,
-	batch,
-	Signal,
-	ReadonlySignal,
-	untracked,
-};
+export { signal, computed, effect, batch, Signal, ReadonlySignal, untracked };
