@@ -125,6 +125,11 @@ Object.defineProperties(Signal.prototype, {
 	__b: { configurable: true, value: 1 },
 });
 
+// Due to the prototype hierarchy of native classes, having Signal.prototype.constructor
+// been set to undefined gets masked for Computed.prototype. We need to explicitly set
+// Computed.prototype.constructor to undefined as well.
+computed(() => 0).constructor.prototype.constructor = undefined;
+
 /** Inject low-level property/attribute bindings for Signals into Preact's diff */
 hook(OptionsTypes.DIFF, (old, vnode) => {
 	if (typeof vnode.type === "string") {

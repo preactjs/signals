@@ -144,6 +144,7 @@ function createEsbuildPlugin() {
 						{
 							jsxPragma: "createElement",
 							jsxPragmaFrag: "Fragment",
+							allowDeclareFields: true,
 						},
 					];
 
