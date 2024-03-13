@@ -596,7 +596,7 @@ describe("effect()", () => {
 		expect(fn).to.throw(/Cycle detected/);
 	});
 
-	it("should throw if a computed tries to set a signal's value", () => {
+	it("should throw on indirect cycles", () => {
 		const a = signal(0);
 		let i = 0;
 
@@ -615,7 +615,7 @@ describe("effect()", () => {
 				c.value;
 			});
 
-		expect(fn).to.throw(/Computed cannot have side-effects/);
+		expect(fn).to.throw(/Cycle detected/);
 	});
 
 	it("should allow disposing the effect multiple times", () => {
@@ -925,13 +925,16 @@ describe("computed()", () => {
 		expect(spy).to.be.calledOnce;
 	});
 
-	it("should disallow setting signal's value", () => {
-		const v = 123;
-		const a: Signal = signal(v);
-		const c: Signal = computed(() => a.value++);
-
-		expect(() => c.value).to.throw(/Computed cannot have side-effects/);
-		expect(a.value).to.equal(v);
+	it("should recompute if a dependency changes during computation after becoming a dependency", () => {
+		const a = signal(0);
+		const spy = sinon.spy(() => {
+			a.value++;
+		});
+		const c = computed(spy);
+		c.value;
+		expect(spy).to.be.calledOnce;
+		c.value;
+		expect(spy).to.be.calledTwice;
 	});
 
 	it("should detect simple dependency cycles", () => {

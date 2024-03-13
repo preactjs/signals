@@ -1,7 +1,3 @@
-function mutationDetected(): never {
-	throw new Error("Computed cannot have side-effects");
-}
-
 // An named symbol/brand for detecting Signal instances even when they weren't
 // created using the same signals library version.
 const BRAND_SYMBOL = Symbol.for("preact-signals");
@@ -331,10 +327,6 @@ Object.defineProperty(Signal.prototype, "value", {
 		return this._value;
 	},
 	set(this: Signal, value) {
-		if (evalContext instanceof Computed) {
-			mutationDetected();
-		}
-
 		if (value !== this._value) {
 			if (batchIteration > 100) {
 				throw new Error("Cycle detected");
