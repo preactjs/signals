@@ -288,16 +288,9 @@ Signal.prototype._unsubscribe = function (node) {
 };
 
 Signal.prototype.subscribe = function (fn) {
-	const signal = this;
-	return effect(function (this: Effect) {
-		const value = signal.value;
-		const flag = this._flags & TRACKING;
-		this._flags &= ~TRACKING;
-		try {
-			fn(value);
-		} finally {
-			this._flags |= flag;
-		}
+	return effect(() => {
+		const value = this.value;
+		untracked(() => fn(value));
 	});
 };
 
@@ -550,7 +543,7 @@ Computed.prototype._subscribe = function (node) {
 	if (this._targets === undefined) {
 		this._flags |= OUTDATED | TRACKING;
 
-		// A computed signal subscribes lazily to its dependencies when the it
+		// A computed signal subscribes lazily to its dependencies when it
 		// gets its first subscriber.
 		for (
 			let node = this._sources;
@@ -768,12 +761,4 @@ function effect(compute: () => unknown | EffectCleanup): () => void {
 	return effect._dispose.bind(effect);
 }
 
-export {
-	signal,
-	computed,
-	effect,
-	batch,
-	Signal,
-	ReadonlySignal,
-	untracked,
-};
+export { signal, computed, effect, batch, Signal, ReadonlySignal, untracked };
