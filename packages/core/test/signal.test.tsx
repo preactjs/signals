@@ -1175,6 +1175,21 @@ describe("computed()", () => {
 			expect(c.peek()).equal(1);
 		});
 
+		it("should throw when evaluation throws", () => {
+			const c = computed(() => {
+				throw Error("test");
+			});
+			expect(() => c.peek()).to.throw("test");
+		});
+
+		it("should throw when previous evaluation threw and dependencies haven't changed", () => {
+			const c = computed(() => {
+				throw Error("test");
+			});
+			expect(() => c.value).to.throw("test");
+			expect(() => c.peek()).to.throw("test");
+		});
+
 		it("should refresh value if stale", () => {
 			const a = signal(1);
 			const b = computed(() => a.value);
