@@ -118,6 +118,16 @@ describe("signal", () => {
 			expect(spy).to.be.calledWith(1);
 		});
 
+		it("should run the callback when the signal value changes", () => {
+			const spy = sinon.spy();
+			const a = signal(1);
+
+			a.subscribe(spy);
+
+			a.value = 2;
+			expect(spy).to.be.calledWith(2);
+		});
+
 		it("should unsubscribe from a signal", () => {
 			const spy = sinon.spy();
 			const a = signal(1);
