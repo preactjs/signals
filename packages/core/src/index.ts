@@ -289,7 +289,14 @@ Signal.prototype._unsubscribe = function (node) {
 Signal.prototype.subscribe = function (fn) {
 	return effect(() => {
 		const value = this.value;
-		untracked(() => fn(value));
+
+		const prevContext = evalContext;
+		evalContext = undefined;
+		try {
+			fn(value);
+		} finally {
+			evalContext = prevContext;
+		}
 	});
 };
 
