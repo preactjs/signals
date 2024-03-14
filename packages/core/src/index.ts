@@ -360,7 +360,9 @@ Object.defineProperty(Signal.prototype, "value", {
 	},
 });
 
-function signal<T>(value: T): Signal<T> {
+function signal<T>(value: T): Signal<T>
+function signal<T = undefined>(): Signal<T | undefined>
+function signal<T>(value?: T) {
 	return new Signal(value);
 }
 
