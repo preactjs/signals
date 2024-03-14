@@ -306,7 +306,13 @@ Signal.prototype.toJSON = function () {
 };
 
 Signal.prototype.peek = function () {
-	return this._value;
+	const prevContext = evalContext;
+	evalContext = undefined;
+	try {
+		return this.value;
+	} finally {
+		evalContext = prevContext;
+	}
 };
 
 Object.defineProperty(Signal.prototype, "value", {
@@ -588,16 +594,6 @@ Computed.prototype._notify = function () {
 			node._target._notify();
 		}
 	}
-};
-
-Computed.prototype.peek = function () {
-	if (!this._refresh()) {
-		throw new Error("Cycle detected");
-	}
-	if (this._flags & HAS_ERROR) {
-		throw this._value;
-	}
-	return this._value;
 };
 
 Object.defineProperty(Computed.prototype, "value", {
