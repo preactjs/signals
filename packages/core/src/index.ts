@@ -193,7 +193,13 @@ function addDependency(signal: Signal): Node | undefined {
 	return undefined;
 }
 
-// @ts-ignore internal Signal is viewed as a function
+// @ts-ignore: "Cannot redeclare exported variable 'Signal'."
+//
+// A function with the same name is defined later, so we need to ignore TypeScript's
+// warning about a redeclared variable.
+//
+// The class is declared here, but later implemented with ES5-style prototypes.
+// This enables better control of the transpiled output size.
 declare class Signal<T = any> {
 	/** @internal */
 	_value: unknown;
@@ -239,7 +245,13 @@ declare class Signal<T = any> {
 }
 
 /** @internal */
-// @ts-ignore internal Signal is viewed as function
+// @ts-ignore: "Cannot redeclare exported variable 'Signal'."
+//
+// A class with the same name has already been declared, so we need to ignore
+// TypeScript's warning about a redeclared variable.
+//
+// The previously declared class is implemented here with ES5-style prototypes.
+// This enables better control of the transpiled output size.
 function Signal(this: Signal, value?: unknown) {
 	this._value = value;
 	this._version = 0;
@@ -319,7 +331,7 @@ Signal.prototype.peek = function () {
 };
 
 Object.defineProperty(Signal.prototype, "value", {
-	get() {
+	get(this: Signal) {
 		const node = addDependency(this);
 		if (node !== undefined) {
 			node._version = this._version;
@@ -596,7 +608,7 @@ Computed.prototype._notify = function () {
 };
 
 Object.defineProperty(Computed.prototype, "value", {
-	get() {
+	get(this: Computed) {
 		if (this._flags & RUNNING) {
 			throw new Error("Cycle detected");
 		}
