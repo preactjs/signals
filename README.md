@@ -141,6 +141,25 @@ dispose();
 surname.value = "Doe 2";
 ```
 
+The effect callback may return a cleanup function. The cleanup function gets run once, either when the effect callback is next called _or_ when the effect gets disposed, whichever happens first.
+
+```js
+import { signal, effect } from "@preact/signals-core";
+
+const count = signal(0);
+
+const dispose = effect(() => {
+	const c = count.value;
+	return () => console.log(`cleanup ${c}`);
+});
+
+// Logs: cleanup 0
+count.value = 1;
+
+// Logs: cleanup 1
+dispose();
+```
+
 ### `batch(fn)`
 
 The `batch` function allows you to combine multiple signal writes into one single update that is triggered at the end when the callback completes.
