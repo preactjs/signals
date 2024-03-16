@@ -508,21 +508,21 @@ function cleanupSources(target: Computed | Effect) {
 }
 
 declare class Computed<T = any> extends Signal<T> {
-	_compute: () => T;
+	_fn: () => T;
 	_sources?: Node;
 	_globalVersion: number;
 	_flags: number;
 
-	constructor(compute: () => T);
+	constructor(fn: () => T);
 
 	_notify(): void;
 	get value(): T;
 }
 
-function Computed(this: Computed, compute: () => unknown) {
+function Computed(this: Computed, fn: () => unknown) {
 	Signal.call(this, undefined);
 
-	this._compute = compute;
+	this._fn = fn;
 	this._sources = undefined;
 	this._globalVersion = globalVersion - 1;
 	this._flags = OUTDATED;
@@ -562,7 +562,7 @@ Computed.prototype._refresh = function () {
 	try {
 		prepareSources(this);
 		evalContext = this;
-		const value = this._compute();
+		const value = this._fn();
 		if (
 			this._flags & HAS_ERROR ||
 			this._value !== value ||
@@ -704,7 +704,7 @@ function disposeEffect(effect: Effect) {
 	) {
 		node._source._unsubscribe(node);
 	}
-	effect._compute = undefined;
+	effect._fn = undefined;
 	effect._sources = undefined;
 
 	cleanupEffect(effect);
@@ -725,13 +725,13 @@ function endEffect(this: Effect, prevContext?: Computed | Effect) {
 }
 
 declare class Effect {
-	_compute?: () => unknown;
+	_fn?: () => unknown;
 	_cleanup?: () => unknown;
 	_sources?: Node;
 	_nextBatchedEffect?: Effect;
 	_flags: number;
 
-	constructor(compute: () => unknown);
+	constructor(fn: () => unknown);
 
 	_callback(): void;
 	_start(): () => void;
@@ -739,8 +739,8 @@ declare class Effect {
 	_dispose(): void;
 }
 
-function Effect(this: Effect, compute: () => unknown) {
-	this._compute = compute;
+function Effect(this: Effect, fn: () => unknown) {
+	this._fn = fn;
 	this._cleanup = undefined;
 	this._sources = undefined;
 	this._nextBatchedEffect = undefined;
@@ -751,9 +751,9 @@ Effect.prototype._callback = function () {
 	const finish = this._start();
 	try {
 		if (this._flags & DISPOSED) return;
-		if (this._compute === undefined) return;
+		if (this._fn === undefined) return;
 
-		const cleanup = this._compute();
+		const cleanup = this._fn();
 		if (typeof cleanup === "function") {
 			this._cleanup = cleanup as () => unknown;
 		}
