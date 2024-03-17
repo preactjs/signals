@@ -79,13 +79,25 @@ function endBatch() {
 	}
 }
 
-function batch<T>(callback: () => T): T {
+/**
+ * Combine multiple value updates into one "commit" at the end of the provided callback.
+ *
+ * Batches can be nested and changes are only flushed once the outermost batch callback
+ * completes.
+ *
+ * Accessing a signal that has been modified within a batch will reflect its updated
+ * value.
+ *
+ * @param fn The callback function.
+ * @returns The value returned by the callback.
+ */
+function batch<T>(fn: () => T): T {
 	if (batchDepth > 0) {
-		return callback();
+		return fn();
 	}
 	/*@__INLINE__**/ startBatch();
 	try {
-		return callback();
+		return fn();
 	} finally {
 		endBatch();
 	}
@@ -94,11 +106,18 @@ function batch<T>(callback: () => T): T {
 // Currently evaluated computed or effect.
 let evalContext: Computed | Effect | undefined = undefined;
 
-function untracked<T>(callback: () => T): T {
+/**
+ * Run a callback function that can access signal values without
+ * subscribing to the signal updates.
+ *
+ * @param fn The callback function.
+ * @returns The value returned by the callback.
+ */
+function untracked<T>(fn: () => T): T {
 	const prevContext = evalContext;
 	evalContext = undefined;
 	try {
-		return callback();
+		return fn();
 	} finally {
 		evalContext = prevContext;
 	}
@@ -193,6 +212,9 @@ function addDependency(signal: Signal): Node | undefined {
 	return undefined;
 }
 
+/**
+ * The base class for plain and computed signals.
+ */
 // @ts-ignore: "Cannot redeclare exported variable 'Signal'."
 //
 // A function with the same name is defined later, so we need to ignore TypeScript's
@@ -364,6 +386,12 @@ Object.defineProperty(Signal.prototype, "value", {
 	},
 });
 
+/**
+ * Create a new plain signal.
+ *
+ * @param value The initial value for the signal.
+ * @returns A new signal.
+ */
 function signal<T>(value: T): Signal<T> {
 	return new Signal(value);
 }
@@ -480,21 +508,21 @@ function cleanupSources(target: Computed | Effect) {
 }
 
 declare class Computed<T = any> extends Signal<T> {
-	_compute: () => T;
+	_fn: () => T;
 	_sources?: Node;
 	_globalVersion: number;
 	_flags: number;
 
-	constructor(compute: () => T);
+	constructor(fn: () => T);
 
 	_notify(): void;
 	get value(): T;
 }
 
-function Computed(this: Computed, compute: () => unknown) {
+function Computed(this: Computed, fn: () => unknown) {
 	Signal.call(this, undefined);
 
-	this._compute = compute;
+	this._fn = fn;
 	this._sources = undefined;
 	this._globalVersion = globalVersion - 1;
 	this._flags = OUTDATED;
@@ -534,7 +562,7 @@ Computed.prototype._refresh = function () {
 	try {
 		prepareSources(this);
 		evalContext = this;
-		const value = this._compute();
+		const value = this._fn();
 		if (
 			this._flags & HAS_ERROR ||
 			this._value !== value ||
@@ -624,12 +652,24 @@ Object.defineProperty(Computed.prototype, "value", {
 	},
 });
 
+/**
+ * An interface for read-only signals.
+ */
 interface ReadonlySignal<T = any> extends Signal<T> {
 	readonly value: T;
 }
 
-function computed<T>(compute: () => T): ReadonlySignal<T> {
-	return new Computed(compute);
+/**
+ * Create a new signal that is computed based on the values of other signals.
+ *
+ * The returned computed signal is read-only, and its value is automatically
+ * updated when any signals accessed from within the callback function change.
+ *
+ * @param fn The effect callback.
+ * @returns A new read-only signal.
+ */
+function computed<T>(fn: () => T): ReadonlySignal<T> {
+	return new Computed(fn);
 }
 
 function cleanupEffect(effect: Effect) {
@@ -664,7 +704,7 @@ function disposeEffect(effect: Effect) {
 	) {
 		node._source._unsubscribe(node);
 	}
-	effect._compute = undefined;
+	effect._fn = undefined;
 	effect._sources = undefined;
 
 	cleanupEffect(effect);
@@ -684,15 +724,14 @@ function endEffect(this: Effect, prevContext?: Computed | Effect) {
 	endBatch();
 }
 
-type EffectCleanup = () => unknown;
 declare class Effect {
-	_compute?: () => unknown | EffectCleanup;
+	_fn?: () => unknown;
 	_cleanup?: () => unknown;
 	_sources?: Node;
 	_nextBatchedEffect?: Effect;
 	_flags: number;
 
-	constructor(compute: () => unknown | EffectCleanup);
+	constructor(fn: () => unknown);
 
 	_callback(): void;
 	_start(): () => void;
@@ -700,8 +739,8 @@ declare class Effect {
 	_dispose(): void;
 }
 
-function Effect(this: Effect, compute: () => unknown | EffectCleanup) {
-	this._compute = compute;
+function Effect(this: Effect, fn: () => unknown) {
+	this._fn = fn;
 	this._cleanup = undefined;
 	this._sources = undefined;
 	this._nextBatchedEffect = undefined;
@@ -712,11 +751,11 @@ Effect.prototype._callback = function () {
 	const finish = this._start();
 	try {
 		if (this._flags & DISPOSED) return;
-		if (this._compute === undefined) return;
+		if (this._fn === undefined) return;
 
-		const cleanup = this._compute();
+		const cleanup = this._fn();
 		if (typeof cleanup === "function") {
-			this._cleanup = cleanup as EffectCleanup;
+			this._cleanup = cleanup as () => unknown;
 		}
 	} finally {
 		finish();
@@ -754,8 +793,21 @@ Effect.prototype._dispose = function () {
 	}
 };
 
-function effect(compute: () => unknown | EffectCleanup): () => void {
-	const effect = new Effect(compute);
+/**
+ * Create an effect to run arbitrary code in response to signal changes.
+ *
+ * An effect tracks which signals are accessed within the given callback
+ * function `fn`, and re-runs the callback when those signals change.
+ *
+ * The callback may return a cleanup function. The cleanup function gets
+ * run once, either when the callback is next called or when the effect
+ * gets disposed, whichever happens first.
+ *
+ * @param fn The effect callback.
+ * @returns A function for disposing the effect.
+ */
+function effect(fn: () => unknown): () => void {
+	const effect = new Effect(fn);
 	try {
 		effect._callback();
 	} catch (err) {
@@ -767,4 +819,4 @@ function effect(compute: () => unknown | EffectCleanup): () => void {
 	return effect._dispose.bind(effect);
 }
 
-export { signal, computed, effect, batch, Signal, ReadonlySignal, untracked };
+export { signal, computed, effect, batch, untracked, Signal, ReadonlySignal };
