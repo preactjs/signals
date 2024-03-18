@@ -2,7 +2,7 @@
   "name": "preact-signals",
   "private": true,
   "scripts": {
-    "prebuild": "rimraf packages/core/dist/ packages/preact/dist",
+    "prebuild": "rimraf packages/*/dist/",
     "build": "pnpm build:core && pnpm build:preact && pnpm build:react-runtime && pnpm build:react-auto && pnpm build:react && pnpm build:react-transform",
     "_build": "microbundle --raw --globals @preact/signals-core=preactSignalsCore,preact/hooks=preactHooks,@preact/signals-react/runtime=reactSignalsRuntime",
     "build:core": "pnpm _build --cwd packages/core && pnpm postbuild:core",
@@ -36,7 +36,6 @@
     "docs:preview": "cd docs && pnpm preview",
     "ci:build": "pnpm build && pnpm docs:build",
     "ci:test": "pnpm lint && pnpm test",
-    "release": "pnpm changeset version && pnpm install && git add -A && git commit -m 'Version Packages' && changeset tag && pnpm publish -r",
     "prepare": "husky install",
     "format": "prettier --ignore-path .gitignore --write '**/*.{js,jsx,ts,tsx,yml,json,md}'"
   },

@@ -8,6 +8,11 @@ on:
 jobs:
   release:
     name: Release
+    permissions:
+      contents: write
+      id-token: write
+      issues: read
+      pull-requests: write
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -29,5 +34,8 @@ jobs:
 
       - name: Create Release Pull Request
         uses: changesets/action@v1
+        with:
+          publish: pnpm changeset publish
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
