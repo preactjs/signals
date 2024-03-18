@@ -52,5 +52,8 @@
   "devDependencies": {
     "preact": "10.9.0",
     "preact-render-to-string": "^5.2.5"
+  },
+  "publishConfig": {
+    "provenance": true
   }
 }
