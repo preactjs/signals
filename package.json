@@ -36,7 +36,8 @@
     "ci:build": "pnpm build && pnpm docs:build",
     "ci:test": "pnpm lint && pnpm test",
     "prepare": "husky install",
-    "format": "prettier --ignore-path .gitignore --write '**/*.{js,jsx,ts,tsx,yml,json,md}'"
+    "format": "prettier --ignore-path .gitignore --write '**/*.{js,jsx,ts,tsx,yml,json,md}'",
+    "version": "pnpm changeset version && pnpm i --lockfile-only"
   },
   "authors": [
     "The Preact Authors (https://github.com/preactjs/signals/contributors)"
