@@ -1,5 +1,21 @@
 # @preact/signals-core
 
+## 1.6.0
+
+### Minor Changes
+
+- [#525](https://github.com/preactjs/signals/pull/525) [`cb6bdab`](https://github.com/preactjs/signals/commit/cb6bdabbd31b27f8435c7976089fa276da6bfb7a) Thanks [@jviide](https://github.com/jviide)! - Allow setting a signal value inside a computed
+
+### Patch Changes
+
+- [#535](https://github.com/preactjs/signals/pull/535) [`58befba`](https://github.com/preactjs/signals/commit/58befba577d02c5cac5292fda0a599f9708e908b) Thanks [@jviide](https://github.com/jviide)! - Publish packages with provenance statements
+
+- [#529](https://github.com/preactjs/signals/pull/529) [`ec5fe42`](https://github.com/preactjs/signals/commit/ec5fe42850c5dca39da7cf6072558da51cc7fc02) Thanks [@jviide](https://github.com/jviide)! - Document effect cleanups
+
+- [#512](https://github.com/preactjs/signals/pull/512) [`d7f2afa`](https://github.com/preactjs/signals/commit/d7f2afafd7ce0f914cf13d02f87f21ab0c26a74b) Thanks [@jviide](https://github.com/jviide)! - Always reset the evaluation context upon entering an untracked block
+
+- [#531](https://github.com/preactjs/signals/pull/531) [`d17ed0d`](https://github.com/preactjs/signals/commit/d17ed0d2cbc6e57304fa0ed009ecf0a0537fe597) Thanks [@jviide](https://github.com/jviide)! - Add JSDocs for exported core module members
+
 ## 1.5.1
 
 ### Patch Changes

@@ -1,5 +1,14 @@
 # @preact/signals-react-transform
 
+## 0.3.1
+
+### Patch Changes
+
+- [#535](https://github.com/preactjs/signals/pull/535) [`58befba`](https://github.com/preactjs/signals/commit/58befba577d02c5cac5292fda0a599f9708e908b) Thanks [@jviide](https://github.com/jviide)! - Publish packages with provenance statements
+
+- Updated dependencies [[`d846def`](https://github.com/preactjs/signals/commit/d846defaf6e64f0236e2b91247e5f94a35f29cbc)]:
+  - @preact/signals-react@2.0.1
+
 ## 0.3.0
 
 ### Minor Changes
