@@ -360,19 +360,32 @@ Object.defineProperties(Signal.prototype, {
 	ref: { configurable: true, value: null },
 });
 
+function useConst<T>(fn: () => T): T {
+	interface RefManagement {
+		value: T
+		status: 'uninitialized' | 'initialized'
+	}
+	const ref = useRef<RefManagement>({status: 'uninitialized'} as any)
+	if (ref.current.status === 'uninitialized') {
+		ref.current = {status: 'initialized', value: fn()}
+	}
+
+	return ref.current.value
+}
+
 export function useSignals(usage?: EffectStoreUsage): EffectStore {
 	if (isAutoSignalTrackingInstalled) return emptyEffectStore;
 	return _useSignalsImplementation(usage);
 }
 
 export function useSignal<T>(value: T): Signal<T> {
-	return useMemo(() => signal<T>(value), Empty);
+	return useConst(() => signal<T>(value));
 }
 
 export function useComputed<T>(compute: () => T): ReadonlySignal<T> {
 	const $compute = useRef(compute);
 	$compute.current = compute;
-	return useMemo(() => computed<T>(() => $compute.current()), Empty);
+	return useConst(() => computed<T>(() => $compute.current()));
 }
 
 export function useSignalEffect(cb: () => void | (() => void)): void {

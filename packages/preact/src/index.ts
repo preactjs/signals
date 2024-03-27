@@ -33,6 +33,21 @@ const HAS_PENDING_UPDATE = 1 << 0;
 const HAS_HOOK_STATE = 1 << 1;
 const HAS_COMPUTEDS = 1 << 2;
 
+
+function useConst<T>(fn: () => T): T {
+	interface RefManagement {
+		value: T
+		status: 'uninitialized' | 'initialized'
+	}
+	const ref = useRef<RefManagement>({status: 'uninitialized'} as any)
+	if (ref.current.status === 'uninitialized') {
+		ref.current = {status: 'initialized', value: fn()}
+	}
+
+	return ref.current.value
+}
+
+
 // Install a Preact options hook
 function hook<T extends OptionsTypes>(hookName: T, hookFn: HookFn<T>) {
 	// @ts-ignore-next-line private options hooks usage
@@ -79,7 +94,7 @@ function SignalValue(this: AugmentedComponent, { data }: { data: Signal }) {
 	const currentSignal = useSignal(data);
 	currentSignal.value = data;
 
-	const s = useMemo(() => {
+	const s = useConst(() => {
 		// mark the parent component as having computeds so it gets optimized
 		let v = this.__v;
 		while ((v = v.__!)) {
@@ -104,7 +119,7 @@ function SignalValue(this: AugmentedComponent, { data }: { data: Signal }) {
 			let s = data.value;
 			return s === 0 ? 0 : s === true ? "" : s || "";
 		});
-	}, []);
+	});
 
 	return s.value;
 }
@@ -346,14 +361,14 @@ Component.prototype.shouldComponentUpdate = function (
 };
 
 export function useSignal<T>(value: T) {
-	return useMemo(() => signal<T>(value), []);
+	return useConst(() => signal<T>(value));
 }
 
 export function useComputed<T>(compute: () => T) {
 	const $compute = useRef(compute);
 	$compute.current = compute;
 	(currentComponent as AugmentedComponent)._updateFlags |= HAS_COMPUTEDS;
-	return useMemo(() => computed<T>(() => $compute.current()), []);
+	return useConst(() => computed<T>(() => $compute.current()));
 }
 
 export function useSignalEffect(cb: () => void | (() => void)) {
