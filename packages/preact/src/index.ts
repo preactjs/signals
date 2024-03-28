@@ -1,5 +1,5 @@
 import { options, Component, isValidElement } from "preact";
-import { useRef, useMemo, useEffect } from "preact/hooks";
+import { useRef, useEffect } from "preact/hooks";
 import {
 	signal,
 	computed,
