@@ -5,7 +5,7 @@ import {
 	Signal,
 	ReadonlySignal,
 } from "@preact/signals-core";
-import { useRef, useMemo, useEffect } from "react";
+import { useRef, useEffect } from "react";
 import { useSyncExternalStore } from "use-sync-external-store/shim/index.js";
 import { isAutoSignalTrackingInstalled } from "./auto";
 
@@ -360,19 +360,29 @@ Object.defineProperties(Signal.prototype, {
 	ref: { configurable: true, value: null },
 });
 
+const UNINITIALIZED = {};
+
+function useConst<T>(fn: () => T): T {
+	const ref = useRef<typeof UNINITIALIZED | T>(UNINITIALIZED);
+	if (ref.current === UNINITIALIZED) {
+		ref.current = fn();
+	}
+	return ref.current;
+}
+
 export function useSignals(usage?: EffectStoreUsage): EffectStore {
 	if (isAutoSignalTrackingInstalled) return emptyEffectStore;
 	return _useSignalsImplementation(usage);
 }
 
 export function useSignal<T>(value: T): Signal<T> {
-	return useMemo(() => signal<T>(value), Empty);
+	return useConst(() => signal<T>(value));
 }
 
 export function useComputed<T>(compute: () => T): ReadonlySignal<T> {
 	const $compute = useRef(compute);
 	$compute.current = compute;
-	return useMemo(() => computed<T>(() => $compute.current()), Empty);
+	return useConst(() => computed<T>(() => $compute.current()));
 }
 
 export function useSignalEffect(cb: () => void | (() => void)): void {
