@@ -5,7 +5,7 @@ import {
 	Signal,
 	ReadonlySignal,
 } from "@preact/signals-core";
-import { useRef, useMemo, useEffect } from "react";
+import { useRef, useEffect } from "react";
 import { useSyncExternalStore } from "use-sync-external-store/shim/index.js";
 import { isAutoSignalTrackingInstalled } from "./auto";
 
