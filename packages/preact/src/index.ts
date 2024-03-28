@@ -33,18 +33,14 @@ const HAS_PENDING_UPDATE = 1 << 0;
 const HAS_HOOK_STATE = 1 << 1;
 const HAS_COMPUTEDS = 1 << 2;
 
+const UNINITIALIZED = {};
 
 function useConst<T>(fn: () => T): T {
-	interface RefManagement {
-		value: T
-		status: 'uninitialized' | 'initialized'
+	const ref = useRef<typeof UNINITIALIZED | T>(UNINITIALIZED);
+	if (ref.current === UNINITIALIZED) {
+		ref.current = fn();
 	}
-	const ref = useRef<RefManagement>({status: 'uninitialized'} as any)
-	if (ref.current.status === 'uninitialized') {
-		ref.current = {status: 'initialized', value: fn()}
-	}
-
-	return ref.current.value
+	return ref.current;
 }
 
 
