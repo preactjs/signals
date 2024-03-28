@@ -360,17 +360,14 @@ Object.defineProperties(Signal.prototype, {
 	ref: { configurable: true, value: null },
 });
 
-function useConst<T>(fn: () => T): T {
-	interface RefManagement {
-		value: T
-		status: 'uninitialized' | 'initialized'
-	}
-	const ref = useRef<RefManagement>({status: 'uninitialized'} as any)
-	if (ref.current.status === 'uninitialized') {
-		ref.current = {status: 'initialized', value: fn()}
-	}
+const UNINITIALIZED = {};
 
-	return ref.current.value
+function useConst<T>(fn: () => T): T {
+	const ref = useRef<typeof UNINITIALIZED | T>(UNINITIALIZED);
+	if (ref.current === UNINITIALIZED) {
+		ref.current = fn();
+	}
+	return ref.current;
 }
 
 export function useSignals(usage?: EffectStoreUsage): EffectStore {
