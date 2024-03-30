@@ -13,6 +13,8 @@ var coverage = String(process.env.COVERAGE) === "true",
 const babel = require("@babel/core");
 const fs = require("fs").promises;
 
+// test
+
 var localLaunchers = {
 	ChromeNoSandboxHeadless: {
 		base: "Chrome",
