@@ -15,11 +15,9 @@ assignees: ''
   - [ ] I understand usage changed in v2, and I've followed the [React Integration instructions](https://github.com/preactjs/signals/tree/chore/issue-templates/packages/react#react-integration)
 
 **Describe the bug**
-
 A clear and concise description of what the bug is.
 
 **To Reproduce**
-
 Please provide a link to a StackBlitz/CodeSandbox/Codepen project or a GitHub repository that demonstrates the issue.
 
 Steps to reproduce the behavior:
@@ -29,5 +27,4 @@ Steps to reproduce the behavior:
 3. See error
 
 **Expected behavior**
-
 What should have happened when following the steps above?
