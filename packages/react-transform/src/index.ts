@@ -7,7 +7,7 @@ import {
 	template,
 } from "@babel/core";
 import { isModule, addNamed } from "@babel/helper-module-imports";
-import type { VisitNodeObject } from "@babel/traverse";
+import { type VisitNodeObject } from "@babel/traverse";
 import debug from "debug";
 
 interface PluginArgs {
@@ -24,6 +24,7 @@ const getHookIdentifier = "getHookIdentifier";
 const maybeUsesSignal = "maybeUsesSignal";
 const containsJSX = "containsJSX";
 const alreadyTransformed = "alreadyTransformed";
+const functionScope = "functionScope";
 
 const UNMANAGED = "0";
 const MANAGED_COMPONENT = "1";
@@ -491,7 +492,12 @@ export default function signalsTransform(
 	// seeing a function would probably be faster than running an entire
 	// babel pass with plugins on components twice.
 	const visitFunction: VisitNodeObject<PluginPass, FunctionLike> = {
+		enter(path, state) {
+			const scope = get(state, functionScope) ?? [];
+			scope.push(path);
+		},
 		exit(path, state) {
+			get(state, functionScope).pop();
 			if (getData(path, alreadyTransformed) === true) return false;
 
 			let functionName = getFunctionName(path);
@@ -536,9 +542,11 @@ export default function signalsTransform(
 			FunctionDeclaration: visitFunction,
 			ObjectMethod: visitFunction,
 
-			MemberExpression(path) {
+			MemberExpression(path, pass) {
 				if (isValueMemberExpression(path)) {
-					setOnFunctionScope(path, maybeUsesSignal, true);
+					for (const func of get(pass, functionScope)) {
+						setOnFunctionScope(func, maybeUsesSignal, true);
+					}
 				}
 			},
 
