@@ -553,6 +553,26 @@ describe("React Signals Babel Transform", () => {
 				experimental: { noTryFinally: true },
 			});
 		});
+
+		it("recursevely propogates `.value` reads to parent component", () => {
+			const inputCode = `
+				function MyComponent() {
+					return <div>{new Array(20).fill(null).map(() => signal.value)}</div>;
+				}
+			`;
+
+			const expectedOutput = `
+				import { useSignals as _useSignals } from "@preact/signals-react/runtime";
+				function MyComponent() {
+					_useSignals();
+					return <div>{new Array(20).fill(null).map(() => signal.value)}</div>;
+				}
+			`;
+
+			runTest(inputCode, expectedOutput, {
+				experimental: { noTryFinally: true },
+			});
+		});
 	});
 
 	describe("importSource option", () => {

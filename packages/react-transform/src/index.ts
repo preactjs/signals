@@ -493,8 +493,7 @@ export default function signalsTransform(
 	// babel pass with plugins on components twice.
 	const visitFunction: VisitNodeObject<PluginPass, FunctionLike> = {
 		enter(path, state) {
-			const scope = get(state, functionScope) ?? [];
-			scope.push(path);
+			get(state, functionScope).push(path);
 		},
 		exit(path, state) {
 			get(state, functionScope).pop();
@@ -534,6 +533,7 @@ export default function signalsTransform(
 							options.importSource ?? defaultImportSource
 						)
 					);
+					set(state, functionScope, []);
 				},
 			},
 
