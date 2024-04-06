@@ -554,7 +554,7 @@ describe("React Signals Babel Transform", () => {
 			});
 		});
 
-		it("recursevely propogates `.value` reads to parent component", () => {
+		it("recursively propogates `.value` reads to parent component", () => {
 			const inputCode = `
 				function MyComponent() {
 					return <div>{new Array(20).fill(null).map(() => signal.value)}</div>;
