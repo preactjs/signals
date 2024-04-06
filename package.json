@@ -11,11 +11,11 @@
     "build:react-auto": "pnpm _build --cwd packages/react/auto && pnpm postbuild:react-auto",
     "build:react-runtime": "pnpm _build --cwd packages/react/runtime && pnpm postbuild:react-runtime",
     "build:react-transform": "pnpm _build --no-compress --cwd packages/react-transform",
-    "postbuild:core": "cd packages/core/dist && mv -f index.d.ts signals-core.d.ts",
-    "postbuild:preact": "cd packages/preact/dist && mv -f preact/src/index.d.ts signals.d.ts && rm -dr preact",
-    "postbuild:react": "cd packages/react/dist && mv -f react/src/index.d.ts signals.d.ts && rm -dr react",
-    "postbuild:react-auto": "cd packages/react/auto/dist && mv -f react/auto/src/*.d.ts . && rm -dr react",
-    "postbuild:react-runtime": "cd packages/react/runtime/dist && mv -f react/runtime/src/*.d.ts . && rm -dr react",
+    "postbuild:core": "cd packages/core/dist && shx mv -f index.d.ts signals-core.d.ts",
+    "postbuild:preact": "cd packages/preact/dist && shx mv -f preact/src/index.d.ts signals.d.ts && rimraf preact",
+    "postbuild:react": "cd packages/react/dist && shx mv -f react/src/index.d.ts signals.d.ts && rimraf react",
+    "postbuild:react-auto": "cd packages/react/auto/dist && shx mv -f react/auto/src/*.d.ts . && rimraf react",
+    "postbuild:react-runtime": "cd packages/react/runtime/dist && shx mv -f react/runtime/src/*.d.ts . && rimraf react",
     "lint": "pnpm lint:eslint && pnpm lint:tsc",
     "lint:eslint": "eslint 'packages/**/*.{ts,tsx,js,jsx}'",
     "lint:tsc": "tsc -p tsconfig.json --noEmit",
@@ -111,5 +111,8 @@
   },
   "volta": {
     "node": "18.18.0"
+  },
+  "dependencies": {
+    "shx": "^0.3.4"
   }
 }
