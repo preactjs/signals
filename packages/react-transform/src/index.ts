@@ -7,7 +7,7 @@ import {
 	template,
 } from "@babel/core";
 import { isModule, addNamed } from "@babel/helper-module-imports";
-import { type VisitNodeObject } from "@babel/traverse";
+import type { VisitNodeObject } from "@babel/traverse";
 import debug from "debug";
 
 interface PluginArgs {
