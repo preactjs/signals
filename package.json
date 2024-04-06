@@ -89,6 +89,7 @@
     "mocha": "^10.0.0",
     "prettier": "^2.7.1",
     "rimraf": "^3.0.2",
+    "shx": "^0.3.4",
     "sinon": "^14.0.0",
     "sinon-chai": "^3.7.0",
     "typescript": "^4.7.4"
@@ -111,8 +112,5 @@
   },
   "volta": {
     "node": "18.18.0"
-  },
-  "dependencies": {
-    "shx": "^0.3.4"
   }
 }
