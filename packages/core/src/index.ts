@@ -724,14 +724,16 @@ function endEffect(this: Effect, prevContext?: Computed | Effect) {
 	endBatch();
 }
 
+type EffectFn = () => void | (() => void);
+
 declare class Effect {
-	_fn?: () => unknown;
-	_cleanup?: () => unknown;
+	_fn?: EffectFn;
+	_cleanup?: () => void;
 	_sources?: Node;
 	_nextBatchedEffect?: Effect;
 	_flags: number;
 
-	constructor(fn: () => unknown);
+	constructor(fn: EffectFn);
 
 	_callback(): void;
 	_start(): () => void;
@@ -739,7 +741,7 @@ declare class Effect {
 	_dispose(): void;
 }
 
-function Effect(this: Effect, fn: () => unknown) {
+function Effect(this: Effect, fn: EffectFn) {
 	this._fn = fn;
 	this._cleanup = undefined;
 	this._sources = undefined;
@@ -755,7 +757,7 @@ Effect.prototype._callback = function () {
 
 		const cleanup = this._fn();
 		if (typeof cleanup === "function") {
-			this._cleanup = cleanup as () => unknown;
+			this._cleanup = cleanup;
 		}
 	} finally {
 		finish();
@@ -806,7 +808,7 @@ Effect.prototype._dispose = function () {
  * @param fn The effect callback.
  * @returns A function for disposing the effect.
  */
-function effect(fn: () => unknown): () => void {
+function effect(fn: EffectFn): () => void {
 	const effect = new Effect(fn);
 	try {
 		effect._callback();
