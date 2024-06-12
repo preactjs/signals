@@ -1,5 +1,11 @@
 # @preact/signals-core
 
+## 1.6.1
+
+### Patch Changes
+
+- [#558](https://github.com/preactjs/signals/pull/558) [`c8c95ac`](https://github.com/preactjs/signals/commit/c8c95ac7dcbbfe8e97b251a4c3efdec82e72944b) Thanks [@jviide](https://github.com/jviide)! - Restore stricter effect callback & cleanup function types
+
 ## 1.6.0
 
 ### Minor Changes

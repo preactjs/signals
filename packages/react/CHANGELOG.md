@@ -1,5 +1,14 @@
 # @preact/signals-react
 
+## 2.0.2
+
+### Patch Changes
+
+- [#570](https://github.com/preactjs/signals/pull/570) [`d653451`](https://github.com/preactjs/signals/commit/d65345152cf4160cdda602830d7486a619949aa5) Thanks [@developit](https://github.com/developit)! - Fix out-of-order effect error when suspending in React Native
+
+- Updated dependencies [[`c8c95ac`](https://github.com/preactjs/signals/commit/c8c95ac7dcbbfe8e97b251a4c3efdec82e72944b)]:
+  - @preact/signals-core@1.6.1
+
 ## 2.0.1
 
 ### Patch Changes
