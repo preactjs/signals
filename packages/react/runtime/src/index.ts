@@ -5,7 +5,7 @@ import {
 	Signal,
 	ReadonlySignal,
 } from "@preact/signals-core";
-import { useRef, useMemo, useEffect } from "react";
+import { useRef, useMemo, useEffect, useLayoutEffect } from "react";
 import { useSyncExternalStore } from "use-sync-external-store/shim/index.js";
 import { isAutoSignalTrackingInstalled } from "./auto";
 
@@ -268,8 +268,9 @@ function createEffectStore(_usage: EffectStoreUsage): EffectStore {
 			}
 		},
 		f() {
-			endEffect?.();
+			const end = endEffect;
 			endEffect = undefined;
+			end?.();
 		},
 		[symDispose]() {
 			this.f();
@@ -307,11 +308,12 @@ const _queueMicroTask = Promise.prototype.then.bind(Promise.resolve());
 let finalCleanup: Promise<void> | undefined;
 export function ensureFinalCleanup() {
 	if (!finalCleanup) {
-		finalCleanup = _queueMicroTask(() => {
-			finalCleanup = undefined;
-			currentStore?.f();
-		});
+		finalCleanup = _queueMicroTask(cleanupTrailingStore);
 	}
+}
+function cleanupTrailingStore() {
+	finalCleanup = undefined;
+	currentStore?.f();
 }
 
 /**
@@ -331,6 +333,8 @@ export function _useSignalsImplementation(
 	const store = storeRef.current;
 	useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
 	store._start();
+	// note: _usage is a constant here, so conditional is okay
+	if (_usage === UNMANAGED) useLayoutEffect(cleanupTrailingStore);
 
 	return store;
 }
