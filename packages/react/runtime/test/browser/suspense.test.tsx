@@ -1,3 +1,6 @@
+// @ts-expect-error
+globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+
 import { createElement, lazy, useLayoutEffect, Suspense } from "react";
 import { signal } from "@preact/signals-core";
 import {
@@ -110,11 +113,11 @@ describe("Suspense", () => {
 		await render(<Parent />);
 		expect(scratch.innerHTML).to.equal("<span>loading...</span>");
 
-		act(() => {
+		await act(async () => {
 			signal1.value++;
 			signal2.value++;
 		});
-		act(() => {
+		await act(async () => {
 			signal1.value--;
 			signal2.value--;
 		});
@@ -135,7 +138,7 @@ describe("Suspense", () => {
 			`<p>0</p><div data-foo="0"><span>lazy</span></div>`
 		);
 
-		act(() => {
+		await act(async () => {
 			signal1.value++;
 			signal2.value++;
 		});
