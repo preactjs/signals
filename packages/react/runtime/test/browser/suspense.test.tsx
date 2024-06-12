@@ -111,7 +111,12 @@ describe("Suspense", () => {
 		}
 
 		await render(<Parent />);
-		expect(scratch.innerHTML).to.equal("<span>loading...</span>");
+		expect(scratch.innerHTML).to.be.oneOf([
+			// react 17+
+			`<span>loading...</span>`,
+			// react 16
+			`<p style="display: none !important;">0</p><span>loading...</span>`,
+		]);
 
 		await act(async () => {
 			signal1.value++;
@@ -127,13 +132,23 @@ describe("Suspense", () => {
 			await middleProm;
 		});
 
-		expect(scratch.innerHTML).to.equal("<span>loading...</span>");
+		expect(scratch.innerHTML).to.be.oneOf([
+			// react 17+
+			`<span>loading...</span>`,
+			// react 16
+			`<p style="display: none !important;">0</p><div data-foo="0" style="display: none !important;"></div><span>loading...</span>`,
+		]);
 
 		await act(async () => {
 			unsuspend();
 			await prom;
 		});
 
+		// react 16 uses `style.setProperty()` to clear display value, which leaves an empty style attr in innerHTML.
+		// react 17 does not do this, so we normalize 16 behavior to 17 here.
+		scratch
+			.querySelectorAll('[style=""]')
+			.forEach(node => node.removeAttribute("style"));
 		expect(scratch.innerHTML).to.equal(
 			`<p>0</p><div data-foo="0"><span>lazy</span></div>`
 		);
