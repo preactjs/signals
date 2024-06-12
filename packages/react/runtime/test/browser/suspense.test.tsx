@@ -13,7 +13,7 @@ import {
 	getConsoleErrorSpy,
 } from "../../../test/shared/utils";
 
-describe.only("Suspense", () => {
+describe("Suspense", () => {
 	let scratch: HTMLDivElement;
 	let root: Root;
 
