@@ -1333,6 +1333,7 @@ describe("computed()", () => {
 
 			(gc as () => void)();
 			await new Promise(resolve => setTimeout(resolve, 0));
+			(gc as () => void)();
 			expect(ref.deref()).to.be.undefined;
 		});
 
@@ -1352,6 +1353,7 @@ describe("computed()", () => {
 			dispose();
 			(gc as () => void)();
 			await new Promise(resolve => setTimeout(resolve, 0));
+			(gc as () => void)();
 			expect(ref.deref()).to.be.undefined;
 		});
 	});
