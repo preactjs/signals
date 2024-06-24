@@ -12,7 +12,7 @@ assignees: ''
 - [ ] I am using `@preact/signals-core`
 - [ ] I am using `@preact/signals`
 - [ ] I am using `@preact/signals-react`
-  - [ ] I understand usage changed in v2, and I've followed the [React Integration instructions](https://github.com/preactjs/signals/tree/chore/issue-templates/packages/react#react-integration)
+  - [ ] I understand usage changed in v2, and I've followed the [React Integration instructions](https://github.com/preactjs/signals/tree/main/packages/react#react-integration)
 
 **Describe the bug**
 A clear and concise description of what the bug is.
