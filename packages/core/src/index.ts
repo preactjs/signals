@@ -392,7 +392,9 @@ Object.defineProperty(Signal.prototype, "value", {
  * @param value The initial value for the signal.
  * @returns A new signal.
  */
-function signal<T>(value: T): Signal<T> {
+export function signal<T>(value: T): Signal<T>;
+export function signal<T = undefined>(): Signal<T | undefined>;
+export function signal<T>(value?: T): Signal<T> {
 	return new Signal(value);
 }
 
@@ -821,4 +823,4 @@ function effect(fn: EffectFn): () => void {
 	return effect._dispose.bind(effect);
 }
 
-export { signal, computed, effect, batch, untracked, Signal, ReadonlySignal };
+export { computed, effect, batch, untracked, Signal, ReadonlySignal };
