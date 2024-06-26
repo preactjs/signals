@@ -1,5 +1,11 @@
 # @preact/signals-core
 
+## 1.7.0
+
+### Minor Changes
+
+- [#578](https://github.com/preactjs/signals/pull/578) [`931404e`](https://github.com/preactjs/signals/commit/931404e96338e120464b73e522148389e38eeb2b) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Allow for passing no argument to the signal and the type to be automatically inferred as `T | undefined`
+
 ## 1.6.1
 
 ### Patch Changes
