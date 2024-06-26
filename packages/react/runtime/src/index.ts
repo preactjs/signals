@@ -369,8 +369,10 @@ export function useSignals(usage?: EffectStoreUsage): EffectStore {
 	return _useSignalsImplementation(usage);
 }
 
-export function useSignal<T>(value: T): Signal<T> {
-	return useMemo(() => signal<T>(value), Empty);
+export function useSignal<T>(value: T): Signal<T>;
+export function useSignal<T = undefined>(): Signal<T | undefined>;
+export function useSignal<T>(value?: T) {
+	return useMemo(() => signal<T | undefined>(value), Empty);
 }
 
 export function useComputed<T>(compute: () => T): ReadonlySignal<T> {
