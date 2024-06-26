@@ -1,5 +1,18 @@
 # @preact/signals-react
 
+## 2.1.0
+
+### Minor Changes
+
+- [#578](https://github.com/preactjs/signals/pull/578) [`931404e`](https://github.com/preactjs/signals/commit/931404e96338e120464b73e522148389e38eeb2b) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Allow for passing no argument to the signal and the type to be automatically inferred as `T | undefined`
+
+### Patch Changes
+
+- [#577](https://github.com/preactjs/signals/pull/577) [`5a02bfa`](https://github.com/preactjs/signals/commit/5a02bfaac4f22459174c4695de2050d84d7b6e41) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Throw an error when auto-tracking is used with React 19
+
+- Updated dependencies [[`931404e`](https://github.com/preactjs/signals/commit/931404e96338e120464b73e522148389e38eeb2b)]:
+  - @preact/signals-core@1.7.0
+
 ## 2.0.2
 
 ### Patch Changes
