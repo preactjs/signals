@@ -382,7 +382,7 @@ export function installAutoSignalTracking() {
 	const [major] = reactVersion.split(".").map(Number);
 	if (major >= 19) {
 		throw new Error(
-			"Automatic signals tracking is not supported in React 19 and later, try the Babel plugin instead https://bit.ly/3zbndcL."
+			"Automatic signals tracking is not supported in React 19 and later, try the Babel plugin instead https://github.com/preactjs/signals/tree/main/packages/react-transform#signals-react-transform."
 		);
 	}
 	installCurrentDispatcherHook();
