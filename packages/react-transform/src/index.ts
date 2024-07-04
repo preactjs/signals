@@ -7,7 +7,7 @@ import {
 	template,
 } from "@babel/core";
 import { isModule, addNamed } from "@babel/helper-module-imports";
-import type { VisitNodeObject } from "@babel/traverse";
+import type { Scope, VisitNodeObject } from "@babel/traverse";
 import debug from "debug";
 
 interface PluginArgs {
@@ -52,8 +52,32 @@ const setData = (node: DataContainer, name: string, value: any) =>
 const getData = (node: DataContainer, name: string) =>
 	node.getData(`${dataNamespace}/${name}`);
 
-function setOnFunctionScope(path: NodePath, key: string, value: any) {
+function getComponentFunctionDeclaration(
+	path: NodePath,
+	prev?: Scope
+): Scope | null {
 	const functionScope = path.scope.getFunctionParent();
+	if (functionScope) {
+		const parent = functionScope?.path.parent;
+		if (
+			parent.type === "CallExpression" &&
+			parent.callee.type === "Identifier" &&
+			parent.callee.name.startsWith("use") &&
+			parent.callee.name[3] === parent.callee.name[3].toUpperCase()
+		) {
+			return null;
+		}
+		return getComponentFunctionDeclaration(
+			functionScope.parent.path,
+			functionScope
+		);
+	} else {
+		return prev || null;
+	}
+}
+
+function setOnFunctionScope(path: NodePath, key: string, value: any) {
+	const functionScope = getComponentFunctionDeclaration(path);
 	if (functionScope) {
 		setData(functionScope, key, value);
 	}
