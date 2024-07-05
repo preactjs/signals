@@ -54,12 +54,21 @@ const getData = (node: DataContainer, name: string) =>
 
 function getComponentFunctionDeclaration(
 	path: NodePath,
+	filename: string | undefined,
 	prev?: Scope
 ): Scope | null {
 	const functionScope = path.scope.getFunctionParent();
+
 	if (functionScope) {
-		const parent = functionScope?.path.parent;
-		if (
+		const parent = functionScope.path.parent;
+		let functionName = getFunctionName(functionScope.path as any);
+		if (functionName === DefaultExportSymbol) {
+			// TODO
+			functionName = filename || null;
+		}
+		if (isComponentFunction(functionScope.path as any, functionName)) {
+			return functionScope;
+		} else if (
 			parent.type === "CallExpression" &&
 			parent.callee.type === "Identifier" &&
 			parent.callee.name.startsWith("use") &&
@@ -69,6 +78,7 @@ function getComponentFunctionDeclaration(
 		}
 		return getComponentFunctionDeclaration(
 			functionScope.parent.path,
+			filename,
 			functionScope
 		);
 	} else {
@@ -76,8 +86,13 @@ function getComponentFunctionDeclaration(
 	}
 }
 
-function setOnFunctionScope(path: NodePath, key: string, value: any) {
-	const functionScope = getComponentFunctionDeclaration(path);
+function setOnFunctionScope(
+	path: NodePath,
+	key: string,
+	value: any,
+	filename: string | undefined
+) {
+	const functionScope = getComponentFunctionDeclaration(path, filename);
 	if (functionScope) {
 		setData(functionScope, key, value);
 	}
@@ -562,15 +577,15 @@ export default function signalsTransform(
 
 			MemberExpression(path) {
 				if (isValueMemberExpression(path)) {
-					setOnFunctionScope(path, maybeUsesSignal, true);
+					setOnFunctionScope(path, maybeUsesSignal, true, this.filename);
 				}
 			},
 
 			JSXElement(path) {
-				setOnFunctionScope(path, containsJSX, true);
+				setOnFunctionScope(path, containsJSX, true, this.filename);
 			},
 			JSXFragment(path) {
-				setOnFunctionScope(path, containsJSX, true);
+				setOnFunctionScope(path, containsJSX, true, this.filename);
 			},
 		},
 	};
