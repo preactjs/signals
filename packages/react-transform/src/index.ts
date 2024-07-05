@@ -63,7 +63,6 @@ function getComponentFunctionDeclaration(
 		const parent = functionScope.path.parent;
 		let functionName = getFunctionName(functionScope.path as any);
 		if (functionName === DefaultExportSymbol) {
-			// TODO
 			functionName = filename || null;
 		}
 		if (isComponentFunction(functionScope.path as any, functionName)) {
