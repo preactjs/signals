@@ -1,5 +1,14 @@
 # @preact/signals-react-transform
 
+## 0.3.2
+
+### Patch Changes
+
+- [#582](https://github.com/preactjs/signals/pull/582) [`4fa8603`](https://github.com/preactjs/signals/commit/4fa86038191e2f2773e1d4b2211fb78cece19814) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Support nested scopes like a component accessing an array of signals
+
+- Updated dependencies [[`931404e`](https://github.com/preactjs/signals/commit/931404e96338e120464b73e522148389e38eeb2b), [`5a02bfa`](https://github.com/preactjs/signals/commit/5a02bfaac4f22459174c4695de2050d84d7b6e41)]:
+  - @preact/signals-react@2.1.0
+
 ## 0.3.1
 
 ### Patch Changes
