@@ -457,6 +457,8 @@ function createImportLazily(
 
 			return reference;
 		} else {
+			// This code originates from
+			// https://github.com/XantreDev/preact-signals/blob/%40preact-signals/safe-react%400.6.1/packages/react/src/babel.ts#L390-L400
 			let reference = get(pass, `requires/${importName}`);
 			if (reference) {
 				reference = types.cloneNode(reference);
