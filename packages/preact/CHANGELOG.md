@@ -1,5 +1,25 @@
 # @preact/signals
 
+## 1.3.0
+
+### Minor Changes
+
+- [#578](https://github.com/preactjs/signals/pull/578) [`931404e`](https://github.com/preactjs/signals/commit/931404e96338e120464b73e522148389e38eeb2b) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Allow for passing no argument to the signal and the type to be automatically inferred as `T | undefined`
+
+### Patch Changes
+
+- Updated dependencies [[`931404e`](https://github.com/preactjs/signals/commit/931404e96338e120464b73e522148389e38eeb2b)]:
+  - @preact/signals-core@1.7.0
+
+## 1.2.3
+
+### Patch Changes
+
+- [#535](https://github.com/preactjs/signals/pull/535) [`58befba`](https://github.com/preactjs/signals/commit/58befba577d02c5cac5292fda0a599f9708e908b) Thanks [@jviide](https://github.com/jviide)! - Publish packages with provenance statements
+
+- Updated dependencies [[`d846def`](https://github.com/preactjs/signals/commit/d846defaf6e64f0236e2b91247e5f94a35f29cbc), [`cb6bdab`](https://github.com/preactjs/signals/commit/cb6bdabbd31b27f8435c7976089fa276da6bfb7a), [`d846def`](https://github.com/preactjs/signals/commit/d846defaf6e64f0236e2b91247e5f94a35f29cbc), [`d846def`](https://github.com/preactjs/signals/commit/d846defaf6e64f0236e2b91247e5f94a35f29cbc), [`d846def`](https://github.com/preactjs/signals/commit/d846defaf6e64f0236e2b91247e5f94a35f29cbc)]:
+  - @preact/signals-core@1.6.0
+
 ## 1.2.2
 
 ### Patch Changes

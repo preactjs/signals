@@ -2,6 +2,7 @@ import {
 	// @ts-ignore-next-line
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED as ReactInternals,
+	version as reactVersion,
 } from "react";
 import React from "react";
 import jsxRuntime from "react/jsx-runtime";
@@ -378,6 +379,12 @@ export function installJSXHooks() {
 }
 
 export function installAutoSignalTracking() {
+	const [major] = reactVersion.split(".").map(Number);
+	if (major >= 19) {
+		throw new Error(
+			"Automatic signals tracking is not supported in React 19 and later, try the Babel plugin instead https://github.com/preactjs/signals/tree/main/packages/react-transform#signals-react-transform."
+		);
+	}
 	installCurrentDispatcherHook();
 	installJSXHooks();
 }

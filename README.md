@@ -77,23 +77,6 @@ effect(() => {
 
 Note that you should only use `signal.peek()` if you really need it. Reading a signal's value via `signal.value` is the preferred way in most scenarios.
 
-### `untracked(fn)`
-
-In case when you're receiving a callback that can read some signals, but you don't want to subscribe to them, you can use `untracked` to prevent any subscriptions from happening.
-
-```js
-const counter = signal(0);
-const effectCount = signal(0);
-const fn = () => effectCount.value + 1;
-
-effect(() => {
-	console.log(counter.value);
-
-	// Whenever this effect is triggered, run `fn` that gives new value
-	effectCount.value = untracked(fn);
-});
-```
-
 ### `computed(fn)`
 
 Data is often derived from other pieces of existing data. The `computed` function lets you combine the values of multiple signals into a new signal that can be reacted to, or even used by additional computeds. When the signals accessed from within a computed callback change, the computed callback is re-executed and its new return value becomes the computed signal's value.
@@ -158,6 +141,25 @@ dispose();
 surname.value = "Doe 2";
 ```
 
+The effect callback may return a cleanup function. The cleanup function gets run once, either when the effect callback is next called _or_ when the effect gets disposed, whichever happens first.
+
+```js
+import { signal, effect } from "@preact/signals-core";
+
+const count = signal(0);
+
+const dispose = effect(() => {
+	const c = count.value;
+	return () => console.log(`cleanup ${c}`);
+});
+
+// Logs: cleanup 0
+count.value = 1;
+
+// Logs: cleanup 1
+dispose();
+```
+
 ### `batch(fn)`
 
 The `batch` function allows you to combine multiple signal writes into one single update that is triggered at the end when the callback completes.
@@ -218,6 +220,23 @@ batch(() => {
 	// Still not updated...
 });
 // Now the callback completed and we'll trigger the effect.
+```
+
+### `untracked(fn)`
+
+In case when you're receiving a callback that can read some signals, but you don't want to subscribe to them, you can use `untracked` to prevent any subscriptions from happening.
+
+```js
+const counter = signal(0);
+const effectCount = signal(0);
+const fn = () => effectCount.value + 1;
+
+effect(() => {
+	console.log(counter.value);
+
+	// Whenever this effect is triggered, run `fn` that gives new value
+	effectCount.value = untracked(fn);
+});
 ```
 
 ## License
