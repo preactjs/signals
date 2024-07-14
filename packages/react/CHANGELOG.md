@@ -1,5 +1,27 @@
 # @preact/signals-react
 
+## 2.1.0
+
+### Minor Changes
+
+- [#578](https://github.com/preactjs/signals/pull/578) [`931404e`](https://github.com/preactjs/signals/commit/931404e96338e120464b73e522148389e38eeb2b) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Allow for passing no argument to the signal and the type to be automatically inferred as `T | undefined`
+
+### Patch Changes
+
+- [#577](https://github.com/preactjs/signals/pull/577) [`5a02bfa`](https://github.com/preactjs/signals/commit/5a02bfaac4f22459174c4695de2050d84d7b6e41) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Throw an error when auto-tracking is used with React 19
+
+- Updated dependencies [[`931404e`](https://github.com/preactjs/signals/commit/931404e96338e120464b73e522148389e38eeb2b)]:
+  - @preact/signals-core@1.7.0
+
+## 2.0.2
+
+### Patch Changes
+
+- [#570](https://github.com/preactjs/signals/pull/570) [`d653451`](https://github.com/preactjs/signals/commit/d65345152cf4160cdda602830d7486a619949aa5) Thanks [@developit](https://github.com/developit)! - Fix out-of-order effect error when suspending in React Native
+
+- Updated dependencies [[`c8c95ac`](https://github.com/preactjs/signals/commit/c8c95ac7dcbbfe8e97b251a4c3efdec82e72944b)]:
+  - @preact/signals-core@1.6.1
+
 ## 2.0.1
 
 ### Patch Changes
