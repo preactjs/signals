@@ -1,5 +1,11 @@
 # @preact/signals-react-transform
 
+## 0.4.0
+
+### Minor Changes
+
+- [#584](https://github.com/preactjs/signals/pull/584) [`726e417`](https://github.com/preactjs/signals/commit/726e41727014722e7de1d7e6e276e28bf0bec2fd) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Support `require()` syntax in the Babel transform
+
 ## 0.3.2
 
 ### Patch Changes
