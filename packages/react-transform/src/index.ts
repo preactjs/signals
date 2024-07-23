@@ -422,43 +422,55 @@ function createImportLazily(
 	source: string
 ): () => BabelTypes.Identifier {
 	return () => {
-		if (!isModule(path)) {
-			throw new Error(
-				`Cannot import ${importName} outside of an ESM module file`
-			);
-		}
+		if (isModule(path)) {
+			let reference: BabelTypes.Identifier = get(pass, `imports/${importName}`);
+			if (reference) return types.cloneNode(reference);
+			reference = addNamed(path, importName, source, {
+				importedInterop: "uncompiled",
+				importPosition: "after",
+			});
+			set(pass, `imports/${importName}`, reference);
 
-		let reference: BabelTypes.Identifier = get(pass, `imports/${importName}`);
-		if (reference) return types.cloneNode(reference);
-		reference = addNamed(path, importName, source, {
-			importedInterop: "uncompiled",
-			importPosition: "after",
-		});
-		set(pass, `imports/${importName}`, reference);
+			/** Helper function to determine if an import declaration's specifier matches the given importName  */
+			const matchesImportName = (
+				s: BabelTypes.ImportDeclaration["specifiers"][0]
+			) => {
+				if (s.type !== "ImportSpecifier") return false;
+				return (
+					(s.imported.type === "Identifier" &&
+						s.imported.name === importName) ||
+					(s.imported.type === "StringLiteral" &&
+						s.imported.value === importName)
+				);
+			};
 
-		/** Helper function to determine if an import declaration's specifier matches the given importName  */
-		const matchesImportName = (
-			s: BabelTypes.ImportDeclaration["specifiers"][0]
-		) => {
-			if (s.type !== "ImportSpecifier") return false;
-			return (
-				(s.imported.type === "Identifier" && s.imported.name === importName) ||
-				(s.imported.type === "StringLiteral" && s.imported.value === importName)
-			);
-		};
-
-		for (let statement of path.get("body")) {
-			if (
-				statement.isImportDeclaration() &&
-				statement.node.source.value === source &&
-				statement.node.specifiers.some(matchesImportName)
-			) {
-				path.scope.registerDeclaration(statement);
-				break;
+			for (let statement of path.get("body")) {
+				if (
+					statement.isImportDeclaration() &&
+					statement.node.source.value === source &&
+					statement.node.specifiers.some(matchesImportName)
+				) {
+					path.scope.registerDeclaration(statement);
+					break;
+				}
 			}
-		}
 
-		return reference;
+			return reference;
+		} else {
+			// This code originates from
+			// https://github.com/XantreDev/preact-signals/blob/%40preact-signals/safe-react%400.6.1/packages/react/src/babel.ts#L390-L400
+			let reference = get(pass, `requires/${importName}`);
+			if (reference) {
+				reference = types.cloneNode(reference);
+			} else {
+				reference = addNamed(path, importName, source, {
+					importedInterop: "uncompiled",
+				});
+				set(pass, `requires/${importName}`, reference);
+			}
+
+			return reference;
+		}
 	};
 }
 
