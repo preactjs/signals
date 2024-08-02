@@ -657,8 +657,15 @@ Object.defineProperty(Computed.prototype, "value", {
 /**
  * An interface for read-only signals.
  */
-interface ReadonlySignal<T = any> extends Signal<T> {
+interface ReadonlySignal<T = any> {
 	readonly value: T;
+	peek(): T;
+
+	subscribe(fn: (value: T) => void): () => void;
+	valueOf(): T;
+	toString(): string;
+	toJSON(): T;
+	brand: typeof BRAND_SYMBOL;
 }
 
 /**
