@@ -382,7 +382,7 @@ describe("@preact/signals", () => {
 			const childSpy = sinon.spy();
 			const parentSpy = sinon.spy();
 
-			function Child({ num }: { num: Signal<number> }) {
+			function Child({ num }: { num: ReadonlySignal<number> }) {
 				childSpy();
 				return <p>{num.value}</p>;
 			}
