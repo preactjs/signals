@@ -1,4 +1,5 @@
 name: compressed-size
+
 on:
   pull_request:
     branches:
@@ -8,13 +9,12 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v2.2.4
+        uses: pnpm/action-setup@v3
         with:
           version: 8
-          run_install: false
 
       - name: compressed-size-action
         uses: preactjs/compressed-size-action@v2

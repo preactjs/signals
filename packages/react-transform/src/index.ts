@@ -7,7 +7,7 @@ import {
 	template,
 } from "@babel/core";
 import { isModule, addNamed } from "@babel/helper-module-imports";
-import type { VisitNodeObject } from "@babel/traverse";
+import type { Scope, VisitNodeObject } from "@babel/traverse";
 import debug from "debug";
 
 interface PluginArgs {
@@ -52,8 +52,46 @@ const setData = (node: DataContainer, name: string, value: any) =>
 const getData = (node: DataContainer, name: string) =>
 	node.getData(`${dataNamespace}/${name}`);
 
-function setOnFunctionScope(path: NodePath, key: string, value: any) {
+function getComponentFunctionDeclaration(
+	path: NodePath,
+	filename: string | undefined,
+	prev?: Scope
+): Scope | null {
 	const functionScope = path.scope.getFunctionParent();
+
+	if (functionScope) {
+		const parent = functionScope.path.parent;
+		let functionName = getFunctionName(functionScope.path as any);
+		if (functionName === DefaultExportSymbol) {
+			functionName = filename || null;
+		}
+		if (isComponentFunction(functionScope.path as any, functionName)) {
+			return functionScope;
+		} else if (
+			parent.type === "CallExpression" &&
+			parent.callee.type === "Identifier" &&
+			parent.callee.name.startsWith("use") &&
+			parent.callee.name[3] === parent.callee.name[3].toUpperCase()
+		) {
+			return null;
+		}
+		return getComponentFunctionDeclaration(
+			functionScope.parent.path,
+			filename,
+			functionScope
+		);
+	} else {
+		return prev || null;
+	}
+}
+
+function setOnFunctionScope(
+	path: NodePath,
+	key: string,
+	value: any,
+	filename: string | undefined
+) {
+	const functionScope = getComponentFunctionDeclaration(path, filename);
 	if (functionScope) {
 		setData(functionScope, key, value);
 	}
@@ -384,43 +422,55 @@ function createImportLazily(
 	source: string
 ): () => BabelTypes.Identifier {
 	return () => {
-		if (!isModule(path)) {
-			throw new Error(
-				`Cannot import ${importName} outside of an ESM module file`
-			);
-		}
+		if (isModule(path)) {
+			let reference: BabelTypes.Identifier = get(pass, `imports/${importName}`);
+			if (reference) return types.cloneNode(reference);
+			reference = addNamed(path, importName, source, {
+				importedInterop: "uncompiled",
+				importPosition: "after",
+			});
+			set(pass, `imports/${importName}`, reference);
 
-		let reference: BabelTypes.Identifier = get(pass, `imports/${importName}`);
-		if (reference) return types.cloneNode(reference);
-		reference = addNamed(path, importName, source, {
-			importedInterop: "uncompiled",
-			importPosition: "after",
-		});
-		set(pass, `imports/${importName}`, reference);
+			/** Helper function to determine if an import declaration's specifier matches the given importName  */
+			const matchesImportName = (
+				s: BabelTypes.ImportDeclaration["specifiers"][0]
+			) => {
+				if (s.type !== "ImportSpecifier") return false;
+				return (
+					(s.imported.type === "Identifier" &&
+						s.imported.name === importName) ||
+					(s.imported.type === "StringLiteral" &&
+						s.imported.value === importName)
+				);
+			};
 
-		/** Helper function to determine if an import declaration's specifier matches the given importName  */
-		const matchesImportName = (
-			s: BabelTypes.ImportDeclaration["specifiers"][0]
-		) => {
-			if (s.type !== "ImportSpecifier") return false;
-			return (
-				(s.imported.type === "Identifier" && s.imported.name === importName) ||
-				(s.imported.type === "StringLiteral" && s.imported.value === importName)
-			);
-		};
-
-		for (let statement of path.get("body")) {
-			if (
-				statement.isImportDeclaration() &&
-				statement.node.source.value === source &&
-				statement.node.specifiers.some(matchesImportName)
-			) {
-				path.scope.registerDeclaration(statement);
-				break;
+			for (let statement of path.get("body")) {
+				if (
+					statement.isImportDeclaration() &&
+					statement.node.source.value === source &&
+					statement.node.specifiers.some(matchesImportName)
+				) {
+					path.scope.registerDeclaration(statement);
+					break;
+				}
 			}
-		}
 
-		return reference;
+			return reference;
+		} else {
+			// This code originates from
+			// https://github.com/XantreDev/preact-signals/blob/%40preact-signals/safe-react%400.6.1/packages/react/src/babel.ts#L390-L400
+			let reference = get(pass, `requires/${importName}`);
+			if (reference) {
+				reference = types.cloneNode(reference);
+			} else {
+				reference = addNamed(path, importName, source, {
+					importedInterop: "uncompiled",
+				});
+				set(pass, `requires/${importName}`, reference);
+			}
+
+			return reference;
+		}
 	};
 }
 
@@ -538,15 +588,15 @@ export default function signalsTransform(
 
 			MemberExpression(path) {
 				if (isValueMemberExpression(path)) {
-					setOnFunctionScope(path, maybeUsesSignal, true);
+					setOnFunctionScope(path, maybeUsesSignal, true, this.filename);
 				}
 			},
 
 			JSXElement(path) {
-				setOnFunctionScope(path, containsJSX, true);
+				setOnFunctionScope(path, containsJSX, true, this.filename);
 			},
 			JSXFragment(path) {
-				setOnFunctionScope(path, containsJSX, true);
+				setOnFunctionScope(path, containsJSX, true, this.filename);
 			},
 		},
 	};

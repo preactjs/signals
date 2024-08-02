@@ -30,7 +30,8 @@ const format = (code: string) => prettier.format(code, { parser: "babel" });
 function transformCode(
 	code: string,
 	options?: PluginOptions,
-	filename?: string
+	filename?: string,
+	cjs?: boolean
 ) {
 	const signalsPluginConfig: any[] = [signalsTransform];
 	if (options) {
@@ -40,6 +41,7 @@ function transformCode(
 	const result = transform(code, {
 		filename,
 		plugins: [signalsPluginConfig, "@babel/plugin-syntax-jsx"],
+		sourceType: cjs ? "script" : undefined,
 	});
 
 	return result?.code || "";
@@ -49,9 +51,10 @@ function runTest(
 	input: string,
 	expected: string,
 	options: PluginOptions = { mode: "auto" },
-	filename?: string
+	filename?: string,
+	cjs?: boolean
 ) {
-	const output = transformCode(input, options, filename);
+	const output = transformCode(input, options, filename, cjs);
 	expect(format(output)).to.equal(format(expected));
 }
 
@@ -376,6 +379,29 @@ describe("React Signals Babel Transform", () => {
 			runTest(inputCode, expectedOutput, { mode: "all" });
 		});
 
+		it("transforms require syntax", () => {
+			const inputCode = `
+			    const react = require("react");
+				function MyComponent() {
+					return <div>Hello World</div>;
+				}
+			`;
+
+			const expectedOutput = `
+				var _useSignals = require("@preact/signals-react/runtime").useSignals
+				const react = require("react");
+				function MyComponent() {
+					var _effect = _useSignals(1);
+					try {
+						return <div>Hello World</div>;
+					} finally {
+						_effect.f();
+					}
+				}
+			`;
+			runTest(inputCode, expectedOutput, { mode: "all" }, undefined, true);
+		});
+
 		it("transforms arrow function component with return statement that doesn't use signals", () => {
 			const inputCode = `
 				const MyComponent = () => {
@@ -546,6 +572,26 @@ describe("React Signals Babel Transform", () => {
 					_useSignals();
 					signal.value;
 					return useState(0);
+				}
+			`;
+
+			runTest(inputCode, expectedOutput, {
+				experimental: { noTryFinally: true },
+			});
+		});
+
+		it("recursively propogates `.value` reads to parent component", () => {
+			const inputCode = `
+				function MyComponent() {
+					return <div>{new Array(20).fill(null).map(() => signal.value)}</div>;
+				}
+			`;
+
+			const expectedOutput = `
+				import { useSignals as _useSignals } from "@preact/signals-react/runtime";
+				function MyComponent() {
+					_useSignals();
+					return <div>{new Array(20).fill(null).map(() => signal.value)}</div>;
 				}
 			`;
 

@@ -472,4 +472,28 @@ describe("React Signals babel transfrom - browser E2E tests", () => {
 		});
 		expect(scratch.innerHTML).to.equal("<div>Hello Jane</div>");
 	});
+
+	it("should transform components created by using Array.map that use signals", async () => {
+		const { App } = await createComponent(`
+			export function App({ name }) {
+				const greetings = ["Hello", "Goodbye"]
+
+				const children = greetings.map((greeting) => <div key={greeting}>{greeting} {name.value}</div>)
+
+				return <div>{children}</div>;
+			}`);
+
+		const name = signal("John");
+		await render(<App name={name} />);
+		expect(scratch.innerHTML).to.equal(
+			"<div><div>Hello John</div><div>Goodbye John</div></div>"
+		);
+
+		await act(() => {
+			name.value = "Jane";
+		});
+		expect(scratch.innerHTML).to.equal(
+			"<div><div>Hello Jane</div><div>Goodbye Jane</div></div>"
+		);
+	});
 });

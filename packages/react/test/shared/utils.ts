@@ -68,10 +68,22 @@ export function checkHangingAct() {
 	}
 }
 
+function realActShim(cb: any) {
+	const ret = realAct(cb);
+	if (String(ret.then).includes("it is not a Promise.")) {
+		return {
+			then(r: any) {
+				r();
+			},
+		};
+	}
+	return ret;
+}
+
 export const act =
 	process.env.NODE_ENV === "production"
 		? (prodActShim as typeof realAct)
-		: realAct;
+		: (realActShim as typeof realAct);
 
 /**
  * `console.log` supports formatting strings with `%s` for string substitutions.

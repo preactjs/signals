@@ -345,8 +345,10 @@ Component.prototype.shouldComponentUpdate = function (
 	return false;
 };
 
-export function useSignal<T>(value: T) {
-	return useMemo(() => signal<T>(value), []);
+export function useSignal<T>(value: T): Signal<T>;
+export function useSignal<T = undefined>(): Signal<T | undefined>;
+export function useSignal<T>(value?: T) {
+	return useMemo(() => signal<T | undefined>(value), []);
 }
 
 export function useComputed<T>(compute: () => T) {

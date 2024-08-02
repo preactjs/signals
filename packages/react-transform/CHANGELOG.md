@@ -1,5 +1,29 @@
 # @preact/signals-react-transform
 
+## 0.4.0
+
+### Minor Changes
+
+- [#584](https://github.com/preactjs/signals/pull/584) [`726e417`](https://github.com/preactjs/signals/commit/726e41727014722e7de1d7e6e276e28bf0bec2fd) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Support `require()` syntax in the Babel transform
+
+## 0.3.2
+
+### Patch Changes
+
+- [#582](https://github.com/preactjs/signals/pull/582) [`4fa8603`](https://github.com/preactjs/signals/commit/4fa86038191e2f2773e1d4b2211fb78cece19814) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Support nested scopes like a component accessing an array of signals
+
+- Updated dependencies [[`931404e`](https://github.com/preactjs/signals/commit/931404e96338e120464b73e522148389e38eeb2b), [`5a02bfa`](https://github.com/preactjs/signals/commit/5a02bfaac4f22459174c4695de2050d84d7b6e41)]:
+  - @preact/signals-react@2.1.0
+
+## 0.3.1
+
+### Patch Changes
+
+- [#535](https://github.com/preactjs/signals/pull/535) [`58befba`](https://github.com/preactjs/signals/commit/58befba577d02c5cac5292fda0a599f9708e908b) Thanks [@jviide](https://github.com/jviide)! - Publish packages with provenance statements
+
+- Updated dependencies [[`d846def`](https://github.com/preactjs/signals/commit/d846defaf6e64f0236e2b91247e5f94a35f29cbc)]:
+  - @preact/signals-react@2.0.1
+
 ## 0.3.0
 
 ### Minor Changes
