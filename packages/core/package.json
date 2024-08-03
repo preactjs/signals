@@ -1,6 +1,6 @@
 {
   "name": "@preact/signals-core",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "license": "MIT",
   "description": "Manage state with style in every framework",
   "keywords": [],
