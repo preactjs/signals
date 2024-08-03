@@ -39,4 +39,7 @@ declare module "@preact/signals-core" {
 	// @ts-ignore internal Signal is viewed as function
 	// eslint-disable-next-line @typescript-eslint/no-empty-interface
 	interface Signal extends ReactElement {}
+	// @ts-ignore internal Signal is viewed as function
+	// eslint-disable-next-line @typescript-eslint/no-empty-interface
+	interface ReadonlySignal extends ReactElement {}
 }

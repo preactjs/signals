@@ -5,6 +5,7 @@ import {
 	batch,
 	Signal,
 	untracked,
+	ReadonlySignal,
 } from "@preact/signals-core";
 
 describe("signal", () => {
@@ -962,15 +963,15 @@ describe("computed()", () => {
 	});
 
 	it("should detect simple dependency cycles", () => {
-		const a: Signal = computed(() => a.value);
+		const a: ReadonlySignal = computed(() => a.value);
 		expect(() => a.value).to.throw(/Cycle detected/);
 	});
 
 	it("should detect deep dependency cycles", () => {
-		const a: Signal = computed(() => b.value);
-		const b: Signal = computed(() => c.value);
-		const c: Signal = computed(() => d.value);
-		const d: Signal = computed(() => a.value);
+		const a: ReadonlySignal = computed(() => b.value);
+		const b: ReadonlySignal = computed(() => c.value);
+		const c: ReadonlySignal = computed(() => d.value);
+		const d: ReadonlySignal = computed(() => a.value);
 		expect(() => a.value).to.throw(/Cycle detected/);
 	});
 
@@ -1243,15 +1244,15 @@ describe("computed()", () => {
 		});
 
 		it("should detect simple dependency cycles", () => {
-			const a: Signal = computed(() => a.peek());
+			const a: ReadonlySignal = computed(() => a.peek());
 			expect(() => a.peek()).to.throw(/Cycle detected/);
 		});
 
 		it("should detect deep dependency cycles", () => {
-			const a: Signal = computed(() => b.value);
-			const b: Signal = computed(() => c.value);
-			const c: Signal = computed(() => d.value);
-			const d: Signal = computed(() => a.peek());
+			const a: ReadonlySignal = computed(() => b.value);
+			const b: ReadonlySignal = computed(() => c.value);
+			const c: ReadonlySignal = computed(() => d.value);
+			const d: ReadonlySignal = computed(() => a.peek());
 			expect(() => a.peek()).to.throw(/Cycle detected/);
 		});
 
@@ -1340,7 +1341,7 @@ describe("computed()", () => {
 		it("should be garbage collectable after it has lost all of its listeners", async () => {
 			const s = signal(0);
 
-			let ref: WeakRef<Signal>;
+			let ref: WeakRef<ReadonlySignal>;
 			let dispose: () => void;
 			(function () {
 				const c = computed(() => s.value);
