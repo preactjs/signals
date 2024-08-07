@@ -1,5 +1,11 @@
 # @preact/signals-react
 
+## 2.2.0
+
+### Minor Changes
+
+- [#591](https://github.com/preactjs/signals/pull/591) [`e1a1465`](https://github.com/preactjs/signals/commit/e1a1465d0e8b36264d9b99c9ccc7a44b45960f6e) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Bump to support `ReadonlySignal` in jsx
+
 ## 2.1.0
 
 ### Minor Changes
