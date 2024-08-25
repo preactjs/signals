@@ -712,6 +712,14 @@ export function updateSignalsTests(usingTransform = false) {
 	});
 
 	describe("useSignalEffect()", () => {
+		before(() => {
+			process.env.TEST = "true";
+		});
+
+		after(() => {
+			process.env.TEST = undefined;
+		});
+
 		it("should be invoked after commit", async () => {
 			const ref = createRef<HTMLDivElement>();
 			const sig = signal("foo");

@@ -650,14 +650,22 @@ describe("@preact/signals", () => {
 			const spy = sinon.spy();
 			let count = 0;
 
+			before(() => {
+				process.env.TEST = "true";
+			});
+
+			after(() => {
+				process.env.TEST = undefined;
+			});
+
 			function App() {
-				useSignalEffect(() =>
+				useSignalEffect(() => {
 					spy(
 						sig.value,
 						ref.current,
 						ref.current.getAttribute("data-render-id")
-					)
-				);
+					);
+				});
 				return (
 					<p ref={ref} data-render-id={count++}>
 						{sig.value}

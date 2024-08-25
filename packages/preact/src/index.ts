@@ -358,12 +358,43 @@ export function useComputed<T>(compute: () => T) {
 	return useMemo(() => computed<T>(() => $compute.current()), []);
 }
 
+let oldNotify: (this: Effect) => void,
+	queue: Array<Effect> = [],
+	isFlushing = false;
+
+function flush() {
+	batch(() => {
+		let flushing = [...queue];
+		isFlushing = false;
+		queue.length = 0;
+		for (let i = 0; i < flushing.length; i++) {
+			oldNotify.call(flushing[i]);
+		}
+	});
+}
+
+function notify(this: Effect) {
+	queue.push(this);
+	if (!isFlushing) {
+		isFlushing = true;
+		(process.env.TEST
+			? (cb: () => void) => cb()
+			: typeof window === "undefined"
+			? setTimeout
+			: requestAnimationFrame)(flush);
+	}
+}
+
 export function useSignalEffect(cb: () => void | (() => void)) {
 	const callback = useRef(cb);
 	callback.current = cb;
 
 	useEffect(() => {
-		return effect(() => callback.current());
+		return effect(function (this: Effect) {
+			if (!oldNotify) oldNotify = this._notify;
+			this._notify = notify;
+			return callback.current();
+		});
 	}, []);
 }
 

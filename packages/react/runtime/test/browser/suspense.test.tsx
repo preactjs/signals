@@ -24,6 +24,14 @@ describe("Suspense", () => {
 		await act(() => root.render(element));
 	}
 
+	before(() => {
+		process.env.TEST = "true";
+	});
+
+	after(() => {
+		process.env.TEST = undefined;
+	});
+
 	beforeEach(async () => {
 		scratch = document.createElement("div");
 		document.body.appendChild(scratch);
