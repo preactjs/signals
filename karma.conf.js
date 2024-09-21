@@ -30,13 +30,6 @@ var localLaunchers = {
 	},
 };
 
-/* eslint-disable no-console */
-const signalsTransformPath = require.resolve("./packages/react-transform");
-console.log(`Transforming tests using ${signalsTransformPath}.`);
-console.log(
-	`Manually re-compile & re-run tests to validate changes to react-transform`
-);
-
 const subPkgPath = pkgName => {
 	if (!minify) {
 		return path.join(__dirname, pkgName, "src", "index.ts");
@@ -50,7 +43,7 @@ const subPkgPath = pkgName => {
 };
 
 // Esbuild plugin for aliasing + babel pass
-function createEsbuildPlugin() {
+function createEsbuildPlugin(filteredPkgList) {
 	const pending = new Map();
 	const cache = new Map();
 
@@ -65,14 +58,19 @@ function createEsbuildPlugin() {
 		rename[name] = mangle.props.props[prop];
 	}
 
-	const alias = {
-		"@preact/signals-core": subPkgPath("./packages/core"),
-		"@preact/signals": subPkgPath("./packages/preact"),
-		"@preact/signals-react": subPkgPath("./packages/react"),
-		"@preact/signals-react/auto": subPkgPath("./packages/react/auto"),
-		"@preact/signals-react/runtime": subPkgPath("./packages/react/runtime"),
-		"@preact/signals-react-transform": subPkgPath("./packages/react-transform"),
-	};
+	const alias = filteredPkgList.reduce((obj, key) => {
+		obj[pkgList[key]] = subPkgPath(`./packages/${key}`);
+		return obj;
+	}, {});
+
+	let signalsTransformPath;
+	if (filteredPkgList.includes("react-transform")) {
+		signalsTransformPath = require.resolve("./packages/react-transform");
+		/* eslint-disable-next-line no-console */
+		console.log(
+			`Transforming tests using ${signalsTransformPath}.\nManually re-compile & re-run tests to validate changes to react-transform`
+		);
+	}
 
 	return {
 		name: "custom",
@@ -222,16 +220,28 @@ function createEsbuildPlugin() {
 	};
 }
 
-const pkgList = [
-	"core",
-	"preact",
-	"react",
-	"react/auto",
-	"react/runtime",
-	"react-transform",
-];
+const pkgList = {
+	core: "@preact/signals-core",
+	preact: "@preact/signals",
+	react: "@preact/signals-react",
+	"react/auto": "@preact/signals-react/auto",
+	"react/runtime": "@preact/signals-react/runtime",
+	"react-transform": "@preact/signals-react-transform",
+};
 
 module.exports = function (config) {
+	let filteredPkgList = Object.keys(pkgList),
+		filteredPkgPattern = `{${Object.keys(pkgList).join(",")}}`;
+
+	// Doesn't quite adhere to Karma's `--grep` flag, but should be good enough to filter by package.
+	// E.g., `--grep=preact,core`
+	if (config.grep) {
+		filteredPkgList = config.grep.split(",");
+		filteredPkgPattern = filteredPkgList[1]
+			? `{${filteredPkgList.join(",")}}`
+			: filteredPkgList[0];
+	}
+
 	config.set({
 		browsers: Object.keys(localLaunchers),
 
@@ -308,7 +318,7 @@ module.exports = function (config) {
 			{
 				pattern:
 					process.env.TESTS ||
-					`packages/{${pkgList.join(",")}}/test/{,browser,shared}/*.test.tsx`,
+					`packages/${filteredPkgPattern}/test/{,browser,shared}/*.test.tsx`,
 				watched: false,
 				type: "js",
 			},
@@ -319,7 +329,7 @@ module.exports = function (config) {
 		},
 
 		preprocessors: {
-			[`packages/{${pkgList.join(",")}}/test/**/*`]: ["esbuild"],
+			[`packages/${filteredPkgPattern}/test/**/*`]: ["esbuild"],
 			[`test/browser/babel.js`]: ["esbuild"],
 			[`test/browser/nodeGlobals.js`]: ["esbuild"],
 		},
@@ -344,7 +354,7 @@ module.exports = function (config) {
 				COVERAGE: coverage,
 				"process.env.NODE_ENV": JSON.stringify(process.env.NODE_ENV || ""),
 			},
-			plugins: [createEsbuildPlugin()],
+			plugins: [createEsbuildPlugin(filteredPkgList)],
 		},
 	});
 };
