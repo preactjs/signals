@@ -304,17 +304,19 @@ module.exports = function (config) {
 		customLaunchers: localLaunchers,
 
 		files: [
-			{
-				// Provide some NodeJS globals to run babel in a browser environment
-				pattern: "test/browser/nodeGlobals.js",
-				watched: false,
-				type: "js",
-			},
-			{
-				pattern: "test/browser/babel.js",
-				watched: false,
-				type: "js",
-			},
+			...filteredPkgList.some(i => /^react/.test(i)) ? [
+				{
+					// Provide some NodeJS globals to run babel in a browser environment
+					pattern: "test/browser/nodeGlobals.js",
+					watched: false,
+					type: "js",
+				},
+				{
+					pattern: "test/browser/babel.js",
+					watched: false,
+					type: "js",
+				},
+			] : [],
 			{
 				pattern:
 					process.env.TESTS ||
