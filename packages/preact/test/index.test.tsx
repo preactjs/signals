@@ -14,7 +14,9 @@ import { setupRerender, act } from "preact/test-utils";
 
 const sleep = (ms?: number) => new Promise(r => setTimeout(r, ms));
 const defer =
-	typeof window === "undefined" ? setTimeout : requestAnimationFrame;
+	typeof requestAnimationFrame === "undefined"
+		? setTimeout
+		: requestAnimationFrame;
 const afterFrame = () => {
 	return new Promise(res => {
 		defer(res);

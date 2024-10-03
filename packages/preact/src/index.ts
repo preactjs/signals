@@ -377,7 +377,9 @@ function notify(this: Effect) {
 	queue.push(this);
 	if (!isFlushing) {
 		isFlushing = true;
-		(typeof window === "undefined" ? setTimeout : requestAnimationFrame)(flush);
+		(typeof requestAnimationFrame === "undefined"
+			? setTimeout
+			: requestAnimationFrame)(flush);
 	}
 }
 

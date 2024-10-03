@@ -33,7 +33,9 @@ import {
 } from "./utils";
 
 const defer =
-	typeof window === "undefined" ? setTimeout : requestAnimationFrame;
+	typeof requestAnimationFrame === "undefined"
+		? setTimeout
+		: requestAnimationFrame;
 const afterFrame = () => {
 	return new Promise(res => {
 		defer(res);
