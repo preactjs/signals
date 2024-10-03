@@ -27,20 +27,20 @@
   "exports": {
     ".": {
       "types": "./dist/signals.d.ts",
-      "browser": "./dist/signals.module.js",
+      "module": "./dist/signals.mjs",
       "import": "./dist/signals.mjs",
       "require": "./dist/signals.js"
     },
     "./runtime": {
       "types": "./runtime/dist/index.d.ts",
-      "browser": "./runtime/dist/runtime.module.js",
+      "module": "./runtime/dist/runtime.mjs",
       "import": "./runtime/dist/runtime.mjs",
       "require": "./runtime/dist/runtime.js"
     },
     "./runtime/package.json": "./runtime/package.json",
     "./auto": {
       "types": "./auto/dist/index.d.ts",
-      "browser": "./auto/dist/auto.module.js",
+      "module": "./auto/dist/auto.mjs",
       "import": "./auto/dist/auto.mjs",
       "require": "./auto/dist/auto.js"
     },
