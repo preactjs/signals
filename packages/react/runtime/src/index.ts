@@ -387,21 +387,25 @@ export function useComputed<T>(compute: () => T): ReadonlySignal<T> {
 }
 
 let oldNotify: (this: Effect) => void,
-	queue: Array<Effect> = [];
+	queue: Array<Effect> = [],
+	isFlushing = false;
 
 function flush() {
 	batch(() => {
-		let inst: Effect | undefined;
-		while ((inst = queue.shift())) oldNotify.call(inst);
+		let flushing = [...queue];
+		isFlushing = false;
+		queue.length = 0;
+		for (let i = 0; i < flushing.length; i++) {
+			oldNotify.call(flushing[i]);
+		}
 	});
 }
 
 function notify(this: Effect) {
 	queue.push(this);
-	if (queue.push(this) === 1) {
-		(typeof requestAnimationFrame === "undefined"
-			? setTimeout
-			: requestAnimationFrame)(flush);
+	if (!isFlushing) {
+		isFlushing = true;
+		(typeof window === "undefined" ? setTimeout : requestAnimationFrame)(flush);
 	}
 }
 
