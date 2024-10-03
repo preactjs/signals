@@ -359,25 +359,21 @@ export function useComputed<T>(compute: () => T) {
 }
 
 let oldNotify: (this: Effect) => void,
-	queue: Array<Effect> = [],
-	isFlushing = false;
+	queue: Array<Effect> = [];
 
 function flush() {
 	batch(() => {
-		let flushing = [...queue];
-		isFlushing = false;
-		queue.length = 0;
-		for (let i = 0; i < flushing.length; i++) {
-			oldNotify.call(flushing[i]);
-		}
+		let inst: Effect | undefined;
+		while ((inst = queue.shift())) oldNotify.call(inst);
 	});
 }
 
 function notify(this: Effect) {
 	queue.push(this);
-	if (!isFlushing) {
-		isFlushing = true;
-		(typeof window === "undefined" ? setTimeout : requestAnimationFrame)(flush);
+	if (queue.push(this) === 1) {
+		(typeof requestAnimationFrame === "undefined"
+			? setTimeout
+			: requestAnimationFrame)(flush);
 	}
 }
 
