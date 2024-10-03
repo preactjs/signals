@@ -161,6 +161,7 @@ export function updateSignalsTests(usingTransform = false) {
 			await act(() => {
 				sig.value = "bar";
 			});
+			await afterFrame();
 			expect(scratch.textContent).to.equal("bar");
 		});
 
@@ -282,6 +283,7 @@ export function updateSignalsTests(usingTransform = false) {
 			await act(() => {
 				sig.value = "bar";
 			});
+			await afterFrame();
 			expect(scratch.textContent).to.equal("bar");
 		});
 
@@ -302,6 +304,7 @@ export function updateSignalsTests(usingTransform = false) {
 			await act(() => {
 				sig.value = "bar";
 			});
+			await afterFrame();
 			expect(scratch.textContent).to.equal("bar");
 		});
 
@@ -322,6 +325,7 @@ export function updateSignalsTests(usingTransform = false) {
 				await act(async () => {
 					sig.value = i;
 				});
+				await afterFrame();
 				expect(scratch.textContent).to.equal("" + i);
 			}
 		});
@@ -343,6 +347,7 @@ export function updateSignalsTests(usingTransform = false) {
 				await act(async () => {
 					sig.value = i;
 				});
+				await afterFrame();
 				expect(scratch.textContent).to.equal("" + i);
 			}
 		});
@@ -411,6 +416,7 @@ export function updateSignalsTests(usingTransform = false) {
 				await act(async () => {
 					count.value += 1;
 				});
+				await afterFrame();
 				expect(scratch.innerHTML).to.equal(
 					`<pre><code>-2</code><code>${count.value * 2}</code></pre>`
 				);
@@ -617,6 +623,7 @@ export function updateSignalsTests(usingTransform = false) {
 			await act(() => {
 				scratch.querySelector("button")!.click();
 			});
+			await afterFrame();
 
 			expect(url.textContent).to.equal("https://domain.com/test?a=2");
 			expect(URLModelProvider).to.be.calledOnce;
