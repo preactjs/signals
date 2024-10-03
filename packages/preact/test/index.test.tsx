@@ -13,6 +13,15 @@ import { useContext, useRef, useState } from "preact/hooks";
 import { setupRerender, act } from "preact/test-utils";
 
 const sleep = (ms?: number) => new Promise(r => setTimeout(r, ms));
+const defer =
+	typeof requestAnimationFrame === "undefined"
+		? setTimeout
+		: requestAnimationFrame;
+const afterFrame = () => {
+	return new Promise(res => {
+		defer(res);
+	});
+};
 
 describe("@preact/signals", () => {
 	let scratch: HTMLDivElement;
@@ -651,13 +660,13 @@ describe("@preact/signals", () => {
 			let count = 0;
 
 			function App() {
-				useSignalEffect(() =>
+				useSignalEffect(() => {
 					spy(
 						sig.value,
 						ref.current,
 						ref.current.getAttribute("data-render-id")
-					)
-				);
+					);
+				});
 				return (
 					<p ref={ref} data-render-id={count++}>
 						{sig.value}
@@ -670,7 +679,7 @@ describe("@preact/signals", () => {
 			});
 			expect(scratch.textContent).to.equal("foo");
 			// expect(spy).not.to.have.been.called;
-			await sleep(1);
+			await afterFrame();
 			expect(spy).to.have.been.calledOnceWith(
 				"foo",
 				scratch.firstElementChild,
@@ -685,16 +694,12 @@ describe("@preact/signals", () => {
 			});
 
 			expect(scratch.textContent).to.equal("bar");
-			await sleep(1);
+			await afterFrame();
 
-			// NOTE: Ideally, call should receive "1" as its third argument!
-			// The "0" indicates that Preact's DOM mutations hadn't yet been performed when the callback ran.
-			// This happens because we do signal-based effect runs after the first, not VDOM.
-			// Perhaps we could find a way to defer the callback when it coincides with a render?
 			expect(spy).to.have.been.calledOnceWith(
 				"bar",
 				scratch.firstElementChild,
-				"0" // ideally "1" - update if we find a nice way to do so!
+				"1"
 			);
 		});
 
@@ -719,9 +724,11 @@ describe("@preact/signals", () => {
 				);
 			}
 
-			render(<App />, scratch);
+			act(() => {
+				render(<App />, scratch);
+			});
 
-			await sleep(1);
+			await afterFrame();
 			expect(cleanup).not.to.have.been.called;
 			expect(spy).to.have.been.calledOnceWith(
 				"foo",
@@ -736,17 +743,13 @@ describe("@preact/signals", () => {
 			});
 
 			expect(scratch.textContent).to.equal("bar");
-			await sleep(1);
+			await afterFrame();
 
 			const child = scratch.firstElementChild;
 
 			expect(cleanup).to.have.been.calledOnceWith("foo", child, "0");
 
-			expect(spy).to.have.been.calledOnceWith(
-				"bar",
-				child,
-				"0" // ideally "1" - update if we find a nice way to do so!
-			);
+			expect(spy).to.have.been.calledOnceWith("bar", child, "1");
 		});
 
 		it("should invoke any returned cleanup function for unmounts", async () => {
@@ -768,7 +771,7 @@ describe("@preact/signals", () => {
 				render(<App />, scratch);
 			});
 
-			await sleep(1);
+			await afterFrame();
 
 			const child = scratch.firstElementChild;
 
@@ -780,7 +783,7 @@ describe("@preact/signals", () => {
 				render(null, scratch);
 			});
 
-			await sleep(1);
+			await afterFrame();
 
 			expect(spy).not.to.have.been.called;
 			expect(cleanup).to.have.been.calledOnceWith("foo", child);

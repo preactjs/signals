@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2020",
-    "lib": ["ES2021.WeakRef", "ES2015.Symbol"],
+    "lib": ["ES2021.WeakRef", "ES2015.Symbol", "DOM"],
     "moduleResolution": "node",
     "esModuleInterop": true,
     "strict": true,

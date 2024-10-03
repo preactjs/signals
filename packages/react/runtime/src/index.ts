@@ -4,6 +4,7 @@ import {
 	effect,
 	Signal,
 	ReadonlySignal,
+	batch,
 } from "@preact/signals-core";
 import { useRef, useMemo, useEffect, useLayoutEffect } from "react";
 import { useSyncExternalStore } from "use-sync-external-store/shim/index.js";
@@ -38,6 +39,7 @@ const symDispose: unique symbol =
 interface Effect {
 	_sources: object | undefined;
 	_start(): () => void;
+	_notify: () => void;
 	_callback(): void;
 	_dispose(): void;
 }
@@ -282,6 +284,9 @@ function createEmptyEffectStore(): EffectStore {
 	return {
 		_usage: UNMANAGED,
 		effect: {
+			_notify() {
+				return noop;
+			},
 			_sources: undefined,
 			_callback() {},
 			_start() {
@@ -381,11 +386,40 @@ export function useComputed<T>(compute: () => T): ReadonlySignal<T> {
 	return useMemo(() => computed<T>(() => $compute.current()), Empty);
 }
 
-export function useSignalEffect(cb: () => void | (() => void)): void {
+let oldNotify: (this: Effect) => void,
+	queue: Array<Effect> = [],
+	isFlushing = false;
+
+function flush() {
+	batch(() => {
+		let flushing = [...queue];
+		isFlushing = false;
+		queue.length = 0;
+		for (let i = 0; i < flushing.length; i++) {
+			oldNotify.call(flushing[i]);
+		}
+	});
+}
+
+function notify(this: Effect) {
+	queue.push(this);
+	if (!isFlushing) {
+		isFlushing = true;
+		(typeof requestAnimationFrame === "undefined"
+			? setTimeout
+			: requestAnimationFrame)(flush);
+	}
+}
+
+export function useSignalEffect(cb: () => void | (() => void)) {
 	const callback = useRef(cb);
 	callback.current = cb;
 
 	useEffect(() => {
-		return effect(() => callback.current());
+		return effect(function (this: Effect) {
+			if (!oldNotify) oldNotify = this._notify;
+			this._notify = notify;
+			return callback.current();
+		});
 	}, Empty);
 }
