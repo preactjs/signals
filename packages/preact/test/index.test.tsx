@@ -13,17 +13,8 @@ import { useContext, useRef, useState } from "preact/hooks";
 import { setupRerender, act } from "preact/test-utils";
 
 const sleep = (ms?: number) => new Promise(r => setTimeout(r, ms));
-const defer =
-	typeof requestAnimationFrame === "undefined"
-		? setTimeout
-		: requestAnimationFrame;
-const afterFrame = () => {
-	return new Promise(res => {
-		defer(res);
-	});
-};
 
-describe.only("@preact/signals", () => {
+describe("@preact/signals", () => {
 	let scratch: HTMLDivElement;
 	let rerender: () => void;
 
@@ -234,7 +225,6 @@ describe.only("@preact/signals", () => {
 			act(() => {
 				sig.value = <span>d</span>;
 			});
-			await afterFrame();
 			rerender();
 			await sleep();
 
@@ -707,7 +697,6 @@ describe.only("@preact/signals", () => {
 			});
 			expect(scratch.textContent).to.equal("foo");
 			// expect(spy).not.to.have.been.called;
-			await afterFrame();
 			expect(spy).to.have.been.calledOnceWith(
 				"foo",
 				scratch.firstElementChild,
@@ -756,7 +745,6 @@ describe.only("@preact/signals", () => {
 				render(<App />, scratch);
 			});
 
-			await afterFrame();
 			expect(cleanup).not.to.have.been.called;
 			expect(spy).to.have.been.calledOnceWith(
 				"foo",

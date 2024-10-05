@@ -381,7 +381,7 @@ function flushEffects() {
 
 function notifyEffects(this: Effect) {
 	if (effectsQueue.push(this) === 1) {
-		(options.debounceRendering || defer)(flushEffects);
+		(options.requestAnimationFrame || defer)(flushEffects);
 	}
 }
 
@@ -394,7 +394,7 @@ function flushComputeds() {
 
 function notifyComputeds(this: Effect) {
 	if (computedsQueue.push(this) === 1) {
-		(options.debounceRendering || defer)(flushComputeds);
+		(options.requestAnimationFrame || defer)(flushComputeds);
 	}
 }
 
