@@ -79,34 +79,21 @@ function SignalValue(this: AugmentedComponent, { data }: { data: Signal }) {
 	const currentSignal = useSignal(data);
 	currentSignal.value = data;
 
-	const s = useMemo(() => {
-		// mark the parent component as having computeds so it gets optimized
-		let v = this.__v;
-		while ((v = v.__!)) {
-			if (v.__c) {
-				v.__c._updateFlags |= HAS_COMPUTEDS;
-				break;
-			}
+	const s = useComputed(() => {
+		let data = currentSignal.value;
+		let s = data.value;
+		return s === 0 ? 0 : s === true ? "" : s || "";
+	});
+
+	const isText = useComputed(() => {
+		return !isValidElement(s.peek()) || this.base?.nodeType === 3;
+	});
+
+	useSignalEffect(() => {
+		if (isText.value) {
+			(this.base as Text).data = data.peek();
 		}
-
-		this._updater!._callback = () => {
-			if (isValidElement(s.peek()) || this.base?.nodeType !== 3) {
-				this._updateFlags |= HAS_PENDING_UPDATE;
-				this.setState({});
-				return;
-			}
-
-			(this.base as Text).data = s.peek();
-		};
-
-		return computed(function (this: Effect) {
-			if (!oldNotifyComputeds) oldNotifyComputeds = this._notify;
-			this._notify = notifyComputeds;
-			let data = currentSignal.value;
-			let s = data.value;
-			return s === 0 ? 0 : s === true ? "" : s || "";
-		});
-	}, []);
+	});
 
 	return s.value;
 }
@@ -363,9 +350,7 @@ export function useComputed<T>(compute: () => T) {
 }
 
 let oldNotifyEffects: (this: Effect) => void,
-	effectsQueue: Array<Effect> = [],
-	oldNotifyComputeds: (this: Effect) => void,
-	computedsQueue: Array<Effect> = [];
+	effectsQueue: Array<Effect> = [];
 
 const defer =
 	typeof requestAnimationFrame === "undefined"
@@ -375,26 +360,15 @@ const defer =
 function flushEffects() {
 	batch(() => {
 		let inst: Effect | undefined;
-		while ((inst = effectsQueue.shift())) oldNotifyEffects.call(inst);
+		while ((inst = effectsQueue.shift())) {
+			oldNotifyEffects.call(inst);
+		}
 	});
 }
 
 function notifyEffects(this: Effect) {
 	if (effectsQueue.push(this) === 1) {
 		(options.requestAnimationFrame || defer)(flushEffects);
-	}
-}
-
-function flushComputeds() {
-	batch(() => {
-		let inst: Effect | undefined;
-		while ((inst = computedsQueue.shift())) oldNotifyComputeds.call(inst);
-	});
-}
-
-function notifyComputeds(this: Effect) {
-	if (computedsQueue.push(this) === 1) {
-		(options.requestAnimationFrame || defer)(flushComputeds);
 	}
 }
 
