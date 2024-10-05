@@ -23,7 +23,7 @@ const afterFrame = () => {
 	});
 };
 
-describe("@preact/signals", () => {
+describe.only("@preact/signals", () => {
 	let scratch: HTMLDivElement;
 	let rerender: () => void;
 
@@ -70,8 +70,9 @@ describe("@preact/signals", () => {
 			const text = scratch.firstChild!.firstChild!;
 			expect(text).to.have.property("data", "test");
 
-			sig.value = "changed";
-			await afterFrame();
+			act(() => {
+				sig.value = "changed";
+			});
 
 			// should not remount/replace SignalValue
 			expect(scratch.firstChild!.firstChild!).to.equal(text);
@@ -92,8 +93,9 @@ describe("@preact/signals", () => {
 			const text = scratch.firstChild!.firstChild!;
 			expect(text).to.have.property("data", "test");
 
-			sig.value = "changed";
-			await afterFrame();
+			act(() => {
+				sig.value = "changed";
+			});
 
 			// should not remount/replace SignalValue
 			expect(scratch.firstChild!.firstChild!).to.equal(text);
@@ -111,18 +113,22 @@ describe("@preact/signals", () => {
 				spy();
 				return <span>{x}</span>;
 			}
-			render(<App x={sig} />, scratch);
+
+			act(() => {
+				render(<App x={sig} />, scratch);
+			});
 			spy.resetHistory();
 
 			const text = scratch.firstChild!.firstChild!;
 			expect(text).to.have.property("data", "test");
 
 			const sig2 = signal("different");
-			render(<App x={sig2} />, scratch);
+			act(() => {
+				render(<App x={sig2} />, scratch);
+			});
 			expect(spy).to.have.been.called;
 			spy.resetHistory();
 
-			await afterFrame();
 			// should not remount/replace SignalValue
 			expect(scratch.firstChild!.firstChild!).to.equal(text);
 			// should update the text in-place
@@ -131,15 +137,18 @@ describe("@preact/signals", () => {
 			await sleep();
 			expect(spy).not.to.have.been.called;
 
-			sig.value = "changed old signal";
+			act(() => {
+				sig.value = "changed old signal";
+			});
 
 			await sleep();
 			expect(spy).not.to.have.been.called;
 			// the text should _not_ have changed:
 			expect(text).to.have.property("data", "different");
 
-			sig2.value = "changed";
-			await afterFrame();
+			act(() => {
+				sig2.value = "changed";
+			});
 
 			expect(scratch.firstChild!.firstChild!).to.equal(text);
 			expect(text).to.have.property("data", "changed");
@@ -181,9 +190,9 @@ describe("@preact/signals", () => {
 			expect(text).to.be.an.instanceOf(HTMLSpanElement);
 			expect(text).to.have.property("firstChild").that.is.an.instanceOf(Text);
 
-			sig.value = <div>a</div>;
-			await afterFrame();
-			rerender();
+			act(() => {
+				sig.value = <div>a</div>;
+			});
 			expect(spy).not.to.have.been.calledOnce;
 			scratch.firstChild!.firstChild!.textContent!.should.equal("a");
 		});
@@ -201,26 +210,30 @@ describe("@preact/signals", () => {
 			expect(text.textContent).to.equal("test");
 			expect(text).to.be.an.instanceOf(HTMLSpanElement);
 			expect(text).to.have.property("firstChild").that.is.an.instanceOf(Text);
-			sig.value = "a";
-			await afterFrame();
-			rerender();
+
+			act(() => {
+				sig.value = "a";
+			});
 			text = scratch.firstChild!.firstChild!;
 			expect(text.nodeType).to.equal(Node.TEXT_NODE);
 			expect(text.textContent).to.equal("a");
 
-			sig.value = "b";
-			await afterFrame();
+			act(() => {
+				sig.value = "b";
+			});
 			expect(text.textContent).to.equal("b");
 
-			sig.value = <div>c</div>;
-			await afterFrame();
-			rerender();
+			act(() => {
+				sig.value = <div>c</div>;
+			});
 			await sleep();
 			text = scratch.firstChild!.firstChild!;
 
 			expect(text).to.be.an.instanceOf(HTMLDivElement);
 			expect(text.textContent).to.equal("c");
-			sig.value = <span>d</span>;
+			act(() => {
+				sig.value = <span>d</span>;
+			});
 			await afterFrame();
 			rerender();
 			await sleep();
@@ -475,8 +488,9 @@ describe("@preact/signals", () => {
 
 			expect(scratch.firstChild).to.have.property("checked", true);
 
-			s.value = false;
-			await afterFrame();
+			act(() => {
+				s.value = false;
+			});
 
 			expect(scratch.firstChild).to.have.property("checked", false);
 		});
@@ -494,8 +508,9 @@ describe("@preact/signals", () => {
 
 			expect(scratch.firstChild).to.have.property("value", "initial");
 
-			s.value = "updated";
-			await afterFrame();
+			act(() => {
+				s.value = "updated";
+			});
 
 			expect(scratch.firstChild).to.have.property("value", "updated");
 
@@ -503,8 +518,9 @@ describe("@preact/signals", () => {
 			await sleep();
 			expect(spy).not.to.have.been.called;
 
-			s.value = "second update";
-			await afterFrame();
+			act(() => {
+				s.value = "second update";
+			});
 
 			expect(scratch.firstChild).to.have.property("value", "second update");
 
@@ -532,8 +548,9 @@ describe("@preact/signals", () => {
 			await sleep();
 			expect(spy).not.to.have.been.called;
 
-			style.value = "left: 20px;";
-			await afterFrame();
+			act(() => {
+				style.value = "left: 20px;";
+			});
 
 			expect(div.style).to.have.property("left", "20px");
 
@@ -701,12 +718,9 @@ describe("@preact/signals", () => {
 
 			act(() => {
 				sig.value = "bar";
-				rerender();
 			});
 
 			expect(scratch.textContent).to.equal("bar");
-			await afterFrame();
-			await afterFrame();
 
 			expect(spy).to.have.been.calledOnceWith(
 				"bar",
@@ -751,12 +765,10 @@ describe("@preact/signals", () => {
 			);
 			spy.resetHistory();
 
-			act(async () => {
+			act(() => {
 				sig.value = "bar";
-				rerender();
 			});
 
-			await afterFrame();
 			expect(scratch.textContent).to.equal("bar");
 
 			const child = scratch.firstElementChild;
@@ -783,8 +795,6 @@ describe("@preact/signals", () => {
 				render(<App />, scratch);
 			});
 
-			await afterFrame();
-
 			const child = scratch.firstElementChild;
 
 			expect(cleanup).not.to.have.been.called;
@@ -794,8 +804,6 @@ describe("@preact/signals", () => {
 			act(() => {
 				render(null, scratch);
 			});
-
-			await afterFrame();
 
 			expect(spy).not.to.have.been.called;
 			expect(cleanup).to.have.been.calledOnceWith("foo", child);
