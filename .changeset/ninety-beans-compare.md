@@ -1,5 +1,5 @@
 ---
-"@preact/signals": minor
+"@preact/signals": major
 ---
 
 Defer all DOM updates by an animation frame, this should make it so
