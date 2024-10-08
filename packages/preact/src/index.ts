@@ -193,12 +193,24 @@ hook(OptionsTypes.DIFFED, (old, vnode) => {
 				updaters = {};
 				dom._updaters = updaters;
 			}
+
 			for (let prop in props) {
 				let updater = updaters[prop];
 				let signal = props[prop];
+
 				if (updater === undefined) {
-					updater = createPropUpdater(dom, prop, signal, renderedProps);
-					updaters[prop] = updater;
+					if (prop[0] === "o" && prop[1] === "n") {
+						throw new Error(
+							`Can't bind a signal to the ${prop} event listener, use ".value" instead.`
+						);
+					} else {
+						updaters[prop] = updater = createPropUpdater(
+							dom,
+							prop,
+							signal,
+							renderedProps
+						);
+					}
 				} else {
 					updater._update(signal, renderedProps);
 				}

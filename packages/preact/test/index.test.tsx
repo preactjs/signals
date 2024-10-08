@@ -251,6 +251,19 @@ describe("@preact/signals", () => {
 			expect(scratch.textContent).to.equal("bar");
 		});
 
+		it("should throw when binding a signal to an event handler", () => {
+			const callback = signal(() => {});
+
+			function App() {
+				// @ts-ignore
+				return <button onClick={callback} />;
+			}
+
+			expect(() => {
+				render(<App />, scratch);
+			}).to.throw(/Can't bind/);
+		});
+
 		it("should activate signal accessed in render", () => {
 			const sig = signal(null);
 
