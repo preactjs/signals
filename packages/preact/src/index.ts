@@ -79,21 +79,47 @@ function SignalValue(this: AugmentedComponent, { data }: { data: Signal }) {
 	const currentSignal = useSignal(data);
 	currentSignal.value = data;
 
-	const s = useComputed(() => {
-		let data = currentSignal.value;
-		let s = data.value;
-		return s === 0 ? 0 : s === true ? "" : s || "";
-	});
-
-	const isText = useComputed(() => {
-		return !isValidElement(s.peek()) || this.base?.nodeType === 3;
-	});
-
-	useSignalEffect(() => {
-		if (isText.value) {
-			(this.base as Text).data = data.peek();
+	const s = useMemo(() => {
+		let self = this;
+		// mark the parent component as having computeds so it gets optimized
+		let v = this.__v;
+		while ((v = v.__!)) {
+			if (v.__c) {
+				v.__c._updateFlags |= HAS_COMPUTEDS;
+				break;
+			}
 		}
-	});
+
+		const wrappedSignal = computed(function (this: Effect) {
+			let data = currentSignal.value;
+			let s = data.value;
+			return s === 0 ? 0 : s === true ? "" : s || "";
+		});
+
+		const isText = computed(
+			() => isValidElement(wrappedSignal.value) || this.base?.nodeType !== 3
+		);
+
+		this._updater!._callback = () => {
+			if (isValidElement(s.peek()) || this.base?.nodeType !== 3) {
+				this._updateFlags |= HAS_PENDING_UPDATE;
+				this.setState({});
+				return;
+			}
+			(this.base as Text).data = s.peek();
+		};
+
+		effect(function (this: Effect) {
+			if (!oldNotify) oldNotify = this._notify;
+			this._notify = notifyDomUpdates;
+			const val = wrappedSignal.value;
+			if (isText.value && self.base) {
+				(self.base as Text).data = val;
+			}
+		});
+
+		return wrappedSignal;
+	}, []);
 
 	return s.value;
 }
@@ -228,8 +254,8 @@ function createPropUpdater(
 			props = newProps;
 		},
 		_dispose: effect(function (this: Effect) {
-			if (!oldNotifyEffects) oldNotifyEffects = this._notify;
-			this._notify = notifyEffects;
+			if (!oldNotify) oldNotify = this._notify;
+			this._notify = notifyDomUpdates;
 			const value = changeSignal.value.value;
 			// If Preact just rendered this value, don't render it again:
 			if (props[prop] === value) return;
@@ -349,26 +375,48 @@ export function useComputed<T>(compute: () => T) {
 	return useMemo(() => computed<T>(() => $compute.current()), []);
 }
 
-let oldNotifyEffects: (this: Effect) => void,
-	effectsQueue: Array<Effect> = [];
+let oldNotify: (this: Effect) => void,
+	effectsQueue: Array<Effect> = [],
+	domQueue: Array<Effect> = [];
 
-const defer =
+const deferEffects =
 	typeof requestAnimationFrame === "undefined"
 		? setTimeout
 		: requestAnimationFrame;
+
+const deferDomUpdates = (cb: any) => {
+	queueMicrotask(() => {
+		queueMicrotask(cb);
+	});
+};
 
 function flushEffects() {
 	batch(() => {
 		let inst: Effect | undefined;
 		while ((inst = effectsQueue.shift())) {
-			oldNotifyEffects.call(inst);
+			oldNotify.call(inst);
 		}
 	});
 }
 
 function notifyEffects(this: Effect) {
 	if (effectsQueue.push(this) === 1) {
-		(options.requestAnimationFrame || defer)(flushEffects);
+		(options.requestAnimationFrame || deferEffects)(flushEffects);
+	}
+}
+
+function flushDomUpdates() {
+	batch(() => {
+		let inst: Effect | undefined;
+		while ((inst = domQueue.shift())) {
+			oldNotify.call(inst);
+		}
+	});
+}
+
+function notifyDomUpdates(this: Effect) {
+	if (domQueue.push(this) === 1) {
+		(options.requestAnimationFrame || deferDomUpdates)(flushDomUpdates);
 	}
 }
 
@@ -378,7 +426,7 @@ export function useSignalEffect(cb: () => void | (() => void)) {
 
 	useEffect(() => {
 		return effect(function (this: Effect) {
-			if (!oldNotifyEffects) oldNotifyEffects = this._notify;
+			if (!oldNotify) oldNotify = this._notify;
 			this._notify = notifyEffects;
 			return callback.current();
 		});
