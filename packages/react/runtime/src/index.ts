@@ -316,6 +316,9 @@ function cleanupTrailingStore() {
 	currentStore?.f();
 }
 
+const useIsomorphicLayoutEffect =
+	typeof window !== "undefined" ? useLayoutEffect : useEffect;
+
 /**
  * Custom hook to create the effect to track signals used during render and
  * subscribe to changes to rerender the component when the signals change.
@@ -334,7 +337,7 @@ export function _useSignalsImplementation(
 	useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
 	store._start();
 	// note: _usage is a constant here, so conditional is okay
-	if (_usage === UNMANAGED) useLayoutEffect(cleanupTrailingStore);
+	if (_usage === UNMANAGED) useIsomorphicLayoutEffect(cleanupTrailingStore);
 
 	return store;
 }
