@@ -1,5 +1,11 @@
 # @preact/signals-react
 
+## 2.2.1
+
+### Patch Changes
+
+- [#611](https://github.com/preactjs/signals/pull/611) [`57a7d38`](https://github.com/preactjs/signals/commit/57a7d38fcd8a65721feb9038ad4b04cd1e86a0b1) Thanks [@Xstoudi](https://github.com/Xstoudi)! - Silences noisy warnings about `useLayoutEffect` whilst using SSR by switching to an isomorphic layout effect hook
+
 ## 2.2.0
 
 ### Minor Changes
