@@ -1,5 +1,26 @@
 # @preact/signals
 
+## 2.0.0
+
+### Major Changes
+
+- [#604](https://github.com/preactjs/signals/pull/604) [`fea3e8d`](https://github.com/preactjs/signals/commit/fea3e8da7a36944d87310678fad291aeacc55d8d) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Defer all DOM updates by an animation frame, this should make it so
+  that any previously synchronous DOM update will be instead delayed by an
+  animation frame. This allows Preact to first perform its own render
+  cycle and then our direct DOM updates to occur. These will now
+  be performed in a batched way which is more performant as the browser
+  is prepared to handle these during the animation frame.
+
+  This does impact how Preact based signals are tested, when
+  you perform a signal update, you'll need to wrap it in `act`. In a way
+  this was always the case, as a signal update that resulted in
+  a Preact state update would require it to be wrapped in `act`, but
+  now this is the norm.
+
+### Minor Changes
+
+- [#595](https://github.com/preactjs/signals/pull/595) [`499428a`](https://github.com/preactjs/signals/commit/499428aa7e7db3e250b3c257debf054a6368c010) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Align signal effects with animation-frames for better performance
+
 ## 1.3.0
 
 ### Minor Changes
