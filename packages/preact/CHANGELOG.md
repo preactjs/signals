@@ -1,5 +1,13 @@
 # @preact/signals
 
+## 1.3.1
+
+### Patch Changes
+
+- [#620](https://github.com/preactjs/signals/pull/620) [`4cda002`](https://github.com/preactjs/signals/commit/4cda002b9661b0fc936e9659e59d8b5979e7793b) Thanks [@developit](https://github.com/developit)! - Simplify text update patch to avoid using new internals
+
+- [#618](https://github.com/preactjs/signals/pull/618) [`021c726`](https://github.com/preactjs/signals/commit/021c726452046614eadae548d54af6ccb9832c14) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Ensure that the Effects versions are updated when using it as a JSX Signal
+
 ## 1.3.0
 
 ### Minor Changes
