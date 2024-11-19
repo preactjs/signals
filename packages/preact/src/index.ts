@@ -90,24 +90,16 @@ function SignalValue(this: AugmentedComponent, { data }: { data: Signal }) {
 		}
 
 		this._updater!._callback = () => {
-			// When overriding Effect._callback, source versions are only updated between _start() and end(), not when the callback is executed.
-			// To fix this, whenever _callback is executed we update the Effect's source versions to their latest values.
-			// Note that we don't do this for the re-rendering Component updater, because that eventually calls _start().
-			for (
-				let source = this._updater!._sources;
-				source !== undefined;
-				source = (source as any)._nextSource
-			) {
-				(source as any)._version = (source as any)._source._version;
-			}
+			const end = this._updater!._start();
+			const value = s.value;
+			end();
 
-			if (isValidElement(s.peek()) || this.base?.nodeType !== 3) {
+			if (isValidElement(value) || this.base?.nodeType !== 3) {
 				this._updateFlags |= HAS_PENDING_UPDATE;
 				this.setState({});
-				return;
+			} else {
+				(this.base as Text).data = value;
 			}
-
-			(this.base as Text).data = s.peek();
 		};
 
 		return computed(() => {
