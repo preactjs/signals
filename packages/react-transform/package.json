@@ -53,7 +53,7 @@
   },
   "peerDependencies": {
     "@babel/core": "^7.0.0",
-    "react": "^16.14.0 || 17.x || 18.x"
+    "react": "^16.14.0 || 17.x || 18.x || 19.x"
   },
   "devDependencies": {
     "@babel/core": "^7.22.8",
