@@ -251,6 +251,38 @@ describe("@preact/signals", () => {
 			expect(scratch.textContent).to.equal("bar");
 		});
 
+		it('should not update signals that are "equal"', () => {
+			const count = signal(0);
+			const time = computed(() => (count.value < 2 ? count.value : "max"));
+			let renders = 0;
+			const Time = () => {
+				const value = time.value;
+				renders++;
+				return <p>{value}</p>;
+			};
+			render(<Time />, scratch);
+			expect(scratch.textContent).to.equal("0");
+			expect(renders).to.equal(1);
+
+			act(() => {
+				count.value++;
+			});
+			expect(scratch.textContent).to.equal("1");
+			expect(renders).to.equal(2);
+
+			act(() => {
+				count.value++;
+			});
+			expect(scratch.textContent).to.equal("max");
+			expect(renders).to.equal(3);
+
+			act(() => {
+				count.value++;
+			});
+			expect(scratch.textContent).to.equal("max");
+			expect(renders).to.equal(3);
+		});
+
 		it("should activate signal accessed in render", () => {
 			const sig = signal(null);
 
