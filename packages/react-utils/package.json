@@ -1,0 +1,63 @@
+{
+  "name": "@preact/signals-react-utils",
+  "version": "0.0.0",
+  "license": "MIT",
+  "description": "Utilities for @preact/signals-react",
+  "keywords": [],
+  "authors": [
+    "The Preact Authors (https://github.com/preactjs/signals/contributors)"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/preactjs/signals",
+    "directory": "packages/react-utils"
+  },
+  "bugs": "https://github.com/preactjs/signals/issues",
+  "homepage": "https://preactjs.com",
+  "funding": {
+    "type": "opencollective",
+    "url": "https://opencollective.com/preact"
+  },
+  "amdName": "reactSignalUtils",
+  "main": "dist/signalUtils.js",
+  "module": "dist/signalUtils.module.js",
+  "unpkg": "dist/signalUtils.min.js",
+  "types": "dist/signalUtils.d.ts",
+  "source": "src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/signalUtils.d.ts",
+      "browser": "./dist/signalUtils.module.js",
+      "import": "./dist/signalUtils.mjs",
+      "require": "./dist/signalUtils.js"
+    }
+  },
+  "mangle": "../../mangle.json",
+  "files": [
+    "src",
+    "dist",
+    "CHANGELOG.md",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "prepublishOnly": "cd ../.. && pnpm build:react-utils"
+  },
+  "dependencies": {
+    "@preact/signals-core": "workspace:^1.7.0",
+    "@preact/signals-react": "workspace:^2.2.0"
+  },
+  "peerDependencies": {
+    "react": "^16.14.0 || 17.x || 18.x || 19.x"
+  },
+  "devDependencies": {
+    "@types/react": "^18.0.18",
+    "@types/react-dom": "^18.0.6",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.9.0"
+  },
+  "publishConfig": {
+    "provenance": true
+  }
+}
