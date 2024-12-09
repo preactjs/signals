@@ -224,6 +224,7 @@ const pkgList = {
 	core: "@preact/signals-core",
 	preact: "@preact/signals",
 	react: "@preact/signals-react",
+	"react-utils": "@preact/signals-react-utils",
 	"react/auto": "@preact/signals-react/auto",
 	"react/runtime": "@preact/signals-react/runtime",
 	"react-transform": "@preact/signals-react-transform",
@@ -304,19 +305,21 @@ module.exports = function (config) {
 		customLaunchers: localLaunchers,
 
 		files: [
-			...filteredPkgList.some(i => /^react/.test(i)) ? [
-				{
-					// Provide some NodeJS globals to run babel in a browser environment
-					pattern: "test/browser/nodeGlobals.js",
-					watched: false,
-					type: "js",
-				},
-				{
-					pattern: "test/browser/babel.js",
-					watched: false,
-					type: "js",
-				},
-			] : [],
+			...(filteredPkgList.some(i => /^react/.test(i))
+				? [
+						{
+							// Provide some NodeJS globals to run babel in a browser environment
+							pattern: "test/browser/nodeGlobals.js",
+							watched: false,
+							type: "js",
+						},
+						{
+							pattern: "test/browser/babel.js",
+							watched: false,
+							type: "js",
+						},
+				  ]
+				: []),
 			{
 				pattern:
 					process.env.TESTS ||

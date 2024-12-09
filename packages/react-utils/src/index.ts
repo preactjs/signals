@@ -1,5 +1,6 @@
 import { ReadonlySignal, Signal } from "@preact/signals-core";
 import { useSignal } from "@preact/signals-react";
+import { useSignals } from "@preact/signals-react/runtime";
 import { useMemo } from "react";
 
 interface ShowProps<T = boolean> {
@@ -9,6 +10,7 @@ interface ShowProps<T = boolean> {
 }
 
 export function Show<T = boolean>(props: ShowProps<T>) {
+	useSignals();
 	const value = props.when.value;
 	if (!value) return props.fallback || null;
 	return typeof props.children === "function"
@@ -23,6 +25,7 @@ interface ForProps<T> {
 }
 
 export function For<T>(props: ForProps<T>) {
+	useSignals();
 	const cache = useMemo(() => new Map(), []);
 	const list = props.each.value;
 	if (!list.length) return props.fallback || null;
@@ -35,6 +38,7 @@ export function For<T>(props: ForProps<T>) {
 }
 
 export function useLiveSignal<T>(value: Signal<T> | ReadonlySignal<T>) {
+	useSignals();
 	const s = useSignal(value);
 	if (s.peek() !== value) s.value = value;
 	return s;
