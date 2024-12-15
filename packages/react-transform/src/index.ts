@@ -342,11 +342,10 @@ function wrapInTryFinally(
 	path: NodePath<FunctionLike>,
 	state: PluginPass,
 	hookUsage: HookUsage
-): FunctionLike {
+): BabelTypes.BlockStatement {
 	const stopTrackingIdentifier = path.scope.generateUidIdentifier("effect");
 
-	const newFunction = t.cloneNode(path.node);
-	newFunction.body = t.blockStatement(
+	return t.blockStatement(
 		tryCatchTemplate({
 			STORE_IDENTIFIER: stopTrackingIdentifier,
 			HOOK_IDENTIFIER: get(state, getHookIdentifier)(),
@@ -356,29 +355,26 @@ function wrapInTryFinally(
 				: t.returnStatement(path.node.body),
 		})
 	);
-
-	return newFunction;
 }
 
 function prependUseSignals<T extends FunctionLike>(
 	t: typeof BabelTypes,
 	path: NodePath<T>,
 	state: PluginPass
-): T {
-	const newFunction = t.cloneNode(path.node);
-	newFunction.body = t.blockStatement([
+): BabelTypes.BlockStatement {
+	const body = t.blockStatement([
 		t.expressionStatement(
 			t.callExpression(get(state, getHookIdentifier)(), [])
 		),
 	]);
 	if (t.isBlockStatement(path.node.body)) {
 		// TODO: Is it okay to elide the block statement here?
-		newFunction.body.body.push(...path.node.body.body);
+		body.body.push(...path.node.body.body);
 	} else {
-		newFunction.body.body.push(t.returnStatement(path.node.body));
+		body.body.push(t.returnStatement(path.node.body));
 	}
 
-	return newFunction;
+	return body;
 }
 
 function transformFunction(
@@ -398,20 +394,15 @@ function transformFunction(
 		? MANAGED_COMPONENT
 		: UNMANAGED;
 
-	let newFunction: FunctionLike;
+	let newBody: BabelTypes.BlockStatement;
 	if (hookUsage !== UNMANAGED) {
-		newFunction = wrapInTryFinally(t, path, state, hookUsage);
+		newBody = wrapInTryFinally(t, path, state, hookUsage);
 	} else {
-		newFunction = prependUseSignals(t, path, state);
+		newBody = prependUseSignals(t, path, state);
 	}
 
-	// Using replaceWith keeps the existing leading comments already so
-	// we'll clear our cloned node's leading comments to ensure they
-	// aren't duplicated in the output.
-	newFunction.leadingComments = [];
-
 	setData(path, alreadyTransformed, true);
-	path.get("body").replaceWith(newFunction.body);
+	path.get("body").replaceWith(newBody);
 }
 
 function createImportLazily(
