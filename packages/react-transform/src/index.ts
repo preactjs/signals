@@ -411,7 +411,7 @@ function transformFunction(
 	newFunction.leadingComments = [];
 
 	setData(path, alreadyTransformed, true);
-	path.replaceWith(newFunction);
+	path.get("body").replaceWith(newFunction.body);
 }
 
 function createImportLazily(
