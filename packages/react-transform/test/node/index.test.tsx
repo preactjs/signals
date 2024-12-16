@@ -669,6 +669,7 @@ describe("React Signals Babel Transform", () => {
 				};
 			`);
 
+			scope.path.scope.crawl();
 			const signalsBinding = scope.bindings["_useSignals"];
 			expect(signalsBinding).to.exist;
 			expect(signalsBinding.kind).to.equal("module");
