@@ -1,5 +1,20 @@
 # @preact/signals-react-transform
 
+## 0.5.0
+
+### Minor Changes
+
+- [#624](https://github.com/preactjs/signals/pull/624) [`18b2f29`](https://github.com/preactjs/signals/commit/18b2f299c6d6985644a6459c9e9bb1a5863f02ac) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Bump `peerDependency` on React to support 19.x
+
+### Patch Changes
+
+- [#628](https://github.com/preactjs/signals/pull/628) [`c3e8e8c`](https://github.com/preactjs/signals/commit/c3e8e8c215881b82e491e84575a2b464fa4cfadc) Thanks [@Artur-](https://github.com/Artur-)! - Avoid cloning the top-level component function when we are
+  prepending `useSignals`. This fixes compatability with fast-refresh
+  as it requires the function identity to correctly leverage its
+  cache.
+- Updated dependencies [[`18b2f29`](https://github.com/preactjs/signals/commit/18b2f299c6d6985644a6459c9e9bb1a5863f02ac), [`57a7d38`](https://github.com/preactjs/signals/commit/57a7d38fcd8a65721feb9038ad4b04cd1e86a0b1), [`18b2f29`](https://github.com/preactjs/signals/commit/18b2f299c6d6985644a6459c9e9bb1a5863f02ac)]:
+  - @preact/signals-react@2.3.0
+
 ## 0.4.0
 
 ### Minor Changes

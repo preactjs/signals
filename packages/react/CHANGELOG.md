@@ -1,5 +1,17 @@
 # @preact/signals-react
 
+## 2.3.0
+
+### Minor Changes
+
+- [#624](https://github.com/preactjs/signals/pull/624) [`18b2f29`](https://github.com/preactjs/signals/commit/18b2f299c6d6985644a6459c9e9bb1a5863f02ac) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Bump `peerDependency` on React to support 19.x
+
+### Patch Changes
+
+- [#611](https://github.com/preactjs/signals/pull/611) [`57a7d38`](https://github.com/preactjs/signals/commit/57a7d38fcd8a65721feb9038ad4b04cd1e86a0b1) Thanks [@Xstoudi](https://github.com/Xstoudi)! - Silences noisy warnings about `useLayoutEffect` whilst using SSR by switching to an isomorphic layout effect hook
+
+- [#624](https://github.com/preactjs/signals/pull/624) [`18b2f29`](https://github.com/preactjs/signals/commit/18b2f299c6d6985644a6459c9e9bb1a5863f02ac) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Fix the stubbed ReactElementType to use the newly added traditional element in v19
+
 ## 2.2.0
 
 ### Minor Changes
