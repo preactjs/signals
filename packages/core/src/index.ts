@@ -272,7 +272,7 @@ declare class Signal<T = any> {
 	set value(value: T);
 }
 
-interface SignalOptions<T = any> {
+export interface SignalOptions<T = any> {
 	watched: (this: Signal<T>) => void;
 	unwatched: (this: Signal<T>) => void;
 }
