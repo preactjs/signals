@@ -628,8 +628,9 @@ Computed.prototype._subscribe = function (node) {
 
 Computed.prototype._unsubscribe = function (node) {
 	// Only run the unsubscribe step if the computed signal has any subscribers.
-	Signal.prototype._unsubscribe.call(this, node);
 	if (this._targets !== undefined) {
+		Signal.prototype._unsubscribe.call(this, node);
+
 		// Computed signal unsubscribes from its dependencies when it loses its last subscriber.
 		// This makes it possible for unreferences subgraphs of computed signals to get garbage collected.
 		if (this._targets === undefined) {
