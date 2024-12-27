@@ -537,19 +537,21 @@ declare class Computed<T = any> extends Signal<T> {
 	_globalVersion: number;
 	_flags: number;
 
-	constructor(fn: () => T);
+	constructor(fn: () => T, options?: SignalOptions<T>);
 
 	_notify(): void;
 	get value(): T;
 }
 
-function Computed(this: Computed, fn: () => unknown) {
+function Computed(this: Computed, fn: () => unknown, options?: SignalOptions) {
 	Signal.call(this, undefined);
 
 	this._fn = fn;
 	this._sources = undefined;
 	this._globalVersion = globalVersion - 1;
 	this._flags = OUTDATED;
+	this._watched = options?.watched;
+	this._unwatched = options?.unwatched;
 }
 
 Computed.prototype = new Signal() as Computed;
@@ -626,9 +628,8 @@ Computed.prototype._subscribe = function (node) {
 
 Computed.prototype._unsubscribe = function (node) {
 	// Only run the unsubscribe step if the computed signal has any subscribers.
+	Signal.prototype._unsubscribe.call(this, node);
 	if (this._targets !== undefined) {
-		Signal.prototype._unsubscribe.call(this, node);
-
 		// Computed signal unsubscribes from its dependencies when it loses its last subscriber.
 		// This makes it possible for unreferences subgraphs of computed signals to get garbage collected.
 		if (this._targets === undefined) {
@@ -699,8 +700,11 @@ interface ReadonlySignal<T = any> {
  * @param fn The effect callback.
  * @returns A new read-only signal.
  */
-function computed<T>(fn: () => T): ReadonlySignal<T> {
-	return new Computed(fn);
+function computed<T>(
+	fn: () => T,
+	options?: SignalOptions<T>
+): ReadonlySignal<T> {
+	return new Computed(fn, options);
 }
 
 function cleanupEffect(effect: Effect) {
