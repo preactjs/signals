@@ -372,11 +372,11 @@ export function useSignal<T>(value?: T, options?: SignalOptions<T>) {
 	);
 }
 
-export function useComputed<T>(compute: () => T) {
+export function useComputed<T>(compute: () => T, options?: SignalOptions<T>) {
 	const $compute = useRef(compute);
 	$compute.current = compute;
 	(currentComponent as AugmentedComponent)._updateFlags |= HAS_COMPUTEDS;
-	return useMemo(() => computed<T>(() => $compute.current()), []);
+	return useMemo(() => computed<T>(() => $compute.current(), options), []);
 }
 
 let oldNotify: (this: Effect) => void,

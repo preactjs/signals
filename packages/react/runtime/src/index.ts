@@ -394,10 +394,13 @@ export function useSignal<T>(value?: T, options?: SignalOptions<T>) {
 	);
 }
 
-export function useComputed<T>(compute: () => T): ReadonlySignal<T> {
+export function useComputed<T>(
+	compute: () => T,
+	options?: SignalOptions<T>
+): ReadonlySignal<T> {
 	const $compute = useRef(compute);
 	$compute.current = compute;
-	return useMemo(() => computed<T>(() => $compute.current()), Empty);
+	return useMemo(() => computed<T>(() => $compute.current(), options), Empty);
 }
 
 export function useSignalEffect(cb: () => void | (() => void)) {
