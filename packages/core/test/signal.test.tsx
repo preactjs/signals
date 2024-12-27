@@ -182,7 +182,7 @@ describe("signal", () => {
 		});
 	});
 
-	describe.only(".(un)watched()", () => {
+	describe(".(un)watched()", () => {
 		it("should call watched when first subscription occurs", () => {
 			const watched = sinon.spy();
 			const unwatched = sinon.spy();
