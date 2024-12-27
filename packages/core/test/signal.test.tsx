@@ -182,6 +182,22 @@ describe("signal", () => {
 		});
 	});
 
+	describe.only(".(un)watched()", () => {
+		it("should call watched when first subscription occurs", () => {
+			const watched = sinon.spy();
+			const unwatched = sinon.spy();
+			const s = signal(1, { watched, unwatched });
+			expect(watched).to.not.be.called;
+			const unsubscribe = s.subscribe(() => {});
+			expect(watched).to.be.calledOnce;
+			const unsubscribe2 = s.subscribe(() => {});
+			expect(watched).to.be.calledOnce;
+			unsubscribe();
+			unsubscribe2();
+			expect(unwatched).to.be.calledOnce;
+		});
+	});
+
 	it("signals should be identified with a symbol", () => {
 		const a = signal(0);
 		expect(a.brand).to.equal(Symbol.for("preact-signals"));
