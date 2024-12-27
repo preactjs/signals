@@ -239,7 +239,7 @@ declare class Signal<T = any> {
 	/** @internal */
 	_targets?: Node;
 
-	constructor(value?: T);
+	constructor(value?: T, options?: SignalOptions<T>);
 
 	/** @internal */
 	_refresh(): boolean;
@@ -249,6 +249,12 @@ declare class Signal<T = any> {
 
 	/** @internal */
 	_unsubscribe(node: Node): void;
+
+	/** @internal */
+	_watched?(this: Signal<T>): void;
+
+	/** @internal */
+	_unwatched?(this: Signal<T>): void;
 
 	subscribe(fn: (value: T) => void): () => void;
 
@@ -266,6 +272,11 @@ declare class Signal<T = any> {
 	set value(value: T);
 }
 
+interface SignalOptions<T = any> {
+	watched: (this: Signal<T>) => void;
+	unwatched: (this: Signal<T>) => void;
+}
+
 /** @internal */
 // @ts-ignore: "Cannot redeclare exported variable 'Signal'."
 //
@@ -274,11 +285,13 @@ declare class Signal<T = any> {
 //
 // The previously declared class is implemented here with ES5-style prototypes.
 // This enables better control of the transpiled output size.
-function Signal(this: Signal, value?: unknown) {
+function Signal(this: Signal, value?: unknown, options?: SignalOptions) {
 	this._value = value;
 	this._version = 0;
 	this._node = undefined;
 	this._targets = undefined;
+	this._watched = options?.watched;
+	this._unwatched = options?.unwatched;
 }
 
 Signal.prototype.brand = BRAND_SYMBOL;
@@ -288,6 +301,9 @@ Signal.prototype._refresh = function () {
 };
 
 Signal.prototype._subscribe = function (node) {
+	if (this._watched != null && this._targets === undefined) {
+		this._watched();
+	}
 	if (this._targets !== node && node._prevTarget === undefined) {
 		node._nextTarget = this._targets;
 		if (this._targets !== undefined) {
@@ -306,12 +322,18 @@ Signal.prototype._unsubscribe = function (node) {
 			prev._nextTarget = next;
 			node._prevTarget = undefined;
 		}
+
 		if (next !== undefined) {
 			next._prevTarget = prev;
 			node._nextTarget = undefined;
 		}
+
 		if (node === this._targets) {
 			this._targets = next;
+		}
+
+		if (this._unwatched != null && this._targets === undefined) {
+			this._unwatched();
 		}
 	}
 };
@@ -392,10 +414,10 @@ Object.defineProperty(Signal.prototype, "value", {
  * @param value The initial value for the signal.
  * @returns A new signal.
  */
-export function signal<T>(value: T): Signal<T>;
+export function signal<T>(value: T, options?: SignalOptions<T>): Signal<T>;
 export function signal<T = undefined>(): Signal<T | undefined>;
-export function signal<T>(value?: T): Signal<T> {
-	return new Signal(value);
+export function signal<T>(value?: T, options?: SignalOptions<T>): Signal<T> {
+	return new Signal(value, options);
 }
 
 function needsToRecompute(target: Computed | Effect): boolean {
