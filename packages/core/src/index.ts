@@ -301,15 +301,16 @@ Signal.prototype._refresh = function () {
 };
 
 Signal.prototype._subscribe = function (node) {
-	if (this._watched != null && this._targets === undefined) {
-		this._watched();
-	}
-	if (this._targets !== node && node._prevTarget === undefined) {
-		node._nextTarget = this._targets;
-		if (this._targets !== undefined) {
-			this._targets._prevTarget = node;
-		}
+	const targets = this._targets;
+	if (targets !== node && node._prevTarget === undefined) {
+		node._nextTarget = targets;
 		this._targets = node;
+
+		if (targets !== undefined) {
+			targets._prevTarget = node;
+		} else if (this._watched !== undefined) {
+			this._watched();
+		}
 	}
 };
 
@@ -330,10 +331,9 @@ Signal.prototype._unsubscribe = function (node) {
 
 		if (node === this._targets) {
 			this._targets = next;
-		}
-
-		if (this._unwatched != null && this._targets === undefined) {
-			this._unwatched();
+			if (next === undefined && this._unwatched !== undefined) {
+				this._unwatched();
+			}
 		}
 	}
 };
