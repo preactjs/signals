@@ -23,12 +23,13 @@
     "url": "https://opencollective.com/preact"
   },
   "main": "dist/signals-transform.js",
-  "module": "dist/signals-transform.module.js",
+  "module": "dist/signals-transform.mjs",
   "types": "dist/signals-transform.d.ts",
   "source": "src/index.ts",
   "exports": {
     ".": {
       "types": "./dist/signals-transform.d.ts",
+      "module": "./dist/signals-transform.mjs",
       "import": "./dist/signals-transform.mjs",
       "require": "./dist/signals-transform.js"
     }
