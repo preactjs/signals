@@ -13,9 +13,6 @@ import {
 	version as reactVersion,
 } from "react";
 import { useSyncExternalStore } from "use-sync-external-store/shim/index.js";
-import { isAutoSignalTrackingInstalled } from "./auto";
-
-export { installAutoSignalTracking } from "./auto";
 
 const [major] = reactVersion.split(".").map(Number);
 const Empty = [] as const;
@@ -24,8 +21,6 @@ const Empty = [] as const;
 const ReactElemType = Symbol.for(
 	major >= 19 ? "react.transitional.element" : "react.element"
 );
-
-const noop = () => {};
 
 export function wrapJsx<T>(jsx: T): T {
 	if (typeof jsx !== "function") return jsx;
@@ -290,31 +285,6 @@ function createEffectStore(_usage: EffectStoreUsage): EffectStore {
 	};
 }
 
-function createEmptyEffectStore(): EffectStore {
-	return {
-		_usage: UNMANAGED,
-		effect: {
-			_sources: undefined,
-			_callback() {},
-			_start() {
-				return noop;
-			},
-			_dispose() {},
-		},
-		subscribe() {
-			return noop;
-		},
-		getSnapshot() {
-			return 0;
-		},
-		_start() {},
-		f() {},
-		[symDispose]() {},
-	};
-}
-
-const emptyEffectStore = createEmptyEffectStore();
-
 const _queueMicroTask = Promise.prototype.then.bind(Promise.resolve());
 
 let finalCleanup: Promise<void> | undefined;
@@ -380,7 +350,6 @@ Object.defineProperties(Signal.prototype, {
 });
 
 export function useSignals(usage?: EffectStoreUsage): EffectStore {
-	if (isAutoSignalTrackingInstalled) return emptyEffectStore;
 	return _useSignalsImplementation(usage);
 }
 
