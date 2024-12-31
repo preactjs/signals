@@ -1,5 +1,11 @@
 # @preact/signals-react
 
+## 3.0.0
+
+### Major Changes
+
+- [#638](https://github.com/preactjs/signals/pull/638) [`8c72dff`](https://github.com/preactjs/signals/commit/8c72dff85b1a6c8a2e724aeeab27daf95ad8c75f) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Remove `/auto` and automatic tracking as it is incompatible with React 19
+
 ## 2.3.0
 
 ### Minor Changes
