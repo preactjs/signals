@@ -1,5 +1,5 @@
-import { signal, useSignalEffect } from "@preact/signals-react";
-import { useSignals } from "@preact/signals-react/runtime";
+import { signal, useSignalEffect } from "../../../";
+import { useSignals } from "./../../../runtime";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { mountSignalsTests } from "../../../test/shared/mounting";
