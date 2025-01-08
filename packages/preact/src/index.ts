@@ -30,6 +30,7 @@ export {
 };
 
 const HAS_PENDING_UPDATE = 1 << 0;
+const HAS_HOOK_STATE = 1 << 1;
 const HAS_COMPUTEDS = 1 << 2;
 
 // Install a Preact options hook
@@ -299,6 +300,13 @@ hook(OptionsTypes.UNMOUNT, (old, vnode: VNode) => {
 	old(vnode);
 });
 
+/** Mark components that use hook state so we can skip sCU optimization. */
+hook(OptionsTypes.HOOK, (old, component, index, type) => {
+	if (type < 3 || type === 9)
+		(component as AugmentedComponent)._updateFlags |= HAS_HOOK_STATE;
+	old(component, index, type);
+});
+
 /**
  * Auto-memoize components that use Signals/Computeds.
  * Note: Does _not_ optimize components that use hook/class state.
@@ -312,15 +320,18 @@ Component.prototype.shouldComponentUpdate = function (
 	const updater = this._updater;
 	const hasSignals = updater && updater._sources !== undefined;
 
-	// if this component used no signals or computeds, update:
-	if (!hasSignals && !(this._updateFlags & HAS_COMPUTEDS)) return true;
+	// If this is a component using state, rerender
+	// @ts-ignore
+	for (let i in state) return true;
+
+	const hasHooksState = this._updateFlags & HAS_HOOK_STATE;
+	// if this component used no signals or computeds and no hooks state, update:
+	if (!hasSignals && !hasHooksState && !(this._updateFlags & HAS_COMPUTEDS))
+		return true;
 
 	// if there is a pending re-render triggered from Signals,
 	// or if there is hook or class state, update:
 	if (this._updateFlags & HAS_PENDING_UPDATE) return true;
-
-	// @ts-ignore
-	for (let i in state) return true;
 
 	// if any non-Signal props changed, update:
 	for (let i in props) {
