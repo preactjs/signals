@@ -18,6 +18,11 @@ export interface AugmentedElement extends HTMLElement {
 }
 
 export interface AugmentedComponent extends Component<any, any> {
+	//  hasScuFromHooks
+	// Preact 10.12 - Preact 10.25
+	u?: boolean;
+	// Preact 10.26 and onwards
+	__f?: boolean;
 	__v: VNode;
 	_updater?: Effect;
 	_updateFlags: number;
