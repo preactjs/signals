@@ -1,6 +1,6 @@
 {
   "name": "@preact/signals-react",
-  "version": "2.3.0",
+  "version": "3.0.0",
   "license": "MIT",
   "description": "Manage state with style in React",
   "keywords": [],
@@ -37,14 +37,7 @@
       "import": "./runtime/dist/runtime.mjs",
       "require": "./runtime/dist/runtime.js"
     },
-    "./runtime/package.json": "./runtime/package.json",
-    "./auto": {
-      "types": "./auto/dist/index.d.ts",
-      "browser": "./auto/dist/auto.module.js",
-      "import": "./auto/dist/auto.mjs",
-      "require": "./auto/dist/auto.js"
-    },
-    "./auto/package.json": "./auto/package.json"
+    "./runtime/package.json": "./runtime/package.json"
   },
   "mangle": "../../mangle.json",
   "files": [
@@ -53,15 +46,12 @@
     "runtime/dist",
     "runtime/src",
     "runtime/package.json",
-    "auto/dist",
-    "auto/src",
-    "auto/package.json",
     "CHANGELOG.md",
     "LICENSE",
     "README.md"
   ],
   "scripts": {
-    "prepublishOnly": "cd ../.. && pnpm build:react-runtime && pnpm build:react-auto && pnpm build:react"
+    "prepublishOnly": "cd ../.. && pnpm build:react-runtime && pnpm build:react"
   },
   "dependencies": {
     "@preact/signals-core": "workspace:^1.7.0",
