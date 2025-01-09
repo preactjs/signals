@@ -285,6 +285,33 @@ function createEffectStore(_usage: EffectStoreUsage): EffectStore {
 	};
 }
 
+const noop = () => {};
+
+function createEmptyEffectStore(): EffectStore {
+	return {
+		_usage: UNMANAGED,
+		effect: {
+			_sources: undefined,
+			_callback() {},
+			_start() {
+				return /* endEffect */ noop;
+			},
+			_dispose() {},
+		},
+		subscribe() {
+			return /* unsubscribe */ noop;
+		},
+		getSnapshot() {
+			return 0;
+		},
+		_start() {},
+		f() {},
+		[symDispose]() {},
+	};
+}
+
+const emptyEffectStore = createEmptyEffectStore();
+
 const _queueMicroTask = Promise.prototype.then.bind(Promise.resolve());
 
 let finalCleanup: Promise<void> | undefined;
@@ -312,7 +339,11 @@ export function _useSignalsImplementation(
 
 	const storeRef = useRef<EffectStore>();
 	if (storeRef.current == null) {
-		storeRef.current = createEffectStore(_usage);
+		if (typeof window === "undefined") {
+			storeRef.current = emptyEffectStore;
+		} else {
+			storeRef.current = createEffectStore(_usage);
+		}
 	}
 
 	const store = storeRef.current;
