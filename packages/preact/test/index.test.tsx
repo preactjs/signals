@@ -852,7 +852,6 @@ describe("@preact/signals", () => {
 			};
 
 			return (
-				// @ts-expect-error
 				<Context.Provider value={context}>{props.children}</Context.Provider>
 			);
 		}
