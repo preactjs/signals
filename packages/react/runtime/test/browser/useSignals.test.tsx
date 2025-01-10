@@ -453,6 +453,32 @@ describe("useSignals", () => {
 		expect(scratch.innerHTML).to.equal("<div>Hello John!</div>");
 	});
 
+	it("should clean up signal dependencies after unmounting", async () => {
+		const getTargets = (s: any): any => s.t ?? s._targets;
+
+		const sig = signal(0);
+		function App() {
+			const effectStore = useSignals(/* MANAGED_COMPONENT */ 1);
+			try {
+				return <p>{sig.value}</p>;
+			} finally {
+				effectStore.f();
+			}
+		}
+
+		expect(getTargets(sig)).to.be.undefined;
+
+		await render(<App />);
+		expect(scratch.innerHTML).to.equal("<p>0</p>");
+		expect(getTargets(sig)).to.be.not.null.and.not.undefined;
+
+		act(() => root.unmount());
+		expect(scratch.innerHTML).to.equal("");
+
+		await Promise.resolve();
+		expect(getTargets(sig)).to.be.undefined;
+	});
+
 	// TODO: Figure out what to do here...
 	it.skip("(managed) should work with components that use render props", async () => {
 		function AutoFocusWithin({
