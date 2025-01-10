@@ -328,15 +328,26 @@ Component.prototype.shouldComponentUpdate = function (
 	// 	});
 	// }
 
-	// if this component used no signals or computeds, update:
-	if (!hasSignals && !(this._updateFlags & HAS_COMPUTEDS)) return true;
-
-	// if there is a pending re-render triggered from Signals,
-	// or if there is hook or class state, update:
-	if (this._updateFlags & (HAS_PENDING_UPDATE | HAS_HOOK_STATE)) return true;
-
 	// @ts-ignore
 	for (let i in state) return true;
+
+	if (this.__f || (typeof this.u == "boolean" && this.u === true)) {
+		const hasHooksState = this._updateFlags & HAS_HOOK_STATE;
+		// if this component used no signals or computeds and no hooks state, update:
+		if (!hasSignals && !hasHooksState && !(this._updateFlags & HAS_COMPUTEDS))
+			return true;
+
+		// if there is a pending re-render triggered from Signals,
+		// or if there is hooks state, update:
+		if (this._updateFlags & HAS_PENDING_UPDATE) return true;
+	} else {
+		// if this component used no signals or computeds, update:
+		if (!hasSignals && !(this._updateFlags & HAS_COMPUTEDS)) return true;
+
+		// if there is a pending re-render triggered from Signals,
+		// or if there is hooks state, update:
+		if (this._updateFlags & (HAS_PENDING_UPDATE | HAS_HOOK_STATE)) return true;
+	}
 
 	// if any non-Signal props changed, update:
 	for (let i in props) {
