@@ -320,37 +320,27 @@ Component.prototype.shouldComponentUpdate = function (
 	const updater = this._updater;
 	const hasSignals = updater && updater._sources !== undefined;
 
-	// let reason;
-	// if (!hasSignals && !hasComputeds.has(this)) {
-	// 	reason = "no signals or computeds";
-	// } else if (hasPendingUpdate.has(this)) {
-	// 	reason = "has pending update";
-	// } else if (hasHookState.has(this)) {
-	// 	reason = "has hook state";
-	// }
-	// if (reason) {
-	// 	if (!this) reason += " (`this` bug)";
-	// 	console.log("not optimizing", this?.constructor?.name, ": ", reason, {
-	// 		details: {
-	// 			hasSignals,
-	// 			hasComputeds: hasComputeds.has(this),
-	// 			hasPendingUpdate: hasPendingUpdate.has(this),
-	// 			hasHookState: hasHookState.has(this),
-	// 			deps: Array.from(updater._deps),
-	// 			updater,
-	// 		},
-	// 	});
-	// }
-
-	// if this component used no signals or computeds, update:
-	if (!hasSignals && !(this._updateFlags & HAS_COMPUTEDS)) return true;
-
-	// if there is a pending re-render triggered from Signals,
-	// or if there is hook or class state, update:
-	if (this._updateFlags & (HAS_PENDING_UPDATE | HAS_HOOK_STATE)) return true;
-
+	// If this is a component using state, rerender
 	// @ts-ignore
 	for (let i in state) return true;
+
+	if (this.__f || (typeof this.u == "boolean" && this.u === true)) {
+		const hasHooksState = this._updateFlags & HAS_HOOK_STATE;
+		// if this component used no signals or computeds and no hooks state, update:
+		if (!hasSignals && !hasHooksState && !(this._updateFlags & HAS_COMPUTEDS))
+			return true;
+
+		// if there is a pending re-render triggered from Signals,
+		// or if there is hooks state, update:
+		if (this._updateFlags & HAS_PENDING_UPDATE) return true;
+	} else {
+		// if this component used no signals or computeds, update:
+		if (!hasSignals && !(this._updateFlags & HAS_COMPUTEDS)) return true;
+
+		// if there is a pending re-render triggered from Signals,
+		// or if there is hooks state, update:
+		if (this._updateFlags & (HAS_PENDING_UPDATE | HAS_HOOK_STATE)) return true;
+	}
 
 	// if any non-Signal props changed, update:
 	for (let i in props) {

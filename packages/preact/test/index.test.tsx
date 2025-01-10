@@ -9,7 +9,7 @@ import {
 import type { ReadonlySignal } from "@preact/signals";
 import { createElement, createRef, render, createContext } from "preact";
 import type { ComponentChildren, FunctionComponent } from "preact";
-import { useContext, useRef, useState } from "preact/hooks";
+import { useContext, useEffect, useRef, useState } from "preact/hooks";
 import { setupRerender, act } from "preact/test-utils";
 
 const sleep = (ms?: number) => new Promise(r => setTimeout(r, ms));
@@ -828,5 +828,61 @@ describe("@preact/signals", () => {
 			expect(spy).not.to.have.been.called;
 			expect(cleanup).to.have.been.calledOnceWith("foo", child);
 		});
+	});
+
+	// TODO: add test when we upgrade lockfile and Preact to latest
+	it.skip("Should take hooks-state settling in account", () => {
+		const renderSpy = sinon.spy();
+		const Context = createContext({
+			addModal: () => {},
+			removeModal: () => {},
+		});
+
+		function ModalProvider(props: any) {
+			let [modalCount, setModalCount] = useState(0);
+			renderSpy(modalCount);
+			let context = {
+				modalCount,
+				addModal() {
+					setModalCount(count => count + 1);
+				},
+				removeModal() {
+					setModalCount(count => count - 1);
+				},
+			};
+
+			return (
+				<Context.Provider value={context}>{props.children}</Context.Provider>
+			);
+		}
+
+		function useModal() {
+			let context = useContext(Context);
+			useEffect(() => {
+				context.addModal();
+				return () => {
+					context.removeModal();
+				};
+			}, [context]);
+		}
+
+		function Popover() {
+			useModal();
+			return <div>Popover</div>;
+		}
+
+		function App() {
+			return (
+				<ModalProvider>
+					<Popover />
+				</ModalProvider>
+			);
+		}
+
+		act(() => {
+			render(<App />, scratch);
+		});
+
+		expect(renderSpy).to.be.calledTwice;
 	});
 });
