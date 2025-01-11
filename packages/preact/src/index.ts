@@ -33,6 +33,17 @@ const HAS_PENDING_UPDATE = 1 << 0;
 const HAS_HOOK_STATE = 1 << 1;
 const HAS_COMPUTEDS = 1 << 2;
 
+let oldNotify: (this: Effect) => void,
+	effectsQueue: Array<Effect> = [],
+	domQueue: Array<Effect> = [];
+
+// Capture the original `Effect.prototype._notify` method so that we can install
+// custom `._notify`s for each different use-case but still call the original
+// implementation in the end. Dispose the temporary effect immediately afterwards.
+effect(function (this: Effect) {
+	oldNotify = this._notify;
+})();
+
 // Install a Preact options hook
 function hook<T extends OptionsTypes>(hookName: T, hookFn: HookFn<T>) {
 	// @ts-ignore-next-line private options hooks usage
@@ -110,7 +121,6 @@ function SignalValue(this: AugmentedComponent, { data }: { data: Signal }) {
 		};
 
 		effect(function (this: Effect) {
-			if (!oldNotify) oldNotify = this._notify;
 			this._notify = notifyDomUpdates;
 			const val = wrappedSignal.value;
 			if (isText.value && self.base) {
@@ -254,7 +264,6 @@ function createPropUpdater(
 			props = newProps;
 		},
 		_dispose: effect(function (this: Effect) {
-			if (!oldNotify) oldNotify = this._notify;
 			this._notify = notifyDomUpdates;
 			const value = changeSignal.value.value;
 			// If Preact just rendered this value, don't render it again:
@@ -365,10 +374,6 @@ export function useComputed<T>(compute: () => T) {
 	return useMemo(() => computed<T>(() => $compute.current()), []);
 }
 
-let oldNotify: (this: Effect) => void,
-	effectsQueue: Array<Effect> = [],
-	domQueue: Array<Effect> = [];
-
 const deferEffects =
 	typeof requestAnimationFrame === "undefined"
 		? setTimeout
@@ -416,7 +421,6 @@ export function useSignalEffect(cb: () => void | (() => void)) {
 
 	useEffect(() => {
 		return effect(function (this: Effect) {
-			if (!oldNotify) oldNotify = this._notify;
 			this._notify = notifyEffects;
 			return callback.current();
 		});
