@@ -19,6 +19,7 @@
       }
     },
     "compress": {
+      "pure_getters": false,
       "conditionals": false,
       "loops": false,
       "sequences": false
