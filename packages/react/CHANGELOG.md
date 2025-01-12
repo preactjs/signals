@@ -1,5 +1,11 @@
 # @preact/signals-react
 
+## 3.0.1
+
+### Patch Changes
+
+- [#640](https://github.com/preactjs/signals/pull/640) [`503128f`](https://github.com/preactjs/signals/commit/503128f55af128ddc3b1f2133bc90f576d699d6c) Thanks [@andrewiggins](https://github.com/andrewiggins)! - Don't track signals read during an SSR render (e.g. renderToString, renderToStaticMarkup)
+
 ## 3.0.0
 
 ### Major Changes
