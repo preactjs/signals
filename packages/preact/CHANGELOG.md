@@ -1,5 +1,13 @@
 # @preact/signals
 
+## 2.0.1
+
+### Patch Changes
+
+- [#647](https://github.com/preactjs/signals/pull/647) [`655905b`](https://github.com/preactjs/signals/commit/655905bc6e5ee8ba30d578e2a7bf02a9c83ee38c) Thanks [@jviide](https://github.com/jviide)! - Ensure that text effects get disposed
+
+- [#630](https://github.com/preactjs/signals/pull/630) [`4b9144f`](https://github.com/preactjs/signals/commit/4b9144f7f13815013f78299dd487344d3750fd8f) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Change the way we deal with state settling hooks, when we know we are dealing with hooks that can settle their A -> B -> A state (and wind up at the same value). We should not verbatim rerender in our custom shouldComponentUpdate. Instead we should trust that hooks have handled their own state settling.
+
 ## 2.0.0
 
 ### Major Changes
