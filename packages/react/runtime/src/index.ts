@@ -4,6 +4,7 @@ import {
 	effect,
 	Signal,
 	ReadonlySignal,
+	SignalOptions,
 } from "@preact/signals-core";
 import {
 	useRef,
@@ -384,16 +385,22 @@ export function useSignals(usage?: EffectStoreUsage): EffectStore {
 	return _useSignalsImplementation(usage);
 }
 
-export function useSignal<T>(value: T): Signal<T>;
+export function useSignal<T>(value: T, options?: SignalOptions<T>): Signal<T>;
 export function useSignal<T = undefined>(): Signal<T | undefined>;
-export function useSignal<T>(value?: T) {
-	return useMemo(() => signal<T | undefined>(value), Empty);
+export function useSignal<T>(value?: T, options?: SignalOptions<T>) {
+	return useMemo(
+		() => signal<T | undefined>(value, options as SignalOptions),
+		Empty
+	);
 }
 
-export function useComputed<T>(compute: () => T): ReadonlySignal<T> {
+export function useComputed<T>(
+	compute: () => T,
+	options?: SignalOptions<T>
+): ReadonlySignal<T> {
 	const $compute = useRef(compute);
 	$compute.current = compute;
-	return useMemo(() => computed<T>(() => $compute.current()), Empty);
+	return useMemo(() => computed<T>(() => $compute.current(), options), Empty);
 }
 
 export function useSignalEffect(cb: () => void | (() => void)) {
