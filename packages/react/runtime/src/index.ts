@@ -14,9 +14,6 @@ import {
 	version as reactVersion,
 } from "react";
 import { useSyncExternalStore } from "use-sync-external-store/shim/index.js";
-import { isAutoSignalTrackingInstalled } from "./auto";
-
-export { installAutoSignalTracking } from "./auto";
 
 const [major] = reactVersion.split(".").map(Number);
 const Empty = [] as const;
@@ -25,8 +22,6 @@ const Empty = [] as const;
 const ReactElemType = Symbol.for(
 	major >= 19 ? "react.transitional.element" : "react.element"
 );
-
-const noop = () => {};
 
 export function wrapJsx<T>(jsx: T): T {
 	if (typeof jsx !== "function") return jsx;
@@ -291,6 +286,8 @@ function createEffectStore(_usage: EffectStoreUsage): EffectStore {
 	};
 }
 
+const noop = () => {};
+
 function createEmptyEffectStore(): EffectStore {
 	return {
 		_usage: UNMANAGED,
@@ -298,12 +295,12 @@ function createEmptyEffectStore(): EffectStore {
 			_sources: undefined,
 			_callback() {},
 			_start() {
-				return noop;
+				return /* endEffect */ noop;
 			},
 			_dispose() {},
 		},
 		subscribe() {
-			return noop;
+			return /* unsubscribe */ noop;
 		},
 		getSnapshot() {
 			return 0;
@@ -343,7 +340,11 @@ export function _useSignalsImplementation(
 
 	const storeRef = useRef<EffectStore>();
 	if (storeRef.current == null) {
-		storeRef.current = createEffectStore(_usage);
+		if (typeof window === "undefined") {
+			storeRef.current = emptyEffectStore;
+		} else {
+			storeRef.current = createEffectStore(_usage);
+		}
 	}
 
 	const store = storeRef.current;
@@ -381,7 +382,6 @@ Object.defineProperties(Signal.prototype, {
 });
 
 export function useSignals(usage?: EffectStoreUsage): EffectStore {
-	if (isAutoSignalTrackingInstalled) return emptyEffectStore;
 	return _useSignalsImplementation(usage);
 }
 

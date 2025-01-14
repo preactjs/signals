@@ -1,5 +1,12 @@
 # @preact/signals-react-transform
 
+## 0.5.1
+
+### Patch Changes
+
+- Updated dependencies [[`8c72dff`](https://github.com/preactjs/signals/commit/8c72dff85b1a6c8a2e724aeeab27daf95ad8c75f)]:
+  - @preact/signals-react@3.0.0
+
 ## 0.5.0
 
 ### Minor Changes

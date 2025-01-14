@@ -98,6 +98,10 @@ function Counter() {
 }
 ```
 
+### Using signals with React's SSR APIs
+
+Components rendered using SSR APIs (e.g. `renderToString`) in a server environment (i.e. an environment without a global `window` object) will not track signals used during render. Components generally don't rerender when using SSR APIs so tracking signal usage is useless since changing these signals can't trigger a rerender.
+
 ### Rendering optimizations
 
 The React adapter ships with several optimizations it can apply out of the box to skip virtual-dom rendering entirely. If you pass a signal directly into JSX, it will bind directly to the DOM `Text` node that is created and update that whenever the signal changes.
@@ -132,7 +136,7 @@ To opt into this optimization, simply pass the signal directly instead of access
 
 This version of React integration does not support passing signals as DOM attributes. Support for this may be added at a later date.
 
-Using signals into render props is not recommended. In this situation, the component that reads the signal is the component that calls the render prop, which may or may not be hooked up to track signals. For example:
+Using signals in render props is not recommended. In this situation, the component that reads the signal is the component that calls the render prop, which may or may not be hooked up to track signals. For example:
 
 ```js
 const count = signal(0);

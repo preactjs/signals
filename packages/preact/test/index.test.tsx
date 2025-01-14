@@ -8,8 +8,8 @@ import {
 } from "@preact/signals";
 import type { ReadonlySignal } from "@preact/signals";
 import { createElement, createRef, render, createContext } from "preact";
-import type { ComponentChildren, FunctionComponent } from "preact";
-import { useContext, useRef, useState } from "preact/hooks";
+import type { ComponentChildren, FunctionComponent, VNode } from "preact";
+import { useContext, useEffect, useRef, useState } from "preact/hooks";
 import { setupRerender, act } from "preact/test-utils";
 
 const sleep = (ms?: number) => new Promise(r => setTimeout(r, ms));
@@ -231,6 +231,61 @@ describe("@preact/signals", () => {
 			text = scratch.firstChild!.firstChild!;
 			expect(text).to.be.an.instanceOf(HTMLSpanElement);
 			expect(text.textContent).to.equal("d");
+		});
+
+		describe("garbage collection", function () {
+			// Skip GC tests if window.gc/global.gc is not defined.
+			before(function () {
+				if (typeof gc === "undefined") {
+					this.skip();
+				}
+			});
+
+			it("should not hold on to references to signals and computeds after unmount", async () => {
+				const sig = signal("test");
+
+				let update: (content: VNode) => void;
+				function App() {
+					const [content, setContent] = useState(<div>{sig}</div>);
+					update = setContent;
+					return content;
+				}
+
+				render(<App />, scratch);
+				expect(scratch.firstChild!.firstChild!).to.have.property(
+					"data",
+					"test"
+				);
+
+				let ref: WeakRef<ReadonlySignal>;
+				(function () {
+					// Create a new computed inside a new IIFE scope, so that
+					// we can explicitly hold a _only_ weak reference to it.
+					const c = computed(() => sig.value + " computed");
+					ref = new WeakRef(c);
+
+					// Mount the new computed to App. Wrap it inside <span> so that `c`
+					// will get unmounted when we replace the spans with divs later.
+					act(() => update(<span>{c}</span>));
+				})();
+
+				expect(scratch.firstChild!.firstChild!).to.have.property(
+					"data",
+					"test computed"
+				);
+
+				act(() => update(<div>{sig}</div>));
+				expect(scratch.firstChild!.firstChild!).to.have.property(
+					"data",
+					"test"
+				);
+
+				// Ensure that the computed has a chance to get GC'd.
+				(gc as () => void)();
+				await sleep(0);
+				(gc as () => void)();
+				expect(ref.deref()).to.be.undefined;
+			});
 		});
 	});
 
@@ -828,5 +883,61 @@ describe("@preact/signals", () => {
 			expect(spy).not.to.have.been.called;
 			expect(cleanup).to.have.been.calledOnceWith("foo", child);
 		});
+	});
+
+	// TODO: add test when we upgrade lockfile and Preact to latest
+	it.skip("Should take hooks-state settling in account", () => {
+		const renderSpy = sinon.spy();
+		const Context = createContext({
+			addModal: () => {},
+			removeModal: () => {},
+		});
+
+		function ModalProvider(props: any) {
+			let [modalCount, setModalCount] = useState(0);
+			renderSpy(modalCount);
+			let context = {
+				modalCount,
+				addModal() {
+					setModalCount(count => count + 1);
+				},
+				removeModal() {
+					setModalCount(count => count - 1);
+				},
+			};
+
+			return (
+				<Context.Provider value={context}>{props.children}</Context.Provider>
+			);
+		}
+
+		function useModal() {
+			let context = useContext(Context);
+			useEffect(() => {
+				context.addModal();
+				return () => {
+					context.removeModal();
+				};
+			}, [context]);
+		}
+
+		function Popover() {
+			useModal();
+			return <div>Popover</div>;
+		}
+
+		function App() {
+			return (
+				<ModalProvider>
+					<Popover />
+				</ModalProvider>
+			);
+		}
+
+		act(() => {
+			render(<App />, scratch);
+		});
+
+		expect(renderSpy).to.be.calledTwice;
 	});
 });

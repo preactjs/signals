@@ -34,6 +34,17 @@ const HAS_PENDING_UPDATE = 1 << 0;
 const HAS_HOOK_STATE = 1 << 1;
 const HAS_COMPUTEDS = 1 << 2;
 
+let oldNotify: (this: Effect) => void,
+	effectsQueue: Array<Effect> = [],
+	domQueue: Array<Effect> = [];
+
+// Capture the original `Effect.prototype._notify` method so that we can install
+// custom `._notify`s for each different use-case but still call the original
+// implementation in the end. Dispose the temporary effect immediately afterwards.
+effect(function (this: Effect) {
+	oldNotify = this._notify;
+})();
+
 // Install a Preact options hook
 function hook<T extends OptionsTypes>(hookName: T, hookFn: HookFn<T>) {
 	// @ts-ignore-next-line private options hooks usage
@@ -80,7 +91,7 @@ function SignalValue(this: AugmentedComponent, { data }: { data: Signal }) {
 	const currentSignal = useSignal(data);
 	currentSignal.value = data;
 
-	const s = useMemo(() => {
+	const [isText, s] = useMemo(() => {
 		let self = this;
 		// mark the parent component as having computeds so it gets optimized
 		let v = this.__v;
@@ -91,38 +102,51 @@ function SignalValue(this: AugmentedComponent, { data }: { data: Signal }) {
 			}
 		}
 
-		const wrappedSignal = computed(function (this: Effect) {
-			let data = currentSignal.value;
-			let s = data.value;
+		const wrappedSignal = computed(() => {
+			let s = currentSignal.value.value;
 			return s === 0 ? 0 : s === true ? "" : s || "";
 		});
 
-		const isText = computed(
-			() => isValidElement(wrappedSignal.value) || this.base?.nodeType !== 3
-		);
+		const isText = computed(() => !isValidElement(wrappedSignal.value));
 
-		this._updater!._callback = () => {
-			if (isValidElement(s.peek()) || this.base?.nodeType !== 3) {
-				this._updateFlags |= HAS_PENDING_UPDATE;
-				this.setState({});
-				return;
-			}
-			(this.base as Text).data = s.peek();
-		};
-
-		effect(function (this: Effect) {
-			if (!oldNotify) oldNotify = this._notify;
+		// Update text nodes directly without rerendering when the new value
+		// is also text.
+		const dispose = effect(function (this: Effect) {
 			this._notify = notifyDomUpdates;
-			const val = wrappedSignal.value;
-			if (isText.value && self.base) {
-				(self.base as Text).data = val;
+
+			// Subscribe to wrappedSignal updates only when its values are text...
+			if (isText.value) {
+				// ...but regardless of `self.base`'s current value, as it can be
+				// undefined before mounting or a non-text node. In both of those cases
+				// the update gets handled by a full rerender.
+				const value = wrappedSignal.value;
+				if (self.base && self.base.nodeType === 3) {
+					(self.base as Text).data = value;
+				}
 			}
 		});
 
-		return wrappedSignal;
+		// Piggyback this._updater's disposal to ensure that the text updater effect
+		// above also gets disposed on unmount.
+		const oldDispose = this._updater!._dispose;
+		this._updater!._dispose = function () {
+			dispose();
+			oldDispose.call(this);
+		};
+
+		return [isText, wrappedSignal];
 	}, []);
 
-	return s.value;
+	// Rerender the component whenever `data.value` changes from a VNode
+	// to another VNode, from text to a VNode, or from a VNode to text.
+	// That is, everything else except text-to-text updates.
+	//
+	// This also ensures that the backing DOM node types gets updated to
+	// text nodes and back when needed.
+	//
+	// For text-to-text updates, `.peek()` is used to skip full rerenders,
+	// leaving them to the optimized path above.
+	return isText.value ? s.peek() : s.value;
 }
 SignalValue.displayName = "_st";
 
@@ -255,7 +279,6 @@ function createPropUpdater(
 			props = newProps;
 		},
 		_dispose: effect(function (this: Effect) {
-			if (!oldNotify) oldNotify = this._notify;
 			this._notify = notifyDomUpdates;
 			const value = changeSignal.value.value;
 			// If Preact just rendered this value, don't render it again:
@@ -321,37 +344,27 @@ Component.prototype.shouldComponentUpdate = function (
 	const updater = this._updater;
 	const hasSignals = updater && updater._sources !== undefined;
 
-	// let reason;
-	// if (!hasSignals && !hasComputeds.has(this)) {
-	// 	reason = "no signals or computeds";
-	// } else if (hasPendingUpdate.has(this)) {
-	// 	reason = "has pending update";
-	// } else if (hasHookState.has(this)) {
-	// 	reason = "has hook state";
-	// }
-	// if (reason) {
-	// 	if (!this) reason += " (`this` bug)";
-	// 	console.log("not optimizing", this?.constructor?.name, ": ", reason, {
-	// 		details: {
-	// 			hasSignals,
-	// 			hasComputeds: hasComputeds.has(this),
-	// 			hasPendingUpdate: hasPendingUpdate.has(this),
-	// 			hasHookState: hasHookState.has(this),
-	// 			deps: Array.from(updater._deps),
-	// 			updater,
-	// 		},
-	// 	});
-	// }
-
-	// if this component used no signals or computeds, update:
-	if (!hasSignals && !(this._updateFlags & HAS_COMPUTEDS)) return true;
-
-	// if there is a pending re-render triggered from Signals,
-	// or if there is hook or class state, update:
-	if (this._updateFlags & (HAS_PENDING_UPDATE | HAS_HOOK_STATE)) return true;
-
+	// If this is a component using state, rerender
 	// @ts-ignore
 	for (let i in state) return true;
+
+	if (this.__f || (typeof this.u == "boolean" && this.u === true)) {
+		const hasHooksState = this._updateFlags & HAS_HOOK_STATE;
+		// if this component used no signals or computeds and no hooks state, update:
+		if (!hasSignals && !hasHooksState && !(this._updateFlags & HAS_COMPUTEDS))
+			return true;
+
+		// if there is a pending re-render triggered from Signals,
+		// or if there is hooks state, update:
+		if (this._updateFlags & HAS_PENDING_UPDATE) return true;
+	} else {
+		// if this component used no signals or computeds, update:
+		if (!hasSignals && !(this._updateFlags & HAS_COMPUTEDS)) return true;
+
+		// if there is a pending re-render triggered from Signals,
+		// or if there is hooks state, update:
+		if (this._updateFlags & (HAS_PENDING_UPDATE | HAS_HOOK_STATE)) return true;
+	}
 
 	// if any non-Signal props changed, update:
 	for (let i in props) {
@@ -378,10 +391,6 @@ export function useComputed<T>(compute: () => T, options?: SignalOptions<T>) {
 	(currentComponent as AugmentedComponent)._updateFlags |= HAS_COMPUTEDS;
 	return useMemo(() => computed<T>(() => $compute.current(), options), []);
 }
-
-let oldNotify: (this: Effect) => void,
-	effectsQueue: Array<Effect> = [],
-	domQueue: Array<Effect> = [];
 
 const deferEffects =
 	typeof requestAnimationFrame === "undefined"
@@ -430,7 +439,6 @@ export function useSignalEffect(cb: () => void | (() => void)) {
 
 	useEffect(() => {
 		return effect(function (this: Effect) {
-			if (!oldNotify) oldNotify = this._notify;
 			this._notify = notifyEffects;
 			return callback.current();
 		});
