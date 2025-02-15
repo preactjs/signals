@@ -119,8 +119,8 @@ function SignalValue(this: AugmentedComponent, { data }: { data: Signal }) {
 				// undefined before mounting or a non-text node. In both of those cases
 				// the update gets handled by a full rerender.
 				const value = wrappedSignal.value;
-				if (self.base && self.base.nodeType === 3) {
-					(self.base as Text).data = value;
+				if (self.__v && self.__v.__e && self.__v.__e.nodeType === 3) {
+					(self.__v.__e as Text).data = value;
 				}
 			}
 		});
