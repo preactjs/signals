@@ -1,5 +1,11 @@
 # @preact/signals
 
+## 2.0.2
+
+### Patch Changes
+
+- [#655](https://github.com/preactjs/signals/pull/655) [`6a0284c`](https://github.com/preactjs/signals/commit/6a0284ca233e666e16fcab2584269e2344062519) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Avoid usage of `.base` and check the `_dom` on the vnode instead
+
 ## 2.0.1
 
 ### Patch Changes
