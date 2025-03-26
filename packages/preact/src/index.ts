@@ -394,8 +394,8 @@ function afterNextFrame(callback: () => void) {
 
 	const done = () => {
 		clearTimeout(timeout);
-		if (HAS_RAF && raf != null) cancelAnimationFrame(raf);
-		setTimeout(callback);
+		if (raf != null) cancelAnimationFrame(raf);
+		callback();
 	};
 
 	const timeout = setTimeout(done, 100);
