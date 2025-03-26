@@ -107,6 +107,7 @@
       "socket.io": "~4.7.2"
     }
   },
+  "packageManager": "pnpm@10.7.0",
   "volta": {
     "node": "18.18.0"
   }
