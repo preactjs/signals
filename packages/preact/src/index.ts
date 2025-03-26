@@ -388,10 +388,22 @@ export function useComputed<T>(compute: () => T) {
 	return useMemo(() => computed<T>(() => $compute.current()), []);
 }
 
+const HAS_RAF = typeof requestAnimationFrame == "function";
+function afterNextFrame(callback: () => void) {
+	let raf: number | undefined;
+
+	const done = () => {
+		clearTimeout(timeout);
+		if (HAS_RAF && raf != null) cancelAnimationFrame(raf);
+		setTimeout(callback);
+	};
+
+	const timeout = setTimeout(done, 100);
+	if (HAS_RAF) raf = requestAnimationFrame(done);
+}
+
 const deferEffects =
-	typeof requestAnimationFrame === "undefined"
-		? setTimeout
-		: requestAnimationFrame;
+	typeof requestAnimationFrame === "undefined" ? setTimeout : afterNextFrame;
 
 const deferDomUpdates = (cb: any) => {
 	queueMicrotask(() => {
