@@ -388,18 +388,15 @@ export function useComputed<T>(compute: () => T) {
 	return useMemo(() => computed<T>(() => $compute.current()), []);
 }
 
-const HAS_RAF = typeof requestAnimationFrame == "function";
 function afterNextFrame(callback: () => void) {
-	let raf: number | undefined;
-
 	const done = () => {
 		clearTimeout(timeout);
-		if (raf != null) cancelAnimationFrame(raf);
+		cancelAnimationFrame(raf);
 		callback();
 	};
 
 	const timeout = setTimeout(done, 100);
-	if (HAS_RAF) raf = requestAnimationFrame(done);
+	const raf = requestAnimationFrame(done)
 }
 
 const deferEffects =
