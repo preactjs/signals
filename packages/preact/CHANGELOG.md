@@ -1,5 +1,13 @@
 # @preact/signals
 
+## 2.0.2
+
+### Patch Changes
+
+- [#655](https://github.com/preactjs/signals/pull/655) [`6a0284c`](https://github.com/preactjs/signals/commit/6a0284ca233e666e16fcab2584269e2344062519) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Avoid usage of `.base` and check the `_dom` on the vnode instead
+
+- [#660](https://github.com/preactjs/signals/pull/660) [`df4df76`](https://github.com/preactjs/signals/commit/df4df765bdeef3e976969d865f8d386a5effebd8) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Bail out of the animation frame with a setTimeout in case the origin page is hidden
+
 ## 2.0.1
 
 ### Patch Changes
