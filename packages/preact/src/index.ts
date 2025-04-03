@@ -122,8 +122,8 @@ function SignalValue(this: AugmentedComponent, { data }: { data: Signal }) {
 				// undefined before mounting or a non-text node. In both of those cases
 				// the update gets handled by a full rerender.
 				const value = wrappedSignal.value;
-				if (self.base && self.base.nodeType === 3) {
-					(self.base as Text).data = value;
+				if (self.__v && self.__v.__e && self.__v.__e.nodeType === 3) {
+					(self.__v.__e as Text).data = value;
 				}
 			}
 		});
@@ -391,10 +391,19 @@ export function useComputed<T>(compute: () => T) {
 	return useMemo(() => computed<T>(() => $compute.current()), []);
 }
 
+function safeRaf(callback: () => void) {
+	const done = () => {
+		clearTimeout(timeout);
+		cancelAnimationFrame(raf);
+		callback();
+	};
+
+	const timeout = setTimeout(done, 100);
+	const raf = requestAnimationFrame(done);
+}
+
 const deferEffects =
-	typeof requestAnimationFrame === "undefined"
-		? setTimeout
-		: requestAnimationFrame;
+	typeof requestAnimationFrame === "undefined" ? setTimeout : safeRaf;
 
 const deferDomUpdates = (cb: any) => {
 	queueMicrotask(() => {
