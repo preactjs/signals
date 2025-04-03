@@ -940,4 +940,26 @@ describe("@preact/signals", () => {
 
 		expect(renderSpy).to.be.calledTwice;
 	});
+
+	it("Array based signals should maintain reactivity", () => {
+		const count = signal([1, 2, 3].map(i => <div>{i}</div>));
+
+		function App() {
+			return <div>{count}</div>;
+		}
+
+		act(() => {
+			render(<App />, scratch);
+		});
+		expect(scratch.innerHTML).to.equal(
+			"<div><div>1</div><div>2</div><div>3</div></div>"
+		);
+
+		act(() => {
+			count.value = [4, 5, 6].map(i => <div>{i}</div>);
+		});
+		expect(scratch.innerHTML).to.equal(
+			"<div><div>4</div><div>5</div><div>6</div></div>"
+		);
+	});
 });

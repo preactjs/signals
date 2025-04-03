@@ -106,8 +106,11 @@ function SignalValue(this: AugmentedComponent, { data }: { data: Signal }) {
 			return s === 0 ? 0 : s === true ? "" : s || "";
 		});
 
-		const isText = computed(() => !isValidElement(wrappedSignal.value));
-
+		const isText = computed(
+			() =>
+				!Array.isArray(wrappedSignal.value) &&
+				!isValidElement(wrappedSignal.value)
+		);
 		// Update text nodes directly without rerendering when the new value
 		// is also text.
 		const dispose = effect(function (this: Effect) {
