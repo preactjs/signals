@@ -1,5 +1,11 @@
 # @preact/signals
 
+## 2.0.3
+
+### Patch Changes
+
+- [#666](https://github.com/preactjs/signals/pull/666) [`f72e769`](https://github.com/preactjs/signals/commit/f72e769b885690c4dd53011ab2244015ffd35cb1) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Fix array signals when used as jsx
+
 ## 2.0.2
 
 ### Patch Changes
