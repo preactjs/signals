@@ -1,5 +1,11 @@
 # @preact/signals
 
+## 2.0.4
+
+### Patch Changes
+
+- [#668](https://github.com/preactjs/signals/pull/668) [`36fcb2e`](https://github.com/preactjs/signals/commit/36fcb2e68876867f03fe5c8e3294a35386a885ff) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Correctly set peerDep of signals
+
 ## 2.0.3
 
 ### Patch Changes
