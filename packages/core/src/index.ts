@@ -456,7 +456,7 @@ function prepareSources(target: Computed | Effect) {
 
 function cleanupSources(target: Computed | Effect) {
 	let node = target._sources;
-	let head: Node;
+	let head: Node | undefined = undefined;
 
 	/**
 	 * At this point 'target._sources' points to the tail of the doubly-linked list.
