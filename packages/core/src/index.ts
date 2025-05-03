@@ -412,8 +412,7 @@ function needsToRecompute(target: Computed | Effect): boolean {
 		// dependency cycle), then we need to recompute.
 		if (
 			node._source._version !== node._version ||
-			!node._source._refresh() ||
-			node._source._version !== node._version
+			!node._source._refresh()
 		) {
 			return true;
 		}
