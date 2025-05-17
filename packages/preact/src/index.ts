@@ -398,7 +398,7 @@ function safeRaf(callback: () => void) {
 		callback();
 	};
 
-	const timeout = setTimeout(done, 100);
+	const timeout = setTimeout(done, 35);
 	const raf = requestAnimationFrame(done);
 }
 
