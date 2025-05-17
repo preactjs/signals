@@ -29,6 +29,8 @@
     "cname": 6,
     "props": {
       "core: Node": "",
+      "$_watched": "W",
+      "$_unwatched": "Z",
       "$_source": "S",
       "$_prevSource": "p",
       "$_nextSource": "n",
