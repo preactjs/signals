@@ -1,4 +1,4 @@
-import { options, Component, isValidElement } from "preact";
+import { options, Component, isValidElement, Fragment } from "preact";
 import { useRef, useMemo, useEffect } from "preact/hooks";
 import {
 	signal,
@@ -190,6 +190,12 @@ hook(OptionsTypes.DIFF, (old, vnode) => {
 
 /** Set up Updater before rendering a component */
 hook(OptionsTypes.RENDER, (old, vnode) => {
+	if (vnode.type === Fragment) {
+		// Ignore the Fragment inserted by preact.createElement().
+		old(vnode);
+		return;
+	}
+
 	setCurrentUpdater();
 
 	let updater;

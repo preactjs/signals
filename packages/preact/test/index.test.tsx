@@ -7,7 +7,13 @@ import {
 	useSignal,
 } from "@preact/signals";
 import type { ReadonlySignal } from "@preact/signals";
-import { createElement, createRef, render, createContext } from "preact";
+import {
+	createElement,
+	createRef,
+	render,
+	createContext,
+	Component,
+} from "preact";
 import type { ComponentChildren, FunctionComponent, VNode } from "preact";
 import { useContext, useEffect, useRef, useState } from "preact/hooks";
 import { setupRerender, act } from "preact/test-utils";
@@ -961,5 +967,38 @@ describe("@preact/signals", () => {
 		expect(scratch.innerHTML).to.equal(
 			"<div><div>4</div><div>5</div><div>6</div></div>"
 		);
+	});
+
+	describe("Preact class Component", () => {
+		it.only("should support reading signal in class component constructor", async () => {
+			const count = signal(1);
+			const spy = sinon.spy();
+
+			class App extends Component {
+				constructor(props) {
+					super(props);
+					spy("constructor:" + count.value);
+				}
+
+				componentWillMount() {
+					spy("willmount:" + count.value);
+				}
+
+				render() {
+					return <div>{count}</div>;
+				}
+			}
+			expect(() =>
+				act(() => {
+					render(createElement(App, { x: 1 }), scratch);
+					count.value = 2;
+					rerender();
+				})
+			).not.to.throw();
+			expect(scratch.innerHTML).to.equal("<div>2</div>");
+			expect(spy).to.have.been.calledTwice;
+			expect(spy).to.have.been.calledWith("constructor:1");
+			expect(spy).to.have.been.calledWith("willmount:1");
+		});
 	});
 });
