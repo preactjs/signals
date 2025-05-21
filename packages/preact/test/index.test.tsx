@@ -970,7 +970,7 @@ describe("@preact/signals", () => {
 	});
 
 	describe("Preact class Component", () => {
-		it.only("should support reading signal in class component constructor", async () => {
+		it("should support reading signal in class component constructor", async () => {
 			const count = signal(1);
 			const spy = sinon.spy();
 
