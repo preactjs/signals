@@ -226,7 +226,7 @@ importers:
         version: 10.26.6
       preact-render-to-string:
         specifier: ^5.2.5
-        version: 5.2.6(preact@10.9.0)
+        version: 5.2.6(preact@10.26.6)
 
   packages/react:
     dependencies:
@@ -8419,9 +8419,9 @@ snapshots:
       preact: 10.9.0
       pretty-format: 3.8.0
 
-  preact-render-to-string@5.2.6(preact@10.9.0):
+  preact-render-to-string@5.2.6(preact@10.26.6):
     dependencies:
-      preact: 10.9.0
+      preact: 10.26.6
       pretty-format: 3.8.0
 
   preact@10.26.6: {}
