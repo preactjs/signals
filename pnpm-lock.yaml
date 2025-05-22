@@ -222,8 +222,8 @@ importers:
         version: link:../core
     devDependencies:
       preact:
-        specifier: 10.9.0
-        version: 10.9.0
+        specifier: ^10.26.6
+        version: 10.26.6
       preact-render-to-string:
         specifier: ^5.2.5
         version: 5.2.6(preact@10.9.0)
