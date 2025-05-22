@@ -8424,6 +8424,8 @@ snapshots:
       preact: 10.9.0
       pretty-format: 3.8.0
 
+  preact@10.26.6: {}
+
   preact@10.9.0: {}
 
   preferred-pm@3.0.3:
