@@ -974,8 +974,8 @@ describe("@preact/signals", () => {
 			const count = signal(1);
 			const spy = sinon.spy();
 
-			class App extends Component<{ x: number }, {}> {
-				constructor(props) {
+			class App extends Component<{ x: number }, unknown> {
+				constructor(props: { x: number }) {
 					super(props);
 					spy("constructor:" + count.value);
 				}
