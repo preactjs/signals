@@ -1,4 +1,4 @@
-import { options, Component, isValidElement } from "preact";
+import { options, Component, isValidElement, Fragment } from "preact";
 import { useRef, useMemo, useEffect } from "preact/hooks";
 import {
 	signal,
@@ -190,25 +190,29 @@ hook(OptionsTypes.DIFF, (old, vnode) => {
 
 /** Set up Updater before rendering a component */
 hook(OptionsTypes.RENDER, (old, vnode) => {
-	setCurrentUpdater();
+	// Ignore the Fragment inserted by preact.createElement().
+	if (vnode.type !== Fragment) {
+		setCurrentUpdater();
 
-	let updater;
+		let updater;
 
-	let component = vnode.__c;
-	if (component) {
-		component._updateFlags &= ~HAS_PENDING_UPDATE;
+		let component = vnode.__c;
+		if (component) {
+			component._updateFlags &= ~HAS_PENDING_UPDATE;
 
-		updater = component._updater;
-		if (updater === undefined) {
-			component._updater = updater = createUpdater(() => {
-				component._updateFlags |= HAS_PENDING_UPDATE;
-				component.setState({});
-			});
+			updater = component._updater;
+			if (updater === undefined) {
+				component._updater = updater = createUpdater(() => {
+					component._updateFlags |= HAS_PENDING_UPDATE;
+					component.setState({});
+				});
+			}
 		}
+
+		currentComponent = component;
+		setCurrentUpdater(updater);
 	}
 
-	currentComponent = component;
-	setCurrentUpdater(updater);
 	old(vnode);
 });
 
