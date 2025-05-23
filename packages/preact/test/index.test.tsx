@@ -990,7 +990,7 @@ describe("@preact/signals", () => {
 			}
 			expect(() =>
 				act(() => {
-					render(createElement(App, { x: 1 }), scratch);
+					render(<App x={1} />, scratch);
 					count.value = 2;
 					rerender();
 				})
