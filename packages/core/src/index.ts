@@ -412,8 +412,7 @@ function needsToRecompute(target: Computed | Effect): boolean {
 		// dependency cycle), then we need to recompute.
 		if (
 			node._source._version !== node._version ||
-			!node._source._refresh() ||
-			node._source._version !== node._version
+			!node._source._refresh()
 		) {
 			return true;
 		}
@@ -457,7 +456,7 @@ function prepareSources(target: Computed | Effect) {
 
 function cleanupSources(target: Computed | Effect) {
 	let node = target._sources;
-	let head = undefined;
+	let head: Node | undefined = undefined;
 
 	/**
 	 * At this point 'target._sources' points to the tail of the doubly-linked list.
