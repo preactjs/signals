@@ -8,6 +8,7 @@ import {
 	Signal,
 	type ReadonlySignal,
 	untracked,
+	SignalOptions,
 } from "@preact/signals-core";
 import {
 	VNode,
@@ -382,17 +383,20 @@ Component.prototype.shouldComponentUpdate = function (
 	return false;
 };
 
-export function useSignal<T>(value: T): Signal<T>;
+export function useSignal<T>(value: T, options?: SignalOptions<T>): Signal<T>;
 export function useSignal<T = undefined>(): Signal<T | undefined>;
-export function useSignal<T>(value?: T) {
-	return useMemo(() => signal<T | undefined>(value), []);
+export function useSignal<T>(value?: T, options?: SignalOptions<T>) {
+	return useMemo(
+		() => signal<T | undefined>(value, options as SignalOptions),
+		[]
+	);
 }
 
-export function useComputed<T>(compute: () => T) {
+export function useComputed<T>(compute: () => T, options?: SignalOptions<T>) {
 	const $compute = useRef(compute);
 	$compute.current = compute;
 	(currentComponent as AugmentedComponent)._updateFlags |= HAS_COMPUTEDS;
-	return useMemo(() => computed<T>(() => $compute.current()), []);
+	return useMemo(() => computed<T>(() => $compute.current(), options), []);
 }
 
 function safeRaf(callback: () => void) {
