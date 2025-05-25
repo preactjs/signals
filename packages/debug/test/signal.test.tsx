@@ -2,7 +2,7 @@ import { signal, computed, effect, batch } from "@preact/signals-core";
 import { setDebugOptions } from "@preact/signals-debug";
 import { SinonSpy } from "sinon";
 
-describe.only("Signal Debug", () => {
+describe("Signal Debug", () => {
 	let consoleSpy: SinonSpy;
 	let groupSpy: SinonSpy;
 	let groupEndSpy: SinonSpy;
