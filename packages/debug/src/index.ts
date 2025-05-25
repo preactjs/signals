@@ -1,24 +1,22 @@
-import {
-	Signal,
-	addOuterBatchEndCallback,
-	removeOuterBatchEndCallback,
-	batchDepth as coreBatchDepth,
-} from "../../core/src/index";
+import { Signal, Effect } from "../../core/src/index";
 
 /**
  * The ideal way this works:
  *
- * - We receive an update in our subscribe callback
- * - When the subscribe callback is called with a Signal
- *   - We set an entry in a WeakMap where we track signal --> UpdateInfo[]
- *   - We set an entry in a Set where we track the base-signals that are part of this (batched) update
- * - When the subscribe callback is called with a Computed we bubble up until we find the base-signal
- *   - We add an update to the UpdateInfo[] for the base-signal
- *   - ISSUE: how do we get to this base-signal reliably? Computeds can be built from multiple signals, and we need to find the base-signal that is being updated.
- * - When an effect is updated we could fan out into multiple signal-updates again
- *   - We add an update to the UpdateInfo[] for the base-signal
- *   - ISSUE: Effect is not exposed from the base implementation, so we need to find a way to get to it.
- * - When the batch ends, we clear the Set and the WeakMap and log all updates
+ * - [x] We receive an update in our subscribe callback
+ * - [x] When the subscribe callback is called with a Signal
+ *   - [x] We set an entry in a WeakMap where we track signal --> UpdateInfo[]
+ *   - [x] We set an entry in a Set where we track the base-signals that are part of this (batched) update
+ * - [x] When the subscribe callback is called with a Computed we bubble up until we find the base-signal
+ *   - [x] We add an update to the UpdateInfo[] for the base-signal
+ * - [ ] When an effect is updated we could fan out into multiple signal-updates again
+ *   - [ ] We add an update to the UpdateInfo[] for the base-signal
+ *   - [x] ISSUE: Effect is not exposed from the base implementation, so we need to find a way to get to it.
+ *   - [ ] ISSUE: Effect is used as a primitive so any computed/signal that runs will have an effect associated with it.
+ * - [x] When the batch ends, we clear the Set and the WeakMap and log all updates
+ * - [ ] Future: Add a babel plugin that shoe-horns in a name for the signal when none is present with the variable declaration
+ *       or something inside of the effect I reckon
+ * - [ ] Improve indentation for base-signal updates
  */
 
 type Node = {
@@ -32,7 +30,10 @@ type Node = {
 	_rollbackNode?: Node;
 };
 
-interface UpdateInfo {
+type UpdateInfo = ValueUpdate | EffectUpdate;
+
+interface ValueUpdate {
+	type: "value";
 	signal: Signal;
 	prevValue: any;
 	newValue: any;
@@ -40,13 +41,19 @@ interface UpdateInfo {
 	depth: number;
 }
 
-const updateStack: UpdateInfo[] = [];
+interface EffectUpdate {
+	type: "effect";
+	timestamp: number;
+	signal: Signal;
+	depth: number;
+}
+
+const inflightUpdates = new Set<Signal>();
+const updateInfoMap = new WeakMap<Signal, UpdateInfo[]>();
 const trackers = new WeakMap<Signal, number>();
 const activeSignals = new Set<Signal>();
 const signalValues = new WeakMap<Signal, any>();
 const subscriptions = new WeakMap<Signal, () => void>();
-let currentUpdateDepth = 0;
-let isBatchCallbackRegistered = false;
 
 let isGrouped = true;
 let debugEnabled = true;
@@ -71,15 +78,27 @@ function formatValue(value: any): string {
 	}
 }
 
-function logUpdate(info: UpdateInfo) {
+function logUpdate(info: UpdateInfo, prevDepth: number) {
 	if (!debugEnabled) return;
 
-	const { signal, prevValue, newValue, depth } = info;
+	const { signal, type, depth } = info;
 	const name = getSignalName(signal);
-	const formattedPrev = formatValue(prevValue);
-	const formattedNew = formatValue(newValue);
+
+	if (type === "effect") {
+		// eslint-disable-next-line no-console
+		console.group(`${" ".repeat(depth * 2)}↪️ Triggered effect: ${name}`);
+
+		return;
+	}
+
+	const formattedPrev = formatValue(info.prevValue);
+	const formattedNew = formatValue(info.newValue);
 
 	if (isGrouped) {
+		if (prevDepth === depth) {
+			endUpdateGroup();
+		}
+
 		if (depth === 0) {
 			// eslint-disable-next-line no-console
 			console.group(`🎯 Signal Update: ${name}`);
@@ -119,6 +138,69 @@ function endUpdateGroup() {
 	}
 }
 
+function flushUpdates() {
+	for (const signal of inflightUpdates) {
+		const updateInfoList = updateInfoMap.get(signal) || [];
+		// TODO: we'll need to sort and form an escalator type of logging
+		let prevDepth = -1;
+		for (const updateInfo of updateInfoList) {
+			logUpdate(updateInfo, prevDepth);
+			prevDepth = updateInfo.depth;
+		}
+
+		new Array(prevDepth + 1).fill(0).map(endUpdateGroup);
+	}
+	inflightUpdates.clear();
+}
+
+interface Computed extends Signal {
+	_sources?: Node;
+}
+
+function hasUpdateEntry(signal: Signal) {
+	const inFlightUpdate = updateInfoMap.get(signal);
+	if (
+		inFlightUpdate &&
+		!inFlightUpdate.find(updateInfo => updateInfo.signal === signal)
+	) {
+		return true;
+	}
+	return false;
+}
+
+function bubbleUpToBaseSignal(
+	node: Computed,
+	depth = 1
+): { signal: Signal; depth: number } | null {
+	if (!("_sources" in node)) {
+		return null;
+	}
+
+	if (
+		inflightUpdates.has(node._sources?._source as Signal) &&
+		!hasUpdateEntry(node._sources?._source as Signal)
+	) {
+		return { signal: node._sources?._source as Signal, depth };
+	}
+
+	while (node._sources?._nextSource) {
+		node = node._sources?._nextSource as any;
+		if (
+			"_source" in node &&
+			inflightUpdates.has(node._source as Signal) &&
+			!hasUpdateEntry(node._source as Signal)
+		) {
+			return { signal: node._source as Signal, depth };
+		}
+	}
+
+	if (node._sources?._source) {
+		return bubbleUpToBaseSignal(node._sources?._source as any, depth + 1);
+	}
+
+	return null;
+}
+
 // Store original methods
 const originalSubscribe = Signal.prototype._subscribe;
 const originalUnsubscribe = Signal.prototype._unsubscribe;
@@ -146,25 +228,29 @@ Signal.prototype._subscribe = function (node: Node) {
 					prevValue,
 					newValue,
 					timestamp: Date.now(),
-					depth: coreBatchDepth > 0 ? currentUpdateDepth : 0,
+					depth: 0,
+					type: "value",
 				};
 
-				updateStack.push(updateInfo);
-				logUpdate(updateInfo);
-
-				// Increase depth for any cascading updates only if we are inside a batch
-				if (coreBatchDepth > 0) {
-					currentUpdateDepth++;
+				if (!("_fn" in this)) {
+					inflightUpdates.add(this);
+					updateInfoMap.set(this, [updateInfo]);
+					queueMicrotask(() => {
+						flushUpdates();
+					});
+				} else if ("_sources" in this) {
+					const baseSignal = bubbleUpToBaseSignal(this as any);
+					if (baseSignal) {
+						const updateInfoList = updateInfoMap.get(baseSignal.signal) || [];
+						updateInfoList.push(updateInfo);
+						updateInfoMap.set(baseSignal.signal, updateInfoList);
+						updateInfo.depth = baseSignal.depth;
+					}
 				}
 			}
 		});
 
 		subscriptions.set(this, unsubscribe);
-
-		if (!isBatchCallbackRegistered && activeSignals.size > 0) {
-			addOuterBatchEndCallback(handleBatchEnd);
-			isBatchCallbackRegistered = true;
-		}
 	}
 
 	return originalSubscribe.call(this, node);
@@ -186,48 +272,39 @@ Signal.prototype._unsubscribe = function (node: Node) {
 				unsubscribe();
 				subscriptions.delete(this);
 			}
-
-			if (isBatchCallbackRegistered && activeSignals.size === 0) {
-				removeOuterBatchEndCallback(handleBatchEnd);
-				isBatchCallbackRegistered = false;
-				// Reset update stack and depth when no signals are active
-				while (updateStack.length > 0) {
-					endUpdateGroup();
-					updateStack.pop();
-				}
-				currentUpdateDepth = 0;
-			}
 		}
 	}
 
 	return originalUnsubscribe.call(this, node);
 };
 
-function handleBatchEnd() {
-	if (!debugEnabled || !isGrouped) return;
-
-	// Process the stack from the most recent update
-	// End groups for all updates that were part of this completed batch.
-	// We identify these as updates that were logged when coreBatchDepth was > 0,
-	// or root-level updates if the stack is now being cleared outside a batch context explicitly.
-	let i = updateStack.length - 1;
-	while (i >= 0) {
-		// const update = updateStack[i]; // This line is removed as 'update' is not used
-		// If the update's depth suggests it was part of a batch or it's a root update being cleared,
-		// and considering currentUpdateDepth reflects the nesting at the time of logging.
-		// The key is that `endUpdateGroup` is called for each logged group.
-		endUpdateGroup();
-		i--;
-	}
-	// Clear the stack after processing
-	updateStack.length = 0;
-	currentUpdateDepth = 0; // Reset depth after the batch completes
-}
-
 export function getDebugStats() {
 	return {
 		activeTrackers: activeSignals.size,
 		activeSubscriptions: activeSignals.size,
-		updateStackDepth: updateStack.length,
 	};
 }
+
+const originalEffectCallback = Effect.prototype._callback;
+Effect.prototype._callback = function (node: Node) {
+	if (!debugEnabled) return originalEffectCallback.call(this, node);
+
+	const updateInfo: UpdateInfo = {
+		signal: this,
+		timestamp: Date.now(),
+		depth: 0,
+		type: "effect",
+	};
+
+	if ("_sources" in this) {
+		const baseSignal = bubbleUpToBaseSignal(this as any);
+		if (baseSignal) {
+			const updateInfoList = updateInfoMap.get(baseSignal.signal) || [];
+			updateInfoList.push(updateInfo);
+			updateInfoMap.set(baseSignal.signal, updateInfoList);
+			updateInfo.depth = baseSignal.depth;
+		}
+	}
+
+	return originalEffectCallback.call(this, node);
+};
