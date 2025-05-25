@@ -779,7 +779,7 @@ declare class Effect {
 	_flags: number;
 	name?: string;
 
-	constructor(fn: EffectFn);
+	constructor(fn: EffectFn, options?: EffectOptions);
 
 	_callback(): void;
 	_start(): () => void;
@@ -787,15 +787,19 @@ declare class Effect {
 	_dispose(): void;
 }
 
+export interface EffectOptions {
+	name?: string;
+}
+
 /** @internal */
 // @ts-ignore: "Cannot redeclare exported variable 'Effect'."
-export function Effect(this: Effect, fn: EffectFn, name?: string) {
+export function Effect(this: Effect, fn: EffectFn, options?: EffectOptions) {
 	this._fn = fn;
 	this._cleanup = undefined;
 	this._sources = undefined;
 	this._nextBatchedEffect = undefined;
 	this._flags = TRACKING;
-	this.name = name;
+	this.name = options?.name;
 }
 
 Effect.prototype._callback = function () {
@@ -857,9 +861,9 @@ Effect.prototype._dispose = function () {
  * @param fn The effect callback.
  * @returns A function for disposing the effect.
  */
-function effect(fn: EffectFn, name?: string): () => void {
+function effect(fn: EffectFn, options?: EffectOptions): () => void {
 	// @ts-expect-error: TS gets really confused here
-	const effect = new Effect(fn, name);
+	const effect = new Effect(fn, options);
 	try {
 		effect._callback();
 	} catch (err) {
