@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
-import { Signal, Effect } from "@preact/signals-core";
+import { Signal, setDebugHook } from "@preact/signals-core";
 import { formatValue, getSignalName } from "./utils";
-import { UpdateInfo, Node, Computed } from "./internal";
+import { UpdateInfo, Computed } from "./internal";
 
 const inflightUpdates = new Set<Signal>();
 const updateInfoMap = new WeakMap<Signal, UpdateInfo[]>();
@@ -29,86 +29,97 @@ let isGrouped = true,
 	debugEnabled = true,
 	initializing = false;
 
-// Store original methods
-const originalSubscribe = Signal.prototype._subscribe;
-const originalUnsubscribe = Signal.prototype._unsubscribe;
-// Track subscriptions for statistics
-Signal.prototype._subscribe = function (node: Node) {
-	if (initializing) return originalSubscribe.call(this, node);
+setDebugHook(function (this: Signal | Computed, payload) {
+	if (initializing) return;
 
-	const tracker = trackers.get(this) || 0;
-	trackers.set(this, tracker + 1);
+	if (payload.type === "subscribe") {
+		const tracker = trackers.get(this) || 0;
+		trackers.set(this, tracker + 1);
 
-	if (tracker === 0) {
-		activeSignals.add(this);
-		// Initialize tracked value and set up subscription for logging
-		const initialValue = this.peek();
-		signalValues.set(this, initialValue);
+		if (tracker === 0) {
+			activeSignals.add(this);
+			// Initialize tracked value and set up subscription for logging
+			const initialValue = this.peek();
+			signalValues.set(this, initialValue);
 
-		// Set up a subscription to track value changes
-		initializing = true;
-		const unsubscribe = this.subscribe(newValue => {
-			if (!debugEnabled) return;
+			// Set up a subscription to track value changes
+			initializing = true;
+			const unsubscribe = this.subscribe((newValue: any) => {
+				if (!debugEnabled) return;
 
-			const prevValue = signalValues.get(this);
-			if (prevValue !== newValue) {
-				signalValues.set(this, newValue);
+				const prevValue = signalValues.get(this);
+				if (prevValue !== newValue) {
+					signalValues.set(this, newValue);
 
-				const updateInfo: UpdateInfo = {
-					signal: this,
-					prevValue,
-					newValue,
-					timestamp: Date.now(),
-					depth: 0,
-					type: "value",
-				};
+					const updateInfo: UpdateInfo = {
+						signal: this,
+						prevValue,
+						newValue,
+						timestamp: Date.now(),
+						depth: 0,
+						type: "value",
+					};
 
-				if (!("_fn" in this)) {
-					inflightUpdates.add(this);
-					updateInfoMap.set(this, [updateInfo]);
-					queueMicrotask(() => {
-						flushUpdates();
-					});
-				} else if ("_sources" in this) {
-					const baseSignal = bubbleUpToBaseSignal(this as any);
-					if (baseSignal) {
-						const updateInfoList = updateInfoMap.get(baseSignal.signal) || [];
-						updateInfoList.push(updateInfo);
-						updateInfoMap.set(baseSignal.signal, updateInfoList);
-						updateInfo.depth = baseSignal.depth;
+					if (!("_fn" in this)) {
+						inflightUpdates.add(this);
+						updateInfoMap.set(this, [updateInfo]);
+						queueMicrotask(() => {
+							flushUpdates();
+						});
+					} else if ("_sources" in this) {
+						const baseSignal = bubbleUpToBaseSignal(this as any);
+						if (baseSignal) {
+							const updateInfoList = updateInfoMap.get(baseSignal.signal) || [];
+							updateInfoList.push(updateInfo);
+							updateInfoMap.set(baseSignal.signal, updateInfoList);
+							updateInfo.depth = baseSignal.depth;
+						}
 					}
 				}
+			});
+			initializing = false;
+
+			subscriptions.set(this, unsubscribe);
+		}
+	} else if (payload.type === "unsubscribe") {
+		const tracker = trackers.get(this) || 0;
+		if (tracker > 0) {
+			trackers.set(this, tracker - 1);
+
+			if (tracker === 1) {
+				activeSignals.delete(this);
+				signalValues.delete(this);
+				trackers.delete(this);
+
+				// Clean up our debug subscription
+				const unsubscribe = subscriptions.get(this);
+				if (unsubscribe) {
+					unsubscribe();
+					subscriptions.delete(this);
+				}
 			}
-		});
-		initializing = false;
+		}
+	} else if (payload.type === "callback") {
+		if (!debugEnabled || ("internal" in this && this.internal)) return;
 
-		subscriptions.set(this, unsubscribe);
-	}
+		const updateInfo: UpdateInfo = {
+			signal: this,
+			timestamp: Date.now(),
+			depth: 0,
+			type: "effect",
+		};
 
-	return originalSubscribe.call(this, node);
-};
-
-Signal.prototype._unsubscribe = function (node: Node) {
-	const tracker = trackers.get(this) || 0;
-	if (tracker > 0) {
-		trackers.set(this, tracker - 1);
-
-		if (tracker === 1) {
-			activeSignals.delete(this);
-			signalValues.delete(this);
-			trackers.delete(this);
-
-			// Clean up our debug subscription
-			const unsubscribe = subscriptions.get(this);
-			if (unsubscribe) {
-				unsubscribe();
-				subscriptions.delete(this);
+		if ("_sources" in this) {
+			const baseSignal = bubbleUpToBaseSignal(this as any);
+			if (baseSignal) {
+				const updateInfoList = updateInfoMap.get(baseSignal.signal) || [];
+				updateInfoList.push(updateInfo);
+				updateInfoMap.set(baseSignal.signal, updateInfoList);
+				updateInfo.depth = baseSignal.depth;
 			}
 		}
 	}
-
-	return originalUnsubscribe.call(this, node);
-};
+});
 
 function hasUpdateEntry(signal: Signal) {
 	const inFlightUpdate = updateInfoMap.get(signal);
@@ -153,31 +164,6 @@ function bubbleUpToBaseSignal(
 
 	return null;
 }
-
-const originalEffectCallback = Effect.prototype._callback;
-Effect.prototype._callback = function (node: Node) {
-	if (!debugEnabled || this.internal)
-		return originalEffectCallback.call(this, node);
-
-	const updateInfo: UpdateInfo = {
-		signal: this,
-		timestamp: Date.now(),
-		depth: 0,
-		type: "effect",
-	};
-
-	if ("_sources" in this) {
-		const baseSignal = bubbleUpToBaseSignal(this as any);
-		if (baseSignal) {
-			const updateInfoList = updateInfoMap.get(baseSignal.signal) || [];
-			updateInfoList.push(updateInfo);
-			updateInfoMap.set(baseSignal.signal, updateInfoList);
-			updateInfo.depth = baseSignal.depth;
-		}
-	}
-
-	return originalEffectCallback.call(this, node);
-};
 
 function flushUpdates() {
 	const signals = Array.from(inflightUpdates);
