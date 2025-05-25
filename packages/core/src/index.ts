@@ -74,17 +74,6 @@ function endBatch() {
 	batchIteration = 0;
 	batchDepth--;
 
-	if (batchDepth === 0) {
-		for (const cb of onOuterBatchEndCallbacks) {
-			try {
-				cb();
-			} catch (e) {
-				// Log errors from callbacks but don't let them disrupt other callbacks or the batch process
-				console.error("Error in onOuterBatchEndCallback:", e);
-			}
-		}
-	}
-
 	if (hasError) {
 		throw error;
 	}
@@ -142,7 +131,6 @@ let batchIteration = 0;
 // A global version number for signals, used for fast-pathing repeated
 // computed.peek()/computed.value calls when nothing has changed globally.
 let globalVersion = 0;
-const onOuterBatchEndCallbacks: (() => void)[] = [];
 
 function addDependency(signal: Signal): Node | undefined {
 	if (evalContext === undefined) {
@@ -788,12 +776,14 @@ type EffectFn =
 	| ((this: { dispose: () => void }) => void | (() => void))
 	| (() => void | (() => void));
 
+// @ts-ignore: "Cannot redeclare exported variable 'Signal'."
 declare class Effect {
 	_fn?: EffectFn;
 	_cleanup?: () => void;
 	_sources?: Node;
 	_nextBatchedEffect?: Effect;
 	_flags: number;
+	name?: string;
 
 	constructor(fn: EffectFn);
 
@@ -804,12 +794,15 @@ declare class Effect {
 	dispose(): void;
 }
 
-function Effect(this: Effect, fn: EffectFn) {
+/** @internal */
+// @ts-ignore: "Cannot redeclare exported variable 'Effect'."
+export function Effect(this: Effect, fn: EffectFn, name?: string) {
 	this._fn = fn;
 	this._cleanup = undefined;
 	this._sources = undefined;
 	this._nextBatchedEffect = undefined;
 	this._flags = TRACKING;
+	this.name = name;
 }
 
 Effect.prototype._callback = function () {
@@ -874,8 +867,9 @@ Effect.prototype.dispose = function () {
  * @param fn The effect callback.
  * @returns A function for disposing the effect.
  */
-function effect(fn: EffectFn): { (): void; [Symbol.dispose](): void } {
-	const effect = new Effect(fn);
+function effect(fn: EffectFn, name?: string): { (): void; [Symbol.dispose](): void } {
+	// @ts-expect-error: TS gets really confused here
+	const effect = new Effect(fn, name);
 	try {
 		effect._callback();
 	} catch (err) {
@@ -889,33 +883,4 @@ function effect(fn: EffectFn): { (): void; [Symbol.dispose](): void } {
 	return dispose as any;
 }
 
-export {
-	computed,
-	effect,
-	batch,
-	untracked,
-	Signal,
-	ReadonlySignal,
-	batchDepth,
-	addOuterBatchEndCallback,
-	removeOuterBatchEndCallback,
-};
-
-/**
- * @internal
- * Adds a callback to be invoked when the outermost batch operation concludes.
- */
-function addOuterBatchEndCallback(cb: () => void): void {
-	onOuterBatchEndCallbacks.push(cb);
-}
-
-/**
- * @internal
- * Removes a previously added callback.
- */
-function removeOuterBatchEndCallback(cb: () => void): void {
-	const index = onOuterBatchEndCallbacks.indexOf(cb);
-	if (index !== -1) {
-		onOuterBatchEndCallbacks.splice(index, 1);
-	}
-}
+export { computed, effect, batch, untracked, Signal, ReadonlySignal };

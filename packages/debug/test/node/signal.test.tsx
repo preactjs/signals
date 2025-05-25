@@ -21,10 +21,12 @@ describe.only("Signal Debug", () => {
 	});
 
 	describe("Basic Signal Updates", () => {
-		it("should log simple signal updates", () => {
+		it("should log simple signal updates", async () => {
 			const count = signal(0, "count");
 			count.subscribe(() => {});
 			count.value = 1;
+
+			await new Promise(resolve => setTimeout(resolve, 0));
 
 			expect(groupSpy).to.be.calledWith("🎯 Signal Update: count");
 			expect(consoleSpy).to.be.calledWith("From:", "0");
@@ -32,20 +34,24 @@ describe.only("Signal Debug", () => {
 			expect(groupEndSpy).to.be.calledOnce;
 		});
 
-		it("should handle object values correctly", () => {
+		it("should handle object values correctly", async () => {
 			const user = signal({ name: "John" }, "user");
 			user.subscribe(() => {});
 			user.value = { name: "Jane" };
+
+			await new Promise(resolve => setTimeout(resolve, 0));
 
 			expect(groupSpy).to.be.calledWith("🎯 Signal Update: user");
 			expect(consoleSpy).to.be.calledWith("From:", '{"name":"John"}');
 			expect(consoleSpy).to.be.calledWith("To:", '{"name":"Jane"}');
 		});
 
-		it("should handle undefined and null values", () => {
+		it("should handle undefined and null values", async () => {
 			const nullable = signal<string | null>(null, "nullable");
 			nullable.subscribe(() => {});
 			nullable.value = "test";
+
+			await new Promise(resolve => setTimeout(resolve, 0));
 
 			expect(groupSpy).to.be.calledWith("🎯 Signal Update: nullable");
 			expect(consoleSpy).to.be.calledWith("From:", "null");
@@ -53,8 +59,69 @@ describe.only("Signal Debug", () => {
 		});
 	});
 
-	describe.skip("Batched Signal Updates", () => {
-		it("should show batched signal updates", () => {
+	describe("Computed Signal Updates", () => {
+		it("should show cascading updates from computed signals", async () => {
+			const count = signal(0, "count");
+			const doubled = computed(() => count.value * 2, "doubled");
+			doubled.subscribe(() => {});
+
+			count.value = 2;
+
+			await new Promise(resolve => setTimeout(resolve, 0));
+
+			expect(groupSpy).to.be.calledWith("🎯 Signal Update: count");
+			expect(groupSpy).to.be.calledWith("  ↪️ Triggered update: doubled");
+			expect(consoleSpy).to.be.calledWith("  Type: Computed");
+		});
+
+		it("should handle nested computed signals", async () => {
+			const count = signal(0, "count");
+			const doubled = computed(() => count.value * 2, "doubled");
+			const message = computed(() => `Value: ${doubled.value}`, "message");
+			message.subscribe(() => {});
+
+			count.value = 2;
+
+			await new Promise(resolve => setTimeout(resolve, 0));
+
+			expect(groupSpy).to.be.calledWith("🎯 Signal Update: count");
+			expect(groupSpy).to.be.calledWith("  ↪️ Triggered update: doubled");
+			expect(groupSpy).to.be.calledWith("    ↪️ Triggered update: message");
+		});
+
+		it("should handle nested computed signals", async () => {
+			const count = signal(0, "count");
+			const doubled = computed(() => count.value * 2, "doubled");
+			const tripled = computed(() => count.value * 3, "tripled");
+			tripled.subscribe(() => {});
+			doubled.subscribe(() => {});
+
+			count.value = 2;
+
+			await new Promise(resolve => setTimeout(resolve, 0));
+
+			expect(groupSpy).to.be.calledWith("🎯 Signal Update: count");
+			expect(groupSpy).to.be.calledWith("  ↪️ Triggered update: tripled");
+			expect(groupSpy).to.be.calledWith("  ↪️ Triggered update: doubled");
+		});
+
+		it("should handle computeds that depend on multiple signals", async () => {
+			const count = signal(0, "count");
+			const count2 = signal(0, "count2");
+			const sum = computed(() => count.value + count2.value, "sum");
+			sum.subscribe(() => {});
+
+			count2.value = 2;
+
+			await new Promise(resolve => setTimeout(resolve, 0));
+
+			expect(groupSpy).to.be.calledWith("🎯 Signal Update: count2");
+			expect(groupSpy).to.be.calledWith("  ↪️ Triggered update: sum");
+		});
+	});
+
+	describe("Batched Signal Updates", () => {
+		it("should show batched signal updates", async () => {
 			const count = signal(0, "count");
 			const count2 = signal(0, "count2");
 			const sum = computed(() => count.value + count2.value, "sum");
@@ -65,12 +132,14 @@ describe.only("Signal Debug", () => {
 				count2.value = 3;
 			});
 
+			await new Promise(resolve => setTimeout(resolve, 0));
+
 			expect(groupSpy).to.be.calledWith("🎯 Signal Update: count");
 			expect(groupSpy).to.be.calledWith("  ↪️ Triggered update: sum");
 			expect(consoleSpy).to.be.calledWith("  Type: Computed");
 		});
 
-		it("should show batched signal updates w/ independent subscribers", () => {
+		it("should show batched signal updates w/ independent subscribers", async () => {
 			const count = signal(0, "count");
 			const count2 = signal(0, "count2");
 			const doubled = computed(() => count.value * 2, "doubled");
@@ -83,15 +152,34 @@ describe.only("Signal Debug", () => {
 				count2.value = 3;
 			});
 
+			await new Promise(resolve => setTimeout(resolve, 0));
+
 			// Should have two groups
 			expect(groupSpy).to.be.calledWith("🎯 Signal Update: count");
-			expect(groupSpy).to.be.calledWith("  ↪️ Triggered update: sum");
+			expect(groupSpy).to.be.calledWith("  ↪️ Triggered update: doubled2");
 			expect(consoleSpy).to.be.calledWith("  Type: Computed");
+			expect(groupSpy).to.be.calledWith("🎯 Signal Update: count2");
+			expect(groupSpy).to.be.calledWith("  ↪️ Triggered update: doubled");
 		});
 	});
 
 	describe.skip("Effect Updates", () => {
-		it("should show effect updates", () => {
+		it("should show effect updates", async () => {
+			const count = signal(0, "count");
+			effect(() => {
+				count.value;
+			}, "count-effect");
+
+			count.value = 2;
+
+			await new Promise(resolve => setTimeout(resolve, 0));
+
+			expect(groupSpy).to.be.calledWith("🎯 Signal Update: count");
+			expect(groupSpy).to.be.calledWith("  ↪️ Triggered effect: count-effect");
+			expect(groupEndSpy).to.be.calledTwice;
+		});
+
+		it("should show effect deep updates", () => {
 			const count = signal(0, "count");
 			const doubled = computed(() => count.value * 2, "doubled");
 			effect(() => {
@@ -106,52 +194,29 @@ describe.only("Signal Debug", () => {
 		});
 	});
 
-	describe("Computed Signal Updates", () => {
-		it("should show cascading updates from computed signals", () => {
-			const count = signal(0, "count");
-			const doubled = computed(() => count.value * 2, "doubled");
-			doubled.subscribe(() => {});
-
-			count.value = 2;
-
-			expect(groupSpy).to.be.calledWith("🎯 Signal Update: count");
-			expect(groupSpy).to.be.calledWith("  ↪️ Triggered update: doubled");
-			expect(consoleSpy).to.be.calledWith("  Type: Computed");
-		});
-
-		it("should handle nested computed signals", () => {
-			const count = signal(0, "count");
-			const doubled = computed(() => count.value * 2, "doubled");
-			const message = computed(() => `Value: ${doubled.value}`, "message");
-			message.subscribe(() => {});
-
-			count.value = 2;
-
-			expect(groupSpy).to.be.calledWith("🎯 Signal Update: count");
-			expect(groupSpy).to.be.calledWith("  ↪️ Triggered update: doubled");
-			expect(groupSpy).to.be.calledWith("    ↪️ Triggered update: message");
-		});
-	});
-
 	describe("Debug Options", () => {
-		it("should respect enabled/disabled setting", () => {
+		it("should respect enabled/disabled setting", async () => {
 			const count = signal(0, "count");
 			count.subscribe(() => {});
 
 			setDebugOptions({ enabled: false });
 			count.value = 1;
 
+			await new Promise(resolve => setTimeout(resolve, 0));
+
 			expect(groupSpy).to.not.be.called;
 			expect(consoleSpy).to.not.be.called;
 		});
 
-		it("should support flat logging mode", () => {
+		it("should support flat logging mode", async () => {
 			const count = signal(0, "count");
 			const doubled = computed(() => count.value * 2, "doubled");
 			doubled.subscribe(() => {});
 
 			setDebugOptions({ grouped: false });
 			count.value = 2;
+
+			await new Promise(resolve => setTimeout(resolve, 0));
 
 			expect(groupSpy).to.not.be.called;
 			expect(consoleSpy).to.be.calledWith("🎯 count: 0 → 2");
