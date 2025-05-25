@@ -1,4 +1,6 @@
 import { Signal /*Effect*/ } from "@preact/signals-core";
+import { formatValue } from "./utils";
+import { getSignalName } from "./utils";
 
 /**
  * The ideal way this works:
@@ -64,18 +66,6 @@ export function setDebugOptions(options: {
 }) {
 	if (typeof options.grouped === "boolean") isGrouped = options.grouped;
 	if (typeof options.enabled === "boolean") debugEnabled = options.enabled;
-}
-
-function getSignalName(signal: Signal): string {
-	return signal.name || "(anonymous signal)";
-}
-
-function formatValue(value: any): string {
-	try {
-		return typeof value === "object" ? JSON.stringify(value) : String(value);
-	} catch {
-		return "(unstringifiable value)";
-	}
 }
 
 function logUpdate(info: UpdateInfo, prevDepth: number) {
