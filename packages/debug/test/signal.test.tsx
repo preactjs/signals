@@ -1,4 +1,10 @@
-import { signal, computed, effect, batch } from "@preact/signals-core";
+import {
+	signal,
+	computed,
+	effect,
+	batch,
+	ReadonlySignal,
+} from "@preact/signals-core";
 import { setDebugOptions } from "@preact/signals-debug";
 import { SinonSpy } from "sinon";
 
@@ -248,5 +254,84 @@ describe("Signal Debug", () => {
 			expect(consoleSpy).to.be.calledWith("🎯 count: 0 → 2");
 			expect(consoleSpy).to.be.calledWith("↪️ doubled: 0 → 4");
 		});
+	});
+
+	it("should not recompute dependencies unnecessarily", () => {
+		const spy = sinon.spy();
+		const a = signal(0);
+		const b = signal(0);
+		const c = computed(() => {
+			b.value;
+			spy();
+		});
+		effect(() => {
+			if (a.value === 0) {
+				c.value;
+			}
+		});
+		expect(spy).to.be.calledOnce;
+
+		batch(() => {
+			b.value = 1;
+			a.value = 1;
+		});
+		expect(spy).to.be.calledOnce;
+	});
+
+	it("should be garbage collectable after it has lost all of its listeners", async () => {
+		const s = signal(0);
+
+		let ref: WeakRef<ReadonlySignal>;
+		let dispose: () => void;
+		(function () {
+			const c = computed(() => s.value);
+			ref = new WeakRef(c);
+			dispose = effect(() => {
+				c.value;
+			});
+		})();
+
+		dispose();
+		(gc as () => void)();
+		await new Promise(resolve => setTimeout(resolve, 0));
+		(gc as () => void)();
+		expect(ref.deref()).to.be.undefined;
+	});
+
+	it("should only subscribe to signals listened to", () => {
+		// Here both "B" and "C" are active in the beginning, but
+		// "B" becomes inactive later. At that point it should
+		// not receive any updates anymore.
+		//    *A
+		//   /   \
+		// *B     D <- we don't listen to C
+		//  |
+		// *C
+		const a = signal("a");
+		const spyB = sinon.spy(() => a.value);
+		const b = computed(spyB);
+
+		const spyC = sinon.spy(() => b.value);
+		const c = computed(spyC);
+
+		const d = computed(() => a.value);
+
+		let result = "";
+		const unsub = effect(() => {
+			result = c.value;
+		});
+
+		expect(result).to.equal("a");
+		expect(d.value).to.equal("a");
+
+		spyB.resetHistory();
+		spyC.resetHistory();
+		unsub();
+
+		a.value = "aa";
+
+		expect(spyB).not.to.be.called;
+		expect(spyC).not.to.be.called;
+		expect(d.value).to.equal("aa");
 	});
 });
