@@ -1,4 +1,4 @@
-import { signal, computed, effect } from "../../../core/src/index";
+import { signal, computed, effect, batch } from "../../../core/src/index";
 import { setDebugOptions } from "../../src/index";
 import { SinonSpy } from "sinon";
 
@@ -50,6 +50,59 @@ describe.only("Signal Debug", () => {
 			expect(groupSpy).to.be.calledWith("🎯 Signal Update: nullable");
 			expect(consoleSpy).to.be.calledWith("From:", "null");
 			expect(consoleSpy).to.be.calledWith("To:", "test");
+		});
+	});
+
+	describe.skip("Batched Signal Updates", () => {
+		it("should show batched signal updates", () => {
+			const count = signal(0, "count");
+			const count2 = signal(0, "count2");
+			const sum = computed(() => count.value + count2.value, "sum");
+			sum.subscribe(() => {});
+
+			batch(() => {
+				count.value = 2;
+				count2.value = 3;
+			});
+
+			expect(groupSpy).to.be.calledWith("🎯 Signal Update: count");
+			expect(groupSpy).to.be.calledWith("  ↪️ Triggered update: sum");
+			expect(consoleSpy).to.be.calledWith("  Type: Computed");
+		});
+
+		it("should show batched signal updates w/ independent subscribers", () => {
+			const count = signal(0, "count");
+			const count2 = signal(0, "count2");
+			const doubled = computed(() => count.value * 2, "doubled");
+			const doubled2 = computed(() => count2.value * 2, "doubled2");
+			doubled.subscribe(() => {});
+			doubled2.subscribe(() => {});
+
+			batch(() => {
+				count.value = 2;
+				count2.value = 3;
+			});
+
+			// Should have two groups
+			expect(groupSpy).to.be.calledWith("🎯 Signal Update: count");
+			expect(groupSpy).to.be.calledWith("  ↪️ Triggered update: sum");
+			expect(consoleSpy).to.be.calledWith("  Type: Computed");
+		});
+	});
+
+	describe.skip("Effect Updates", () => {
+		it("should show effect updates", () => {
+			const count = signal(0, "count");
+			const doubled = computed(() => count.value * 2, "doubled");
+			effect(() => {
+				doubled.value;
+			});
+
+			count.value = 2;
+
+			expect(groupSpy).to.be.calledWith("🎯 Effect Update: doubled");
+			expect(consoleSpy).to.be.calledWith("  Type: Effect");
+			expect(groupEndSpy).to.be.calledOnce;
 		});
 	});
 
