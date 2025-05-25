@@ -5,6 +5,7 @@ import {
 	Signal,
 	ReadonlySignal,
 	SignalOptions,
+	EffectOptions,
 } from "@preact/signals-core";
 import {
 	useRef,
@@ -403,13 +404,13 @@ export function useComputed<T>(
 	return useMemo(() => computed<T>(() => $compute.current(), options), Empty);
 }
 
-export function useSignalEffect(cb: () => void | (() => void)) {
+export function useSignalEffect(cb: () => void | (() => void), options?: EffectOptions) {
 	const callback = useRef(cb);
 	callback.current = cb;
 
 	useEffect(() => {
 		return effect(function (this: Effect) {
 			return callback.current();
-		});
+		}, options);
 	}, Empty);
 }
