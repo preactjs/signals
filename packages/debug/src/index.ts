@@ -59,6 +59,7 @@ const subscriptions = new WeakMap<Signal, () => void>();
 
 let isGrouped = true;
 let debugEnabled = true;
+let initializing = false;
 
 export function setDebugOptions(options: {
 	grouped?: boolean;
@@ -195,8 +196,11 @@ const originalSubscribe = Signal.prototype._subscribe;
 const originalUnsubscribe = Signal.prototype._unsubscribe;
 // Track subscriptions for statistics
 Signal.prototype._subscribe = function (node: Node) {
+	if (initializing) return originalSubscribe.call(this, node);
+
 	const tracker = trackers.get(this) || 0;
 	trackers.set(this, tracker + 1);
+	console.log("subscribing", this.name, tracker);
 
 	if (tracker === 0) {
 		activeSignals.add(this);
@@ -205,6 +209,7 @@ Signal.prototype._subscribe = function (node: Node) {
 		signalValues.set(this, initialValue);
 
 		// Set up a subscription to track value changes
+		initializing = true;
 		const unsubscribe = this.subscribe(newValue => {
 			if (!debugEnabled) return;
 
@@ -238,6 +243,7 @@ Signal.prototype._subscribe = function (node: Node) {
 				}
 			}
 		});
+		initializing = false;
 
 		subscriptions.set(this, unsubscribe);
 	}
@@ -247,6 +253,7 @@ Signal.prototype._subscribe = function (node: Node) {
 
 Signal.prototype._unsubscribe = function (node: Node) {
 	const tracker = trackers.get(this) || 0;
+	console.log("unsubscribing", this.name, tracker);
 	if (tracker > 0) {
 		trackers.set(this, tracker - 1);
 
