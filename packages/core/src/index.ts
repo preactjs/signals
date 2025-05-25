@@ -258,6 +258,8 @@ declare class Signal<T = any> {
 
 	subscribe(fn: (value: T) => void): () => void;
 
+	name?: string;
+
 	valueOf(): T;
 
 	toString(): string;
@@ -275,6 +277,7 @@ declare class Signal<T = any> {
 export interface SignalOptions<T = any> {
 	watched?: (this: Signal<T>) => void;
 	unwatched?: (this: Signal<T>) => void;
+	name?: string;
 }
 
 /** @internal */
@@ -292,6 +295,7 @@ function Signal(this: Signal, value?: unknown, options?: SignalOptions) {
 	this._targets = undefined;
 	this._watched = options?.watched;
 	this._unwatched = options?.unwatched;
+	this.name = options?.name;
 }
 
 Signal.prototype.brand = BRAND_SYMBOL;
@@ -345,7 +349,6 @@ Signal.prototype._unsubscribe = function (node) {
 Signal.prototype.subscribe = function (fn) {
 	return effect(() => {
 		const value = this.value;
-
 		const prevContext = evalContext;
 		evalContext = undefined;
 		try {
@@ -560,6 +563,7 @@ function Computed(this: Computed, fn: () => unknown, options?: SignalOptions) {
 	this._flags = OUTDATED;
 	this._watched = options?.watched;
 	this._unwatched = options?.unwatched;
+	this.name = options?.name;
 }
 
 Computed.prototype = new Signal() as Computed;

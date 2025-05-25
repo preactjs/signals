@@ -9,7 +9,7 @@ overrides:
 
 patchedDependencies:
   microbundle@0.15.1:
-    hash: 191ddb4c75616fbd059c0f22ba3000be648ce78c33a2f5286f6d1ff43f9ea6b8
+    hash: yvstdq4ikeml4yz3a6bi3bgrvu
     path: patches/microbundle@0.15.1.patch
 
 importers:
@@ -129,7 +129,7 @@ importers:
         version: 14.0.1(enquirer@2.3.6)
       microbundle:
         specifier: ^0.15.1
-        version: 0.15.1(patch_hash=191ddb4c75616fbd059c0f22ba3000be648ce78c33a2f5286f6d1ff43f9ea6b8)(@types/babel__core@7.20.1)
+        version: 0.15.1(patch_hash=yvstdq4ikeml4yz3a6bi3bgrvu)(@types/babel__core@7.20.1)
       mocha:
         specifier: ^10.0.0
         version: 10.0.0
@@ -205,6 +205,19 @@ importers:
         version: 3.2.7(@types/node@18.19.103)(terser@5.14.2)
 
   packages/core: {}
+
+  packages/debug:
+    dependencies:
+      '@preact/signals-core':
+        specifier: workspace:^1.7.0
+        version: link:../core
+    devDependencies:
+      preact:
+        specifier: ^10.26.6
+        version: 10.26.6
+      preact-render-to-string:
+        specifier: ^5.2.5
+        version: 5.2.6(preact@10.26.6)
 
   packages/preact:
     dependencies:
@@ -7648,7 +7661,7 @@ snapshots:
 
   merge2@1.4.1: {}
 
-  microbundle@0.15.1(patch_hash=191ddb4c75616fbd059c0f22ba3000be648ce78c33a2f5286f6d1ff43f9ea6b8)(@types/babel__core@7.20.1):
+  microbundle@0.15.1(patch_hash=yvstdq4ikeml4yz3a6bi3bgrvu)(@types/babel__core@7.20.1):
     dependencies:
       '@babel/core': 7.27.7
       '@babel/plugin-proposal-class-properties': 7.12.1(@babel/core@7.27.7)
