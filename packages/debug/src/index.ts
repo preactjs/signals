@@ -5,6 +5,22 @@ import {
 	batchDepth as coreBatchDepth,
 } from "../../core/src/index";
 
+/**
+ * The ideal way this works:
+ *
+ * - We receive an update in our subscribe callback
+ * - When the subscribe callback is called with a Signal
+ *   - We set an entry in a WeakMap where we track signal --> UpdateInfo[]
+ *   - We set an entry in a Set where we track the base-signals that are part of this (batched) update
+ * - When the subscribe callback is called with a Computed we bubble up until we find the base-signal
+ *   - We add an update to the UpdateInfo[] for the base-signal
+ *   - ISSUE: how do we get to this base-signal reliably? Computeds can be built from multiple signals, and we need to find the base-signal that is being updated.
+ * - When an effect is updated we could fan out into multiple signal-updates again
+ *   - We add an update to the UpdateInfo[] for the base-signal
+ *   - ISSUE: Effect is not exposed from the base implementation, so we need to find a way to get to it.
+ * - When the batch ends, we clear the Set and the WeakMap and log all updates
+ */
+
 type Node = {
 	_source: Signal;
 	_prevSource?: Node;
