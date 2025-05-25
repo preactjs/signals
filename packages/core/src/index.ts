@@ -1,19 +1,6 @@
 // An named symbol/brand for detecting Signal instances even when they weren't
 // created using the same signals library version.
 const BRAND_SYMBOL = Symbol.for("preact-signals");
-// A symbol used to signal that an effect is internal to the signals library, i.e.
-// dispatched as part of computed/signal creation.
-const INTERNAL_NAME = Symbol.for("preact-signals-internal");
-
-const debugHooks: ((this: Signal, payload: DebugPayload) => void)[] = [];
-
-interface DebugPayload {
-	type: "subscribe" | "unsubscribe" | "callback";
-}
-
-function setDebugHook(hook: (payload: DebugPayload) => void) {
-	debugHooks.push(hook);
-}
 
 // Flags for Computed and Effect.
 const RUNNING = 1 << 0;
@@ -334,13 +321,6 @@ Signal.prototype._subscribe = function (node) {
 };
 
 Signal.prototype._unsubscribe = function (node) {
-	if (debugHooks.length > 0) {
-		for (let i = 0; i < debugHooks.length; i++) {
-			debugHooks[i].call(this, {
-				type: "subscribe",
-			});
-		}
-	}
 	// Only run the unsubscribe step if the signal has any subscribers to begin with.
 	if (this._targets !== undefined) {
 		const prev = node._prevTarget;
@@ -828,14 +808,6 @@ export function Effect(this: Effect, fn: EffectFn, options?: EffectOptions) {
 }
 
 Effect.prototype._callback = function () {
-	if (!this.internal && debugHooks.length > 0) {
-		for (let i = 0; i < debugHooks.length; i++) {
-			debugHooks[i].call(this, {
-				type: "callback",
-			});
-		}
-	}
-
 	const finish = this._start();
 	try {
 		if (this._flags & DISPOSED) return;
@@ -908,12 +880,6 @@ function effect(fn: EffectFn, options?: EffectOptions): () => void {
 	return effect._dispose.bind(effect);
 }
 
-export {
-	computed,
-	effect,
-	batch,
-	untracked,
-	Signal,
-	ReadonlySignal,
-	setDebugHook,
-};
+const INTERNAL_NAME = Symbol.for("preact-signals-internal");
+
+export { computed, effect, batch, untracked, Signal, ReadonlySignal };
