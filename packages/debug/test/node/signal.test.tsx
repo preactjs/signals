@@ -1,4 +1,4 @@
-import { signal, computed } from "../../../core/src/index";
+import { signal, computed, effect } from "../../../core/src/index";
 import { setDebugOptions } from "../../src/index";
 import { SinonSpy } from "sinon";
 
@@ -21,7 +21,7 @@ describe.only("Signal Debug", () => {
 	});
 
 	describe("Basic Signal Updates", () => {
-		it("should log simple signal updates", async () => {
+		it("should log simple signal updates", () => {
 			const count = signal(0, "count");
 			count.subscribe(() => {});
 			count.value = 1;
@@ -29,8 +29,6 @@ describe.only("Signal Debug", () => {
 			expect(groupSpy).to.be.calledWith("🎯 Signal Update: count");
 			expect(consoleSpy).to.be.calledWith("From:", "0");
 			expect(consoleSpy).to.be.calledWith("To:", "1");
-			// Wait a tick to ensure groupEnd is called
-			await new Promise(resolve => setTimeout(resolve, 0));
 			expect(groupEndSpy).to.be.calledOnce;
 		});
 

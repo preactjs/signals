@@ -74,6 +74,17 @@ function endBatch() {
 	batchIteration = 0;
 	batchDepth--;
 
+	if (batchDepth === 0) {
+		for (const cb of onOuterBatchEndCallbacks) {
+			try {
+				cb();
+			} catch (e) {
+				// Log errors from callbacks but don't let them disrupt other callbacks or the batch process
+				console.error("Error in onOuterBatchEndCallback:", e);
+			}
+		}
+	}
+
 	if (hasError) {
 		throw error;
 	}
@@ -131,6 +142,7 @@ let batchIteration = 0;
 // A global version number for signals, used for fast-pathing repeated
 // computed.peek()/computed.value calls when nothing has changed globally.
 let globalVersion = 0;
+const onOuterBatchEndCallbacks: (() => void)[] = [];
 
 function addDependency(signal: Signal): Node | undefined {
 	if (evalContext === undefined) {
@@ -877,4 +889,33 @@ function effect(fn: EffectFn): { (): void; [Symbol.dispose](): void } {
 	return dispose as any;
 }
 
-export { computed, effect, batch, untracked, Signal, ReadonlySignal };
+export {
+	computed,
+	effect,
+	batch,
+	untracked,
+	Signal,
+	ReadonlySignal,
+	batchDepth,
+	addOuterBatchEndCallback,
+	removeOuterBatchEndCallback,
+};
+
+/**
+ * @internal
+ * Adds a callback to be invoked when the outermost batch operation concludes.
+ */
+function addOuterBatchEndCallback(cb: () => void): void {
+	onOuterBatchEndCallbacks.push(cb);
+}
+
+/**
+ * @internal
+ * Removes a previously added callback.
+ */
+function removeOuterBatchEndCallback(cb: () => void): void {
+	const index = onOuterBatchEndCallbacks.indexOf(cb);
+	if (index !== -1) {
+		onOuterBatchEndCallbacks.splice(index, 1);
+	}
+}
