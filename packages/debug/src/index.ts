@@ -11,10 +11,10 @@ import { getSignalName } from "./utils";
  *   - [x] We set an entry in a Set where we track the base-signals that are part of this (batched) update
  * - [x] When the subscribe callback is called with a Computed we bubble up until we find the base-signal
  *   - [x] We add an update to the UpdateInfo[] for the base-signal
- * - [ ] When an effect is updated we could fan out into multiple signal-updates again
- *   - [ ] We add an update to the UpdateInfo[] for the base-signal
+ * - [x] When an effect is updated we could fan out into multiple signal-updates again
+ *   - [x] We add an update to the UpdateInfo[] for the base-signal
  *   - [x] ISSUE: Effect is not exposed from the base implementation, so we need to find a way to get to it.
- *   - [ ] ISSUE: Effect is used as a primitive so any computed/signal that runs will have an effect associated with it.
+ *   - [x] ISSUE: Effect is used as a primitive so any computed/signal that runs will have an effect associated with it.
  * - [x] When the batch ends, we clear the Set and the WeakMap and log all updates
  * - [ ] Future: Add a babel plugin that shoe-horns in a name for the signal when none is present with the variable declaration
  *       or something inside of the effect I reckon

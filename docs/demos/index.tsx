@@ -19,7 +19,7 @@ const demos = {
 
 function Demos() {
 	const demo = useLocation().path.replace(/^\/demos\/?/, "");
-
+	console.log("demo", demo);
 	return (
 		<div id="app">
 			<header>
