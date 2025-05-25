@@ -1,54 +1,7 @@
+/* eslint-disable no-console */
 import { Signal, Effect } from "@preact/signals-core";
-import { formatValue } from "./utils";
-import { getSignalName } from "./utils";
-
-/**
- * The ideal way this works:
- *
- * - [x] We receive an update in our subscribe callback
- * - [x] When the subscribe callback is called with a Signal
- *   - [x] We set an entry in a WeakMap where we track signal --> UpdateInfo[]
- *   - [x] We set an entry in a Set where we track the base-signals that are part of this (batched) update
- * - [x] When the subscribe callback is called with a Computed we bubble up until we find the base-signal
- *   - [x] We add an update to the UpdateInfo[] for the base-signal
- * - [x] When an effect is updated we could fan out into multiple signal-updates again
- *   - [x] We add an update to the UpdateInfo[] for the base-signal
- *   - [x] ISSUE: Effect is not exposed from the base implementation, so we need to find a way to get to it.
- *   - [x] ISSUE: Effect is used as a primitive so any computed/signal that runs will have an effect associated with it.
- * - [x] When the batch ends, we clear the Set and the WeakMap and log all updates
- * - [ ] Future: Add a babel plugin that shoe-horns in a name for the signal when none is present with the variable declaration
- *       or something inside of the effect I reckon
- * - [ ] Improve indentation for base-signal updates
- */
-
-type Node = {
-	_source: Signal;
-	_prevSource?: Node;
-	_nextSource?: Node;
-	_target: any; // Computed or Effect - using any to avoid type issues
-	_prevTarget?: Node;
-	_nextTarget?: Node;
-	_version: number;
-	_rollbackNode?: Node;
-};
-
-type UpdateInfo = ValueUpdate | EffectUpdate;
-
-interface ValueUpdate {
-	type: "value";
-	signal: Signal;
-	prevValue: any;
-	newValue: any;
-	timestamp: number;
-	depth: number;
-}
-
-interface EffectUpdate {
-	type: "effect";
-	timestamp: number;
-	signal: Signal;
-	depth: number;
-}
+import { formatValue, getSignalName } from "./utils";
+import { UpdateInfo, Node, Computed } from "./internal";
 
 const inflightUpdates = new Set<Signal>();
 const updateInfoMap = new WeakMap<Signal, UpdateInfo[]>();
@@ -57,9 +10,12 @@ const activeSignals = new Set<Signal>();
 const signalValues = new WeakMap<Signal, any>();
 const subscriptions = new WeakMap<Signal, () => void>();
 
-let isGrouped = true;
-let debugEnabled = true;
-let initializing = false;
+export function getDebugStats() {
+	return {
+		activeTrackers: activeSignals.size,
+		activeSubscriptions: activeSignals.size,
+	};
+}
 
 export function setDebugOptions(options: {
 	grouped?: boolean;
@@ -69,127 +25,9 @@ export function setDebugOptions(options: {
 	if (typeof options.enabled === "boolean") debugEnabled = options.enabled;
 }
 
-function logUpdate(info: UpdateInfo, prevDepth: number) {
-	if (!debugEnabled) return;
-
-	const { signal, type, depth } = info;
-	const name = getSignalName(signal);
-
-	if (type === "effect") {
-		if (isGrouped)
-			// eslint-disable-next-line no-console
-			console.groupCollapsed(
-				`${" ".repeat(depth * 2)}↪️ Triggered effect: ${name}`
-			);
-		// eslint-disable-next-line no-console
-		else console.log(`${" ".repeat(depth * 2)}↪️ Triggered effect: ${name}`);
-		return;
-	}
-
-	const formattedPrev = formatValue(info.prevValue);
-	const formattedNew = formatValue(info.newValue);
-
-	if (isGrouped) {
-		if (prevDepth === depth) {
-			endUpdateGroup();
-		}
-
-		if (depth === 0) {
-			// eslint-disable-next-line no-console
-			console.group(`🎯 Signal Update: ${name}`);
-		} else {
-			// eslint-disable-next-line no-console
-			console.groupCollapsed(
-				`${" ".repeat(depth * 2)}↪️ Triggered update: ${name}`
-			);
-		}
-
-		// eslint-disable-next-line no-console
-		console.log(`${" ".repeat(depth * 2)}From:`, formattedPrev);
-		// eslint-disable-next-line no-console
-		console.log(`${" ".repeat(depth * 2)}To:`, formattedNew);
-
-		if ("_fn" in signal) {
-			// eslint-disable-next-line no-console
-			console.log(`${" ".repeat(depth * 2)}Type: Computed`);
-		}
-	} else {
-		// eslint-disable-next-line no-console
-		console.log(
-			`${depth === 0 ? "🎯" : "↪️"} ${name}: ${formattedPrev} → ${formattedNew}`
-		);
-	}
-}
-
-function endUpdateGroup() {
-	if (debugEnabled && isGrouped) {
-		// eslint-disable-next-line no-console
-		console.groupEnd();
-	}
-}
-
-function flushUpdates() {
-	for (const signal of inflightUpdates) {
-		const updateInfoList = updateInfoMap.get(signal) || [];
-		// TODO: we'll need to sort and form an escalator type of logging
-		let prevDepth = -1;
-		for (const updateInfo of updateInfoList) {
-			logUpdate(updateInfo, prevDepth);
-			prevDepth = updateInfo.depth;
-		}
-
-		new Array(prevDepth + 1).fill(0).map(endUpdateGroup);
-	}
-	inflightUpdates.clear();
-}
-
-interface Computed extends Signal {
-	_sources?: Node;
-}
-
-function hasUpdateEntry(signal: Signal) {
-	const inFlightUpdate = updateInfoMap.get(signal);
-	if (
-		inFlightUpdate &&
-		!inFlightUpdate.find(updateInfo => updateInfo.signal === signal)
-	) {
-		return true;
-	}
-	return false;
-}
-
-function bubbleUpToBaseSignal(
-	node: Computed,
-	depth = 1
-): { signal: Signal; depth: number } | null {
-	if (!("_sources" in node)) {
-		return null;
-	}
-
-	if (
-		inflightUpdates.has(node._sources?._source as Signal) &&
-		!hasUpdateEntry(node._sources?._source as Signal)
-	) {
-		return { signal: node._sources?._source as Signal, depth };
-	}
-
-	while (node._sources?._nextSource) {
-		node = node._sources?._nextSource as any;
-		if (
-			"_source" in node &&
-			inflightUpdates.has(node._source as Signal) &&
-			!hasUpdateEntry(node._source as Signal)
-		) {
-			return { signal: node._source as Signal, depth };
-		}
-	}
-
-	if (node._sources?._source) {
-		return bubbleUpToBaseSignal(node._sources?._source as any, depth + 1);
-	}
-
-	return null;
-}
+let isGrouped = true,
+	debugEnabled = true,
+	initializing = false;
 
 // Store original methods
 const originalSubscribe = Signal.prototype._subscribe;
@@ -200,7 +38,6 @@ Signal.prototype._subscribe = function (node: Node) {
 
 	const tracker = trackers.get(this) || 0;
 	trackers.set(this, tracker + 1);
-	console.log("subscribing", this.name, tracker);
 
 	if (tracker === 0) {
 		activeSignals.add(this);
@@ -253,7 +90,6 @@ Signal.prototype._subscribe = function (node: Node) {
 
 Signal.prototype._unsubscribe = function (node: Node) {
 	const tracker = trackers.get(this) || 0;
-	console.log("unsubscribing", this.name, tracker);
 	if (tracker > 0) {
 		trackers.set(this, tracker - 1);
 
@@ -274,11 +110,48 @@ Signal.prototype._unsubscribe = function (node: Node) {
 	return originalUnsubscribe.call(this, node);
 };
 
-export function getDebugStats() {
-	return {
-		activeTrackers: activeSignals.size,
-		activeSubscriptions: activeSignals.size,
-	};
+function hasUpdateEntry(signal: Signal) {
+	const inFlightUpdate = updateInfoMap.get(signal);
+	if (
+		inFlightUpdate &&
+		!inFlightUpdate.find(updateInfo => updateInfo.signal === signal)
+	) {
+		return true;
+	}
+	return false;
+}
+
+function bubbleUpToBaseSignal(
+	node: Computed,
+	depth = 1
+): { signal: Signal; depth: number } | null {
+	if (!("_sources" in node)) {
+		return null;
+	}
+
+	if (
+		inflightUpdates.has(node._sources?._source as Signal) &&
+		!hasUpdateEntry(node._sources?._source as Signal)
+	) {
+		return { signal: node._sources?._source as Signal, depth };
+	}
+
+	while (node._sources?._nextSource) {
+		node = node._sources?._nextSource as any;
+		if (
+			"_source" in node &&
+			inflightUpdates.has(node._source as Signal) &&
+			!hasUpdateEntry(node._source as Signal)
+		) {
+			return { signal: node._source as Signal, depth };
+		}
+	}
+
+	if (node._sources?._source) {
+		return bubbleUpToBaseSignal(node._sources?._source as any, depth + 1);
+	}
+
+	return null;
 }
 
 const originalEffectCallback = Effect.prototype._callback;
@@ -305,3 +178,71 @@ Effect.prototype._callback = function (node: Node) {
 
 	return originalEffectCallback.call(this, node);
 };
+
+function flushUpdates() {
+	const signals = Array.from(inflightUpdates);
+	inflightUpdates.clear();
+
+	for (const signal of signals) {
+		const updateInfoList = updateInfoMap.get(signal) || [];
+		let prevDepth = -1;
+		for (const updateInfo of updateInfoList) {
+			logUpdate(updateInfo, prevDepth);
+			prevDepth = updateInfo.depth;
+		}
+		updateInfoMap.delete(signal);
+		new Array(prevDepth + 1).fill(0).map(endUpdateGroup);
+	}
+}
+
+/* eslint-disable no-console */
+function logUpdate(info: UpdateInfo, prevDepth: number) {
+	if (!debugEnabled) return;
+
+	const { signal, type, depth } = info;
+	const name = getSignalName(signal);
+
+	if (type === "effect") {
+		if (isGrouped)
+			console.groupCollapsed(
+				`${" ".repeat(depth * 2)}↪️ Triggered effect: ${name}`
+			);
+		else console.log(`${" ".repeat(depth * 2)}↪️ Triggered effect: ${name}`);
+		return;
+	}
+
+	const formattedPrev = formatValue(info.prevValue);
+	const formattedNew = formatValue(info.newValue);
+
+	if (isGrouped) {
+		if (prevDepth === depth) {
+			endUpdateGroup();
+		}
+
+		if (depth === 0) {
+			console.group(`🎯 Signal Update: ${name}`);
+		} else {
+			console.groupCollapsed(
+				`${" ".repeat(depth * 2)}↪️ Triggered update: ${name}`
+			);
+		}
+
+		console.log(`${" ".repeat(depth * 2)}From:`, formattedPrev);
+		console.log(`${" ".repeat(depth * 2)}To:`, formattedNew);
+
+		if ("_fn" in signal) {
+			console.log(`${" ".repeat(depth * 2)}Type: Computed`);
+		}
+	} else {
+		console.log(
+			`${depth === 0 ? "🎯" : "↪️"} ${name}: ${formattedPrev} → ${formattedNew}`
+		);
+	}
+}
+
+function endUpdateGroup() {
+	if (debugEnabled && isGrouped) {
+		console.groupEnd();
+	}
+}
+/* eslint-enable no-console */
