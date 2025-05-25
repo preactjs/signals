@@ -54,18 +54,18 @@ Signal.prototype._subscribe = function (node: Node) {
 			if (prevValue !== newValue) {
 				signalValues.set(this, newValue);
 
-				const updateInfo: UpdateInfo = {
-					signal: this,
-					prevValue,
-					newValue,
-					timestamp: Date.now(),
-					depth: 0,
-					type: "value",
-				};
-
 				if (!("_fn" in this)) {
 					inflightUpdates.add(this);
-					updateInfoMap.set(this, [updateInfo]);
+					updateInfoMap.set(this, [
+						{
+							signal: this,
+							prevValue,
+							newValue,
+							timestamp: Date.now(),
+							depth: 0,
+							type: "value",
+						},
+					]);
 					queueMicrotask(() => {
 						flushUpdates();
 					});
@@ -73,9 +73,15 @@ Signal.prototype._subscribe = function (node: Node) {
 					const baseSignal = bubbleUpToBaseSignal(this as any);
 					if (baseSignal) {
 						const updateInfoList = updateInfoMap.get(baseSignal.signal) || [];
-						updateInfoList.push(updateInfo);
+						updateInfoList.push({
+							signal: this,
+							prevValue,
+							newValue,
+							timestamp: Date.now(),
+							depth: baseSignal.depth,
+							type: "value",
+						});
 						updateInfoMap.set(baseSignal.signal, updateInfoList);
-						updateInfo.depth = baseSignal.depth;
 					}
 				}
 			}
@@ -159,20 +165,17 @@ Effect.prototype._callback = function (node: Node) {
 	if (!debugEnabled || this.internal)
 		return originalEffectCallback.call(this, node);
 
-	const updateInfo: UpdateInfo = {
-		signal: this,
-		timestamp: Date.now(),
-		depth: 0,
-		type: "effect",
-	};
-
 	if ("_sources" in this) {
 		const baseSignal = bubbleUpToBaseSignal(this as any);
 		if (baseSignal) {
 			const updateInfoList = updateInfoMap.get(baseSignal.signal) || [];
-			updateInfoList.push(updateInfo);
+			updateInfoList.push({
+				signal: this,
+				timestamp: Date.now(),
+				depth: baseSignal.depth,
+				type: "effect",
+			});
 			updateInfoMap.set(baseSignal.signal, updateInfoList);
-			updateInfo.depth = baseSignal.depth;
 		}
 	}
 
