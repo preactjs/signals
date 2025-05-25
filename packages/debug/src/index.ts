@@ -1,4 +1,4 @@
-import { Signal /*Effect*/ } from "@preact/signals-core";
+import { Signal, Effect } from "@preact/signals-core";
 import { formatValue } from "./utils";
 import { getSignalName } from "./utils";
 
@@ -77,7 +77,9 @@ function logUpdate(info: UpdateInfo, prevDepth: number) {
 	if (type === "effect") {
 		if (isGrouped)
 			// eslint-disable-next-line no-console
-			console.group(`${" ".repeat(depth * 2)}↪️ Triggered effect: ${name}`);
+			console.groupCollapsed(
+				`${" ".repeat(depth * 2)}↪️ Triggered effect: ${name}`
+			);
 		// eslint-disable-next-line no-console
 		else console.log(`${" ".repeat(depth * 2)}↪️ Triggered effect: ${name}`);
 		return;
@@ -96,7 +98,9 @@ function logUpdate(info: UpdateInfo, prevDepth: number) {
 			console.group(`🎯 Signal Update: ${name}`);
 		} else {
 			// eslint-disable-next-line no-console
-			console.group(`${" ".repeat(depth * 2)}↪️ Triggered update: ${name}`);
+			console.groupCollapsed(
+				`${" ".repeat(depth * 2)}↪️ Triggered update: ${name}`
+			);
 		}
 
 		// eslint-disable-next-line no-console
@@ -270,26 +274,27 @@ export function getDebugStats() {
 	};
 }
 
-// const originalEffectCallback = Effect.prototype._callback;
-// Effect.prototype._callback = function (node: Node) {
-// 	if (!debugEnabled) return originalEffectCallback.call(this, node);
+const originalEffectCallback = Effect.prototype._callback;
+Effect.prototype._callback = function (node: Node) {
+	if (!debugEnabled || this.internal)
+		return originalEffectCallback.call(this, node);
 
-// 	const updateInfo: UpdateInfo = {
-// 		signal: this,
-// 		timestamp: Date.now(),
-// 		depth: 0,
-// 		type: "effect",
-// 	};
+	const updateInfo: UpdateInfo = {
+		signal: this,
+		timestamp: Date.now(),
+		depth: 0,
+		type: "effect",
+	};
 
-// 	if ("_sources" in this) {
-// 		const baseSignal = bubbleUpToBaseSignal(this as any);
-// 		if (baseSignal) {
-// 			const updateInfoList = updateInfoMap.get(baseSignal.signal) || [];
-// 			updateInfoList.push(updateInfo);
-// 			updateInfoMap.set(baseSignal.signal, updateInfoList);
-// 			updateInfo.depth = baseSignal.depth;
-// 		}
-// 	}
+	if ("_sources" in this) {
+		const baseSignal = bubbleUpToBaseSignal(this as any);
+		if (baseSignal) {
+			const updateInfoList = updateInfoMap.get(baseSignal.signal) || [];
+			updateInfoList.push(updateInfo);
+			updateInfoMap.set(baseSignal.signal, updateInfoList);
+			updateInfo.depth = baseSignal.depth;
+		}
+	}
 
-// 	return originalEffectCallback.call(this, node);
-// };
+	return originalEffectCallback.call(this, node);
+};

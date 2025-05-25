@@ -356,7 +356,7 @@ Signal.prototype.subscribe = function (fn) {
 		} finally {
 			evalContext = prevContext;
 		}
-	});
+	}, INTERNAL_NAME as any);
 };
 
 Signal.prototype.valueOf = function () {
@@ -784,6 +784,7 @@ declare class Effect {
 	_nextBatchedEffect?: Effect;
 	_flags: number;
 	name?: string;
+	internal?: boolean;
 
 	constructor(fn: EffectFn, options?: EffectOptions);
 
@@ -795,7 +796,7 @@ declare class Effect {
 }
 
 export interface EffectOptions {
-	name?: string;
+	name?: string | typeof INTERNAL_NAME;
 }
 
 /** @internal */
@@ -806,7 +807,11 @@ export function Effect(this: Effect, fn: EffectFn, options?: EffectOptions) {
 	this._sources = undefined;
 	this._nextBatchedEffect = undefined;
 	this._flags = TRACKING;
-	this.name = options?.name;
+	if (options?.name !== INTERNAL_NAME) {
+		this.name = options?.name;
+	} else {
+		this.internal = true;
+	}
 }
 
 Effect.prototype._callback = function () {
@@ -886,5 +891,7 @@ function effect(fn: EffectFn, options?: EffectOptions): { (): void; [Symbol.disp
 	(dispose as any)[Symbol.dispose] = dispose;
 	return dispose as any;
 }
+
+const INTERNAL_NAME = Symbol.for("preact-signals-internal");
 
 export { computed, effect, batch, untracked, Signal, ReadonlySignal };
