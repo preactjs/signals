@@ -542,6 +542,7 @@ function cleanupSources(target: Computed | Effect) {
 	target._sources = head;
 }
 
+// @ts-ignore: "Cannot redeclare exported variable 'Signal'."
 declare class Computed<T = any> extends Signal<T> {
 	_fn: () => T;
 	_sources?: Node;
@@ -554,7 +555,8 @@ declare class Computed<T = any> extends Signal<T> {
 	get value(): T;
 }
 
-function Computed(this: Computed, fn: () => unknown, options?: SignalOptions) {
+// @ts-ignore: "Cannot redeclare exported variable 'Signal'."
+export function Computed(this: Computed, fn: () => unknown, options?: SignalOptions) {
 	Signal.call(this, undefined);
 
 	this._fn = fn;
@@ -717,6 +719,7 @@ function computed<T>(
 	fn: () => T,
 	options?: SignalOptions<T>
 ): ReadonlySignal<T> {
+	// @ts-ignore: "Cannot redeclare exported variable 'Signal'."
 	return new Computed(fn, options);
 }
 
