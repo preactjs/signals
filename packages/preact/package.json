@@ -1,6 +1,6 @@
 {
   "name": "@preact/signals",
-  "version": "2.0.4",
+  "version": "2.0.5",
   "license": "MIT",
   "description": "Manage state with style in Preact",
   "keywords": [],
@@ -50,7 +50,7 @@
     "preact": ">= 10.25.0"
   },
   "devDependencies": {
-    "preact": "10.9.0",
+    "preact": "^10.26.6",
     "preact-render-to-string": "^5.2.5"
   },
   "publishConfig": {

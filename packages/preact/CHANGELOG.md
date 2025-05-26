@@ -1,5 +1,13 @@
 # @preact/signals
 
+## 2.0.5
+
+### Patch Changes
+
+- [#677](https://github.com/preactjs/signals/pull/677) [`b990e7e`](https://github.com/preactjs/signals/commit/b990e7e5d643950be88df7b84e1cdadeb987eb8d) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - We reduce the raf timeout to be just above a timeout that is associated with a 30hz refresh rate. This ensures that for hidden frames the timeout drift can't be too large, the drift being too high could lead to unexpected situations.
+
+- [#679](https://github.com/preactjs/signals/pull/679) [`f51eef4`](https://github.com/preactjs/signals/commit/f51eef4b95a1761f57c7c09ade9b0cb089b0792c) Thanks [@WeirdConstructor](https://github.com/WeirdConstructor)! - Fix accessing signals from Preact Class Component constructor.
+
 ## 2.0.4
 
 ### Patch Changes
