@@ -1,6 +1,6 @@
-import { Signal } from "@preact/signals-core";
+import { Effect, Signal } from "@preact/signals-core";
 
-export function getSignalName(signal: Signal): string {
+export function getSignalName(signal: Signal | Effect): string {
 	return signal.name || "(anonymous signal)";
 }
 
