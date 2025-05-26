@@ -91,7 +91,7 @@ function SignalValue(this: AugmentedComponent, { data }: { data: Signal }) {
 
 	// Store the props.data signal in another signal so that
 	// passing a new signal reference re-runs the text computed:
-	const currentSignal = useSignal(data, "text-node-signal");
+	const currentSignal = useSignal(data);
 	currentSignal.value = data;
 
 	const [isText, s] = useMemo(() => {
@@ -108,13 +108,12 @@ function SignalValue(this: AugmentedComponent, { data }: { data: Signal }) {
 		const wrappedSignal = computed(() => {
 			let s = currentSignal.value.value;
 			return s === 0 ? 0 : s === true ? "" : s || "";
-		}, "text-node-signal-value");
+		});
 
 		const isText = computed(
 			() =>
 				!Array.isArray(wrappedSignal.value) &&
-				!isValidElement(wrappedSignal.value),
-			"text-node-signal-is-text"
+				!isValidElement(wrappedSignal.value)
 		);
 		// Update text nodes directly without rerendering when the new value
 		// is also text.
@@ -131,7 +130,7 @@ function SignalValue(this: AugmentedComponent, { data }: { data: Signal }) {
 					(self.__v.__e as Text).data = value;
 				}
 			}
-		}, "text-node-value-updater");
+		});
 
 		// Piggyback this._updater's disposal to ensure that the text updater effect
 		// above also gets disposed on unmount.
@@ -283,7 +282,7 @@ function createPropUpdater(
 		// @ts-ignore
 		dom.ownerSVGElement === undefined;
 
-	const changeSignal = signal(propSignal, "dom-property-signal");
+	const changeSignal = signal(propSignal);
 	return {
 		_update: (newSignal: Signal, newProps: typeof props) => {
 			changeSignal.value = newSignal;
