@@ -166,9 +166,8 @@ function bubbleUpToBaseSignal(
 }
 
 const originalEffectCallback = Effect.prototype._callback;
-Effect.prototype._callback = function (node: Node) {
-	if (!debugEnabled || this.internal)
-		return originalEffectCallback.call(this, node);
+Effect.prototype._callback = function () {
+	if (!debugEnabled || this.internal) return originalEffectCallback.call(this);
 
 	if ("_sources" in this) {
 		const baseSignal = bubbleUpToBaseSignal(this as any);
@@ -184,7 +183,7 @@ Effect.prototype._callback = function (node: Node) {
 		}
 	}
 
-	return originalEffectCallback.call(this, node);
+	return originalEffectCallback.call(this);
 };
 
 function flushUpdates() {

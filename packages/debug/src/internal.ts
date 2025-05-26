@@ -1,4 +1,5 @@
 import { Signal } from "@preact/signals";
+import { Effect } from "@preact/signals-core";
 
 export interface Computed extends Signal {
 	_sources?: Node;
@@ -29,6 +30,6 @@ export interface ValueUpdate {
 interface EffectUpdate {
 	type: "effect";
 	timestamp: number;
-	signal: Signal;
+	signal: Effect;
 	depth: number;
 }

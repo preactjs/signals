@@ -215,13 +215,13 @@ function addDependency(signal: Signal): Node | undefined {
 /**
  * The base class for plain and computed signals.
  */
-// @ts-ignore: "Cannot redeclare exported variable 'Signal'."
 //
 // A function with the same name is defined later, so we need to ignore TypeScript's
 // warning about a redeclared variable.
 //
 // The class is declared here, but later implemented with ES5-style prototypes.
 // This enables better control of the transpiled output size.
+// @ts-expect-error: "Cannot redeclare exported variable 'Signal'."
 declare class Signal<T = any> {
 	/** @internal */
 	_value: unknown;
@@ -281,13 +281,12 @@ export interface SignalOptions<T = any> {
 }
 
 /** @internal */
-// @ts-ignore: "Cannot redeclare exported variable 'Signal'."
-//
 // A class with the same name has already been declared, so we need to ignore
 // TypeScript's warning about a redeclared variable.
 //
 // The previously declared class is implemented here with ES5-style prototypes.
 // This enables better control of the transpiled output size.
+// @ts-expect-error: "Cannot redeclare exported variable 'Signal'."
 function Signal(this: Signal, value?: unknown, options?: SignalOptions) {
 	this._value = value;
 	this._version = 0;
@@ -542,6 +541,7 @@ function cleanupSources(target: Computed | Effect) {
 	target._sources = head;
 }
 
+/** @internal */
 // @ts-ignore: "Cannot redeclare exported variable 'Signal'."
 declare class Computed<T = any> extends Signal<T> {
 	_fn: () => T;
@@ -555,6 +555,7 @@ declare class Computed<T = any> extends Signal<T> {
 	get value(): T;
 }
 
+/** @internal */
 // @ts-ignore: "Cannot redeclare exported variable 'Signal'."
 export function Computed(this: Computed, fn: () => unknown, options?: SignalOptions) {
 	Signal.call(this, undefined);
@@ -779,6 +780,7 @@ type EffectFn =
 	| ((this: { dispose: () => void }) => void | (() => void))
 	| (() => void | (() => void));
 
+/** @internal */
 // @ts-ignore: "Cannot redeclare exported variable 'Signal'."
 declare class Effect {
 	_fn?: EffectFn;
@@ -897,4 +899,15 @@ function effect(fn: EffectFn, options?: EffectOptions): { (): void; [Symbol.disp
 
 const INTERNAL_NAME = Symbol.for("preact-signals-internal");
 
-export { computed, effect, batch, untracked, Signal, ReadonlySignal };
+export {
+	computed,
+	effect,
+	batch,
+	untracked,
+	Signal,
+	ReadonlySignal,
+// @ts-ignore: "Cannot redeclare exported variable 'Effect'."
+	Effect,
+// @ts-ignore: "Cannot redeclare exported variable 'Computed'."
+	Computed,
+};
