@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
-import { Signal, Effect } from "@preact/signals-core";
+import { Signal, Effect, Computed } from "@preact/signals-core";
 import { formatValue, getSignalName } from "./utils";
-import { UpdateInfo, Node, Computed } from "./internal";
+import { UpdateInfo, Node, Computed as ComputedType } from "./internal";
 
 const inflightUpdates = new Set<Signal>();
 const updateInfoMap = new WeakMap<Signal, UpdateInfo[]>();
@@ -39,7 +39,7 @@ Signal.prototype._subscribe = function (node: Node) {
 	const tracker = trackers.get(this) || 0;
 	trackers.set(this, tracker + 1);
 
-	if (tracker === 0) {
+	if (tracker === 0 && !("_fn" in this)) {
 		activeSignals.add(this);
 		// Initialize tracked value and set up subscription for logging
 		const initialValue = this.peek();
@@ -53,37 +53,20 @@ Signal.prototype._subscribe = function (node: Node) {
 			const prevValue = signalValues.get(this);
 			if (prevValue !== newValue) {
 				signalValues.set(this, newValue);
-
-				if (!("_fn" in this)) {
-					inflightUpdates.add(this);
-					updateInfoMap.set(this, [
-						{
-							signal: this,
-							prevValue,
-							newValue,
-							timestamp: Date.now(),
-							depth: 0,
-							type: "value",
-						},
-					]);
-					queueMicrotask(() => {
-						flushUpdates();
-					});
-				} else if ("_sources" in this) {
-					const baseSignal = bubbleUpToBaseSignal(this as any);
-					if (baseSignal) {
-						const updateInfoList = updateInfoMap.get(baseSignal.signal) || [];
-						updateInfoList.push({
-							signal: this,
-							prevValue,
-							newValue,
-							timestamp: Date.now(),
-							depth: baseSignal.depth,
-							type: "value",
-						});
-						updateInfoMap.set(baseSignal.signal, updateInfoList);
-					}
-				}
+				inflightUpdates.add(this);
+				updateInfoMap.set(this, [
+					{
+						signal: this,
+						prevValue,
+						newValue,
+						timestamp: Date.now(),
+						depth: 0,
+						type: "value",
+					},
+				]);
+				queueMicrotask(() => {
+					flushUpdates();
+				});
 			}
 		});
 		initializing = false;
@@ -92,6 +75,28 @@ Signal.prototype._subscribe = function (node: Node) {
 	}
 
 	return originalSubscribe.call(this, node);
+};
+
+const originalRefresh = Computed.prototype._refresh;
+Computed.prototype._refresh = function () {
+	const prevValue = this._value;
+	const result = originalRefresh.call(this);
+	const newValue = this._value;
+	const baseSignal = bubbleUpToBaseSignal(this as any);
+	if (baseSignal && prevValue !== newValue) {
+		const updateInfoList = updateInfoMap.get(baseSignal.signal) || [];
+		updateInfoList.push({
+			signal: this,
+			prevValue,
+			newValue,
+			timestamp: Date.now(),
+			depth: baseSignal.depth,
+			type: "value",
+		});
+		updateInfoMap.set(baseSignal.signal, updateInfoList);
+	}
+
+	return result;
 };
 
 Signal.prototype._unsubscribe = function (node: Node) {
@@ -128,7 +133,7 @@ function hasUpdateEntry(signal: Signal) {
 }
 
 function bubbleUpToBaseSignal(
-	node: Computed,
+	node: ComputedType,
 	depth = 1
 ): { signal: Signal; depth: number } | null {
 	if (!("_sources" in node)) {
