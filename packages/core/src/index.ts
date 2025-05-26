@@ -221,7 +221,7 @@ function addDependency(signal: Signal): Node | undefined {
 //
 // The class is declared here, but later implemented with ES5-style prototypes.
 // This enables better control of the transpiled output size.
-// @ts-expect-error: "Cannot redeclare exported variable 'Signal'."
+// @ts-ignore: "Cannot redeclare exported variable 'Signal'."
 declare class Signal<T = any> {
 	/** @internal */
 	_value: unknown;
@@ -557,7 +557,7 @@ declare class Computed<T = any> extends Signal<T> {
 
 /** @internal */
 // @ts-ignore: "Cannot redeclare exported variable 'Signal'."
-export function Computed(this: Computed, fn: () => unknown, options?: SignalOptions) {
+function Computed(this: Computed, fn: () => unknown, options?: SignalOptions) {
 	Signal.call(this, undefined);
 
 	this._fn = fn;
@@ -806,7 +806,7 @@ export interface EffectOptions {
 
 /** @internal */
 // @ts-ignore: "Cannot redeclare exported variable 'Effect'."
-export function Effect(this: Effect, fn: EffectFn, options?: EffectOptions) {
+function Effect(this: Effect, fn: EffectFn, options?: EffectOptions) {
 	this._fn = fn;
 	this._cleanup = undefined;
 	this._sources = undefined;
@@ -882,7 +882,6 @@ Effect.prototype.dispose = function () {
  * @returns A function for disposing the effect.
  */
 function effect(fn: EffectFn, options?: EffectOptions): () => void {
-	// @ts-expect-error: TS gets really confused here
 	const effect = new Effect(fn, options);
 	try {
 		effect._callback();
@@ -904,8 +903,6 @@ export {
 	untracked,
 	Signal,
 	ReadonlySignal,
-// @ts-ignore: "Cannot redeclare exported variable 'Effect'."
 	Effect,
-// @ts-ignore: "Cannot redeclare exported variable 'Computed'."
 	Computed,
 };
