@@ -50,7 +50,7 @@
     "utils/src"
   ],
   "scripts": {
-    "prepublishOnly": "cd ../.. && pnpm build:preact"
+    "prepublishOnly": "cd ../.. && pnpm build:preact && pnpm build:preact-utils"
   },
   "dependencies": {
     "@preact/signals-core": "workspace:^1.7.0"
