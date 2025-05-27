@@ -19,7 +19,7 @@ describe("Signal Debug", () => {
 		groupSpy = sinon.spy(console, "group");
 		groupCollapsedSpy = sinon.spy(console, "groupCollapsed");
 		groupEndSpy = sinon.spy(console, "groupEnd");
-		setDebugOptions({ grouped: true, enabled: true });
+		setDebugOptions({ grouped: true, enabled: true, spacing: 2 });
 	});
 
 	afterEach(() => {
@@ -31,7 +31,7 @@ describe("Signal Debug", () => {
 
 	describe("Basic Signal Updates", () => {
 		it("should log simple signal updates", async () => {
-			const count = signal(0, "count");
+			const count = signal(0, { name: "count" });
 			count.subscribe(() => {});
 			count.value = 1;
 
@@ -44,7 +44,7 @@ describe("Signal Debug", () => {
 		});
 
 		it("should handle object values correctly", async () => {
-			const user = signal({ name: "John" }, "user");
+			const user = signal({ name: "John" }, { name: "user" });
 			user.subscribe(() => {});
 			user.value = { name: "Jane" };
 
@@ -56,7 +56,7 @@ describe("Signal Debug", () => {
 		});
 
 		it("should handle undefined and null values", async () => {
-			const nullable = signal<string | null>(null, "nullable");
+			const nullable = signal<string | null>(null, { name: "nullable" });
 			nullable.subscribe(() => {});
 			nullable.value = "test";
 
@@ -70,8 +70,8 @@ describe("Signal Debug", () => {
 
 	describe("Computed Signal Updates", () => {
 		it("should show cascading updates from computed signals", async () => {
-			const count = signal(0, "count");
-			const doubled = computed(() => count.value * 2, "doubled");
+			const count = signal(0, { name: "count" });
+			const doubled = computed(() => count.value * 2, { name: "doubled" });
 			doubled.subscribe(() => {});
 
 			count.value = 2;
@@ -86,9 +86,11 @@ describe("Signal Debug", () => {
 		});
 
 		it("should handle nested computed signals", async () => {
-			const count = signal(0, "count");
-			const doubled = computed(() => count.value * 2, "doubled");
-			const message = computed(() => `Value: ${doubled.value}`, "message");
+			const count = signal(0, { name: "count" });
+			const doubled = computed(() => count.value * 2, { name: "doubled" });
+			const message = computed(() => `Value: ${doubled.value}`, {
+				name: "message",
+			});
 			message.subscribe(() => {});
 
 			count.value = 2;
@@ -105,9 +107,9 @@ describe("Signal Debug", () => {
 		});
 
 		it("should handle nested computed signals", async () => {
-			const count = signal(0, "count");
-			const doubled = computed(() => count.value * 2, "doubled");
-			const tripled = computed(() => count.value * 3, "tripled");
+			const count = signal(0, { name: "count" });
+			const doubled = computed(() => count.value * 2, { name: "doubled" });
+			const tripled = computed(() => count.value * 3, { name: "tripled" });
 			tripled.subscribe(() => {});
 			doubled.subscribe(() => {});
 
@@ -125,9 +127,9 @@ describe("Signal Debug", () => {
 		});
 
 		it("should handle computeds that depend on multiple signals", async () => {
-			const count = signal(0, "count");
-			const count2 = signal(0, "count2");
-			const sum = computed(() => count.value + count2.value, "sum");
+			const count = signal(0, { name: "count" });
+			const count2 = signal(0, { name: "count2" });
+			const sum = computed(() => count.value + count2.value, { name: "sum" });
 			sum.subscribe(() => {});
 
 			count2.value = 2;
@@ -141,9 +143,9 @@ describe("Signal Debug", () => {
 
 	describe("Batched Signal Updates", () => {
 		it("should show batched signal updates", async () => {
-			const count = signal(0, "count");
-			const count2 = signal(0, "count2");
-			const sum = computed(() => count.value + count2.value, "sum");
+			const count = signal(0, { name: "count" });
+			const count2 = signal(0, { name: "count2" });
+			const sum = computed(() => count.value + count2.value, { name: "sum" });
 			sum.subscribe(() => {});
 
 			batch(() => {
@@ -159,10 +161,10 @@ describe("Signal Debug", () => {
 		});
 
 		it("should show batched signal updates w/ independent subscribers", async () => {
-			const count = signal(0, "count");
-			const count2 = signal(0, "count2");
-			const doubled = computed(() => count.value * 2, "doubled");
-			const doubled2 = computed(() => count2.value * 2, "doubled2");
+			const count = signal(0, { name: "count" });
+			const count2 = signal(0, { name: "count2" });
+			const doubled = computed(() => count.value * 2, { name: "doubled" });
+			const doubled2 = computed(() => count2.value * 2, { name: "doubled2" });
 			doubled.subscribe(() => {});
 			doubled2.subscribe(() => {});
 
@@ -188,10 +190,13 @@ describe("Signal Debug", () => {
 
 	describe("Effect Updates", () => {
 		it("should show effect updates", async () => {
-			const count = signal(0, "count");
-			effect(() => {
-				count.value;
-			}, "count-effect");
+			const count = signal(0, { name: "count" });
+			effect(
+				() => {
+					count.value;
+				},
+				{ name: "count-effect" }
+			);
 
 			count.value = 2;
 
@@ -205,11 +210,14 @@ describe("Signal Debug", () => {
 		});
 
 		it("should show effect deep updates", async () => {
-			const count = signal(0, "count");
-			const doubled = computed(() => count.value * 2, "doubled");
-			effect(() => {
-				doubled.value;
-			}, "logger");
+			const count = signal(0, { name: "count" });
+			const doubled = computed(() => count.value * 2, { name: "doubled" });
+			effect(
+				() => {
+					doubled.value;
+				},
+				{ name: "logger" }
+			);
 
 			count.value = 2;
 
@@ -228,7 +236,7 @@ describe("Signal Debug", () => {
 
 	describe("Debug Options", () => {
 		it("should respect enabled/disabled setting", async () => {
-			const count = signal(0, "count");
+			const count = signal(0, { name: "count" });
 			count.subscribe(() => {});
 
 			setDebugOptions({ enabled: false });
@@ -241,8 +249,8 @@ describe("Signal Debug", () => {
 		});
 
 		it("should support flat logging mode", async () => {
-			const count = signal(0, "count");
-			const doubled = computed(() => count.value * 2, "doubled");
+			const count = signal(0, { name: "count" });
+			const doubled = computed(() => count.value * 2, { name: "doubled" });
 			doubled.subscribe(() => {});
 
 			setDebugOptions({ grouped: false });

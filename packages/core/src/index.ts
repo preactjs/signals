@@ -286,7 +286,7 @@ export interface SignalOptions<T = any> {
 //
 // The previously declared class is implemented here with ES5-style prototypes.
 // This enables better control of the transpiled output size.
-// @ts-expect-error: "Cannot redeclare exported variable 'Signal'."
+// @ts-ignore: "Cannot redeclare exported variable 'Signal'."
 function Signal(this: Signal, value?: unknown, options?: SignalOptions) {
 	this._value = value;
 	this._version = 0;
@@ -346,16 +346,19 @@ Signal.prototype._unsubscribe = function (node) {
 };
 
 Signal.prototype.subscribe = function (fn) {
-	return effect(() => {
-		const value = this.value;
-		const prevContext = evalContext;
-		evalContext = undefined;
-		try {
-			fn(value);
-		} finally {
-			evalContext = prevContext;
-		}
-	}, INTERNAL_NAME as any);
+	return effect(
+		() => {
+			const value = this.value;
+			const prevContext = evalContext;
+			evalContext = undefined;
+			try {
+				fn(value);
+			} finally {
+				evalContext = prevContext;
+			}
+		},
+		{ name: INTERNAL_NAME }
+	);
 };
 
 Signal.prototype.valueOf = function () {
@@ -542,7 +545,6 @@ function cleanupSources(target: Computed | Effect) {
 }
 
 /** @internal */
-// @ts-ignore: "Cannot redeclare exported variable 'Signal'."
 declare class Computed<T = any> extends Signal<T> {
 	_fn: () => T;
 	_sources?: Node;
@@ -556,7 +558,6 @@ declare class Computed<T = any> extends Signal<T> {
 }
 
 /** @internal */
-// @ts-ignore: "Cannot redeclare exported variable 'Signal'."
 function Computed(this: Computed, fn: () => unknown, options?: SignalOptions) {
 	Signal.call(this, undefined);
 
@@ -720,7 +721,6 @@ function computed<T>(
 	fn: () => T,
 	options?: SignalOptions<T>
 ): ReadonlySignal<T> {
-	// @ts-ignore: "Cannot redeclare exported variable 'Signal'."
 	return new Computed(fn, options);
 }
 
@@ -781,7 +781,6 @@ type EffectFn =
 	| (() => void | (() => void));
 
 /** @internal */
-// @ts-ignore: "Cannot redeclare exported variable 'Signal'."
 declare class Effect {
 	_fn?: EffectFn;
 	_cleanup?: () => void;
@@ -805,7 +804,6 @@ export interface EffectOptions {
 }
 
 /** @internal */
-// @ts-ignore: "Cannot redeclare exported variable 'Effect'."
 function Effect(this: Effect, fn: EffectFn, options?: EffectOptions) {
 	this._fn = fn;
 	this._cleanup = undefined;
