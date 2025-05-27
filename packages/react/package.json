@@ -53,6 +53,9 @@
     "runtime/dist",
     "runtime/src",
     "runtime/package.json",
+    "utils/dist",
+    "utils/src",
+    "utils/package.json",
     "CHANGELOG.md",
     "LICENSE",
     "README.md"
