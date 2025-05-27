@@ -42,16 +42,19 @@ export function For<T>(props: ForProps<T>): JSX.Element | null {
 		}
 		return cache.get(value);
 	});
+
 	return createElement(Fragment, null, items);
 }
 
-export function useLiveSignal<T>(value: Signal<T> | ReadonlySignal<T>) {
+export function useLiveSignal<T>(
+	value: Signal<T> | ReadonlySignal<T>
+): Signal<Signal<T> | ReadonlySignal<T>> {
 	const s = useSignal(value);
 	if (s.peek() !== value) s.value = value;
 	return s;
 }
 
-export function useSignalRef<T>(value: T) {
+export function useSignalRef<T>(value: T): Signal<T> & { current: T } {
 	const ref = useSignal(value) as Signal<T> & { current: T };
 	if (!("current" in ref))
 		Object.defineProperty(ref, "current", refSignalProto);
