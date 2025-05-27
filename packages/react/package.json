@@ -37,7 +37,14 @@
       "import": "./runtime/dist/runtime.mjs",
       "require": "./runtime/dist/runtime.js"
     },
-    "./runtime/package.json": "./runtime/package.json"
+    "./runtime/package.json": "./runtime/package.json",
+    "./utils": {
+      "types": "./utils/dist/index.d.ts",
+      "browser": "./utils/dist/utils.module.js",
+      "import": "./utils/dist/utils.mjs",
+      "require": "./utils/dist/utils.js"
+    },
+    "./utils/package.json": "./utils/package.json"
   },
   "mangle": "../../mangle.json",
   "files": [

@@ -132,6 +132,84 @@ To opt into this optimization, simply pass the signal directly instead of access
 > **Note**
 > The content is wrapped in a React Fragment due to React 18's newer, more strict children types.
 
+## Utility Components and Hooks
+
+The `@preact/signals-react/utils` package provides additional utility components and hooks to make working with signals even easier.
+
+### Show Component
+
+The `Show` component provides a declarative way to conditionally render content based on a signal's value.
+
+```js
+import { Show } from "@preact/signals-react/utils";
+import { signal } from "@preact/signals-react";
+
+const isVisible = signal(false);
+
+function App() {
+	return (
+		<Show when={isVisible} fallback={<p>Nothing to see here</p>}>
+			<p>Now you see me!</p>
+		</Show>
+	);
+}
+
+// You can also use a function to access the value
+function App() {
+	return <Show when={isVisible}>{value => <p>The value is {value}</p>}</Show>;
+}
+```
+
+### For Component
+
+The `For` component helps you render lists from signal arrays with automatic caching of rendered items.
+
+```js
+import { For } from "@preact/signals-react/utils";
+import { signal } from "@preact/signals-react";
+
+const items = signal(["A", "B", "C"]);
+
+function App() {
+	return (
+		<For each={items} fallback={<p>No items</p>}>
+			{(item, index) => <div key={index}>Item: {item}</div>}
+		</For>
+	);
+}
+```
+
+### Additional Hooks
+
+#### useLiveSignal
+
+The `useLiveSignal` hook allows you to create a local signal that stays synchronized with an external signal.
+
+```js
+import { useLiveSignal } from "@preact/signals-react/utils";
+import { signal } from "@preact/signals-react";
+
+const external = signal(0);
+
+function Component() {
+	const local = useLiveSignal(external);
+	// local will automatically update when external changes
+}
+```
+
+#### useSignalRef
+
+The `useSignalRef` hook creates a signal that behaves like a React ref with a `.current` property.
+
+```js
+import { useSignalRef } from "@preact/signals-react/utils";
+
+function Component() {
+	const ref = useSignalRef(null);
+	return <div ref={ref}>The ref's value is {ref.current}</div>;
+}
+```
+
 ## Limitations
 
 This version of React integration does not support passing signals as DOM attributes. Support for this may be added at a later date.
