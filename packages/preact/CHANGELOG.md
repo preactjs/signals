@@ -1,5 +1,11 @@
 # @preact/signals
 
+## 2.1.0
+
+### Minor Changes
+
+- [#683](https://github.com/preactjs/signals/pull/683) [`4b585a5`](https://github.com/preactjs/signals/commit/4b585a5f15300b73dc66f45effd21342e3f6e5d5) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Provide `@preact/signals/utils` package with some helpers to make working with signals easier in Preact
+
 ## 2.0.5
 
 ### Patch Changes

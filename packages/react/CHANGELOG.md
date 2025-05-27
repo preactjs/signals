@@ -1,5 +1,11 @@
 # @preact/signals-react
 
+## 3.1.0
+
+### Minor Changes
+
+- [#627](https://github.com/preactjs/signals/pull/627) [`acfa71c`](https://github.com/preactjs/signals/commit/acfa71cff279ba8bb62a9852c3c47ca4c9461e4d) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Add a `@preact/signals-react/utils` entrypoint containing common Signal utilities
+
 ## 3.0.1
 
 ### Patch Changes

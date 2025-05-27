@@ -1,6 +1,6 @@
 {
   "name": "@preact/signals",
-  "version": "2.0.5",
+  "version": "2.1.0",
   "license": "MIT",
   "description": "Manage state with style in Preact",
   "keywords": [],
