@@ -1,8 +1,8 @@
 {
-  "name": "@preact/signals-react-utils",
-  "description": "Sub package for @preact/signals-react that contains some useful utilities",
+  "name": "@preact/signals-preact-utils",
+  "description": "Sub package for @preact/signals that contains some useful utilities",
   "private": true,
-  "amdName": "reactSignalsutils",
+  "amdName": "preactSignalsutils",
   "main": "dist/utils.js",
   "module": "dist/utils.module.js",
   "unpkg": "dist/utils.min.js",

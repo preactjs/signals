@@ -30,6 +30,12 @@
       "browser": "./dist/signals.module.js",
       "import": "./dist/signals.mjs",
       "require": "./dist/signals.js"
+    },
+    "./utils": {
+      "types": "./dist/utils.d.ts",
+      "browser": "./dist/utils.module.js",
+      "import": "./dist/utils.mjs",
+      "require": "./dist/utils.js"
     }
   },
   "mangle": "../../mangle.json",
