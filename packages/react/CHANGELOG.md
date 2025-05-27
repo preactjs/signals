@@ -1,5 +1,11 @@
 # @preact/signals-react
 
+## 3.1.1
+
+### Patch Changes
+
+- [#684](https://github.com/preactjs/signals/pull/684) [`a34eab2`](https://github.com/preactjs/signals/commit/a34eab2ab5a46f4ef90e05e2af6b99747191333c) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Ensure we build the thing
+
 ## 3.1.0
 
 ### Minor Changes
