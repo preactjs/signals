@@ -189,6 +189,68 @@ function Component() {
 }
 ```
 
+### `useAsyncComputed<T>(compute: () => Promise<T> | T, options?: AsyncComputedOptions)`
+
+A Preact hook that creates a signal that computes its value asynchronously. This is particularly useful for handling async data fetching and other asynchronous operations in a reactive way.
+
+> You can also import `asyncComputed` as a non-hook way
+
+#### Parameters
+
+- `compute`: A function that returns either a Promise or a direct value.
+  Using signals here will track them, when the signal changes it will re-execute `compute`.
+- `options`: Configuration options
+  - `suspend?: boolean`: Whether to enable Suspense support (defaults to true)
+
+#### Returns
+
+An `AsyncComputed<T>` object with the following properties:
+
+- `value: T | undefined`: The current value (undefined while loading)
+- `error: Signal<unknown>`: Signal containing any error that occurred
+- `running: Signal<boolean>`: Signal indicating if the computation is in progress
+
+> When inputs to `compute` change the value and error will be retained but `running` will be `true`.
+
+#### Example
+
+```typescript
+import { useAsyncComputed } from "@preact/signals/utils";
+
+function UserProfile({ userId }: { userId: Signal<string> }) {
+	const userData = useAsyncComputed(
+		async () => {
+			const response = await fetch(`/api/users/${userId.value}`);
+			return response.json();
+		},
+		{ suspend: false }
+	);
+
+	if (userData.running.value) {
+		return <div>Loading...</div>;
+	}
+
+	if (userData.error.value) {
+		return <div>Error: {String(userData.error.value)}</div>;
+	}
+
+	return (
+		<div>
+			<h1>{userData.value?.name}</h1>
+			<p>{userData.value?.email}</p>
+		</div>
+	);
+}
+```
+
+The hook will automatically:
+
+- Recompute when dependencies change (e.g., when `userId` changes)
+- Handle loading and error states
+- Clean up subscriptions when the component unmounts
+- Cache results between re-renders
+- Support Suspense when `suspend: true`
+
 ## License
 
 `MIT`, see the [LICENSE](../../LICENSE) file.

@@ -84,6 +84,7 @@ interface AugmentedPromise<T> extends Promise<T> {
 interface AsyncComputed<T> extends Signal<T> {
 	value: T;
 	error: Signal<unknown>;
+	running: Signal<boolean>;
 	pending?: AugmentedPromise<T> | null;
 	/** @internal */
 	_cleanup(): void;
@@ -108,8 +109,13 @@ export function asyncComputed<T>(
 ): AsyncComputed<T | undefined> {
 	const out = signal<T | undefined>(undefined) as AsyncComputed<T | undefined>;
 	out.error = signal<unknown>(undefined);
+	out.running = signal<boolean>(false);
 
 	const applyResult = (value: T | undefined, error?: unknown) => {
+		if (out.running.value) {
+			out.running.value = false;
+		}
+
 		if (out.pending) {
 			out.pending.error = error;
 			out.pending.value = value;
@@ -142,10 +148,14 @@ export function asyncComputed<T>(
 					return applyResult(result.value as T);
 				}
 
+				out.running.value = true;
+
 				// Handle async resolution
 				out.pending = result.then(
 					(value: T) => {
-						applyResult(value);
+						if (currentId === computeCounter) {
+							applyResult(value);
+						}
 						return value;
 					},
 					(error: unknown) => {
@@ -156,6 +166,7 @@ export function asyncComputed<T>(
 					}
 				) as AugmentedPromise<T>;
 			} else {
+				out.running.value = false;
 				applyResult(result);
 			}
 		} catch (error) {
@@ -188,6 +199,7 @@ export function useAsyncComputed<T>(
 		const incoming = asyncComputed(() => computeRef.current());
 
 		if (cached) {
+			incoming.running = cached.running;
 			incoming.value = cached.value;
 			incoming.error.value = cached.error.peek();
 			cached._cleanup();

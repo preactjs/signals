@@ -160,5 +160,47 @@ describe("@preact/signals-utils", () => {
 			});
 			expect(scratch.innerHTML).to.eq("<p>baz</p>");
 		});
+
+		it("Should apply the 'running' signal", async () => {
+			const AsyncComponent = (props: any) => {
+				const data = useAsyncComputed<{ foo: string }>(
+					async () => fetchResult(props.url.value),
+					{ suspend: false }
+				);
+				const hasData = data.value !== undefined;
+				return (
+					<p>
+						{data.running.value
+							? "running"
+							: hasData
+							? data.value?.foo
+							: "error"}
+					</p>
+				);
+			};
+			const url = signal("/api/foo?id=1");
+			act(() => {
+				render(<AsyncComponent url={url} />, scratch);
+			});
+			expect(scratch.innerHTML).to.eq("<p>running</p>");
+
+			await act(async () => {
+				await resolve({ foo: "bar" });
+				await new Promise(resolve => setTimeout(resolve));
+			});
+
+			expect(scratch.innerHTML).to.eq("<p>bar</p>");
+
+			act(() => {
+				url.value = "/api/foo?id=2";
+			});
+			expect(scratch.innerHTML).to.eq("<p>running</p>");
+
+			await act(async () => {
+				await resolve({ foo: "baz" });
+				await new Promise(resolve => setTimeout(resolve));
+			});
+			expect(scratch.innerHTML).to.eq("<p>baz</p>");
+		});
 	});
 });
