@@ -21,6 +21,7 @@
     "@preact/signals-core": "workspace:^1.3.0"
   },
   "peerDependencies": {
+    "@preact/signals": "workspace:*",
     "preact": ">= 10.25.0"
   }
 }
