@@ -1,5 +1,5 @@
 {
-  "name": "@preact/signals-preact-utils",
+  "name": "@preact/signals-utils",
   "description": "Sub package for @preact/signals that contains some useful utilities",
   "private": true,
   "amdName": "preactSignalsutils",

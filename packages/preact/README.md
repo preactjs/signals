@@ -120,8 +120,8 @@ The `@preact/signals/utils` package provides additional utility components and h
 The `Show` component provides a declarative way to conditionally render content based on a signal's value.
 
 ```js
-import { Show } from "@preact/signals-react/utils";
-import { signal } from "@preact/signals-react";
+import { Show } from "@preact/signals/utils";
+import { signal } from "@preact/signals";
 
 const isVisible = signal(false);
 
@@ -144,8 +144,8 @@ function App() {
 The `For` component helps you render lists from signal arrays with automatic caching of rendered items.
 
 ```js
-import { For } from "@preact/signals-react/utils";
-import { signal } from "@preact/signals-react";
+import { For } from "@preact/signals/utils";
+import { signal } from "@preact/signals";
 
 const items = signal(["A", "B", "C"]);
 
@@ -165,8 +165,8 @@ function App() {
 The `useLiveSignal` hook allows you to create a local signal that stays synchronized with an external signal.
 
 ```js
-import { useLiveSignal } from "@preact/signals-react/utils";
-import { signal } from "@preact/signals-react";
+import { useLiveSignal } from "@preact/signals/utils";
+import { signal } from "@preact/signals";
 
 const external = signal(0);
 
@@ -181,7 +181,7 @@ function Component() {
 The `useSignalRef` hook creates a signal that behaves like a React ref with a `.current` property.
 
 ```js
-import { useSignalRef } from "@preact/signals-react/utils";
+import { useSignalRef } from "@preact/signals/utils";
 
 function Component() {
 	const ref = useSignalRef(null);

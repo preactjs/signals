@@ -32,10 +32,10 @@
       "require": "./dist/signals.js"
     },
     "./utils": {
-      "types": "./dist/utils.d.ts",
-      "browser": "./dist/utils.module.js",
-      "import": "./dist/utils.mjs",
-      "require": "./dist/utils.js"
+      "types": "./utils/dist/index.d.ts",
+      "browser": "./utils/dist/utils.module.js",
+      "import": "./utils/dist/utils.mjs",
+      "require": "./utils/dist/utils.js"
     }
   },
   "mangle": "../../mangle.json",
@@ -44,7 +44,10 @@
     "dist",
     "CHANGELOG.md",
     "LICENSE",
-    "README.md"
+    "README.md",
+    "utils/dist",
+    "utils/package.json",
+    "utils/src"
   ],
   "scripts": {
     "prepublishOnly": "cd ../.. && pnpm build:preact"

@@ -3,7 +3,7 @@ import { For, Show, useSignalRef } from "@preact/signals/utils";
 import { render, createElement } from "preact";
 import { act } from "preact/test-utils";
 
-describe("@preact/signals-react-utils", () => {
+describe("@preact/signals-utils", () => {
 	let scratch: HTMLDivElement;
 
 	beforeEach(async () => {
@@ -16,10 +16,10 @@ describe("@preact/signals-react-utils", () => {
 	});
 
 	describe("<Show />", () => {
-		it("Should reactively show an element", async () => {
+		it("Should reactively show an element", () => {
 			const toggle = signal(false)!;
 			const Paragraph = (props: any) => <p>{props.children}</p>;
-			await act(() => {
+			act(() => {
 				render(
 					<Show when={toggle} fallback={<Paragraph>Hiding</Paragraph>}>
 						<Paragraph>Showing</Paragraph>
@@ -29,7 +29,7 @@ describe("@preact/signals-react-utils", () => {
 			});
 			expect(scratch.innerHTML).to.eq("<p>Hiding</p>");
 
-			await act(() => {
+			act(() => {
 				toggle.value = true;
 			});
 			expect(scratch.innerHTML).to.eq("<p>Showing</p>");
@@ -37,10 +37,10 @@ describe("@preact/signals-react-utils", () => {
 	});
 
 	describe("<For />", () => {
-		it("Should iterate over a list of signals", async () => {
+		it("Should iterate over a list of signals", () => {
 			const list = signal<Array<string>>([])!;
 			const Paragraph = (p: any) => <p>{p.children}</p>;
-			await act(() => {
+			act(() => {
 				render(
 					<For each={list} fallback={<Paragraph>No items</Paragraph>}>
 						{item => <Paragraph key={item}>{item}</Paragraph>}
@@ -50,7 +50,7 @@ describe("@preact/signals-react-utils", () => {
 			});
 			expect(scratch.innerHTML).to.eq("<p>No items</p>");
 
-			await act(() => {
+			act(() => {
 				list.value = ["foo", "bar"];
 			});
 			expect(scratch.innerHTML).to.eq("<p>foo</p><p>bar</p>");
@@ -58,7 +58,7 @@ describe("@preact/signals-react-utils", () => {
 	});
 
 	describe("useSignalRef", () => {
-		it("should work", async () => {
+		it("should work", () => {
 			let ref;
 			const Paragraph = (p: any) => {
 				ref = useSignalRef(null);
@@ -68,13 +68,13 @@ describe("@preact/signals-react-utils", () => {
 					<p ref={ref}>{p.children}</p>
 				);
 			};
-			await act(() => {
+			act(() => {
 				render(<Paragraph type="p">1</Paragraph>, scratch);
 			});
 			expect(scratch.innerHTML).to.eq("<p>1</p>");
 			expect((ref as any).value instanceof HTMLParagraphElement).to.eq(true);
 
-			await act(() => {
+			act(() => {
 				render(<Paragraph type="span">1</Paragraph>, scratch);
 			});
 			expect(scratch.innerHTML).to.eq("<span>1</span>");
