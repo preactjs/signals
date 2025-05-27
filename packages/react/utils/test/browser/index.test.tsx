@@ -28,10 +28,10 @@ describe("@preact/signals-react-utils", () => {
 	});
 
 	describe("<Show />", () => {
-		it("Should reactively show an element", () => {
+		it("Should reactively show an element", async () => {
 			const toggle = signal(false)!;
 			const Paragraph = (p: any) => <p>{p.children}</p>;
-			act(() => {
+			await act(() => {
 				render(
 					<Show when={toggle} fallback={<Paragraph>Hiding</Paragraph>}>
 						<Paragraph>Showing</Paragraph>
@@ -40,7 +40,7 @@ describe("@preact/signals-react-utils", () => {
 			});
 			expect(scratch.innerHTML).to.eq("<p>Hiding</p>");
 
-			act(() => {
+			await act(() => {
 				toggle.value = true;
 			});
 			expect(scratch.innerHTML).to.eq("<p>Showing</p>");
@@ -48,10 +48,10 @@ describe("@preact/signals-react-utils", () => {
 	});
 
 	describe("<For />", () => {
-		it("Should iterate over a list of signals", () => {
+		it("Should iterate over a list of signals", async () => {
 			const list = signal<Array<string>>([])!;
 			const Paragraph = (p: any) => <p>{p.children}</p>;
-			act(() => {
+			await act(() => {
 				render(
 					<For each={list} fallback={<Paragraph>No items</Paragraph>}>
 						{item => <Paragraph key={item}>{item}</Paragraph>}
@@ -60,7 +60,7 @@ describe("@preact/signals-react-utils", () => {
 			});
 			expect(scratch.innerHTML).to.eq("<p>No items</p>");
 
-			act(() => {
+			await act(() => {
 				list.value = ["foo", "bar"];
 			});
 			expect(scratch.innerHTML).to.eq("<p>foo</p><p>bar</p>");
@@ -68,7 +68,7 @@ describe("@preact/signals-react-utils", () => {
 	});
 
 	describe("useSignalRef", () => {
-		it("should work", () => {
+		it("should work", async () => {
 			let ref;
 			const Paragraph = (p: any) => {
 				ref = useSignalRef(null);
@@ -78,13 +78,13 @@ describe("@preact/signals-react-utils", () => {
 					<p ref={ref}>{p.children}</p>
 				);
 			};
-			act(() => {
+			await act(() => {
 				render(<Paragraph type="p">1</Paragraph>);
 			});
 			expect(scratch.innerHTML).to.eq("<p>1</p>");
 			expect((ref as any).value instanceof HTMLParagraphElement).to.eq(true);
 
-			act(() => {
+			await act(() => {
 				render(<Paragraph type="span">1</Paragraph>);
 			});
 			expect(scratch.innerHTML).to.eq("<span>1</span>");
