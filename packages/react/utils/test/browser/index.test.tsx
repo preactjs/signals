@@ -1,4 +1,4 @@
-import { For, Show } from "../../src";
+import { For, Show, useSignalRef } from "../../src";
 import {
 	act,
 	checkHangingAct,
@@ -64,6 +64,31 @@ describe("@preact/signals-react-utils", () => {
 				list.value = ["foo", "bar"];
 			});
 			expect(scratch.innerHTML).to.eq("<p>foo</p><p>bar</p>");
+		});
+	});
+
+	describe("useSignalRef", () => {
+		it("should work", () => {
+			let ref;
+			const Paragraph = (p: any) => {
+				ref = useSignalRef(null);
+				return p.type === "span" ? (
+					<span ref={ref}>{p.children}</span>
+				) : (
+					<p ref={ref}>{p.children}</p>
+				);
+			};
+			act(() => {
+				render(<Paragraph type="p">1</Paragraph>);
+			});
+			expect(scratch.innerHTML).to.eq("<p>1</p>");
+			expect((ref as any).value instanceof HTMLParagraphElement).to.eq(true);
+
+			act(() => {
+				render(<Paragraph type="span">1</Paragraph>);
+			});
+			expect(scratch.innerHTML).to.eq("<span>1</span>");
+			expect((ref as any).value instanceof HTMLSpanElement).to.eq(true);
 		});
 	});
 });

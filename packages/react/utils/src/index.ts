@@ -19,7 +19,10 @@ export function Show<T = boolean>(props: ShowProps<T>): JSX.Element | null {
 }
 
 interface ForProps<T> {
-	each: Signal<Array<T>> | ReadonlySignal<Array<T>>;
+	each:
+		| Signal<Array<T>>
+		| ReadonlySignal<Array<T>>
+		| (() => Signal<Array<T>> | ReadonlySignal<Array<T>>);
 	fallback?: JSX.Element;
 	children: (value: T, index: number) => JSX.Element;
 }
@@ -27,8 +30,14 @@ interface ForProps<T> {
 export function For<T>(props: ForProps<T>): JSX.Element | null {
 	useSignals();
 	const cache = useMemo(() => new Map(), []);
-	const list = props.each.value;
+	let list = (
+		(typeof props.each === "function" ? props.each() : props.each) as Signal<
+			Array<T>
+		>
+	).value;
+
 	if (!list.length) return props.fallback || null;
+
 	const items = list.map((value, key) => {
 		if (!cache.has(value)) {
 			cache.set(value, props.children(value, key));
@@ -43,3 +52,19 @@ export function useLiveSignal<T>(value: Signal<T> | ReadonlySignal<T>) {
 	if (s.peek() !== value) s.value = value;
 	return s;
 }
+
+export function useSignalRef<T>(value: T) {
+	const ref = useSignal(value) as Signal<T> & { current: T };
+	if (!("current" in ref))
+		Object.defineProperty(ref, "current", refSignalProto);
+	return ref;
+}
+const refSignalProto = {
+	configurable: true,
+	get(this: Signal) {
+		return this.value;
+	},
+	set(this: Signal, v: any) {
+		this.value = v;
+	},
+};
