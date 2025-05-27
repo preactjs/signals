@@ -6,28 +6,23 @@ import { UpdateInfo, Node, Computed as ComputedType } from "./internal";
 const inflightUpdates = new Set<Signal>();
 const updateInfoMap = new WeakMap<Signal, UpdateInfo[]>();
 const trackers = new WeakMap<Signal, number>();
-const activeSignals = new Set<Signal>();
 const signalValues = new WeakMap<Signal, any>();
 const subscriptions = new WeakMap<Signal, () => void>();
-
-export function getDebugStats() {
-	return {
-		activeTrackers: activeSignals.size,
-		activeSubscriptions: activeSignals.size,
-	};
-}
 
 export function setDebugOptions(options: {
 	grouped?: boolean;
 	enabled?: boolean;
+	spacing?: number;
 }) {
 	if (typeof options.grouped === "boolean") isGrouped = options.grouped;
 	if (typeof options.enabled === "boolean") debugEnabled = options.enabled;
+	if (typeof options.spacing === "number") spacing = options.spacing;
 }
 
 let isGrouped = true,
 	debugEnabled = true,
-	initializing = false;
+	initializing = false,
+	spacing = 0;
 
 // Store original methods
 const originalSubscribe = Signal.prototype._subscribe;
@@ -40,7 +35,6 @@ Signal.prototype._subscribe = function (node: Node) {
 	trackers.set(this, tracker + 1);
 
 	if (tracker === 0 && !("_fn" in this)) {
-		activeSignals.add(this);
 		// Initialize tracked value and set up subscription for logging
 		const initialValue = this.peek();
 		signalValues.set(this, initialValue);
@@ -105,7 +99,6 @@ Signal.prototype._unsubscribe = function (node: Node) {
 		trackers.set(this, tracker - 1);
 
 		if (tracker === 1) {
-			activeSignals.delete(this);
 			signalValues.delete(this);
 			trackers.delete(this);
 
@@ -192,12 +185,14 @@ function flushUpdates() {
 
 	for (const signal of signals) {
 		const updateInfoList = updateInfoMap.get(signal) || [];
+		console.log("updateInfoList", updateInfoList);
 		let prevDepth = -1;
 		for (const updateInfo of updateInfoList) {
 			logUpdate(updateInfo, prevDepth);
 			prevDepth = updateInfo.depth;
 		}
 		updateInfoMap.delete(signal);
+		console.log("prevDepth", prevDepth);
 		new Array(prevDepth + 1).fill(0).map(endUpdateGroup);
 	}
 }
@@ -234,11 +229,11 @@ function logUpdate(info: UpdateInfo, prevDepth: number) {
 			);
 		}
 
-		console.log(`${" ".repeat(depth * 2)}From:`, formattedPrev);
-		console.log(`${" ".repeat(depth * 2)}To:`, formattedNew);
+		console.log(`${" ".repeat(depth * spacing)}From:`, formattedPrev);
+		console.log(`${" ".repeat(depth * spacing)}To:`, formattedNew);
 
 		if ("_fn" in signal) {
-			console.log(`${" ".repeat(depth * 2)}Type: Computed`);
+			console.log(`${" ".repeat(depth * spacing)}Type: Computed`);
 		}
 	} else {
 		console.log(
