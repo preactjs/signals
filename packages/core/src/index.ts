@@ -273,8 +273,8 @@ declare class Signal<T = any> {
 }
 
 export interface SignalOptions<T = any> {
-	watched: (this: Signal<T>) => void;
-	unwatched: (this: Signal<T>) => void;
+	watched?: (this: Signal<T>) => void;
+	unwatched?: (this: Signal<T>) => void;
 }
 
 /** @internal */
