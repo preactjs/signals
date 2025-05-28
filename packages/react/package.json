@@ -1,6 +1,6 @@
 {
   "name": "@preact/signals-react",
-  "version": "3.1.1",
+  "version": "3.2.0",
   "license": "MIT",
   "description": "Manage state with style in React",
   "keywords": [],
@@ -64,7 +64,7 @@
     "prepublishOnly": "cd ../.. && pnpm build:react-runtime && pnpm build:react && pnpm build:react-utils"
   },
   "dependencies": {
-    "@preact/signals-core": "workspace:^1.7.0",
+    "@preact/signals-core": "workspace:^1.9.0",
     "use-sync-external-store": "^1.2.0"
   },
   "peerDependencies": {
