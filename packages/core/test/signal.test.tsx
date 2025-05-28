@@ -196,6 +196,29 @@ describe("signal", () => {
 			unsubscribe2();
 			expect(unwatched).to.be.calledOnce;
 		});
+
+		it("should allow updating the signal from watched", async () => {
+			const calls: number[] = [];
+			const watched = sinon.spy(() => {
+				setTimeout(() => {
+					s.value = 2;
+				});
+			});
+			const unwatched = sinon.spy();
+			const s = signal(1, { watched, unwatched });
+			expect(watched).to.not.be.called;
+			const unsubscribe = s.subscribe(() => {
+				calls.push(s.value);
+			});
+			expect(watched).to.be.calledOnce;
+			const unsubscribe2 = s.subscribe(() => {});
+			expect(watched).to.be.calledOnce;
+			await new Promise(resolve => setTimeout(resolve));
+			unsubscribe();
+			unsubscribe2();
+			expect(unwatched).to.be.calledOnce;
+			expect(calls).to.deep.equal([1, 2]);
+		});
 	});
 
 	it("signals should be identified with a symbol", () => {
