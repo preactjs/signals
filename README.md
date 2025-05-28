@@ -20,21 +20,16 @@ npm install @preact/signals-react
 npm install @preact/signals-core
 ```
 
-- [Guide / API](#guide--api)
-  - [`signal(initialValue)`](#signalinitialvalue)
-    - [`signal.peek()`](#signalpeek)
-  - [`computed(fn)`](#computedfn)
-  - [`effect(fn)`](#effectfn)
-  - [`batch(fn)`](#batchfn)
-  - [`untracked(fn)`](#untrackedfn)
-- [Preact Integration](./packages/preact/README.md#preact-integration)
-  - [Hooks](./packages/preact/README.md#hooks)
-  - [Rendering optimizations](./packages/preact/README.md#rendering-optimizations)
-    - [Attribute optimization (experimental)](./packages/preact/README.md#attribute-optimization-experimental)
-- [React Integration](./packages/react/README.md#react-integration)
-  - [Hooks](./packages/react/README.md#hooks)
-  - [Rendering optimizations](./packages/react/README.md#rendering-optimizations)
-- [License](#license)
+- [Signals](#signals)
+  - [Installation:](#installation)
+  - [Guide / API](#guide--api)
+    - [`signal(initialValue)`](#signalinitialvalue)
+      - [`signal.peek()`](#signalpeek)
+    - [`computed(fn)`](#computedfn)
+    - [`effect(fn)`](#effectfn)
+    - [`batch(fn)`](#batchfn)
+    - [`untracked(fn)`](#untrackedfn)
+  - [License](#license)
 
 ## Guide / API
 
@@ -57,6 +52,21 @@ counter.value = 1;
 ```
 
 Writing to a signal is done by setting its `.value` property. Changing a signal's value synchronously updates every [computed](#computedfn) and [effect](#effectfn) that depends on that signal, ensuring your app state is always consistent.
+
+You can also pass options to `signal()` and `computed()` to be notified when the signal gains its first subscriber and loses its last subscriber:
+
+```js
+const counter = signal(0, {
+	watched: function () {
+		console.log("Signal has its first subscriber");
+	},
+	unwatched: function () {
+		console.log("Signal lost its last subscriber");
+	},
+});
+```
+
+These callbacks are useful for managing resources or side effects that should only be active when the signal has subscribers. For example, you might use them to start/stop expensive background operations or subscribe/unsubscribe from external event sources.
 
 #### `signal.peek()`
 

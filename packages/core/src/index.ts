@@ -308,8 +308,10 @@ Signal.prototype._subscribe = function (node) {
 
 		if (targets !== undefined) {
 			targets._prevTarget = node;
-		} else if (this._watched !== undefined) {
-			this._watched();
+		} else {
+			untracked(() => {
+				this._watched?.call(this);
+			});
 		}
 	}
 };
@@ -331,8 +333,10 @@ Signal.prototype._unsubscribe = function (node) {
 
 		if (node === this._targets) {
 			this._targets = next;
-			if (next === undefined && this._unwatched !== undefined) {
-				this._unwatched();
+			if (next === undefined) {
+				untracked(() => {
+					this._unwatched?.call(this);
+				});
 			}
 		}
 	}
