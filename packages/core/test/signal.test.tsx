@@ -182,6 +182,45 @@ describe("signal", () => {
 		});
 	});
 
+	describe(".(un)watched()", () => {
+		it("should call watched when first subscription occurs", () => {
+			const watched = sinon.spy();
+			const unwatched = sinon.spy();
+			const s = signal(1, { watched, unwatched });
+			expect(watched).to.not.be.called;
+			const unsubscribe = s.subscribe(() => {});
+			expect(watched).to.be.calledOnce;
+			const unsubscribe2 = s.subscribe(() => {});
+			expect(watched).to.be.calledOnce;
+			unsubscribe();
+			unsubscribe2();
+			expect(unwatched).to.be.calledOnce;
+		});
+
+		it("should allow updating the signal from watched", async () => {
+			const calls: number[] = [];
+			const watched = sinon.spy(() => {
+				setTimeout(() => {
+					s.value = 2;
+				});
+			});
+			const unwatched = sinon.spy();
+			const s = signal(1, { watched, unwatched });
+			expect(watched).to.not.be.called;
+			const unsubscribe = s.subscribe(() => {
+				calls.push(s.value);
+			});
+			expect(watched).to.be.calledOnce;
+			const unsubscribe2 = s.subscribe(() => {});
+			expect(watched).to.be.calledOnce;
+			await new Promise(resolve => setTimeout(resolve));
+			unsubscribe();
+			unsubscribe2();
+			expect(unwatched).to.be.calledOnce;
+			expect(calls).to.deep.equal([1, 2]);
+		});
+	});
+
 	it("signals should be identified with a symbol", () => {
 		const a = signal(0);
 		expect(a.brand).to.equal(Symbol.for("preact-signals"));
@@ -1062,6 +1101,37 @@ describe("computed()", () => {
 		a.value = "aaa";
 		expect(c.value).to.equal("bb");
 		expect(spy).not.to.be.called;
+	});
+
+	describe(".(un)watched()", () => {
+		it("should call watched when first subscription occurs", () => {
+			const watched = sinon.spy();
+			const unwatched = sinon.spy();
+			const s = computed(() => 1, { watched, unwatched });
+			expect(watched).to.not.be.called;
+			const unsubscribe = s.subscribe(() => {});
+			expect(watched).to.be.calledOnce;
+			const unsubscribe2 = s.subscribe(() => {});
+			expect(watched).to.be.calledOnce;
+			unsubscribe();
+			unsubscribe2();
+			expect(unwatched).to.be.calledOnce;
+		});
+
+		it("should call watched when first subscription occurs w/ nested signal", () => {
+			const watched = sinon.spy();
+			const unwatched = sinon.spy();
+			const s = signal(1, { watched, unwatched });
+			const c = computed(() => s.value + 1, { watched, unwatched });
+			expect(watched).to.not.be.called;
+			const unsubscribe = c.subscribe(() => {});
+			expect(watched).to.be.calledTwice;
+			const unsubscribe2 = s.subscribe(() => {});
+			expect(watched).to.be.calledTwice;
+			unsubscribe2();
+			unsubscribe();
+			expect(unwatched).to.be.calledTwice;
+		});
 	});
 
 	it("should consider undefined value separate from uninitialized value", () => {
