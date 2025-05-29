@@ -1,5 +1,15 @@
 # @preact/signals-core
 
+## 1.9.0
+
+### Minor Changes
+
+- [#634](https://github.com/preactjs/signals/pull/634) [`62bed44`](https://github.com/preactjs/signals/commit/62bed44b0f298ac0097060289bfecd73f030b146) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Add an option to specify a watched/unwatched callback to a signal
+
+### Patch Changes
+
+- [#688](https://github.com/preactjs/signals/pull/688) [`587e702`](https://github.com/preactjs/signals/commit/587e702f8db9a8e67fe2cdf8dda0a4bffe5fc195) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Loosen up types for `watched` and `unwatched`
+
 ## 1.8.0
 
 ### Minor Changes
