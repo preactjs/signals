@@ -436,11 +436,7 @@ function needsToRecompute(target: Computed | Effect): boolean {
 		// If there's a new version of the dependency before or after refreshing,
 		// or the dependency has something blocking it from refreshing at all (e.g. a
 		// dependency cycle), then we need to recompute.
-		if (
-			node._source._version !== node._version ||
-			!node._source._refresh() ||
-			node._source._version !== node._version
-		) {
+		if (!node._source._refresh() || node._source._version !== node._version) {
 			return true;
 		}
 	}
@@ -483,7 +479,7 @@ function prepareSources(target: Computed | Effect) {
 
 function cleanupSources(target: Computed | Effect) {
 	let node = target._sources;
-	let head = undefined;
+	let head: Node | undefined = undefined;
 
 	/**
 	 * At this point 'target._sources' points to the tail of the doubly-linked list.
