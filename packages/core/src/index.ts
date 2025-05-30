@@ -357,7 +357,7 @@ Signal.prototype.subscribe = function (fn) {
 				evalContext = prevContext;
 			}
 		},
-		{ name: INTERNAL_NAME }
+		{ name: this.name + "-subscribe" }
 	);
 };
 
@@ -782,7 +782,6 @@ declare class Effect {
 	_nextBatchedEffect?: Effect;
 	_flags: number;
 	name?: string;
-	internal?: boolean;
 
 	constructor(fn: EffectFn, options?: EffectOptions);
 
@@ -793,21 +792,21 @@ declare class Effect {
 }
 
 export interface EffectOptions {
-	name?: string | typeof INTERNAL_NAME;
+	name?: string;
 }
 
 /** @internal */
-function Effect(this: Effect, fn: EffectFn, options?: EffectOptions) {
+function Effect(
+	this: Effect,
+	fn: EffectFn,
+	options?: EffectOptions & { internal?: boolean }
+) {
 	this._fn = fn;
 	this._cleanup = undefined;
 	this._sources = undefined;
 	this._nextBatchedEffect = undefined;
 	this._flags = TRACKING;
-	if (options?.name !== INTERNAL_NAME) {
-		this.name = options?.name;
-	} else {
-		this.internal = true;
-	}
+	this.name = options?.name;
 }
 
 Effect.prototype._callback = function () {
@@ -881,8 +880,6 @@ function effect(fn: EffectFn, options?: EffectOptions): () => void {
 	// because bound functions seem to be just as fast and take up a lot less memory.
 	return effect._dispose.bind(effect);
 }
-
-const INTERNAL_NAME = Symbol.for("preact-signals-internal");
 
 export {
 	computed,
