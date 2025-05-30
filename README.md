@@ -57,6 +57,7 @@ You can also pass options to `signal()` and `computed()` to be notified when the
 
 ```js
 const counter = signal(0, {
+	name: "CounterSignal",
 	watched: function () {
 		console.log("Signal has its first subscriber");
 	},
@@ -67,6 +68,8 @@ const counter = signal(0, {
 ```
 
 These callbacks are useful for managing resources or side effects that should only be active when the signal has subscribers. For example, you might use them to start/stop expensive background operations or subscribe/unsubscribe from external event sources.
+
+The `name` option will be used in the `@preact/signals-debug` package to provide meaningful names for the log output.
 
 #### `signal.peek()`
 

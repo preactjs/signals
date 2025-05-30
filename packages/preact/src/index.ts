@@ -9,6 +9,7 @@ import {
 	type ReadonlySignal,
 	untracked,
 	SignalOptions,
+	EffectOptions,
 } from "@preact/signals-core";
 import {
 	VNode,
@@ -449,7 +450,10 @@ function notifyDomUpdates(this: Effect) {
 	}
 }
 
-export function useSignalEffect(cb: () => void | (() => void)) {
+export function useSignalEffect(
+	cb: () => void | (() => void),
+	options?: EffectOptions
+) {
 	const callback = useRef(cb);
 	callback.current = cb;
 
@@ -457,7 +461,7 @@ export function useSignalEffect(cb: () => void | (() => void)) {
 		return effect(function (this: Effect) {
 			this._notify = notifyEffects;
 			return callback.current();
-		});
+		}, options);
 	}, []);
 }
 
