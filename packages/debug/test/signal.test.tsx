@@ -40,7 +40,10 @@ describe("Signal Debug", () => {
 			expect(groupSpy).to.be.calledWith("🎯 Signal Update: count");
 			expect(consoleSpy).to.be.calledWith("From:", "0");
 			expect(consoleSpy).to.be.calledWith("To:", "1");
-			expect(groupEndSpy).to.be.calledOnce;
+			expect(groupCollapsedSpy).to.be.calledWith(
+				"  ↪️ Triggered effect: count-subscribe"
+			);
+			expect(groupEndSpy).to.be.calledTwice;
 		});
 
 		it("should handle object values correctly", async () => {

@@ -40,7 +40,7 @@
   "scripts": {
     "prepublishOnly": "cd ../.. && pnpm build:debug"
   },
-  "dependencies": {
+  "devDependencies": {
     "@preact/signals-core": "workspace:^1.7.0"
   },
   "peerDependencies": {

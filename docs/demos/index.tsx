@@ -101,7 +101,6 @@ function DuelingCounters() {
 	);
 }
 
-window.location.href = "/demos";
 render(
 	<LocationProvider>
 		<Demos />

@@ -1,13 +1,14 @@
 /* eslint-disable no-console */
-import { Signal, Effect, Computed } from "@preact/signals-core";
+import { Signal, Effect, Computed, effect } from "@preact/signals-core";
 import { formatValue, getSignalName } from "./utils";
 import { UpdateInfo, Node, Computed as ComputedType } from "./internal";
 
-const inflightUpdates = new Set<Signal>();
-const updateInfoMap = new WeakMap<Signal, UpdateInfo[]>();
-const trackers = new WeakMap<Signal, number>();
-const signalValues = new WeakMap<Signal, any>();
-const subscriptions = new WeakMap<Signal, () => void>();
+const inflightUpdates = new Set<Signal | Effect>();
+const updateInfoMap = new WeakMap<Signal | Effect, UpdateInfo[]>();
+const trackers = new WeakMap<Signal | Effect, number>();
+const signalValues = new WeakMap<Signal | Effect, any>();
+const subscriptions = new WeakMap<Signal | Effect, () => void>();
+const internalEffects = new WeakSet<Effect>();
 
 export function setDebugOptions(options: {
 	grouped?: boolean;
@@ -38,19 +39,24 @@ Signal.prototype._subscribe = function (node: Node) {
 		// Initialize tracked value and set up subscription for logging
 		const initialValue = this.peek();
 		signalValues.set(this, initialValue);
+		const sig = this as Signal;
 
 		// Set up a subscription to track value changes
 		initializing = true;
-		const unsubscribe = this.subscribe(newValue => {
+		let internalEffect: Effect | undefined;
+		const unsubscribe = effect(function (this: Effect) {
+			internalEffect = this;
+			const newValue = sig.value;
+			const prevValue = signalValues.get(sig);
+
 			if (!debugEnabled) return;
 
-			const prevValue = signalValues.get(this);
 			if (prevValue !== newValue) {
-				signalValues.set(this, newValue);
-				inflightUpdates.add(this);
-				updateInfoMap.set(this, [
+				signalValues.set(sig, newValue);
+				inflightUpdates.add(sig);
+				updateInfoMap.set(sig, [
 					{
-						signal: this,
+						signal: sig,
 						prevValue,
 						newValue,
 						timestamp: Date.now(),
@@ -65,7 +71,10 @@ Signal.prototype._subscribe = function (node: Node) {
 		});
 		initializing = false;
 
-		subscriptions.set(this, unsubscribe);
+		subscriptions.set(sig, () => {
+			unsubscribe();
+			internalEffect && internalEffects.delete(internalEffect);
+		});
 	}
 
 	return originalSubscribe.call(this, node);
@@ -159,8 +168,9 @@ function bubbleUpToBaseSignal(
 }
 
 const originalEffectCallback = Effect.prototype._callback;
-Effect.prototype._callback = function () {
-	if (!debugEnabled || this.internal) return originalEffectCallback.call(this);
+Effect.prototype._callback = function (this: Effect) {
+	if (!debugEnabled || internalEffects.has(this))
+		return originalEffectCallback.call(this);
 
 	if ("_sources" in this) {
 		const baseSignal = bubbleUpToBaseSignal(this as any);
@@ -185,14 +195,12 @@ function flushUpdates() {
 
 	for (const signal of signals) {
 		const updateInfoList = updateInfoMap.get(signal) || [];
-		console.log("updateInfoList", updateInfoList);
 		let prevDepth = -1;
 		for (const updateInfo of updateInfoList) {
 			logUpdate(updateInfo, prevDepth);
 			prevDepth = updateInfo.depth;
 		}
 		updateInfoMap.delete(signal);
-		console.log("prevDepth", prevDepth);
 		new Array(prevDepth + 1).fill(0).map(endUpdateGroup);
 	}
 }
