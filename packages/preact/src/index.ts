@@ -71,8 +71,6 @@ function createUpdater(update: () => void) {
 	return updater;
 }
 
-// TODO: provide names for built-in usage of signals/computeds/effects
-
 /** @todo This may be needed for complex prop value detection. */
 // function isSignalValue(value: any): value is Signal {
 // 	if (typeof value !== "object" || value == null) return false;
@@ -452,7 +450,10 @@ function notifyDomUpdates(this: Effect) {
 	}
 }
 
-export function useSignalEffect(cb: () => void | (() => void), options?: EffectOptions) {
+export function useSignalEffect(
+	cb: () => void | (() => void),
+	options?: EffectOptions
+) {
 	const callback = useRef(cb);
 	callback.current = cb;
 

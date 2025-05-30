@@ -1,7 +1,11 @@
 import { Effect, Signal } from "@preact/signals-core";
 
 export function getSignalName(signal: Signal | Effect): string {
-	return signal.name || "(anonymous signal)";
+	const name = signal.name;
+	if (name === "sub") {
+		return `${(signal as Effect)._sources?._source.name}-subscribe`;
+	}
+	return name || "(anonymous signal)";
 }
 
 export function formatValue(value: any): string {
