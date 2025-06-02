@@ -433,12 +433,16 @@ function needsToRecompute(target: Computed | Effect): boolean {
 		node !== undefined;
 		node = node._nextSource
 	) {
-		// If there's a new version of the dependency before or after refreshing,
-		// or the dependency has something blocking it from refreshing at all (e.g. a
-		// dependency cycle), then we need to recompute.
 		if (
+			// If the dependency has definitely been updated since its version number
+			// was observed, then we need to recompute. This first check is not strictly
+			// necessary for correctness, but allows us to skip the refresh call if the
+			// dependency has already been updated.
 			node._source._version !== node._version ||
+			// Refresh the dependency. If there's something blocking the refresh (e.g. a
+			// dependency cycle), then we need to recompute.
 			!node._source._refresh() ||
+			// If the dependency got a new version after the refresh, then we need to recompute.
 			node._source._version !== node._version
 		) {
 			return true;
