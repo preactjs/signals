@@ -24,6 +24,12 @@ npm install @preact/signals
   - [Hooks](#hooks)
   - [Rendering optimizations](#rendering-optimizations)
     - [Attribute optimization (experimental)](#attribute-optimization-experimental)
+- [Utility Components and Hooks](#utility-components-and-hooks)
+  - [Show Component](#show-component)
+  - [For Component](#for-component)
+  - [Additional Hooks](#additional-hooks)
+  - [`useLiveSignal`](#uselivesignal)
+  - [`useSignalRef`](#usesignalref)
 - [License](#license)
 
 ## Preact Integration

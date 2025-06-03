@@ -22,6 +22,13 @@ npm install @preact/signals-react
   - [`untracked(fn)`](../../README.md#untrackedfn)
 - [React Integration](#react-integration)
   - [Hooks](#hooks)
+- [Utility Components and Hooks](#utility-components-and-hooks)
+  - [Show Component](#show-component)
+  - [For Component](#for-component)
+  - [Additional Hooks](#additional-hooks)
+  - [`useLiveSignal`](#uselivesignal)
+  - [`useSignalRef`](#usesignalref)
+- [Limitations](#limitations)
 - [License](#license)
 
 ## React Integration
