@@ -28,8 +28,8 @@ npm install @preact/signals
   - [Show Component](#show-component)
   - [For Component](#for-component)
   - [Additional Hooks](#additional-hooks)
-  - [`useLiveSignal`](#uselivesignal)
-  - [`useSignalRef`](#usesignalref)
+    - [`useLiveSignal`](#uselivesignal)
+    - [`useSignalRef`](#usesignalref)
 - [License](#license)
 
 ## Preact Integration

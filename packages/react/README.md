@@ -26,8 +26,8 @@ npm install @preact/signals-react
   - [Show Component](#show-component)
   - [For Component](#for-component)
   - [Additional Hooks](#additional-hooks)
-  - [`useLiveSignal`](#uselivesignal)
-  - [`useSignalRef`](#usesignalref)
+    - [`useLiveSignal`](#uselivesignal)
+    - [`useSignalRef`](#usesignalref)
 - [Limitations](#limitations)
 - [License](#license)
 
