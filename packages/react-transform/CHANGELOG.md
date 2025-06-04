@@ -1,5 +1,13 @@
 # @preact/signals-react-transform
 
+## 0.5.2
+
+### Patch Changes
+
+- [#691](https://github.com/preactjs/signals/pull/691) [`960b09d`](https://github.com/preactjs/signals/commit/960b09d07134595c73d5921a4f294f82f7613daa) Thanks [@robin-drexler](https://github.com/robin-drexler)! - Adds `detectTransformedJSX` option which will trigger transformation when alternative methods (like `React.createElement`) are used to create elements
+
+- [#693](https://github.com/preactjs/signals/pull/693) [`b19ddec`](https://github.com/preactjs/signals/commit/b19ddec358f0bae8ad6338e1ca103c33b317650b) Thanks [@robin-drexler](https://github.com/robin-drexler)! - Destructured access to signal values should be registered as usage, before this change Babel would skip a component that would access `.value` on a signal through destructuring
+
 ## 0.5.1
 
 ### Patch Changes
