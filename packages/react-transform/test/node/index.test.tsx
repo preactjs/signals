@@ -222,6 +222,101 @@ describe("React Signals Babel Transform", () => {
 			options: { mode: "auto" },
 		});
 
+		it("detects destructuring patterns with value property", () => {
+			const inputCode = `
+				function MyComponent(props) {
+					const { value: signalValue } = props.signal;
+					return <div>{signalValue}</div>;
+				}
+			`;
+
+			const expectedOutput = `
+				import { useSignals as _useSignals } from "@preact/signals-react/runtime";
+				function MyComponent(props) {
+					var _effect = _useSignals(1);
+					try {
+						const { value: signalValue } = props.signal;
+						return <div>{signalValue}</div>;
+					} finally {
+						_effect.f();
+					}
+				}
+			`;
+
+			runTest(inputCode, expectedOutput);
+		});
+
+		it("detects nested destructuring patterns with value property", () => {
+			// Test case 1: Simple nested destructuring
+			const inputCode1 = `
+				function MyComponent(props) {
+					const { signal: { value } } = props;
+					return <div>{value}</div>;
+				}
+			`;
+
+			const expectedOutput1 = `
+				import { useSignals as _useSignals } from "@preact/signals-react/runtime";
+				function MyComponent(props) {
+					var _effect = _useSignals(1);
+					try {
+						const { signal: { value } } = props;
+						return <div>{value}</div>;
+					} finally {
+						_effect.f();
+					}
+				}
+			`;
+
+			runTest(inputCode1, expectedOutput1);
+
+			// Test case 2: Deeply nested destructuring
+			const inputCode2 = `
+				function MyComponent(props) {
+					const { data: { signal: { value: signalValue } } } = props;
+					return <div>{signalValue}</div>;
+				}
+			`;
+
+			const expectedOutput2 = `
+				import { useSignals as _useSignals } from "@preact/signals-react/runtime";
+				function MyComponent(props) {
+					var _effect = _useSignals(1);
+					try {
+						const { data: { signal: { value: signalValue } } } = props;
+						return <div>{signalValue}</div>;
+					} finally {
+						_effect.f();
+					}
+				}
+			`;
+
+			runTest(inputCode2, expectedOutput2);
+
+			// Test case 3: Multiple value properties at different levels
+			const inputCode3 = `
+				function MyComponent(props) {
+					const { value: outerValue, signal: { value: innerValue } } = props;
+					return <div>{outerValue} {innerValue}</div>;
+				}
+			`;
+
+			const expectedOutput3 = `
+				import { useSignals as _useSignals } from "@preact/signals-react/runtime";
+				function MyComponent(props) {
+					var _effect = _useSignals(1);
+					try {
+						const { value: outerValue, signal: { value: innerValue } } = props;
+						return <div>{outerValue} {innerValue}</div>;
+					} finally {
+						_effect.f();
+					}
+				}
+			`;
+
+			runTest(inputCode3, expectedOutput3);
+		});
+
 		it("signal access in nested functions", () => {
 			const inputCode = `
 				function MyComponent(props) {
