@@ -7,23 +7,23 @@ Signals is a performant state management library with two primary goals:
 
 Read the [announcement post](https://preactjs.com/blog/introducing-signals/) to learn more about which problems signals solves and how it came to be.
 
-## Installation:
-
-```sh
-npm install @preact/signals
-```
-
-- [Guide / API](../../README.md#guide--api)
-  - [`signal(initialValue)`](../../README.md#signalinitialvalue)
-    - [`signal.peek()`](../../README.md#signalpeek)
-  - [`computed(fn)`](../../README.md#computedfn)
-  - [`effect(fn)`](../../README.md#effectfn)
-  - [`batch(fn)`](../../README.md#batchfn)
-  - [`untracked(fn)`](../../README.md#untrackedfn)
+- [Core API](../core/README.md#guide--api)
+  - [`signal(initialValue)`](../core/README.md#signalinitialvalue)
+    - [`signal.peek()`](../core/README.md#signalpeek)
+  - [`computed(fn)`](../core/README.md#computedfn)
+  - [`effect(fn)`](../core/README.md#effectfn)
+  - [`batch(fn)`](../core/README.md#batchfn)
+  - [`untracked(fn)`](../core/README.md#untrackedfn)
 - [Preact Integration](#preact-integration)
   - [Hooks](#hooks)
   - [Rendering optimizations](#rendering-optimizations)
     - [Attribute optimization (experimental)](#attribute-optimization-experimental)
+  - [Utility Components and Hooks](#utility-components-and-hooks)
+    - [Show Component](#show-component)
+    - [For Component](#for-component)
+    - [Additional Hooks](#additional-hooks)
+      - [`useLiveSignal`](#uselivesignal)
+      - [`useSignalRef`](#usesignalref)
 - [License](#license)
 
 ## Preact Integration
@@ -111,11 +111,11 @@ function Person() {
 
 This way we'll bypass checking the virtual-dom and update the DOM property directly.
 
-## Utility Components and Hooks
+### Utility Components and Hooks
 
 The `@preact/signals/utils` package provides additional utility components and hooks to make working with signals even easier.
 
-### Show Component
+#### Show Component
 
 The `Show` component provides a declarative way to conditionally render content based on a signal's value.
 
@@ -139,7 +139,7 @@ function App() {
 }
 ```
 
-### For Component
+#### For Component
 
 The `For` component helps you render lists from signal arrays with automatic caching of rendered items.
 
@@ -158,9 +158,9 @@ function App() {
 }
 ```
 
-### Additional Hooks
+#### Additional Hooks
 
-#### useLiveSignal
+##### useLiveSignal
 
 The `useLiveSignal` hook allows you to create a local signal that stays synchronized with an external signal.
 
@@ -176,7 +176,7 @@ function Component() {
 }
 ```
 
-#### useSignalRef
+##### useSignalRef
 
 The `useSignalRef` hook creates a signal that behaves like a React ref with a `.current` property.
 
