@@ -131,6 +131,25 @@ module.exports = {
 };
 ```
 
+### `detectTransformedJSX`
+
+When enabled, alternative methods like `React.createElement` and `jsx-runtime` will also trigger transformation.
+This can be especially useful when npm depencendies are being transpiled as those generally don't contain JSX since they have alredy been transpiled to JavaScript.
+
+```js
+// babel.config.js
+module.exports = {
+	plugins: [
+		[
+			"@preact/signals-react-transform",
+			{
+				detectTransformedJSX: tue,
+			},
+		],
+	],
+};
+```
+
 ## Logging
 
 This plugin uses the [`debug`](https://www.npmjs.com/package/debug) package to log information about what it's doing. To enable logging, set the `DEBUG` environment variable to `signals:react-transform:*`.

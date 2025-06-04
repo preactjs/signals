@@ -221,6 +221,127 @@ describe("React Signals Babel Transform", () => {
 			expectTransformed: true,
 			options: { mode: "auto" },
 		});
+
+		it("detects destructuring patterns with value property", () => {
+			const inputCode = `
+				function MyComponent(props) {
+					const { value: signalValue } = props.signal;
+					return <div>{signalValue}</div>;
+				}
+			`;
+
+			const expectedOutput = `
+				import { useSignals as _useSignals } from "@preact/signals-react/runtime";
+				function MyComponent(props) {
+					var _effect = _useSignals(1);
+					try {
+						const { value: signalValue } = props.signal;
+						return <div>{signalValue}</div>;
+					} finally {
+						_effect.f();
+					}
+				}
+			`;
+
+			runTest(inputCode, expectedOutput);
+		});
+
+		it("detects nested destructuring patterns with value property", () => {
+			// Test case 1: Simple nested destructuring
+			const inputCode1 = `
+				function MyComponent(props) {
+					const { signal: { value } } = props;
+					return <div>{value}</div>;
+				}
+			`;
+
+			const expectedOutput1 = `
+				import { useSignals as _useSignals } from "@preact/signals-react/runtime";
+				function MyComponent(props) {
+					var _effect = _useSignals(1);
+					try {
+						const { signal: { value } } = props;
+						return <div>{value}</div>;
+					} finally {
+						_effect.f();
+					}
+				}
+			`;
+
+			runTest(inputCode1, expectedOutput1);
+
+			// Test case 2: Deeply nested destructuring
+			const inputCode2 = `
+				function MyComponent(props) {
+					const { data: { signal: { value: signalValue } } } = props;
+					return <div>{signalValue}</div>;
+				}
+			`;
+
+			const expectedOutput2 = `
+				import { useSignals as _useSignals } from "@preact/signals-react/runtime";
+				function MyComponent(props) {
+					var _effect = _useSignals(1);
+					try {
+						const { data: { signal: { value: signalValue } } } = props;
+						return <div>{signalValue}</div>;
+					} finally {
+						_effect.f();
+					}
+				}
+			`;
+
+			runTest(inputCode2, expectedOutput2);
+
+			// Test case 3: Multiple value properties at different levels
+			const inputCode3 = `
+				function MyComponent(props) {
+					const { value: outerValue, signal: { value: innerValue } } = props;
+					return <div>{outerValue} {innerValue}</div>;
+				}
+			`;
+
+			const expectedOutput3 = `
+				import { useSignals as _useSignals } from "@preact/signals-react/runtime";
+				function MyComponent(props) {
+					var _effect = _useSignals(1);
+					try {
+						const { value: outerValue, signal: { value: innerValue } } = props;
+						return <div>{outerValue} {innerValue}</div>;
+					} finally {
+						_effect.f();
+					}
+				}
+			`;
+
+			runTest(inputCode3, expectedOutput3);
+		});
+
+		it("signal access in nested functions", () => {
+			const inputCode = `
+				function MyComponent(props) {
+					return props.listSignal.value.map(function iteration(x) {
+						return <div>{x}</div>;
+					});
+				};
+			`;
+
+			const expectedOutput = `
+				import { useSignals as _useSignals } from "@preact/signals-react/runtime";
+				function MyComponent(props) {
+					var _effect = _useSignals(1);
+					try {
+						return props.listSignal.value.map(function iteration(x) {
+							return <div>{x}</div>;
+						});
+					} finally {
+						_effect.f();
+					}
+				}
+			`;
+
+			runTest(inputCode, expectedOutput);
+		});
 	});
 
 	describe("auto mode doesn't transform", () => {
@@ -674,6 +795,299 @@ describe("React Signals Babel Transform", () => {
 			expect(signalsBinding).to.exist;
 			expect(signalsBinding.kind).to.equal("module");
 			expect(signalsBinding.referenced).to.be.true;
+		});
+	});
+
+	describe("detectTransformedJSX option", () => {
+		it("detects elements created using react/jsx-runtime import", () => {
+			const inputCode = `
+				import { jsx as _jsx } from "react/jsx-runtime";
+				function MyComponent() {
+					signal.value;
+					return _jsx("div", { children: "Hello World" });
+				};
+			`;
+
+			const expectedOutput = `
+				import { jsx as _jsx } from "react/jsx-runtime";
+				import { useSignals as _useSignals } from "@preact/signals-react/runtime";
+				function MyComponent() {
+					var _effect = _useSignals(1);
+					try {
+						signal.value;
+						return _jsx("div", {
+							children: "Hello World",
+						});
+					} finally {
+						_effect.f();
+					}
+				}
+			`;
+
+			runTest(inputCode, expectedOutput, {
+				detectTransformedJSX: true,
+			});
+		});
+
+		it("detects elements created using react/jsx-runtime cjs require", () => {
+			const inputCode = `
+				const jsxRuntime = require("react/jsx-runtime");
+				function MyComponent() {
+					signal.value;
+					return jsxRuntime.jsx("div", { children: "Hello World" });
+				};
+			`;
+
+			const expectedOutput = `
+				var _useSignals = require("@preact/signals-react/runtime").useSignals
+				const jsxRuntime = require("react/jsx-runtime");
+				function MyComponent() {
+					var _effect = _useSignals(1);
+					try {
+						signal.value;
+						return jsxRuntime.jsx("div", {
+							children: "Hello World",
+						});
+					} finally {
+						_effect.f();
+					}
+				}
+			`;
+
+			runTest(
+				inputCode,
+				expectedOutput,
+				{
+					detectTransformedJSX: true,
+				},
+				undefined,
+				true
+			);
+		});
+
+		it("detects elements created using react/jsx-runtime cjs destuctured import", () => {
+			const inputCode = `
+				const { jsx } = require("react/jsx-runtime");
+				function MyComponent() {
+					signal.value;
+					return jsx("div", { children: "Hello World" });
+				};
+			`;
+
+			const expectedOutput = `
+				var _useSignals = require("@preact/signals-react/runtime").useSignals
+				const { jsx } = require("react/jsx-runtime");
+				function MyComponent() {
+					var _effect = _useSignals(1);
+					try {
+						signal.value;
+						return jsx("div", {
+							children: "Hello World",
+						});
+					} finally {
+						_effect.f();
+					}
+				}
+			`;
+
+			runTest(
+				inputCode,
+				expectedOutput,
+				{
+					detectTransformedJSX: true,
+				},
+				undefined,
+				true
+			);
+		});
+
+		it("does not detect jsx-runtime calls when detectJSXAlternatives is disabled", () => {
+			const inputCode = `
+				import { jsx as _jsx } from "react/jsx-runtime";
+				function MyComponent() {
+					signal.value;
+					return _jsx("div", { children: "Hello World" });
+				};
+			`;
+
+			// Should not transform because jsx-runtime detection is disabled - no useSignals import should be added
+			const expectedOutput = `
+				import { jsx as _jsx } from "react/jsx-runtime";
+				function MyComponent() {
+					signal.value;
+					return _jsx("div", {
+						children: "Hello World",
+					});
+				}
+			`;
+
+			runTest(inputCode, expectedOutput, {
+				detectTransformedJSX: false,
+			});
+		});
+
+		it("detects createElement calls created using react import", () => {
+			const inputCode = `
+				import { createElement } from "react";
+				function MyComponent() {
+					signal.value;
+					return createElement("div", { children: "Hello World" });
+				};
+			`;
+
+			const expectedOutput = `
+				import { createElement } from "react";
+				import { useSignals as _useSignals } from "@preact/signals-react/runtime";
+				function MyComponent() {
+					var _effect = _useSignals(1);
+					try {
+						signal.value;
+						return createElement("div", {
+							children: "Hello World",
+						});
+					} finally {
+						_effect.f();
+					}
+				}
+			`;
+
+			runTest(inputCode, expectedOutput, {
+				detectTransformedJSX: true,
+			});
+		});
+
+		it("detects createElement calls created using react default import", () => {
+			const inputCode = `
+				import React from "react";
+				function MyComponent() {
+					signal.value;
+					return React.createElement("div", { children: "Hello World" });
+				};
+			`;
+
+			const expectedOutput = `
+				import React from "react";
+				import { useSignals as _useSignals } from "@preact/signals-react/runtime";
+				function MyComponent() {
+					var _effect = _useSignals(1);
+					try {
+						signal.value;
+						return React.createElement("div", {
+							children: "Hello World",
+						});
+					} finally {
+						_effect.f();
+					}
+				}
+			`;
+
+			runTest(inputCode, expectedOutput, {
+				detectTransformedJSX: true,
+			});
+		});
+
+		it("detects createElement calls created using react cjs require", () => {
+			const inputCode = `
+				const React = require("react");
+				function MyComponent() {
+					signal.value;
+					return React.createElement("div", { children: "Hello World" });
+				};
+			`;
+
+			const expectedOutput = `
+				var _useSignals = require("@preact/signals-react/runtime").useSignals
+				const React = require("react");
+				function MyComponent() {
+					var _effect = _useSignals(1);
+					try {
+						signal.value;
+						return React.createElement("div", {
+							children: "Hello World",
+						});
+					} finally {
+						_effect.f();
+					}
+				}
+			`;
+
+			runTest(
+				inputCode,
+				expectedOutput,
+				{
+					detectTransformedJSX: true,
+				},
+				undefined,
+				true
+			);
+		});
+
+		it("detects createElement calls created using destructured react cjs require", () => {
+			const inputCode = `
+				const { createElement } = require("react");
+				function MyComponent() {
+					signal.value;
+					return createElement("div", { children: "Hello World" });
+				};
+			`;
+
+			const expectedOutput = `
+				var _useSignals = require("@preact/signals-react/runtime").useSignals
+				const { createElement } = require("react");
+				function MyComponent() {
+					var _effect = _useSignals(1);
+					try {
+						signal.value;
+						return createElement("div", {
+							children: "Hello World",
+						});
+					} finally {
+						_effect.f();
+					}
+				}
+			`;
+
+			runTest(
+				inputCode,
+				expectedOutput,
+				{
+					detectTransformedJSX: true,
+				},
+				undefined,
+				true
+			);
+		});
+
+		it("detects signal access in nested functions", () => {
+			const inputCode = `
+				import { jsx } from "react/jsx-runtime";
+				function MyComponent(props) {
+					return props.listSignal.value.map(function iteration(x) {
+						return jsx("div", { children: x });
+					});
+				};
+			`;
+
+			const expectedOutput = `
+				import { jsx } from "react/jsx-runtime";
+				import { useSignals as _useSignals } from "@preact/signals-react/runtime";
+				function MyComponent(props) {
+					var _effect = _useSignals(1);
+					try {
+						return props.listSignal.value.map(function iteration(x) {
+							return jsx("div", {
+								children: x,
+							});
+						});
+					} finally {
+						_effect.f();
+					}
+				}
+			`;
+
+			runTest(inputCode, expectedOutput, {
+				detectTransformedJSX: true,
+			});
 		});
 	});
 });
