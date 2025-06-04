@@ -24,6 +24,8 @@ const getHookIdentifier = "getHookIdentifier";
 const maybeUsesSignal = "maybeUsesSignal";
 const containsJSX = "containsJSX";
 const alreadyTransformed = "alreadyTransformed";
+const jsxIdentifiers = "jsxIdentifiers";
+const jsxObjects = "jsxObjects";
 
 const UNMANAGED = "0";
 const MANAGED_COMPONENT = "1";
@@ -330,6 +332,35 @@ function isValueMemberExpression(
 	);
 }
 
+function isJSXAlternativeCall(
+	path: NodePath<BabelTypes.CallExpression>,
+	state: PluginPass
+): boolean {
+	const jsxIdentifierSet = get(state, jsxIdentifiers) as Set<string>;
+	const jsxObjectMap = get(state, jsxObjects) as Map<string, string[]>;
+	const callee = path.get("callee");
+
+	// Check direct function calls like _jsx("div", props) or createElement("div", props)
+	if (callee.isIdentifier()) {
+		return jsxIdentifierSet?.has(callee.node.name) ?? false;
+	}
+
+	// Check member expression calls like React.createElement("div", props) or jsxRuntime.jsx("div", props)
+	if (callee.isMemberExpression()) {
+		const object = callee.get("object");
+		const property = callee.get("property");
+
+		if (object.isIdentifier() && property.isIdentifier()) {
+			const objectName = object.node.name;
+			const methodName = property.node.name;
+			const allowedMethods = jsxObjectMap?.get(objectName);
+			return allowedMethods?.includes(methodName) ?? false;
+		}
+	}
+
+	return false;
+}
+
 const tryCatchTemplate = template.statements`var STORE_IDENTIFIER = HOOK_IDENTIFIER(HOOK_USAGE);
 try {
 	BODY
@@ -465,6 +496,88 @@ function createImportLazily(
 	};
 }
 
+function detectJSXAlternativeImports(
+	path: NodePath<BabelTypes.Program>,
+	state: PluginPass
+) {
+	const jsxIdentifierSet = new Set<string>();
+	const jsxObjectMap = new Map<string, string[]>();
+
+	const jsxPackages = {
+		"react/jsx-runtime": ["jsx", "jsxs"],
+		"react/jsx-dev-runtime": ["jsxDEV"],
+		react: ["createElement"],
+	};
+
+	path.traverse({
+		ImportDeclaration(importPath) {
+			const packageName = importPath.node.source.value;
+			const jsxMethods = jsxPackages[packageName as keyof typeof jsxPackages];
+
+			if (!jsxMethods) {
+				return;
+			}
+
+			for (const specifier of importPath.node.specifiers) {
+				if (
+					specifier.type === "ImportSpecifier" &&
+					specifier.imported.type === "Identifier"
+				) {
+					// Check if this is a function we care about
+					if (jsxMethods.includes(specifier.imported.name)) {
+						jsxIdentifierSet.add(specifier.local.name);
+					}
+				} else if (specifier.type === "ImportDefaultSpecifier") {
+					// Handle default imports - add to objects map for member access
+					jsxObjectMap.set(specifier.local.name, jsxMethods);
+				}
+			}
+		},
+		VariableDeclarator(varPath) {
+			const init = varPath.get("init");
+
+			if (init.isCallExpression()) {
+				const callee = init.get("callee");
+				const args = init.get("arguments");
+
+				if (
+					callee.isIdentifier() &&
+					callee.node.type === "Identifier" &&
+					callee.node.name === "require" &&
+					args.length > 0 &&
+					args[0].isStringLiteral()
+				) {
+					const packageName = args[0].node.value;
+					const jsxMethods =
+						jsxPackages[packageName as keyof typeof jsxPackages];
+
+					if (jsxMethods) {
+						if (varPath.node.id.type === "Identifier") {
+							// Handle CJS require like: const React = require("react")
+							jsxObjectMap.set(varPath.node.id.name, jsxMethods);
+						} else if (varPath.node.id.type === "ObjectPattern") {
+							// Handle destructured CJS require like: const { createElement } = require("react")
+							for (const prop of varPath.node.id.properties) {
+								if (
+									prop.type === "ObjectProperty" &&
+									prop.key.type === "Identifier" &&
+									prop.value.type === "Identifier" &&
+									jsxMethods.includes(prop.key.name)
+								) {
+									jsxIdentifierSet.add(prop.value.name);
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+	});
+
+	set(state, jsxIdentifiers, jsxIdentifierSet);
+	set(state, jsxObjects, jsxObjectMap);
+}
+
 export interface PluginOptions {
 	/**
 	 * Specify the mode to use:
@@ -475,6 +588,12 @@ export interface PluginOptions {
 	mode?: "auto" | "manual" | "all";
 	/** Specify a custom package to import the `useSignals` hook from. */
 	importSource?: string;
+	/**
+	 * Detect JSX elements created using alternative methods like jsx-runtime or createElement calls.
+	 * When enabled, detects patterns from react/jsx-runtime and react packages.
+	 * @default false
+	 */
+	detectTransformedJSX?: boolean;
 	experimental?: {
 		/**
 		 * If set to true, the component body will not be wrapped in a try/finally
@@ -569,6 +688,10 @@ export default function signalsTransform(
 							options.importSource ?? defaultImportSource
 						)
 					);
+
+					if (options.detectTransformedJSX) {
+						detectJSXAlternativeImports(path, state);
+					}
 				},
 			},
 
@@ -576,6 +699,14 @@ export default function signalsTransform(
 			FunctionExpression: visitFunction,
 			FunctionDeclaration: visitFunction,
 			ObjectMethod: visitFunction,
+
+			CallExpression(path, state) {
+				if (options.detectTransformedJSX) {
+					if (isJSXAlternativeCall(path, state)) {
+						setOnFunctionScope(path, containsJSX, true, this.filename);
+					}
+				}
+			},
 
 			MemberExpression(path) {
 				if (isValueMemberExpression(path)) {
