@@ -361,6 +361,19 @@ function isJSXAlternativeCall(
 	return false;
 }
 
+function hasValuePropertyInPattern(pattern: BabelTypes.ObjectPattern): boolean {
+	for (const property of pattern.properties) {
+		if (BabelTypes.isObjectProperty(property)) {
+			const key = property.key;
+
+			if (BabelTypes.isIdentifier(key, { name: "value" })) {
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
 const tryCatchTemplate = template.statements`var STORE_IDENTIFIER = HOOK_IDENTIFIER(HOOK_USAGE);
 try {
 	BODY
@@ -710,6 +723,12 @@ export default function signalsTransform(
 
 			MemberExpression(path) {
 				if (isValueMemberExpression(path)) {
+					setOnFunctionScope(path, maybeUsesSignal, true, this.filename);
+				}
+			},
+
+			ObjectPattern(path) {
+				if (hasValuePropertyInPattern(path.node)) {
 					setOnFunctionScope(path, maybeUsesSignal, true, this.filename);
 				}
 			},
