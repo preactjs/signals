@@ -1,5 +1,10 @@
 import { signal } from "@preact/signals";
-import { For, Show, useSignalRef } from "@preact/signals/utils";
+import {
+	For,
+	Show,
+	useAsyncComputed,
+	useSignalRef,
+} from "@preact/signals/utils";
 import { render, createElement } from "preact";
 import { act } from "preact/test-utils";
 
@@ -79,6 +84,123 @@ describe("@preact/signals-utils", () => {
 			});
 			expect(scratch.innerHTML).to.eq("<span>1</span>");
 			expect((ref as any).value instanceof HTMLSpanElement).to.eq(true);
+		});
+	});
+
+	describe("asyncComputed", () => {
+		let resolve: (value: { foo: string }) => void;
+		const fetchResult = (url: string): Promise<{ foo: string }> => {
+			// eslint-disable-next-line no-console
+			console.log("fetching", url);
+			return new Promise(res => {
+				resolve = res;
+			});
+		};
+
+		it("Should reactively update when the promise resolves", async () => {
+			const AsyncComponent = (props: any) => {
+				const data = useAsyncComputed<{ foo: string }>(
+					async () => fetchResult(props.url.value),
+					{ suspend: false }
+				);
+				const hasData = data.value !== undefined;
+				return (
+					<p>
+						{data.pending ? "pending" : hasData ? data.value?.foo : "error"}
+					</p>
+				);
+			};
+			const url = signal("/api/foo?id=1");
+			act(() => {
+				render(<AsyncComponent url={url} />, scratch);
+			});
+			expect(scratch.innerHTML).to.eq("<p>pending</p>");
+
+			await act(async () => {
+				await resolve({ foo: "bar" });
+				await new Promise(resolve => setTimeout(resolve, 100));
+			});
+
+			expect(scratch.innerHTML).to.eq("<p>bar</p>");
+		});
+
+		it("Should fetch when the input changes", async () => {
+			const AsyncComponent = (props: any) => {
+				const data = useAsyncComputed<{ foo: string }>(
+					async () => fetchResult(props.url.value),
+					{ suspend: false }
+				);
+				const hasData = data.value !== undefined;
+				return (
+					<p>
+						{data.pending ? "pending" : hasData ? data.value?.foo : "error"}
+					</p>
+				);
+			};
+			const url = signal("/api/foo?id=1");
+			act(() => {
+				render(<AsyncComponent url={url} />, scratch);
+			});
+			expect(scratch.innerHTML).to.eq("<p>pending</p>");
+
+			await act(async () => {
+				await resolve({ foo: "bar" });
+				await new Promise(resolve => setTimeout(resolve));
+			});
+
+			expect(scratch.innerHTML).to.eq("<p>bar</p>");
+
+			act(() => {
+				url.value = "/api/foo?id=2";
+			});
+
+			await act(async () => {
+				await resolve({ foo: "baz" });
+				await new Promise(resolve => setTimeout(resolve));
+			});
+			expect(scratch.innerHTML).to.eq("<p>baz</p>");
+		});
+
+		it("Should apply the 'running' signal", async () => {
+			const AsyncComponent = (props: any) => {
+				const data = useAsyncComputed<{ foo: string }>(
+					async () => fetchResult(props.url.value),
+					{ suspend: false }
+				);
+				const hasData = data.value !== undefined;
+				return (
+					<p>
+						{data.running.value
+							? "running"
+							: hasData
+							? data.value?.foo
+							: "error"}
+					</p>
+				);
+			};
+			const url = signal("/api/foo?id=1");
+			act(() => {
+				render(<AsyncComponent url={url} />, scratch);
+			});
+			expect(scratch.innerHTML).to.eq("<p>running</p>");
+
+			await act(async () => {
+				await resolve({ foo: "bar" });
+				await new Promise(resolve => setTimeout(resolve));
+			});
+
+			expect(scratch.innerHTML).to.eq("<p>bar</p>");
+
+			act(() => {
+				url.value = "/api/foo?id=2";
+			});
+			expect(scratch.innerHTML).to.eq("<p>running</p>");
+
+			await act(async () => {
+				await resolve({ foo: "baz" });
+				await new Promise(resolve => setTimeout(resolve));
+			});
+			expect(scratch.innerHTML).to.eq("<p>baz</p>");
 		});
 	});
 });
