@@ -1,6 +1,6 @@
 {
   "name": "@preact/signals",
-  "version": "2.0.5",
+  "version": "2.2.0",
   "license": "MIT",
   "description": "Manage state with style in Preact",
   "keywords": [],
@@ -30,6 +30,12 @@
       "browser": "./dist/signals.module.js",
       "import": "./dist/signals.mjs",
       "require": "./dist/signals.js"
+    },
+    "./utils": {
+      "types": "./utils/dist/index.d.ts",
+      "browser": "./utils/dist/utils.module.js",
+      "import": "./utils/dist/utils.mjs",
+      "require": "./utils/dist/utils.js"
     }
   },
   "mangle": "../../mangle.json",
@@ -38,13 +44,16 @@
     "dist",
     "CHANGELOG.md",
     "LICENSE",
-    "README.md"
+    "README.md",
+    "utils/dist",
+    "utils/package.json",
+    "utils/src"
   ],
   "scripts": {
-    "prepublishOnly": "cd ../.. && pnpm build:preact"
+    "prepublishOnly": "cd ../.. && pnpm build:preact && pnpm build:preact-utils"
   },
   "dependencies": {
-    "@preact/signals-core": "workspace:^1.7.0"
+    "@preact/signals-core": "workspace:^1.9.0"
   },
   "peerDependencies": {
     "preact": ">= 10.25.0"

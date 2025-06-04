@@ -1,0 +1,27 @@
+{
+  "name": "@preact/signals-react-utils",
+  "description": "Sub package for @preact/signals-react that contains some useful utilities",
+  "private": true,
+  "amdName": "reactSignalsutils",
+  "main": "dist/utils.js",
+  "module": "dist/utils.module.js",
+  "unpkg": "dist/utils.min.js",
+  "types": "dist/index.d.ts",
+  "source": "src/index.ts",
+  "mangle": "../../../mangle.json",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "browser": "./dist/utils.module.js",
+      "import": "./dist/utils.mjs",
+      "require": "./dist/utils.js"
+    }
+  },
+  "dependencies": {
+    "@preact/signals-core": "workspace:^1.3.0"
+  },
+  "peerDependencies": {
+    "@preact/signals-react": "workspace:*",
+    "react": "^16.14.0 || 17.x || 18.x || 19.x"
+  }
+}

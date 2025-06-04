@@ -1,5 +1,28 @@
 # @preact/signals
 
+## 2.2.0
+
+### Minor Changes
+
+- [#634](https://github.com/preactjs/signals/pull/634) [`62bed44`](https://github.com/preactjs/signals/commit/62bed44b0f298ac0097060289bfecd73f030b146) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Add an option to specify a watched/unwatched callback to a signal
+
+### Patch Changes
+
+- Updated dependencies [[`587e702`](https://github.com/preactjs/signals/commit/587e702f8db9a8e67fe2cdf8dda0a4bffe5fc195), [`62bed44`](https://github.com/preactjs/signals/commit/62bed44b0f298ac0097060289bfecd73f030b146)]:
+  - @preact/signals-core@1.9.0
+
+## 2.1.1
+
+### Patch Changes
+
+- [#684](https://github.com/preactjs/signals/pull/684) [`a34eab2`](https://github.com/preactjs/signals/commit/a34eab2ab5a46f4ef90e05e2af6b99747191333c) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Ensure we build the thing
+
+## 2.1.0
+
+### Minor Changes
+
+- [#683](https://github.com/preactjs/signals/pull/683) [`4b585a5`](https://github.com/preactjs/signals/commit/4b585a5f15300b73dc66f45effd21342e3f6e5d5) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Provide `@preact/signals/utils` package with some helpers to make working with signals easier in Preact
+
 ## 2.0.5
 
 ### Patch Changes
