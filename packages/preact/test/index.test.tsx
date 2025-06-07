@@ -761,6 +761,34 @@ describe("@preact/signals", () => {
 			});
 			expect(scratch.innerHTML).to.equal("<p>bar baz</p>");
 		});
+
+		it("state settling should not prevent a signal update from being rendered", () => {
+			let set: any;
+			const test2 = signal("Foo");
+			function Test() {
+				const [test, setTest] = useState("foo");
+				set = setTest;
+				return (
+					<p>
+						{test} {test2.value}
+					</p>
+				);
+			}
+
+			function App() {
+				return <Test />;
+			}
+
+			render(<App />, scratch);
+
+			expect(scratch.innerHTML).to.equal("<p>foo Foo</p>");
+			act(() => {
+				set("bar");
+				test2.value = "Bar";
+				set("foo");
+			});
+			expect(scratch.innerHTML).to.equal("<p>foo Bar</p>");
+		});
 	});
 
 	describe("useSignalEffect()", () => {
