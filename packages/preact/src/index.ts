@@ -403,7 +403,9 @@ hook(OptionsTypes.AFTER_RENDER, (old, vnode: VNode) => {
 		// This is a rare scenario where we both have a signal update as well as
 		// a hook that updates and settles on the same value.
 		component._updateFlags &= ~SHOULD_UPDATE;
+		// @ts-ignore
 		if (vnode.__u & PREACT_SKIP_CHILDREN) {
+			// @ts-ignore
 			vnode.__u &= ~PREACT_SKIP_CHILDREN;
 		}
 	}
