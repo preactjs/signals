@@ -395,7 +395,7 @@ Component.prototype.shouldComponentUpdate = function (
 	return false;
 };
 
-hook(OptionsTypes.AFTER_RENDER, (old, vnode) => {
+hook(OptionsTypes.AFTER_RENDER, (old, vnode: VNode) => {
 	const component = vnode.__c;
 	if (component && component._updateFlags & SHOULD_UPDATE) {
 		// When we have a signal that should update and we see that SKIP_CHILDREN is set,
