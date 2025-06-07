@@ -47,6 +47,7 @@ export const enum OptionsTypes {
 	RENDER = "__r",
 	CATCH_ERROR = "__e",
 	UNMOUNT = "unmount",
+	AFTER_RENDER = "__d",
 }
 
 export interface OptionsType {
@@ -54,6 +55,7 @@ export interface OptionsType {
 	[OptionsTypes.DIFF](vnode: VNode): void;
 	[OptionsTypes.DIFFED](vnode: VNode): void;
 	[OptionsTypes.RENDER](vnode: VNode): void;
+	[OptionsTypes.AFTER_RENDER](vnode: VNode): void;
 	[OptionsTypes.CATCH_ERROR](error: any, vnode: VNode, oldVNode: VNode): void;
 	[OptionsTypes.UNMOUNT](vnode: VNode): void;
 }

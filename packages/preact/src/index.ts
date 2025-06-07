@@ -33,6 +33,9 @@ export {
 const HAS_PENDING_UPDATE = 1 << 0;
 const HAS_HOOK_STATE = 1 << 1;
 const HAS_COMPUTEDS = 1 << 2;
+const SHOULD_UPDATE = 1 << 4;
+
+const PREACT_SKIP_CHILDREN = 1 << 3;
 
 let oldNotify: (this: Effect) => void,
 	effectsQueue: Array<Effect> = [],
@@ -355,15 +358,24 @@ Component.prototype.shouldComponentUpdate = function (
 	// @ts-ignore
 	for (let i in state) return true;
 
+	const hasHooksState = this._updateFlags & HAS_HOOK_STATE;
 	if (this.__f || (typeof this.u == "boolean" && this.u === true)) {
-		const hasHooksState = this._updateFlags & HAS_HOOK_STATE;
 		// if this component used no signals or computeds and no hooks state, update:
-		if (!hasSignals && !hasHooksState && !(this._updateFlags & HAS_COMPUTEDS))
+		if (!hasSignals && !hasHooksState && !(this._updateFlags & HAS_COMPUTEDS)) {
+			if (hasHooksState) {
+				this._updateFlags |= SHOULD_UPDATE;
+			}
 			return true;
+		}
 
 		// if there is a pending re-render triggered from Signals,
 		// or if there is hooks state, update:
-		if (this._updateFlags & HAS_PENDING_UPDATE) return true;
+		if (this._updateFlags & HAS_PENDING_UPDATE) {
+			if (hasHooksState) {
+				this._updateFlags |= SHOULD_UPDATE;
+			}
+			return true;
+		}
 	} else {
 		// if this component used no signals or computeds, update:
 		if (!hasSignals && !(this._updateFlags & HAS_COMPUTEDS)) return true;
@@ -382,6 +394,23 @@ Component.prototype.shouldComponentUpdate = function (
 	// this is a purely Signal-driven component, don't update:
 	return false;
 };
+
+hook(OptionsTypes.AFTER_RENDER, (old, vnode) => {
+	const component = vnode.__c;
+	if (component && component._updateFlags & SHOULD_UPDATE) {
+		// When we have a signal that should update and we see that SKIP_CHILDREN is set,
+		// we need to clear it so that the children are rendered.
+		// This is a rare scenario where we both have a signal update as well as
+		// a hook that updates and settles on the same value.
+		component._updateFlags &= ~SHOULD_UPDATE;
+		if (vnode.__u & PREACT_SKIP_CHILDREN) {
+			vnode.__u &= ~PREACT_SKIP_CHILDREN;
+		}
+	}
+	// This is a Preact 11 only hook and is meant to take care of state-settling in hooks.
+	// Explained in https://github.com/preactjs/preact/pull/4760
+	old(vnode);
+});
 
 export function useSignal<T>(value: T, options?: SignalOptions<T>): Signal<T>;
 export function useSignal<T = undefined>(): Signal<T | undefined>;
