@@ -843,7 +843,7 @@ Effect.prototype._dispose = function () {
 };
 
 Effect.prototype.dispose = function () {
-	return this._dispose();
+	this._dispose();
 };
 /**
  * Create an effect to run arbitrary code in response to signal changes.
