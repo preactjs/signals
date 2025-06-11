@@ -351,7 +351,27 @@ describe("effect()", () => {
 		expect(spy).to.be.calledTwice;
 	});
 
-	it("should dispose of subscriptions immediately when called twice", () => {
+	it("should dispose of subscriptions immediately and signals are read after disposing", () => {
+		const a = signal("a");
+		const b = signal("b");
+		const spy = sinon.spy(() => {
+			a.value + " " + b.value;
+		});
+		effect(function () {
+			this.dispose();
+			spy();
+		});
+
+		expect(spy).to.be.calledOnce;
+
+		a.value = "aa";
+		expect(spy).to.be.calledOnce;
+
+		a.value = "aaa";
+		expect(spy).to.be.calledOnce;
+	});
+
+	it("should dispose of subscriptions immediately when called twice (deferred)", () => {
 		const a = signal("a");
 		const b = signal("b");
 		const spy = sinon.spy(() => {
