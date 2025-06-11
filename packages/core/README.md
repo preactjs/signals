@@ -143,6 +143,15 @@ dispose();
 surname.value = "Doe 2";
 ```
 
+Alternatively, you can also declare your effect as a non-arrow function and call `dispose`
+on the `this`.
+
+```js
+effect(function () {
+	this.dispose();
+});
+```
+
 The effect callback may return a cleanup function. The cleanup function gets run once, either when the effect callback is next called _or_ when the effect gets disposed, whichever happens first.
 
 ```js
