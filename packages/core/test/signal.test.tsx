@@ -350,6 +350,7 @@ describe("effect()", () => {
 		a.value = "aaa";
 		expect(spy).to.be.calledTwice;
 	});
+
 	it("should dispose of subscriptions immediately and signals are read after disposing", () => {
 		const a = signal("a");
 		const b = signal("b");
