@@ -286,6 +286,48 @@ describe("effect()", () => {
 		expect(spy).not.to.be.called;
 	});
 
+	it("should dispose of subscriptions", () => {
+		const a = signal("a");
+		const b = signal("b");
+		const spy = sinon.spy(() => {
+			a.value + " " + b.value;
+		});
+		effect(function () {
+			spy();
+			if (a.value === "aa") {
+				this.dispose();
+			}
+		});
+
+		expect(spy).to.be.called;
+
+		a.value = "aa";
+		expect(spy).to.be.calledTwice;
+
+		a.value = "aaa";
+		expect(spy).to.be.calledTwice;
+	});
+
+	it("should dispose of subscriptions immediately", () => {
+		const a = signal("a");
+		const b = signal("b");
+		const spy = sinon.spy(() => {
+			a.value + " " + b.value;
+		});
+		effect(function () {
+			spy();
+			this.dispose();
+		});
+
+		expect(spy).to.be.calledOnce;
+
+		a.value = "aa";
+		expect(spy).to.be.calledOnce;
+
+		a.value = "aaa";
+		expect(spy).to.be.calledOnce;
+	});
+
 	it("should unsubscribe from signal", () => {
 		const s = signal(123);
 		const spy = sinon.spy(() => {

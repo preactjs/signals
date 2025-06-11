@@ -768,7 +768,9 @@ function endEffect(this: Effect, prevContext?: Computed | Effect) {
 	endBatch();
 }
 
-type EffectFn = () => void | (() => void);
+type EffectFn =
+	| ((this: { dispose: () => void }) => void | (() => void))
+	| (() => void | (() => void));
 
 declare class Effect {
 	_fn?: EffectFn;
@@ -783,6 +785,7 @@ declare class Effect {
 	_start(): () => void;
 	_notify(): void;
 	_dispose(): void;
+	dispose(): void;
 }
 
 function Effect(this: Effect, fn: EffectFn) {
@@ -839,6 +842,9 @@ Effect.prototype._dispose = function () {
 	}
 };
 
+Effect.prototype.dispose = function () {
+	return this._dispose();
+};
 /**
  * Create an effect to run arbitrary code in response to signal changes.
  *
