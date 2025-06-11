@@ -328,6 +328,50 @@ describe("effect()", () => {
 		expect(spy).to.be.calledOnce;
 	});
 
+	it("should dispose of subscriptions when called twice", () => {
+		const a = signal("a");
+		const b = signal("b");
+		const spy = sinon.spy(() => {
+			a.value + " " + b.value;
+		});
+		const dispose = effect(function () {
+			spy();
+			if (a.value === "aa") {
+				this.dispose();
+			}
+		});
+
+		expect(spy).to.be.called;
+
+		a.value = "aa";
+		expect(spy).to.be.calledTwice;
+		dispose();
+
+		a.value = "aaa";
+		expect(spy).to.be.calledTwice;
+	});
+
+	it("should dispose of subscriptions immediately when called twice", () => {
+		const a = signal("a");
+		const b = signal("b");
+		const spy = sinon.spy(() => {
+			a.value + " " + b.value;
+		});
+		const dispose = effect(function () {
+			spy();
+			this.dispose();
+		});
+
+		expect(spy).to.be.calledOnce;
+
+		a.value = "aa";
+		expect(spy).to.be.calledOnce;
+		dispose();
+
+		a.value = "aaa";
+		expect(spy).to.be.calledOnce;
+	});
+
 	it("should unsubscribe from signal", () => {
 		const s = signal(123);
 		const spy = sinon.spy(() => {
