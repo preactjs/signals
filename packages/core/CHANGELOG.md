@@ -1,5 +1,11 @@
 # @preact/signals-core
 
+## 1.10.0
+
+### Minor Changes
+
+- [#697](https://github.com/preactjs/signals/pull/697) [`5e7a167`](https://github.com/preactjs/signals/commit/5e7a167acd7bf605929a2577c9217fa834f3c115) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Publicly expose `dispose()` on an effect callback
+
 ## 1.9.0
 
 ### Minor Changes
