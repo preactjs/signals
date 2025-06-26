@@ -3,10 +3,12 @@ import { useSignal } from "@preact/signals";
 import { Fragment, createElement, JSX } from "preact";
 import { useMemo } from "preact/hooks";
 
+type Falsy = false | 0 | "" | null | undefined;
+
 interface ShowProps<T = boolean> {
 	when: Signal<T> | ReadonlySignal<T>;
 	fallback?: JSX.Element;
-	children: JSX.Element | ((value: T) => JSX.Element);
+	children: JSX.Element | ((value: Exclude<T, Falsy>) => JSX.Element);
 }
 
 export function Show<T = boolean>(props: ShowProps<T>): JSX.Element | null {
