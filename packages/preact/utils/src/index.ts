@@ -3,7 +3,7 @@ import { useSignal } from "@preact/signals";
 import { Fragment, createElement, JSX } from "preact";
 import { useMemo } from "preact/hooks";
 
-type Falsy = false | 0 | "" | null | undefined;
+type Falsy = false | 0 | 0n | "" | null | undefined;
 
 interface ShowProps<T = boolean> {
 	when: Signal<T> | ReadonlySignal<T>;
