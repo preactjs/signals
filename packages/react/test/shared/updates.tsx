@@ -21,6 +21,7 @@ import {
 } from "react";
 import type { FunctionComponent } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { describe, it, beforeEach, afterEach } from "vitest";
 
 import {
 	act,

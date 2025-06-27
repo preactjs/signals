@@ -18,7 +18,7 @@ import {
 	PropertyUpdater,
 	AugmentedComponent,
 	AugmentedElement as Element,
-} from "./internal";
+} from "./internal.d";
 
 export {
 	signal,

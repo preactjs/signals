@@ -9,6 +9,7 @@ import {
 	createRoot,
 	type Root,
 } from "../../../test/shared/utils.js";
+import { describe, beforeEach, afterEach } from "vitest";
 
 describe("@preact/signals-react/runtime", () => {
 	describe("mounting", () => {

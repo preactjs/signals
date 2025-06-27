@@ -22,14 +22,14 @@
     "lint:eslint": "eslint 'packages/**/*.{ts,tsx,js,jsx}'",
     "lint:tsc": "tsc -p tsconfig.json --noEmit",
     "lint-staged": "lint-staged",
-    "test": "pnpm test:karma && pnpm test:mocha",
+    "test": "vitest run --coverage",
     "test:minify": "pnpm test:karma:minify && pnpm test:mocha",
     "test:prod": "pnpm test:karma:prod && pnpm test:mocha:prod",
-    "test:karma": "cross-env COVERAGE=true karma start karma.conf.js --single-run",
+    "test:vitest": "vitest run --coverage",
     "test:karma:minify": "cross-env COVERAGE=true MINIFY=true karma start karma.conf.js --single-run",
-    "test:karma:watch": "karma start karma.conf.js --no-single-run",
-    "test:karma:prod": "cross-env MINIFY=true NODE_ENV=production karma start karma.conf.js --single-run",
-    "test:karma:prod:watch": "cross-env NODE_ENV=production karma start karma.conf.js --no-single-run",
+    "test:watch": "vitest",
+    "test:karma:prod": "cross-env MINIFY=true NODE_ENV=production vitest run",
+    "test:karma:prod:watch": "cross-env NODE_ENV=production vitest",
     "test:mocha": "cross-env COVERAGE=true mocha --require test/node/setup.js --recursive packages/*/test/node/**.test.tsx",
     "test:mocha:prod": "cross-env COVERAGE=true NODE_ENV=production mocha --require test/node/setup.js --recursive packages/*/test/node/**.test.tsx",
     "docs:start": "cd docs && pnpm start",
@@ -37,7 +37,7 @@
     "docs:preview": "cd docs && pnpm preview",
     "ci:build": "pnpm build && pnpm docs:build",
     "ci:test": "pnpm lint && pnpm test",
-    "prepare": "husky install",
+    "prepare": "husky install && playwright install chromium",
     "format": "prettier --ignore-path .gitignore --write '**/*.{js,jsx,ts,tsx,yml,json,md}'",
     "version": "pnpm changeset version && pnpm i --lockfile-only"
   },
@@ -62,11 +62,12 @@
     "@types/babel__traverse": "^7.18.5",
     "@types/chai": "^4.3.3",
     "@types/mocha": "^9.1.1",
-    "@types/node": "^18.19.103",
+    "@types/node": "^24.0.6",
     "@types/sinon": "^10.0.13",
     "@types/sinon-chai": "^3.2.8",
     "@typescript-eslint/eslint-plugin": "^5.33.0",
     "@typescript-eslint/parser": "^5.33.0",
+    "@vitest/browser": "^3.2.4",
     "babel-plugin-istanbul": "^6.1.1",
     "babel-plugin-transform-rename-properties": "^0.1.0",
     "buffer": "^6.0.3",
@@ -89,11 +90,13 @@
     "lint-staged": "^14.0.1",
     "microbundle": "^0.15.1",
     "mocha": "^10.0.0",
+    "playwright": "^1.53.1",
     "prettier": "^2.7.1",
     "shx": "^0.3.4",
     "sinon": "^14.0.0",
     "sinon-chai": "^3.7.0",
-    "typescript": "~5.1.6"
+    "typescript": "~5.1.6",
+    "vitest": "^3.2.4"
   },
   "lint-staged": {
     "**/*.{js,jsx,ts,tsx,yml,json,md}": [
@@ -109,7 +112,10 @@
     },
     "overrides": {
       "socket.io": "~4.7.2"
-    }
+    },
+    "ignoredBuiltDependencies": [
+      "esbuild"
+    ]
   },
   "packageManager": "pnpm@10.7.0",
   "volta": {

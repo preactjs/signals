@@ -8,6 +8,7 @@ import {
 	checkHangingAct,
 	getConsoleErrorSpy,
 } from "../../../test/shared/utils";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 const MANAGED_COMPONENT = 1;
 const MANAGED_HOOK = 2;
@@ -52,7 +53,7 @@ describe("useSignals", () => {
 		scratch = document.createElement("div");
 		document.body.appendChild(scratch);
 		root = await createRoot(scratch);
-		getConsoleErrorSpy().resetHistory();
+		getConsoleErrorSpy().mockClear();
 	});
 
 	afterEach(async () => {
@@ -142,7 +143,7 @@ describe("useSignals", () => {
 	});
 
 	it("should not rerender components when signals they use do not change", async () => {
-		const child1Spy = sinon.spy();
+		const child1Spy = vi.fn();
 		const signal1 = signal(0);
 		function Child1() {
 			child1Spy();
@@ -150,7 +151,7 @@ describe("useSignals", () => {
 			return <p>{signal1.value}</p>;
 		}
 
-		const child2Spy = sinon.spy();
+		const child2Spy = vi.fn();
 		const signal2 = signal(0);
 		function Child2() {
 			child2Spy();
@@ -158,7 +159,7 @@ describe("useSignals", () => {
 			return <p>{signal2.value}</p>;
 		}
 
-		const parentSpy = sinon.spy();
+		const parentSpy = vi.fn();
 		function Parent() {
 			parentSpy();
 			return (
@@ -170,39 +171,39 @@ describe("useSignals", () => {
 		}
 
 		function resetSpies() {
-			child1Spy.resetHistory();
-			child2Spy.resetHistory();
-			parentSpy.resetHistory();
+			child1Spy.mockClear();
+			child2Spy.mockClear();
+			parentSpy.mockClear();
 		}
 
 		resetSpies();
 		await render(<Parent />);
 		expect(scratch.innerHTML).to.equal("<p>0</p><p>0</p>");
-		expect(child1Spy).to.have.been.calledOnce;
-		expect(child2Spy).to.have.been.calledOnce;
-		expect(parentSpy).to.have.been.calledOnce;
+		expect(child1Spy).toHaveBeenCalledOnce();
+		expect(child2Spy).toHaveBeenCalledOnce();
+		expect(parentSpy).toHaveBeenCalledOnce();
 
 		resetSpies();
 		await act(() => {
 			signal1.value += 1;
 		});
 		expect(scratch.innerHTML).to.equal("<p>1</p><p>0</p>");
-		expect(child1Spy).to.have.been.calledOnce;
-		expect(child2Spy).to.not.have.been.called;
-		expect(parentSpy).to.not.have.been.called;
+		expect(child1Spy).toHaveBeenCalledOnce();
+		expect(child2Spy).not.toHaveBeenCalled();
+		expect(parentSpy).not.toHaveBeenCalled();
 
 		resetSpies();
 		await act(() => {
 			signal2.value += 1;
 		});
 		expect(scratch.innerHTML).to.equal("<p>1</p><p>1</p>");
-		expect(child1Spy).to.not.have.been.called;
-		expect(child2Spy).to.have.been.calledOnce;
-		expect(parentSpy).to.not.have.been.called;
+		expect(child1Spy).not.toHaveBeenCalled();
+		expect(child2Spy).toHaveBeenCalledOnce();
+		expect(parentSpy).not.toHaveBeenCalled();
 	});
 
 	it("should not rerender components when signals they use change but they are not mounted", async () => {
-		const child1Spy = sinon.spy();
+		const child1Spy = vi.fn();
 		const signal1 = signal(0);
 		function Child() {
 			child1Spy();
@@ -231,11 +232,11 @@ describe("useSignals", () => {
 		await act(() => {
 			signal1.value += 1;
 		});
-		expect(child1Spy).to.have.been.calledTwice;
+		expect(child1Spy).toHaveBeenCalledTimes(2);
 	});
 
 	it("should not rerender components that only update signals in event handlers", async () => {
-		const buttonSpy = sinon.spy();
+		const buttonSpy = vi.fn();
 		function AddOneButton({ num }: { num: Signal<number> }) {
 			useSignals();
 			buttonSpy();
@@ -250,7 +251,7 @@ describe("useSignals", () => {
 			);
 		}
 
-		const displaySpy = sinon.spy();
+		const displaySpy = vi.fn();
 		function DisplayNumber({ num }: { num: Signal<number> }) {
 			useSignals();
 			displaySpy();
@@ -269,20 +270,20 @@ describe("useSignals", () => {
 
 		await render(<App />);
 		expect(scratch.innerHTML).to.equal("<button>Add One</button><p>0</p>");
-		expect(buttonSpy).to.have.been.calledOnce;
-		expect(displaySpy).to.have.been.calledOnce;
+		expect(buttonSpy).toHaveBeenCalledOnce();
+		expect(displaySpy).toHaveBeenCalledOnce();
 
 		await act(() => {
 			scratch.querySelector("button")!.click();
 		});
 
 		expect(scratch.innerHTML).to.equal("<button>Add One</button><p>1</p>");
-		expect(buttonSpy).to.have.been.calledOnce;
-		expect(displaySpy).to.have.been.calledTwice;
+		expect(buttonSpy).toHaveBeenCalledOnce();
+		expect(displaySpy).toHaveBeenCalledTimes(2);
 	});
 
 	it("should not rerender components that only read signals in event handlers", async () => {
-		const buttonSpy = sinon.spy();
+		const buttonSpy = vi.fn();
 		function AddOneButton({ num }: { num: Signal<number> }) {
 			useSignals();
 			buttonSpy();
@@ -297,7 +298,7 @@ describe("useSignals", () => {
 			);
 		}
 
-		const displaySpy = sinon.spy();
+		const displaySpy = vi.fn();
 		function DisplayNumber({ num }: { num: Signal<number> }) {
 			useSignals();
 			displaySpy();
@@ -316,15 +317,15 @@ describe("useSignals", () => {
 		}
 
 		function resetSpies() {
-			buttonSpy.resetHistory();
-			displaySpy.resetHistory();
+			buttonSpy.mockClear();
+			displaySpy.mockClear();
 		}
 
 		resetSpies();
 		await render(<App />);
 		expect(scratch.innerHTML).to.equal("<button>Add One</button><p>0</p>");
-		expect(buttonSpy).to.have.been.calledOnce;
-		expect(displaySpy).to.have.been.calledOnce;
+		expect(buttonSpy).toHaveBeenCalledOnce();
+		expect(displaySpy).toHaveBeenCalledOnce();
 
 		resetSpies();
 		await act(() => {
@@ -332,8 +333,8 @@ describe("useSignals", () => {
 		});
 
 		expect(scratch.innerHTML).to.equal("<button>Add One</button><p>2</p>");
-		expect(buttonSpy).to.not.have.been.called;
-		expect(displaySpy).to.have.been.calledOnce;
+		expect(buttonSpy).not.toHaveBeenCalled();
+		expect(displaySpy).toHaveBeenCalledOnce();
 
 		resetSpies();
 		await act(() => {
@@ -341,8 +342,8 @@ describe("useSignals", () => {
 		});
 
 		expect(scratch.innerHTML).to.equal("<button>Add One</button><p>2</p>");
-		expect(buttonSpy).to.not.have.been.called;
-		expect(displaySpy).to.not.have.been.called;
+		expect(buttonSpy).not.toHaveBeenCalled();
+		expect(displaySpy).not.toHaveBeenCalled();
 
 		resetSpies();
 		await act(() => {
@@ -350,8 +351,8 @@ describe("useSignals", () => {
 		});
 
 		expect(scratch.innerHTML).to.equal("<button>Add One</button><p>5</p>");
-		expect(buttonSpy).to.not.have.been.called;
-		expect(displaySpy).to.have.been.calledOnce;
+		expect(buttonSpy).not.toHaveBeenCalled();
+		expect(displaySpy).toHaveBeenCalledOnce();
 	});
 
 	it("should properly rerender components that use custom hooks", async () => {

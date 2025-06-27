@@ -4,6 +4,7 @@ globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 import { signal } from "@preact/signals-react";
 import { createElement } from "react";
 import * as ReactRouter from "react-router-dom";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 
 import { act, checkHangingAct, createRoot, Root } from "../shared/utils";
 

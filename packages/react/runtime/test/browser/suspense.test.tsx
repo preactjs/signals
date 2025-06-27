@@ -15,6 +15,7 @@ import {
 	checkHangingAct,
 	getConsoleErrorSpy,
 } from "../../../test/shared/utils";
+import { describe, beforeEach, afterEach, it } from "vitest";
 
 describe("Suspense", () => {
 	let scratch: HTMLDivElement;

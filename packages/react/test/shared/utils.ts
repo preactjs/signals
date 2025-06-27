@@ -1,5 +1,5 @@
 import React from "react";
-import sinon from "sinon";
+import { vi, Mock } from "vitest";
 import { act as realAct } from "react-dom/test-utils";
 
 export interface Root {
@@ -96,15 +96,15 @@ export function consoleFormat(str: string, ...values: unknown[]): string {
 }
 
 declare global {
-	let errorSpy: sinon.SinonSpy | undefined;
+	let errorSpy: Mock<(...args: any[]) => void> | undefined;
 }
 
 // Only one spy can be active on an object at a time and since all tests share
 // the same console object we need to make sure we're only spying on it once.
 // We'll use this method to share the spy across all tests.
-export function getConsoleErrorSpy(): sinon.SinonSpy {
+export function getConsoleErrorSpy(): Mock<(...args: any[]) => void> {
 	if (typeof errorSpy === "undefined") {
-		(globalThis as any).errorSpy = sinon.spy(console, "error");
+		(globalThis as any).errorSpy = vi.spyOn(console, "error");
 	}
 
 	return errorSpy!;
