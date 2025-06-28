@@ -18,8 +18,8 @@
     "postbuild:preact-utils": "cd packages/preact/utils/dist && shx mv -f preact/utils/src/index.d.ts . && shx rm -rf preact",
     "postbuild:react-utils": "cd packages/react/utils/dist && shx mv -f react/utils/src/index.d.ts . && shx rm -rf react",
     "postbuild:react-runtime": "cd packages/react/runtime/dist && shx mv -f react/runtime/src/*.d.ts . && shx rm -rf react",
-    "lint": "pnpm lint:eslint && pnpm lint:tsc",
-    "lint:eslint": "eslint 'packages/**/*.{ts,tsx,js,jsx}'",
+    "lint": "pnpm lint:oxlint && pnpm lint:tsc",
+    "lint:oxlint": "oxlint 'packages/**/*.{ts,tsx,js,jsx}'",
     "lint:tsc": "tsc -p tsconfig.json --noEmit",
     "lint-staged": "lint-staged",
     "test": "pnpm test:karma && pnpm test:mocha",
@@ -65,8 +65,6 @@
     "@types/node": "^18.19.103",
     "@types/sinon": "^10.0.13",
     "@types/sinon-chai": "^3.2.8",
-    "@typescript-eslint/eslint-plugin": "^5.33.0",
-    "@typescript-eslint/parser": "^5.33.0",
     "babel-plugin-istanbul": "^6.1.1",
     "babel-plugin-transform-rename-properties": "^0.1.0",
     "buffer": "^6.0.3",
@@ -74,8 +72,6 @@
     "cross-env": "^7.0.3",
     "errorstacks": "^2.4.0",
     "esbuild": "^0.14.54",
-    "eslint": "^8.21.0",
-    "eslint-config-prettier": "^8.5.0",
     "husky": "^8.0.1",
     "karma": "6.4.2",
     "karma-chai-sinon": "^0.1.5",
@@ -89,6 +85,7 @@
     "lint-staged": "^14.0.1",
     "microbundle": "^0.15.1",
     "mocha": "^10.0.0",
+    "oxlint": "^1.3.0",
     "prettier": "^2.7.1",
     "shx": "^0.3.4",
     "sinon": "^14.0.0",
@@ -109,7 +106,10 @@
     },
     "overrides": {
       "socket.io": "~4.7.2"
-    }
+    },
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
   },
   "packageManager": "pnpm@10.7.0",
   "volta": {
