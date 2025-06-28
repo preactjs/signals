@@ -786,6 +786,18 @@ describe("effect()", () => {
 		expect(() => dispose()).not.to.throw();
 	});
 
+	it("should support resource management disposal", () => {
+		const a = signal(0);
+		const spy = sinon.spy();
+		{
+			using _dispose = effect(() => {
+				a.value;
+				return spy;
+			});
+		}
+		expect(spy).to.be.calledOnce;
+	});
+
 	it("should allow disposing a running effect", () => {
 		const a = signal(0);
 		const spy = sinon.spy();

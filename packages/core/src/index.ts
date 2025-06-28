@@ -858,7 +858,7 @@ Effect.prototype.dispose = function () {
  * @param fn The effect callback.
  * @returns A function for disposing the effect.
  */
-function effect(fn: EffectFn): () => void {
+function effect(fn: EffectFn): { (): void; [Symbol.dispose](): void } {
 	const effect = new Effect(fn);
 	try {
 		effect._callback();
@@ -868,7 +868,9 @@ function effect(fn: EffectFn): () => void {
 	}
 	// Return a bound function instead of a wrapper like `() => effect._dispose()`,
 	// because bound functions seem to be just as fast and take up a lot less memory.
-	return effect._dispose.bind(effect);
+	const dispose = effect._dispose.bind(effect);
+	(dispose as any)[Symbol.dispose] = dispose;
+	return dispose as any;
 }
 
 export { computed, effect, batch, untracked, Signal, ReadonlySignal };
