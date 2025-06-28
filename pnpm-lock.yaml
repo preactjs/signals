@@ -149,8 +149,8 @@ importers:
         specifier: ^3.7.0
         version: 3.7.0(chai@4.3.6)(sinon@14.0.0)
       typescript:
-        specifier: ~5.1.6
-        version: 5.1.6
+        specifier: ~5.8.3
+        version: 5.8.3
 
   docs:
     dependencies:
@@ -4256,8 +4256,8 @@ packages:
     engines: {node: '>=4.2.0'}
     hasBin: true
 
-  typescript@5.1.6:
-    resolution: {integrity: sha512-zaWCozRZ6DLEWAWFrVDz1H6FVXzUSfTy5FUMWsQlU8Ym5JP9eO4xkTIROFCQvhQf61z6O/G6ugw3SgAnvvm+HA==}
+  typescript@5.8.3:
+    resolution: {integrity: sha512-p1diW6TqL9L07nNxvRMM7hMMw4c5XOo/1ibL4aAIGmSAt9slTE1Xgw5KWuof2uTOvCg9BY7ZRi+GaF+7sfgPeQ==}
     engines: {node: '>=14.17'}
     hasBin: true
 
@@ -8815,7 +8815,7 @@ snapshots:
 
   typescript@4.9.5: {}
 
-  typescript@5.1.6: {}
+  typescript@5.8.3: {}
 
   ua-parser-js@0.7.37: {}
 

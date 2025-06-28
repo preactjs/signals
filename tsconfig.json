@@ -11,6 +11,7 @@
     "stripInternal": true,
     "noUnusedLocals": true,
     "noEmit": true,
+    "skipLibCheck": true,
     "paths": {
       "@preact/signals-core": ["./packages/core/src/index.ts"],
       "@preact/signals": ["./packages/preact/src/index.ts"],
