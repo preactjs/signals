@@ -1,14 +1,15 @@
 ---
 name: Bug report
 about: Create a report to help us improve
-title: ''
-labels: ''
-assignees: ''
+title: ""
+labels: ""
+assignees: ""
 ---
 
 - [ ] Check if updating to the latest version resolves the issue
 
 **Environment**
+
 - [ ] I am using `@preact/signals-core`
 - [ ] I am using `@preact/signals`
 - [ ] I am using `@preact/signals-react`

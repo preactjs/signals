@@ -318,7 +318,7 @@ module.exports = function (config) {
 							watched: false,
 							type: "js",
 						},
-				  ]
+					]
 				: []),
 			{
 				pattern:
