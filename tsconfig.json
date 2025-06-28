@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2020",
-    "lib": ["ES2021.WeakRef", "ES2015.Symbol", "DOM"],
+    "lib": ["ES2021.WeakRef", "ES2015.Symbol", "DOM", "ESNext.Disposable"],
     "moduleResolution": "node",
     "esModuleInterop": true,
     "strict": true,
@@ -11,6 +11,7 @@
     "stripInternal": true,
     "noUnusedLocals": true,
     "noEmit": true,
+    "skipLibCheck": true,
     "paths": {
       "@preact/signals-core": ["./packages/core/src/index.ts"],
       "@preact/signals": ["./packages/preact/src/index.ts"],

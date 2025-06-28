@@ -184,11 +184,16 @@ function createEsbuildPlugin(filteredPkgList) {
 						},
 					];
 
+					const explicitResourceManagement = [
+						"@babel/plugin-proposal-explicit-resource-management",
+					];
+
 					const tmp = await babel.transformAsync(result, {
 						filename: args.path,
 						sourceMaps: "inline",
 						presets: downlevel ? [ts, jsx, downlevelPlugin] : [ts, jsx],
 						plugins: [
+							explicitResourceManagement,
 							signalsTransform,
 							coverage && coveragePlugin,
 							minify && renamePlugin,
