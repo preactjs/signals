@@ -25,7 +25,7 @@ export default defineConfig(env => ({
 		process.env.DEBUG
 			? preact({
 					exclude: /\breact/,
-			  })
+				})
 			: null,
 		multiSpa(["index.html", "demos/**/*.html"]),
 		unsetPreactAliases(),
@@ -68,7 +68,7 @@ export default defineConfig(env => ({
 						// one, as expected. I'm working around this by just mainly aliasing
 						// the package that needs to be resolved.
 						"@preact/signals-react/runtime": join(root, "react/runtime"),
-				  }
+					}
 				: packages(false),
 	},
 }));

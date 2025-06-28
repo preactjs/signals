@@ -433,10 +433,10 @@ function transformFunction(
 	const hookUsage = options.experimental?.noTryFinally
 		? UNMANAGED
 		: isHook
-		? MANAGED_HOOK
-		: isComponent
-		? MANAGED_COMPONENT
-		: UNMANAGED;
+			? MANAGED_HOOK
+			: isComponent
+				? MANAGED_COMPONENT
+				: UNMANAGED;
 
 	let newBody: BabelTypes.BlockStatement;
 	if (hookUsage !== UNMANAGED) {
