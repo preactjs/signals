@@ -6,7 +6,7 @@ import { Fragment, createElement, useMemo } from "react";
 interface ShowProps<T = boolean> {
 	when: Signal<T> | ReadonlySignal<T>;
 	fallback?: JSX.Element;
-	children: JSX.Element | ((value: T) => JSX.Element);
+	children: JSX.Element | ((value: NonNullable<T>) => JSX.Element);
 }
 
 export function Show<T = boolean>(props: ShowProps<T>): JSX.Element | null {
