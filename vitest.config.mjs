@@ -1,8 +1,38 @@
 import { defineConfig } from 'vitest/config';
+import { manglePlugin } from './scripts/mangle-plugin.mjs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
+const MINIFY = process.env.MINIFY === "true";
 const COVERAGE = process.env.COVERAGE === 'true';
+const dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
+	resolve: {
+		alias: MINIFY ? {
+			'@preact/signals-core': path.join(
+				dirname, './packages/core/dist/signals-core.min.js'
+			),
+			'@preact/signals': path.join(
+				dirname, './packages/preact/dist/signals.min.js'
+			),
+			'@preact/signals-react': path.join(
+				dirname, './packages/react/dist/signals.min.js'
+			),
+			'@preact/signals-react-utils': path.join(
+				dirname, './packages/react/utils/utils.min.js'
+			),
+			'@preact/signals-react-transform': path.join(
+				dirname ,'./packages/react-transform/dist/signals-transform.mjs'
+			),
+			'@preact/signals-utils': path.join(
+				dirname, './packages/preact/utils/dist/utils.min.js'
+			),
+		} : {}
+	},
+	plugins: [
+		manglePlugin
+	],
 	test: {
 		coverage: {
 			enabled: COVERAGE,
@@ -15,8 +45,28 @@ export default defineConfig({
 			reportsDirectory: './coverage'
 		},
 		projects: [
-			'packages/*/vitest.config.mjs',
-			'packages/*/vitest.browser.config.mjs'
+			{
+				extends: true,
+				test: {
+					include: [
+						'./packages/{}/test/**/*.test.tsx',
+						'!./packages/{}/test/browser/**/*.test.tsx'
+					],
+				}
+			},
+			{
+				extends: true,
+				test: {
+					include: ['./packages/{}/test/browser/**/*.test.tsx'],
+					browser: {
+						provider: 'playwright',
+						enabled: true,
+						screenshotFailures: false,
+						headless: true,
+						instances: [{ browser: 'chromium' }]
+					}
+				}
+			}
 		]
 	}
 });
