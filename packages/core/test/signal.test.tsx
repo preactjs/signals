@@ -790,6 +790,7 @@ describe("effect()", () => {
 		const a = signal(0);
 		const spy = sinon.spy();
 		{
+			// @ts-expect-error This is a test for the dispose API
 			using _dispose = effect(() => {
 				a.value;
 				return spy;

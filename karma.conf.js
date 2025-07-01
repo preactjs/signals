@@ -227,6 +227,7 @@ function createEsbuildPlugin(filteredPkgList) {
 
 const pkgList = {
 	core: "@preact/signals-core",
+	debug: "@preact/signals-debug",
 	preact: "@preact/signals",
 	react: "@preact/signals-react",
 	"react/utils": "@preact/signals-react/utils",

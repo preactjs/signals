@@ -160,18 +160,21 @@ importers:
       '@preact/signals-core':
         specifier: workspace:../packages/core
         version: link:../packages/core
+      '@preact/signals-debug':
+        specifier: workspace:../packages/debug
+        version: link:../packages/debug
       '@preact/signals-react':
         specifier: workspace:../packages/react
         version: link:../packages/react
       preact:
-        specifier: 10.9.0
-        version: 10.9.0
+        specifier: ^10.25.0
+        version: 10.26.6
       preact-iso:
         specifier: ^2.3.0
-        version: 2.3.0(preact-render-to-string@5.2.1(preact@10.9.0))(preact@10.9.0)
+        version: 2.3.0(preact-render-to-string@6.5.13(preact@10.26.6))(preact@10.26.6)
       preact-render-to-string:
-        specifier: ^5.2.1
-        version: 5.2.1(preact@10.9.0)
+        specifier: ^6.0.0
+        version: 6.5.13(preact@10.26.6)
       react:
         specifier: ^18.2.0
         version: 18.2.0
@@ -184,7 +187,7 @@ importers:
         version: 7.22.8
       '@preact/preset-vite':
         specifier: ^2.3.0
-        version: 2.3.0(@babel/core@7.22.8)(preact@10.9.0)(vite@3.2.7(@types/node@18.19.103)(terser@5.14.2))
+        version: 2.3.0(@babel/core@7.22.8)(preact@10.26.6)(vite@3.2.7(@types/node@18.19.103)(terser@5.14.2))
       '@types/react':
         specifier: ^18.0.18
         version: 18.0.18
@@ -205,6 +208,12 @@ importers:
         version: 3.2.7(@types/node@18.19.103)(terser@5.14.2)
 
   packages/core: {}
+
+  packages/debug:
+    devDependencies:
+      '@preact/signals-core':
+        specifier: workspace:^1.7.0
+        version: link:../core
 
   packages/preact:
     dependencies:
@@ -3658,21 +3667,18 @@ packages:
       preact: '>=10'
       preact-render-to-string: '>=5'
 
-  preact-render-to-string@5.2.1:
-    resolution: {integrity: sha512-Wp3ner1aIVBpKg02C4AoLdBiw4kNaiFSYHr4wUF+fR7FWKAQzNri+iPfPp31sEhAtBfWoJrSxiEFzd5wp5zCgQ==}
-    peerDependencies:
-      preact: '>=10'
-
   preact-render-to-string@5.2.6:
     resolution: {integrity: sha512-JyhErpYOvBV1hEPwIxc/fHWXPfnEGdRKxc8gFdAZ7XV4tlzyzG847XAyEZqoDnynP88akM4eaHcSOzNcLWFguw==}
     peerDependencies:
       preact: '>=10'
 
+  preact-render-to-string@6.5.13:
+    resolution: {integrity: sha512-iGPd+hKPMFKsfpR2vL4kJ6ZPcFIoWZEcBf0Dpm3zOpdVvj77aY8RlLiQji5OMrngEyaxGogeakTb54uS2FvA6w==}
+    peerDependencies:
+      preact: '>=10'
+
   preact@10.26.6:
     resolution: {integrity: sha512-5SRRBinwpwkaD+OqlBDeITlRgvd8I8QlxHJw9AxSdMNV6O+LodN9nUyYGpSF7sadHjs6RzeFShMexC6DbtWr9g==}
-
-  preact@10.9.0:
-    resolution: {integrity: sha512-jO6/OvCRL+OT8gst/+Q2ir7dMybZAX8ioP02Zmzh3BkQMHLyqZSujvxbUriXvHi8qmhcHKC2Gwbog6Kt+YTh+Q==}
 
   preferred-pm@3.0.3:
     resolution: {integrity: sha512-+wZgbxNES/KlJs9q40F/1sfOd/j7f1O9JaHcW5Dsn3aUUOZg3L2bjpVUcKV2jvtElYfoTuQiNeMfQJ4kwUAhCQ==}
@@ -5773,12 +5779,12 @@ snapshots:
   '@oxlint/win32-x64@1.3.0':
     optional: true
 
-  '@preact/preset-vite@2.3.0(@babel/core@7.22.8)(preact@10.9.0)(vite@3.2.7(@types/node@18.19.103)(terser@5.14.2))':
+  '@preact/preset-vite@2.3.0(@babel/core@7.22.8)(preact@10.26.6)(vite@3.2.7(@types/node@18.19.103)(terser@5.14.2))':
     dependencies:
       '@babel/core': 7.22.8
       '@babel/plugin-transform-react-jsx': 7.27.1(@babel/core@7.22.8)
       '@babel/plugin-transform-react-jsx-development': 7.18.6(@babel/core@7.22.8)
-      '@prefresh/vite': 2.2.8(preact@10.9.0)(vite@3.2.7(@types/node@18.19.103)(terser@5.14.2))
+      '@prefresh/vite': 2.2.8(preact@10.26.6)(vite@3.2.7(@types/node@18.19.103)(terser@5.14.2))
       '@rollup/pluginutils': 4.2.1
       babel-plugin-transform-hook-names: 1.0.2(@babel/core@7.22.8)
       debug: 4.3.4(supports-color@8.1.1)
@@ -5791,20 +5797,20 @@ snapshots:
 
   '@prefresh/babel-plugin@0.4.3': {}
 
-  '@prefresh/core@1.3.4(preact@10.9.0)':
+  '@prefresh/core@1.3.4(preact@10.26.6)':
     dependencies:
-      preact: 10.9.0
+      preact: 10.26.6
 
   '@prefresh/utils@1.1.3': {}
 
-  '@prefresh/vite@2.2.8(preact@10.9.0)(vite@3.2.7(@types/node@18.19.103)(terser@5.14.2))':
+  '@prefresh/vite@2.2.8(preact@10.26.6)(vite@3.2.7(@types/node@18.19.103)(terser@5.14.2))':
     dependencies:
       '@babel/core': 7.27.7
       '@prefresh/babel-plugin': 0.4.3
-      '@prefresh/core': 1.3.4(preact@10.9.0)
+      '@prefresh/core': 1.3.4(preact@10.26.6)
       '@prefresh/utils': 1.1.3
       '@rollup/pluginutils': 4.2.1
-      preact: 10.9.0
+      preact: 10.26.6
       vite: 3.2.7(@types/node@18.19.103)(terser@5.14.2)
     transitivePeerDependencies:
       - supports-color
@@ -8185,24 +8191,21 @@ snapshots:
       picocolors: 1.0.0
       source-map-js: 1.0.2
 
-  preact-iso@2.3.0(preact-render-to-string@5.2.1(preact@10.9.0))(preact@10.9.0):
+  preact-iso@2.3.0(preact-render-to-string@6.5.13(preact@10.26.6))(preact@10.26.6):
     dependencies:
-      preact: 10.9.0
-      preact-render-to-string: 5.2.1(preact@10.9.0)
-
-  preact-render-to-string@5.2.1(preact@10.9.0):
-    dependencies:
-      preact: 10.9.0
-      pretty-format: 3.8.0
+      preact: 10.26.6
+      preact-render-to-string: 6.5.13(preact@10.26.6)
 
   preact-render-to-string@5.2.6(preact@10.26.6):
     dependencies:
       preact: 10.26.6
       pretty-format: 3.8.0
 
-  preact@10.26.6: {}
+  preact-render-to-string@6.5.13(preact@10.26.6):
+    dependencies:
+      preact: 10.26.6
 
-  preact@10.9.0: {}
+  preact@10.26.6: {}
 
   preferred-pm@3.0.3:
     dependencies:
