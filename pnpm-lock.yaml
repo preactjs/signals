@@ -231,18 +231,6 @@ importers:
         specifier: ^5.2.5
         version: 5.2.6(preact@10.26.6)
 
-  packages/preact/utils:
-    dependencies:
-      '@preact/signals':
-        specifier: workspace:*
-        version: link:..
-      '@preact/signals-core':
-        specifier: workspace:^1.3.0
-        version: link:../../core
-      preact:
-        specifier: '>= 10.25.0'
-        version: 10.26.6
-
   packages/react:
     dependencies:
       '@preact/signals-core':
