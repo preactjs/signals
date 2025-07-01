@@ -143,7 +143,7 @@ module.exports = {
 		[
 			"@preact/signals-react-transform",
 			{
-				detectTransformedJSX: tue,
+				detectTransformedJSX: true,
 			},
 		],
 	],
