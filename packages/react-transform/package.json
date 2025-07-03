@@ -57,6 +57,7 @@
   },
   "devDependencies": {
     "@babel/core": "^7.22.8",
+    "@preact/signals-core": "workspace:*",
     "@types/babel__core": "^7.20.1",
     "@types/babel__helper-module-imports": "^7.18.0",
     "@types/babel__helper-plugin-utils": "^7.10.0",

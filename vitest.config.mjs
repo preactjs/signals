@@ -33,6 +33,15 @@ export default defineConfig({
 	plugins: [
 		manglePlugin
 	],
+	// TODO (43081j): stop faking node globals and sort out the transform
+	// tests. Either run them in node, or somehow run babel in node but the
+	// tests in browser
+	define: {
+		IS_REACT_ACT_ENVIRONMENT: true,
+		process: {
+			env: {}
+		}
+	},
 	test: {
 		coverage: {
 			enabled: COVERAGE,
@@ -49,15 +58,15 @@ export default defineConfig({
 				extends: true,
 				test: {
 					include: [
-						'./packages/{,preact/utils,preact,core,react}/test/**/*.test.tsx',
-						'!./packages/{,preact/utils,preact,core,react}/test/browser/**/*.test.tsx'
+						'./packages/{,preact/utils,preact,core,react,react-transform}/test/**/*.test.tsx',
+						'!./packages/{,preact/utils,preact,core,react,react-transform}/test/browser/**/*.test.tsx'
 					],
 				}
 			},
 			{
 				extends: true,
 				test: {
-					include: ['./packages/{,preact/utils,preact,core,react}/test/browser/**/*.test.tsx'],
+					include: ['./packages/{,preact/utils,preact,core,react,react-transform}/test/browser/**/*.test.tsx'],
 					browser: {
 						provider: 'playwright',
 						enabled: true,

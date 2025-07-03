@@ -1,5 +1,5 @@
 import React from "react";
-import { vi, type MockInstance } from "vitest";
+import { vi, expect, type MockInstance } from "vitest";
 import { act as realAct } from "react-dom/test-utils";
 
 export interface Root {
