@@ -226,7 +226,6 @@ function createEsbuildPlugin(filteredPkgList) {
 }
 
 const pkgList = {
-	react: "@preact/signals-react",
 	"react/utils": "@preact/signals-react/utils",
 	"react/runtime": "@preact/signals-react/runtime",
 	"react-transform": "@preact/signals-react-transform",
