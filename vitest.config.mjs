@@ -49,15 +49,15 @@ export default defineConfig({
 				extends: true,
 				test: {
 					include: [
-						'./packages/{,preact/utils}/test/**/*.test.tsx',
-						'!./packages/{,preact/utils}/test/browser/**/*.test.tsx'
+						'./packages/{,preact/utils,preact}/test/**/*.test.tsx',
+						'!./packages/{,preact/utils,preact}/test/browser/**/*.test.tsx'
 					],
 				}
 			},
 			{
 				extends: true,
 				test: {
-					include: ['./packages/{,preact/utils}/test/browser/**/*.test.tsx'],
+					include: ['./packages/{,preact/utils,preact}/test/browser/**/*.test.tsx'],
 					browser: {
 						provider: 'playwright',
 						enabled: true,
