@@ -1,7 +1,6 @@
 import { ReadonlySignal, Signal } from "@preact/signals-core";
-import { useSignal } from "@preact/signals";
+import { useSignal, useStoreValueOnce } from "@preact/signals";
 import { Fragment, createElement, JSX } from "preact";
-import { useMemo } from "preact/hooks";
 
 interface ShowProps<T = boolean> {
 	when: Signal<T> | ReadonlySignal<T>;
@@ -27,7 +26,7 @@ interface ForProps<T> {
 }
 
 export function For<T>(props: ForProps<T>): JSX.Element | null {
-	const cache = useMemo(() => new Map(), []);
+	const cache = useStoreValueOnce(() => new Map<T, JSX.Element>());
 	let list = (
 		(typeof props.each === "function" ? props.each() : props.each) as Signal<
 			Array<T>
@@ -60,6 +59,7 @@ export function useSignalRef<T>(value: T): Signal<T> & { current: T } {
 		Object.defineProperty(ref, "current", refSignalProto);
 	return ref;
 }
+
 const refSignalProto = {
 	configurable: true,
 	get(this: Signal) {

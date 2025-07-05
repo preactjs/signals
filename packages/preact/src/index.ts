@@ -92,7 +92,7 @@ function SignalValue(this: AugmentedComponent, { data }: { data: Signal }) {
 	const currentSignal = useSignal(data);
 	currentSignal.value = data;
 
-	const [isText, s] = useStoreOnce(() => {
+	const [isText, s] = useStoreValueOnce(() => {
 		let self = this;
 		// mark the parent component as having computeds so it gets optimized
 		let v = this.__v;
@@ -404,7 +404,7 @@ Component.prototype.shouldComponentUpdate = function (
 export function useSignal<T>(value: T, options?: SignalOptions<T>): Signal<T>;
 export function useSignal<T = undefined>(): Signal<T | undefined>;
 export function useSignal<T>(value?: T, options?: SignalOptions<T>) {
-	return useStoreOnce(() =>
+	return useStoreValueOnce(() =>
 		signal<T | undefined>(value, options as SignalOptions)
 	);
 }
@@ -413,7 +413,9 @@ export function useComputed<T>(compute: () => T, options?: SignalOptions<T>) {
 	const $compute = useRef(compute);
 	$compute.current = compute;
 	(currentComponent as AugmentedComponent)._updateFlags |= HAS_COMPUTEDS;
-	return useStoreOnce(() => computed<T>(() => $compute.current(), options));
+	return useStoreValueOnce(() =>
+		computed<T>(() => $compute.current(), options)
+	);
 }
 
 function safeRaf(callback: () => void) {
@@ -523,7 +525,7 @@ function getState(index: number): HookState {
 	return hooks._list[index];
 }
 
-function useStoreOnce<T>(factory: () => T): T {
+export function useStoreValueOnce<T>(factory: () => T): T {
 	const state = getState(currentHookIndex++);
 	if (!state._stored) {
 		state._stored = true;
@@ -532,8 +534,8 @@ function useStoreOnce<T>(factory: () => T): T {
 	return state._value;
 }
 
-function useRef<T>(initialValue: T): { current: T } {
-	return useStoreOnce(() => ({ current: initialValue }));
+export function useRef<T>(initialValue: T): { current: T } {
+	return useStoreValueOnce(() => ({ current: initialValue }));
 }
 
 function useOnce(callback: () => void | (() => void)): void {
