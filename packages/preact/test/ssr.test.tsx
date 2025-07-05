@@ -1,6 +1,7 @@
 import { signal, useSignal, useComputed } from "@preact/signals";
 import { createElement } from "preact";
 import { renderToString } from "preact-render-to-string";
+import { describe, it, expect } from "vitest";
 
 const sleep = (ms?: number) => new Promise(r => setTimeout(r, ms));
 

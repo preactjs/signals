@@ -17,6 +17,7 @@ import {
 import type { ComponentChildren, FunctionComponent, VNode } from "preact";
 import { useContext, useEffect, useRef, useState } from "preact/hooks";
 import { setupRerender, act } from "preact/test-utils";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 const sleep = (ms?: number) => new Promise(r => setTimeout(r, ms));
 
@@ -79,13 +80,13 @@ describe("@preact/signals", () => {
 
 		it("should update Signal-based SignalValue (in a parent component)", async () => {
 			const sig = signal("test");
-			const spy = sinon.spy();
+			const spy = vi.fn();
 			function App({ x }: { x: typeof sig }) {
 				spy();
 				return <span>{x}</span>;
 			}
 			render(<App x={sig} />, scratch);
-			spy.resetHistory();
+			spy.mockClear();
 
 			const text = scratch.firstChild!.firstChild!;
 			expect(text).to.have.property("data", "test");
@@ -100,12 +101,12 @@ describe("@preact/signals", () => {
 			expect(text).to.have.property("data", "changed");
 
 			await sleep();
-			expect(spy).not.to.have.been.called;
+			expect(spy).not.toHaveBeenCalled();
 		});
 
 		it("should support swapping Signals in SignalValue positions", async () => {
 			const sig = signal("test");
-			const spy = sinon.spy();
+			const spy = vi.fn();
 			function App({ x }: { x: typeof sig }) {
 				spy();
 				return <span>{x}</span>;
@@ -114,7 +115,7 @@ describe("@preact/signals", () => {
 			act(() => {
 				render(<App x={sig} />, scratch);
 			});
-			spy.resetHistory();
+			spy.mockClear();
 
 			const text = scratch.firstChild!.firstChild!;
 			expect(text).to.have.property("data", "test");
@@ -123,8 +124,8 @@ describe("@preact/signals", () => {
 			act(() => {
 				render(<App x={sig2} />, scratch);
 			});
-			expect(spy).to.have.been.called;
-			spy.resetHistory();
+			expect(spy).toHaveBeenCalled();
+			spy.mockClear();
 
 			// should not remount/replace SignalValue
 			expect(scratch.firstChild!.firstChild!).to.equal(text);
@@ -132,14 +133,14 @@ describe("@preact/signals", () => {
 			expect(text).to.have.property("data", "different");
 
 			await sleep();
-			expect(spy).not.to.have.been.called;
+			expect(spy).not.toHaveBeenCalled();
 
 			act(() => {
 				sig.value = "changed old signal";
 			});
 
 			await sleep();
-			expect(spy).not.to.have.been.called;
+			expect(spy).not.toHaveBeenCalled();
 			// the text should _not_ have changed:
 			expect(text).to.have.property("data", "different");
 
@@ -151,7 +152,7 @@ describe("@preact/signals", () => {
 			expect(text).to.have.property("data", "changed");
 
 			await sleep();
-			expect(spy).not.to.have.been.called;
+			expect(spy).not.toHaveBeenCalled();
 		});
 
 		it("should support rendering JSX in SignalValue positions", async () => {
@@ -171,15 +172,15 @@ describe("@preact/signals", () => {
 
 		it("JSX in SignalValue should be reactive", async () => {
 			const sig = signal(<span>test</span>);
-			const spy = sinon.spy();
+			const spy = vi.fn();
 			function App({ x }: { x: typeof sig }) {
 				spy();
 				return <span>{x}</span>;
 			}
 
 			render(<App x={sig} />, scratch);
-			expect(spy).to.have.been.calledOnce;
-			spy.resetHistory();
+			expect(spy).toHaveBeenCalledOnce();
+			spy.mockClear();
 
 			const text = scratch.firstChild!.firstChild!;
 
@@ -190,8 +191,8 @@ describe("@preact/signals", () => {
 			act(() => {
 				sig.value = <div>a</div>;
 			});
-			expect(spy).not.to.have.been.calledOnce;
-			scratch.firstChild!.firstChild!.textContent!.should.equal("a");
+			expect(spy).not.toHaveBeenCalledOnce();
+			expect(scratch.firstChild!.firstChild!.textContent!).to.equal("a");
 		});
 
 		it("should support swapping between JSX and string in SignalValue positions", async () => {
@@ -239,60 +240,56 @@ describe("@preact/signals", () => {
 			expect(text.textContent).to.equal("d");
 		});
 
-		describe("garbage collection", function () {
-			// Skip GC tests if window.gc/global.gc is not defined.
-			before(function () {
-				if (typeof gc === "undefined") {
-					this.skip();
-				}
-			});
+		describe.skipIf(typeof gc === "undefined")(
+			"garbage collection",
+			function () {
+				it("should not hold on to references to signals and computeds after unmount", async () => {
+					const sig = signal("test");
 
-			it("should not hold on to references to signals and computeds after unmount", async () => {
-				const sig = signal("test");
+					let update: (content: VNode) => void;
+					function App() {
+						const [content, setContent] = useState(<div>{sig}</div>);
+						update = setContent;
+						return content;
+					}
 
-				let update: (content: VNode) => void;
-				function App() {
-					const [content, setContent] = useState(<div>{sig}</div>);
-					update = setContent;
-					return content;
-				}
+					render(<App />, scratch);
+					expect(scratch.firstChild!.firstChild!).to.have.property(
+						"data",
+						"test"
+					);
 
-				render(<App />, scratch);
-				expect(scratch.firstChild!.firstChild!).to.have.property(
-					"data",
-					"test"
-				);
+					let ref: WeakRef<ReadonlySignal>;
+					(function () {
+						// Create a new computed inside a new IIFE scope, so that
+						// we can explicitly hold a _only_ weak reference to it.
+						const c = computed(() => sig.value + " computed");
+						ref = new WeakRef(c);
 
-				let ref: WeakRef<ReadonlySignal>;
-				(function () {
-					// Create a new computed inside a new IIFE scope, so that
-					// we can explicitly hold a _only_ weak reference to it.
-					const c = computed(() => sig.value + " computed");
-					ref = new WeakRef(c);
+						// Mount the new computed to App. Wrap it inside <span> so that `c`
+						// will get unmounted when we replace the spans with divs later.
+						act(() => update(<span>{c}</span>));
+					})();
 
-					// Mount the new computed to App. Wrap it inside <span> so that `c`
-					// will get unmounted when we replace the spans with divs later.
-					act(() => update(<span>{c}</span>));
-				})();
+					expect(scratch.firstChild!.firstChild!).to.have.property(
+						"data",
+						"test computed"
+					);
 
-				expect(scratch.firstChild!.firstChild!).to.have.property(
-					"data",
-					"test computed"
-				);
+					act(() => update(<div>{sig}</div>));
+					expect(scratch.firstChild!.firstChild!).to.have.property(
+						"data",
+						"test"
+					);
 
-				act(() => update(<div>{sig}</div>));
-				expect(scratch.firstChild!.firstChild!).to.have.property(
-					"data",
-					"test"
-				);
-
-				// Ensure that the computed has a chance to get GC'd.
-				(gc as () => void)();
-				await sleep(0);
-				(gc as () => void)();
-				expect(ref.deref()).to.be.undefined;
-			});
-		});
+					// Ensure that the computed has a chance to get GC'd.
+					(gc as () => void)();
+					await sleep(0);
+					(gc as () => void)();
+					expect(ref.deref()).to.be.undefined;
+				});
+			}
+		);
 	});
 
 	describe("Component bindings", () => {
@@ -371,7 +368,7 @@ describe("@preact/signals", () => {
 				return <p>{value}</p>;
 			}
 
-			const spy = sinon.spy();
+			const spy = vi.fn();
 			function App() {
 				spy();
 				return <Child />;
@@ -382,14 +379,14 @@ describe("@preact/signals", () => {
 
 			sig.value = "bar";
 			rerender();
-			expect(spy).to.be.calledOnce;
+			expect(spy).toHaveBeenCalledOnce();
 		});
 
 		it("should minimize rerenders when passing signals through context", () => {
 			function spyOn<P = { children?: ComponentChildren }>(
 				c: FunctionComponent<P>
 			) {
-				return sinon.spy(c);
+				return vi.fn(c);
 			}
 
 			// Manually read signal value below so we can watch whether components rerender
@@ -474,25 +471,25 @@ describe("@preact/signals", () => {
 
 			const url = scratch.querySelector("p")!;
 			expect(url.textContent).to.equal("https://domain.com/test?a=1");
-			expect(URLModelProvider).to.be.calledOnce;
-			expect(Origin).to.be.calledOnce;
-			expect(Pathname).to.be.calledOnce;
-			expect(Search).to.be.calledOnce;
+			expect(URLModelProvider).toHaveBeenCalledOnce();
+			expect(Origin).toHaveBeenCalledOnce();
+			expect(Pathname).toHaveBeenCalledOnce();
+			expect(Search).toHaveBeenCalledOnce();
 
 			scratch.querySelector("button")!.click();
 			rerender();
 
 			expect(url.textContent).to.equal("https://domain.com/test?a=2");
-			expect(URLModelProvider).to.be.calledOnce;
-			expect(Origin).to.be.calledOnce;
-			expect(Pathname).to.be.calledOnce;
-			expect(Search).to.be.calledTwice;
+			expect(URLModelProvider).toHaveBeenCalledOnce();
+			expect(Origin).toHaveBeenCalledOnce();
+			expect(Pathname).toHaveBeenCalledOnce();
+			expect(Search).toHaveBeenCalledTimes(2);
 		});
 
 		it("should not subscribe to computed signals only created and not used", () => {
 			const sig = signal(0);
-			const childSpy = sinon.spy();
-			const parentSpy = sinon.spy();
+			const childSpy = vi.fn();
+			const parentSpy = vi.fn();
 
 			function Child({ num }: { num: ReadonlySignal<number> }) {
 				childSpy();
@@ -507,21 +504,21 @@ describe("@preact/signals", () => {
 
 			render(<Parent num={sig} />, scratch);
 			expect(scratch.innerHTML).to.equal("<p>1</p>");
-			expect(parentSpy).to.be.calledOnce;
-			expect(childSpy).to.be.calledOnce;
+			expect(parentSpy).toHaveBeenCalledOnce();
+			expect(childSpy).toHaveBeenCalledOnce();
 
 			sig.value += 1;
 			rerender();
 			expect(scratch.innerHTML).to.equal("<p>2</p>");
-			expect(parentSpy).to.be.calledOnce;
-			expect(childSpy).to.be.calledTwice;
+			expect(parentSpy).toHaveBeenCalledOnce();
+			expect(childSpy).toHaveBeenCalledTimes(2);
 		});
 
 		it("should properly subscribe and unsubscribe to conditionally rendered computed signals ", () => {
 			const computedDep = signal(0);
 			const renderComputed = signal(true);
-			const renderSpy = sinon.spy();
-			const computer = sinon.spy(() => computedDep.value + 1);
+			const renderSpy = vi.fn();
+			const computer = vi.fn(() => computedDep.value + 1);
 
 			function App() {
 				renderSpy();
@@ -531,26 +528,26 @@ describe("@preact/signals", () => {
 
 			render(<App />, scratch);
 			expect(scratch.innerHTML).to.equal("<p>1</p>");
-			expect(renderSpy).to.be.calledOnce;
-			expect(computer).to.be.calledOnce;
+			expect(renderSpy).toHaveBeenCalledOnce();
+			expect(computer).toHaveBeenCalledOnce();
 
 			computedDep.value += 1;
 			rerender();
 			expect(scratch.innerHTML).to.equal("<p>2</p>");
-			expect(renderSpy).to.be.calledTwice;
-			expect(computer).to.be.calledTwice;
+			expect(renderSpy).toHaveBeenCalledTimes(2);
+			expect(computer).toHaveBeenCalledTimes(2);
 
 			renderComputed.value = false;
 			rerender();
 			expect(scratch.innerHTML).to.equal("");
-			expect(renderSpy).to.be.calledThrice;
-			expect(computer).to.be.calledTwice;
+			expect(renderSpy).toHaveBeenCalledTimes(3);
+			expect(computer).toHaveBeenCalledTimes(2);
 
 			computedDep.value += 1;
 			rerender();
 			expect(scratch.innerHTML).to.equal("");
-			expect(renderSpy).to.be.calledThrice; // Should not be called again
-			expect(computer).to.be.calledTwice; // Should not be called again
+			expect(renderSpy).toHaveBeenCalledTimes(3); // Should not be called again
+			expect(computer).toHaveBeenCalledTimes(2); // Should not be called again
 		});
 	});
 
@@ -580,14 +577,14 @@ describe("@preact/signals", () => {
 
 		it("should update props without re-rendering", async () => {
 			const s = signal("initial");
-			const spy = sinon.spy();
+			const spy = vi.fn();
 			function Wrap() {
 				spy();
 				// @ts-ignore
 				return <input value={s} />;
 			}
 			render(<Wrap />, scratch);
-			spy.resetHistory();
+			spy.mockClear();
 
 			expect(scratch.firstChild).to.have.property("value", "initial");
 
@@ -599,7 +596,7 @@ describe("@preact/signals", () => {
 
 			// ensure the component was never re-rendered: (even after a tick)
 			await sleep();
-			expect(spy).not.to.have.been.called;
+			expect(spy).not.toHaveBeenCalled();
 
 			act(() => {
 				s.value = "second update";
@@ -609,19 +606,19 @@ describe("@preact/signals", () => {
 
 			// ensure the component was never re-rendered: (even after a tick)
 			await sleep();
-			expect(spy).not.to.have.been.called;
+			expect(spy).not.toHaveBeenCalled();
 		});
 
 		it("should set and update string style property", async () => {
 			const style = signal("left: 10px");
-			const spy = sinon.spy();
+			const spy = vi.fn();
 			function Wrap() {
 				spy();
 				// @ts-ignore
 				return <div style={style} />;
 			}
 			render(<Wrap />, scratch);
-			spy.resetHistory();
+			spy.mockClear();
 
 			const div = scratch.firstChild as HTMLDivElement;
 
@@ -629,7 +626,7 @@ describe("@preact/signals", () => {
 
 			// ensure the component was never re-rendered: (even after a tick)
 			await sleep();
-			expect(spy).not.to.have.been.called;
+			expect(spy).not.toHaveBeenCalled();
 
 			act(() => {
 				style.value = "left: 20px;";
@@ -639,26 +636,26 @@ describe("@preact/signals", () => {
 
 			// ensure the component was never re-rendered: (even after a tick)
 			await sleep();
-			expect(spy).not.to.have.been.called;
+			expect(spy).not.toHaveBeenCalled();
 		});
 
 		it("should set updated signal prop values at most once", async () => {
 			const s = signal("initial");
-			const spy = sinon.spy();
+			const spy = vi.fn();
 			function Wrap() {
 				spy();
 				// @ts-ignore
 				return <span ariaLabel={s} ariaDescription={s.value} />;
 			}
 			render(<Wrap />, scratch);
-			spy.resetHistory();
+			spy.mockClear();
 
 			const span = scratch.firstElementChild as HTMLSpanElement;
-			const ariaLabel = sinon.spy();
+			const ariaLabel = vi.fn();
 			Object.defineProperty(span, "ariaLabel", {
 				set: ariaLabel,
 			});
-			const ariaDescription = sinon.spy();
+			const ariaDescription = vi.fn();
 			Object.defineProperty(span, "ariaDescription", {
 				set: ariaDescription,
 			});
@@ -667,39 +664,39 @@ describe("@preact/signals", () => {
 				s.value = "updated";
 			});
 
-			expect(spy).to.have.been.calledOnce;
+			expect(spy).toHaveBeenCalledOnce();
 
-			expect(ariaLabel).to.have.been.calledOnce;
-			expect(ariaLabel).to.have.been.calledWith("updated");
-			ariaLabel.resetHistory();
+			expect(ariaLabel).toHaveBeenCalledOnce();
+			expect(ariaLabel).toHaveBeenCalledWith("updated");
+			ariaLabel.mockClear();
 
-			expect(ariaDescription).to.have.been.calledOnce;
-			expect(ariaDescription).to.have.been.calledWith("updated");
-			ariaDescription.resetHistory();
+			expect(ariaDescription).toHaveBeenCalledOnce();
+			expect(ariaDescription).toHaveBeenCalledWith("updated");
+			ariaDescription.mockClear();
 
 			// ensure the component was never re-rendered: (even after a tick)
 			await sleep();
 
-			expect(ariaLabel).not.to.have.been.called;
-			expect(ariaDescription).not.to.have.been.called;
+			expect(ariaLabel).not.toHaveBeenCalled();
+			expect(ariaDescription).not.toHaveBeenCalled();
 
 			act(() => {
 				s.value = "second update";
 			});
 
-			expect(ariaLabel).to.have.been.calledOnce;
-			expect(ariaLabel).to.have.been.calledWith("second update");
-			ariaLabel.resetHistory();
+			expect(ariaLabel).toHaveBeenCalledOnce();
+			expect(ariaLabel).toHaveBeenCalledWith("second update");
+			ariaLabel.mockClear();
 
-			expect(ariaDescription).to.have.been.calledOnce;
-			expect(ariaDescription).to.have.been.calledWith("second update");
-			ariaDescription.resetHistory();
+			expect(ariaDescription).toHaveBeenCalledOnce();
+			expect(ariaDescription).toHaveBeenCalledWith("second update");
+			ariaDescription.mockClear();
 
 			// ensure the component was never re-rendered: (even after a tick)
 			await sleep();
 
-			expect(ariaLabel).not.to.have.been.called;
-			expect(ariaDescription).not.to.have.been.called;
+			expect(ariaLabel).not.toHaveBeenCalled();
+			expect(ariaDescription).not.toHaveBeenCalled();
 		});
 
 		it("should set SVG values", async () => {
@@ -767,7 +764,7 @@ describe("@preact/signals", () => {
 		it("should be invoked after commit", async () => {
 			const ref = createRef();
 			const sig = signal("foo");
-			const spy = sinon.spy();
+			const spy = vi.fn();
 			let count = 0;
 
 			function App() {
@@ -789,14 +786,11 @@ describe("@preact/signals", () => {
 				render(<App />, scratch);
 			});
 			expect(scratch.textContent).to.equal("foo");
-			// expect(spy).not.to.have.been.called;
-			expect(spy).to.have.been.calledOnceWith(
-				"foo",
-				scratch.firstElementChild,
-				"0"
-			);
+			// expect(spy).not.toHaveBeenCalled();
+			expect(spy).toHaveBeenCalledOnce();
+			expect(spy).toHaveBeenCalledWith("foo", scratch.firstElementChild, "0");
 
-			spy.resetHistory();
+			spy.mockClear();
 
 			act(() => {
 				sig.value = "bar";
@@ -804,18 +798,15 @@ describe("@preact/signals", () => {
 
 			expect(scratch.textContent).to.equal("bar");
 
-			expect(spy).to.have.been.calledOnceWith(
-				"bar",
-				scratch.firstElementChild,
-				"1"
-			);
+			expect(spy).toHaveBeenCalledOnce();
+			expect(spy).toHaveBeenCalledWith("bar", scratch.firstElementChild, "1");
 		});
 
 		it("should invoke any returned cleanup function for updates", async () => {
 			const ref = createRef();
 			const sig = signal("foo");
-			const spy = sinon.spy();
-			const cleanup = sinon.spy();
+			const spy = vi.fn();
+			const cleanup = vi.fn();
 			let count = 0;
 
 			function App() {
@@ -838,13 +829,10 @@ describe("@preact/signals", () => {
 				render(<App />, scratch);
 			});
 
-			expect(cleanup).not.to.have.been.called;
-			expect(spy).to.have.been.calledOnceWith(
-				"foo",
-				scratch.firstElementChild,
-				"0"
-			);
-			spy.resetHistory();
+			expect(cleanup).not.toHaveBeenCalled();
+			expect(spy).toHaveBeenCalledOnce();
+			expect(spy).toHaveBeenCalledWith("foo", scratch.firstElementChild, "0");
+			spy.mockClear();
 
 			act(() => {
 				sig.value = "bar";
@@ -853,15 +841,17 @@ describe("@preact/signals", () => {
 			expect(scratch.textContent).to.equal("bar");
 
 			const child = scratch.firstElementChild;
-			expect(cleanup).to.have.been.calledOnceWith("foo", child, "0");
-			expect(spy).to.have.been.calledOnceWith("bar", child, "1");
+			expect(cleanup).toHaveBeenCalledOnce();
+			expect(cleanup).toHaveBeenCalledWith("foo", child, "0");
+			expect(spy).toHaveBeenCalledOnce();
+			expect(spy).toHaveBeenCalledWith("bar", child, "1");
 		});
 
 		it("should invoke any returned cleanup function for unmounts", async () => {
 			const ref = createRef();
 			const sig = signal("foo");
-			const spy = sinon.spy();
-			const cleanup = sinon.spy();
+			const spy = vi.fn();
+			const cleanup = vi.fn();
 
 			function App() {
 				useSignalEffect(() => {
@@ -878,22 +868,24 @@ describe("@preact/signals", () => {
 
 			const child = scratch.firstElementChild;
 
-			expect(cleanup).not.to.have.been.called;
-			expect(spy).to.have.been.calledOnceWith("foo", child);
-			spy.resetHistory();
+			expect(cleanup).not.toHaveBeenCalled();
+			expect(spy).toHaveBeenCalledOnce();
+			expect(spy).toHaveBeenCalledWith("foo", child);
+			spy.mockClear();
 
 			act(() => {
 				render(null, scratch);
 			});
 
-			expect(spy).not.to.have.been.called;
-			expect(cleanup).to.have.been.calledOnceWith("foo", child);
+			expect(spy).not.toHaveBeenCalled();
+			expect(cleanup).toHaveBeenCalledOnce();
+			expect(cleanup).toHaveBeenCalledWith("foo", child);
 		});
 	});
 
 	// TODO: add test when we upgrade lockfile and Preact to latest
 	it.skip("Should take hooks-state settling in account", () => {
-		const renderSpy = sinon.spy();
+		const renderSpy = vi.fn();
 		const Context = createContext({
 			addModal: () => {},
 			removeModal: () => {},
@@ -944,7 +936,7 @@ describe("@preact/signals", () => {
 			render(<App />, scratch);
 		});
 
-		expect(renderSpy).to.be.calledTwice;
+		expect(renderSpy).toHaveBeenCalledTimes(2);
 	});
 
 	it("Array based signals should maintain reactivity", () => {
@@ -972,7 +964,7 @@ describe("@preact/signals", () => {
 	describe("Preact class Component", () => {
 		it("should support reading signal in class component constructor", async () => {
 			const count = signal(1);
-			const spy = sinon.spy();
+			const spy = vi.fn();
 
 			class App extends Component<{ x: number }, unknown> {
 				constructor(props: { x: number }) {
@@ -996,9 +988,9 @@ describe("@preact/signals", () => {
 				})
 			).not.to.throw();
 			expect(scratch.innerHTML).to.equal("<div>2</div>");
-			expect(spy).to.have.been.calledTwice;
-			expect(spy).to.have.been.calledWith("constructor:1");
-			expect(spy).to.have.been.calledWith("willmount:1");
+			expect(spy).toHaveBeenCalledTimes(2);
+			expect(spy).toHaveBeenCalledWith("constructor:1");
+			expect(spy).toHaveBeenCalledWith("willmount:1");
 		});
 	});
 });
