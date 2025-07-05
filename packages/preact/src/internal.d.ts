@@ -27,6 +27,20 @@ export interface AugmentedComponent extends Component<any, any> {
 	__v: VNode;
 	_updater?: Effect;
 	_updateFlags: number;
+	__persistentState: SignalState;
+	__P?: Element | Text | null;
+}
+
+export interface HookState {
+	_executed?: boolean;
+	_stored?: boolean;
+	_stateValue?: any;
+	_cleanup?: () => void;
+}
+
+export interface SignalState {
+	_list: HookState[];
+	_pendingSetup: HookState[];
 }
 
 export interface VNode<P = any> extends preact.VNode<P> {

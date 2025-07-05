@@ -28,6 +28,15 @@
   "props": {
     "cname": 6,
     "props": {
+      "$__persistentState": "__$p",
+      "$_list": "__",
+      "$_pendingSetup": "__h",
+      "$_cleanup": "__c",
+      "$_stateValue": "__",
+      "$_args": "__H",
+      "$_stored": "__s",
+      "$_renderCallbacks": "__h",
+      "$_skipEffects": "__s",
       "core: Node": "",
       "$_watched": "W",
       "$_unwatched": "Z",
