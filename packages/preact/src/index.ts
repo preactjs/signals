@@ -1,5 +1,4 @@
 import { options, Component, isValidElement, Fragment } from "preact";
-import { useRef, useMemo, useEffect } from "preact/hooks";
 import {
 	signal,
 	computed,
@@ -18,6 +17,7 @@ import {
 	PropertyUpdater,
 	AugmentedComponent,
 	AugmentedElement as Element,
+	HookState,
 } from "./internal";
 
 export {
@@ -53,6 +53,7 @@ function hook<T extends OptionsTypes>(hookName: T, hookFn: HookFn<T>) {
 
 let currentComponent: AugmentedComponent | undefined;
 let finishUpdate: (() => void) | undefined;
+let setupTasks: AugmentedComponent[] = [];
 
 function setCurrentUpdater(updater?: Effect) {
 	// end tracking for the current update:
@@ -91,7 +92,7 @@ function SignalValue(this: AugmentedComponent, { data }: { data: Signal }) {
 	const currentSignal = useSignal(data);
 	currentSignal.value = data;
 
-	const [isText, s] = useMemo(() => {
+	const [isText, s] = useStoreOnce(() => {
 		let self = this;
 		// mark the parent component as having computeds so it gets optimized
 		let v = this.__v;
@@ -138,7 +139,7 @@ function SignalValue(this: AugmentedComponent, { data }: { data: Signal }) {
 		};
 
 		return [isText, wrappedSignal];
-	}, []);
+	});
 
 	// Rerender the component whenever `data.value` changes from a VNode
 	// to another VNode, from text to a VNode, or from a VNode to text.
@@ -210,6 +211,7 @@ hook(OptionsTypes.RENDER, (old, vnode) => {
 			}
 		}
 
+		currentHookIndex = 0;
 		currentComponent = component;
 		setCurrentUpdater(updater);
 	}
@@ -262,7 +264,16 @@ hook(OptionsTypes.DIFFED, (old, vnode) => {
 				}
 			}
 		}
+	} else if (vnode.__c) {
+		let component = vnode.__c as AugmentedComponent;
+		if (
+			component.__persistentState &&
+			component.__persistentState._pendingSetup.length
+		) {
+			queueSetupTasks(setupTasks.push(component));
+		}
 	}
+
 	old(vnode);
 });
 
@@ -326,8 +337,15 @@ hook(OptionsTypes.UNMOUNT, (old, vnode: VNode) => {
 				component._updater = undefined;
 				updater._dispose();
 			}
+
+			const persistentState = component.__persistentState;
+			if (persistentState) {
+				// Cleanup all the stored effects
+				persistentState._list.forEach(invokeCleanup);
+			}
 		}
 	}
+
 	old(vnode);
 });
 
@@ -386,9 +404,8 @@ Component.prototype.shouldComponentUpdate = function (
 export function useSignal<T>(value: T, options?: SignalOptions<T>): Signal<T>;
 export function useSignal<T = undefined>(): Signal<T | undefined>;
 export function useSignal<T>(value?: T, options?: SignalOptions<T>) {
-	return useMemo(
-		() => signal<T | undefined>(value, options as SignalOptions),
-		[]
+	return useStoreOnce(() =>
+		signal<T | undefined>(value, options as SignalOptions)
 	);
 }
 
@@ -396,7 +413,7 @@ export function useComputed<T>(compute: () => T, options?: SignalOptions<T>) {
 	const $compute = useRef(compute);
 	$compute.current = compute;
 	(currentComponent as AugmentedComponent)._updateFlags |= HAS_COMPUTEDS;
-	return useMemo(() => computed<T>(() => $compute.current(), options), []);
+	return useStoreOnce(() => computed<T>(() => $compute.current(), options));
 }
 
 function safeRaf(callback: () => void) {
@@ -434,6 +451,31 @@ function notifyEffects(this: Effect) {
 	}
 }
 
+let prevRaf: typeof options.requestAnimationFrame | undefined;
+function queueSetupTasks(newQueueLength: number) {
+	if (newQueueLength === 1 || prevRaf !== options.requestAnimationFrame) {
+		prevRaf = options.requestAnimationFrame;
+		(prevRaf || deferEffects)(flushSetup);
+	}
+}
+
+/**
+ * After paint effects consumer.
+ */
+function flushSetup() {
+	let component;
+	while ((component = setupTasks.shift())) {
+		if (!component.__persistentState) continue;
+		try {
+			component.__persistentState._pendingSetup.forEach(invokeCleanup);
+			component.__persistentState._pendingSetup.forEach(invokeEffect);
+			component.__persistentState._pendingSetup = [];
+		} catch (e) {
+			component.__persistentState._pendingSetup = [];
+		}
+	}
+}
+
 function flushDomUpdates() {
 	batch(() => {
 		let inst: Effect | undefined;
@@ -453,78 +495,65 @@ export function useSignalEffect(cb: () => void | (() => void)) {
 	const callback = useRef(cb);
 	callback.current = cb;
 
-	useEffect(() => {
+	useOnce(() => {
 		return effect(function (this: Effect) {
 			this._notify = notifyEffects;
 			return callback.current();
 		});
-	}, []);
+	});
 }
 
-/**
- * @todo Determine which Reactive implementation we'll be using.
- * @internal
- */
-// export function useReactive<T extends object>(value: T): Reactive<T> {
-// 	return useMemo(() => reactive<T>(value), []);
-// }
+let currentHookIndex = 0;
+function getState(index: number): HookState {
+	if (!currentComponent) {
+		throw new Error("Hooks can only be called inside components");
+	}
 
-/**
- * @internal
- * Update a Reactive's using the properties of an object or other Reactive.
- * Also works for Signals.
- * @example
- *   // Update a Reactive with Object.assign()-like syntax:
- *   const r = reactive({ name: "Alice" });
- *   update(r, { name: "Bob" });
- *   update(r, { age: 42 }); // property 'age' does not exist in type '{ name?: string }'
- *   update(r, 2); // '2' has no properties in common with '{ name?: string }'
- *   console.log(r.name.value); // "Bob"
- *
- * @example
- *   // Update a Reactive with the properties of another Reactive:
- *   const A = reactive({ name: "Alice" });
- *   const B = reactive({ name: "Bob", age: 42 });
- *   update(A, B);
- *   console.log(`${A.name} is ${A.age}`); // "Bob is 42"
- *
- * @example
- *   // Update a signal with assign()-like syntax:
- *   const s = signal(42);
- *   update(s, "hi"); // Argument type 'string' not assignable to type 'number'
- *   update(s, {}); // Argument type '{}' not assignable to type 'number'
- *   update(s, 43);
- *   console.log(s.value); // 43
- *
- * @param obj The Reactive or Signal to be updated
- * @param update The value, Signal, object or Reactive to update `obj` to match
- * @param overwrite If `true`, any properties `obj` missing from `update` are set to `undefined`
- */
-/*
-export function update<T extends SignalOrReactive>(
-	obj: T,
-	update: Partial<Unwrap<T>>,
-	overwrite = false
-) {
-	if (obj instanceof Signal) {
-		obj.value = peekValue(update);
-	} else {
-		for (let i in update) {
-			if (i in obj) {
-				obj[i].value = peekValue(update[i]);
-			} else {
-				let sig = signal(peekValue(update[i]));
-				sig[KEY] = i;
-				obj[i] = sig;
-			}
-		}
-		if (overwrite) {
-			for (let i in obj) {
-				if (!(i in update)) {
-					obj[i].value = undefined;
-				}
-			}
-		}
+	const hooks =
+		currentComponent.__persistentState ||
+		(currentComponent.__persistentState = {
+			_list: [],
+			_pendingSetup: [],
+		});
+
+	if (index >= hooks._list.length) {
+		hooks._list.push({});
+	}
+
+	return hooks._list[index];
+}
+
+function useStoreOnce<T>(factory: () => T): T {
+	const state = getState(currentHookIndex++);
+	if (!state._stored) {
+		state._stored = true;
+		state._value = factory();
+	}
+	return state._value;
+}
+
+function useRef<T>(initialValue: T): { current: T } {
+	return useStoreOnce(() => ({ current: initialValue }));
+}
+
+function useOnce(callback: () => void | (() => void)): void {
+	const state = getState(currentHookIndex++);
+	if (!state._executed) {
+		state._executed = true;
+		state._value = callback;
+		currentComponent!.__persistentState._pendingSetup.push(state);
 	}
 }
-*/
+
+function invokeEffect(hook: HookState): void {
+	if (hook._value) {
+		hook._cleanup = hook._value() || undefined;
+	}
+}
+
+function invokeCleanup(hook: HookState): void {
+	if (hook._cleanup) {
+		hook._cleanup();
+		hook._cleanup = undefined;
+	}
+}
