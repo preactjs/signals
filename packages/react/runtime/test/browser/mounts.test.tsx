@@ -9,6 +9,7 @@ import {
 	createRoot,
 	type Root,
 } from "../../../test/shared/utils.js";
+import { describe, beforeEach, afterEach } from "vitest";
 
 describe("@preact/signals-react/runtime", () => {
 	describe("mounting", () => {
@@ -25,7 +26,7 @@ describe("@preact/signals-react/runtime", () => {
 		beforeEach(async () => {
 			scratch = document.createElement("div");
 			document.body.appendChild(scratch);
-			getConsoleErrorSpy().resetHistory();
+			getConsoleErrorSpy().mockClear();
 
 			root = await createRoot(scratch);
 		});

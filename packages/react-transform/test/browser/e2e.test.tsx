@@ -13,6 +13,8 @@ import {
 	createRoot,
 	getConsoleErrorSpy,
 } from "../../../react/test/shared/utils";
+import { describe, beforeEach, afterEach, expect, it } from "vitest";
+import "../../../../test/browser/babel.js";
 
 const customSource = "useSignals-custom-source";
 const modules: Record<string, any> = {
@@ -32,8 +34,6 @@ function testRequire(name: string) {
 }
 
 async function createComponent(code: string, options?: PluginOptions) {
-	// `transformSignalCode` is a global helper function added to the global
-	// namespace by a test helper we've included in the Karma config.
 	const cjsCode = transformSignalCode(code, options);
 	// console.log(cjsCode); // Useful when debugging tests.
 
@@ -55,7 +55,7 @@ describe("React Signals babel transfrom - browser E2E tests", () => {
 		scratch = document.createElement("div");
 		document.body.appendChild(scratch);
 		root = await createRoot(scratch);
-		getConsoleErrorSpy().resetHistory();
+		getConsoleErrorSpy().mockClear();
 	});
 
 	afterEach(async () => {
