@@ -270,6 +270,7 @@ hook(OptionsTypes.DIFFED, (old, vnode) => {
 			component.__persistentState &&
 			component.__persistentState._pendingSetup.length
 		) {
+			console.log("f", component.__persistentState._pendingSetup);
 			queueSetupTasks(setupTasks.push(component));
 		}
 	}
@@ -467,7 +468,8 @@ function queueSetupTasks(newQueueLength: number) {
 function flushSetup() {
 	let component;
 	while ((component = setupTasks.shift())) {
-		if (!component.__persistentState) continue;
+		console.log("flushSetup", component.__P, component.__persistentState);
+		if (!component.__persistentState || !component.__P) continue;
 		try {
 			component.__persistentState._pendingSetup.forEach(invokeCleanup);
 			component.__persistentState._pendingSetup.forEach(invokeEffect);
@@ -527,11 +529,11 @@ function getState(index: number): HookState {
 
 export function useStoreValueOnce<T>(factory: () => T): T {
 	const state = getState(currentHookIndex++);
-	if (!state._stored) {
+	if (!state._stored || (options as any)._skipEffects) {
 		state._stored = true;
-		state._value = factory();
+		state._stateValue = factory();
 	}
-	return state._value;
+	return state._stateValue;
 }
 
 export function useRef<T>(initialValue: T): { current: T } {
@@ -542,14 +544,15 @@ function useOnce(callback: () => void | (() => void)): void {
 	const state = getState(currentHookIndex++);
 	if (!state._executed) {
 		state._executed = true;
-		state._value = callback;
+		state._stateValue = callback;
 		currentComponent!.__persistentState._pendingSetup.push(state);
 	}
 }
 
 function invokeEffect(hook: HookState): void {
-	if (hook._value) {
-		hook._cleanup = hook._value() || undefined;
+	console.log("invokeEffect", hook);
+	if (hook._stateValue) {
+		hook._cleanup = hook._stateValue() || undefined;
 	}
 }
 
