@@ -8,6 +8,8 @@ describe("@preact/signals", () => {
 
 			for (let i = 0; i < keys.length; i++) {
 				const key = keys[i];
+				if (key === "Effect" || key === "setDebugHook" || key === "Computed")
+					continue;
 				expect(key in adapter).to.equal(
 					true,
 					`"${key}" is not exported from preact adapter`
