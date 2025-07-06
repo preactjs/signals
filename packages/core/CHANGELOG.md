@@ -1,5 +1,36 @@
 # @preact/signals-core
 
+## 1.11.0
+
+### Minor Changes
+
+- [#706](https://github.com/preactjs/signals/pull/706) [`4045d2d`](https://github.com/preactjs/signals/commit/4045d2d86b720546848d5163d5b683792c0a5af3) Thanks [@marvinhagemeister](https://github.com/marvinhagemeister)! - feat: support disposing `effect()` with resource management
+
+  This allows `effect()`'s to be disposed with the new `using` keyword from [the explicit resource management proposal](https://github.com/tc39/proposal-explicit-resource-management).
+
+  Whenever an effect goes out of scope the `Symbol.dispose` function is called automatically.
+
+  ```js
+  const count = signal(0);
+
+  function doSomething() {
+  	// The `using` keyword calls dispose at the end of
+  	// this function scope
+  	using _ = effect(() => {
+  		console.log(count.value);
+  		return () => console.log("disposed");
+  	});
+
+  	console.log("hey");
+  }
+
+  doSomething();
+  // Logs:
+  //  0
+  //  hey
+  //  disposed
+  ```
+
 ## 1.10.0
 
 ### Minor Changes

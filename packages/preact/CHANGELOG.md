@@ -1,5 +1,14 @@
 # @preact/signals
 
+## 2.2.1
+
+### Patch Changes
+
+- [#701](https://github.com/preactjs/signals/pull/701) [`01f406c`](https://github.com/preactjs/signals/commit/01f406c79b02ae6d262b751f220f35bed82394f2) Thanks [@calebeby](https://github.com/calebeby)! - Narrow types for Show utility, the callback is truthy by design
+
+- Updated dependencies [[`4045d2d`](https://github.com/preactjs/signals/commit/4045d2d86b720546848d5163d5b683792c0a5af3)]:
+  - @preact/signals-core@1.11.0
+
 ## 2.2.0
 
 ### Minor Changes

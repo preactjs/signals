@@ -4,9 +4,11 @@ on:
   push:
     branches:
       - main
+      - vitest-migration
   pull_request:
     branches:
       - main
+      - vitest-migration
 
 jobs:
   tests:

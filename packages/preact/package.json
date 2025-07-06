@@ -1,6 +1,6 @@
 {
   "name": "@preact/signals",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "license": "MIT",
   "description": "Manage state with style in Preact",
   "keywords": [],
@@ -53,7 +53,7 @@
     "prepublishOnly": "cd ../.. && pnpm build:preact && pnpm build:preact-utils"
   },
   "dependencies": {
-    "@preact/signals-core": "workspace:^1.9.0"
+    "@preact/signals-core": "workspace:^1.11.0"
   },
   "peerDependencies": {
     "preact": ">= 10.25.0"
