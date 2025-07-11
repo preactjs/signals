@@ -1,4 +1,4 @@
-import { options, Component, isValidElement, Fragment } from "preact";
+import { options, Component, isValidElement, Fragment, h } from "preact";
 import { useRef, useMemo, useEffect } from "preact/hooks";
 import {
 	signal,
@@ -84,7 +84,10 @@ function createUpdater(update: () => void) {
  * A wrapper component that renders a Signal directly as a Text node.
  * @todo: in Preact 11, just decorate Signal with `type:null`
  */
-function SignalValue(this: AugmentedComponent, { data }: { data: Signal }) {
+function SignalValue(
+	this: AugmentedComponent,
+	{ data }: { data: ReadonlySignal }
+) {
 	// hasComputeds.add(this);
 
 	// Store the props.data signal in another signal so that
@@ -172,6 +175,7 @@ Object.defineProperties(Signal.prototype, {
 /** Inject low-level property/attribute bindings for Signals into Preact's diff */
 hook(OptionsTypes.DIFF, (old, vnode) => {
 	if (typeof vnode.type === "string") {
+		const oldSignalProps = vnode.__np;
 		let signalProps: Record<string, any> | undefined;
 
 		let props = vnode.props;
@@ -179,6 +183,9 @@ hook(OptionsTypes.DIFF, (old, vnode) => {
 			if (i === "children") continue;
 
 			let value = props[i];
+			if (value && value.type === Bind) {
+				value = oldSignalProps?.[i] ?? computed(value.cb);
+			}
 			if (value instanceof Signal) {
 				if (!signalProps) vnode.__np = signalProps = {};
 				signalProps[i] = value;
@@ -463,6 +470,29 @@ export function useSignalEffect(
 			return callback.current();
 		}, options);
 	}, []);
+}
+
+function Bind({ cb }: { cb: () => unknown }) {
+	return h(SignalValue, {
+		data: useComputed(cb),
+	});
+}
+
+const bindPrototype = Object.getOwnPropertyDescriptors({
+	constructor: undefined,
+	type: Bind,
+	get props() {
+		return this;
+	},
+});
+
+/**
+ * Bind the given callback to a JSX attribute or JSX child. This allows for "inline computed"
+ * signals that derive their value from other signals. Like with `useComputed`, any non-signal
+ * values used in the callback are captured at the time of binding and won't change after that.
+ */
+export function bind<T>(cb: () => T): T {
+	return Object.defineProperties({ cb }, bindPrototype) as any;
 }
 
 /**

@@ -1,4 +1,5 @@
 import {
+	bind,
 	computed,
 	useComputed,
 	useSignalEffect,
@@ -721,6 +722,101 @@ describe("@preact/signals", () => {
 				// This should not crash
 				s.value = "scale(1, 2)";
 			});
+		});
+	});
+
+	describe("inline computed bindings", () => {
+		it("should bind a callback to a JSX attribute", async () => {
+			const count = signal(0);
+			const double = signal(2);
+			const spy = sinon.spy();
+
+			function App() {
+				spy();
+				return <div data-value={bind(() => count.value * double.value)}></div>;
+			}
+
+			render(<App />, scratch);
+			expect(spy).to.have.been.calledOnce;
+			expect(scratch.innerHTML).to.equal('<div data-value="0"></div>');
+
+			act(() => {
+				count.value = 5;
+			});
+
+			// Component should not re-render when only the bound value changes
+			expect(spy).to.have.been.calledOnce;
+			expect(scratch.innerHTML).to.equal('<div data-value="10"></div>');
+
+			act(() => {
+				double.value = 3;
+			});
+
+			expect(spy).to.have.been.calledOnce;
+			expect(scratch.innerHTML).to.equal('<div data-value="15"></div>');
+		});
+
+		it("should bind a callback to a JSX child", async () => {
+			const firstName = signal("John");
+			const lastName = signal("Doe");
+			const spy = sinon.spy();
+
+			function App() {
+				spy();
+				return <div>{bind(() => `${firstName.value} ${lastName.value}`)}</div>;
+			}
+
+			render(<App />, scratch);
+			expect(spy).to.have.been.calledOnce;
+			expect(scratch.innerHTML).to.equal("<div>John Doe</div>");
+
+			act(() => {
+				firstName.value = "Jane";
+			});
+
+			// Component should not re-render when only the bound value changes
+			expect(spy).to.have.been.calledOnce;
+			expect(scratch.innerHTML).to.equal("<div>Jane Doe</div>");
+		});
+
+		it("should update bound values without re-rendering the component", async () => {
+			const count = signal(0);
+			const enabled = signal(true);
+			const renderSpy = sinon.spy();
+			const boundSpy = sinon.spy(() =>
+				enabled.value ? count.value : "disabled"
+			);
+
+			function App() {
+				renderSpy();
+				return (
+					<button disabled={bind(() => !enabled.value)}>
+						{bind(boundSpy)}
+					</button>
+				);
+			}
+
+			render(<App />, scratch);
+			expect(renderSpy).to.have.been.calledOnce;
+			expect(boundSpy).to.have.been.called;
+			expect(scratch.innerHTML).to.equal("<button>0</button>");
+
+			act(() => {
+				count.value = 5;
+			});
+
+			expect(renderSpy).to.have.been.calledOnce;
+			expect(boundSpy).to.have.been.calledTwice;
+			expect(scratch.innerHTML).to.equal("<button>5</button>");
+
+			act(() => {
+				enabled.value = false;
+			});
+
+			expect(renderSpy).to.have.been.calledOnce;
+			expect(scratch.innerHTML).to.equal(
+				`<button disabled="">disabled</button>`
+			);
 		});
 	});
 
