@@ -183,7 +183,7 @@ hook(OptionsTypes.DIFF, (old, vnode) => {
 			if (i === "children") continue;
 
 			let value = props[i];
-			if (value && value.type === Bind) {
+			if (value && value.type === JSXBind) {
 				value = oldSignalProps?.[i] ?? computed(value.cb);
 			}
 			if (value instanceof Signal) {
@@ -472,15 +472,15 @@ export function useSignalEffect(
 	}, []);
 }
 
-function Bind({ cb }: { cb: () => unknown }) {
+function JSXBind({ cb }: { cb: () => unknown }) {
 	return h(SignalValue, {
 		data: useComputed(cb),
 	});
 }
 
-const bindPrototype = Object.getOwnPropertyDescriptors({
+const jsxBindPrototype = Object.getOwnPropertyDescriptors({
 	constructor: undefined,
-	type: Bind,
+	type: JSXBind,
 	get props() {
 		return this;
 	},
@@ -491,8 +491,8 @@ const bindPrototype = Object.getOwnPropertyDescriptors({
  * signals that derive their value from other signals. Like with `useComputed`, any non-signal
  * values used in the callback are captured at the time of binding and won't change after that.
  */
-export function bind<T>(cb: () => T): T {
-	return Object.defineProperties({ cb }, bindPrototype) as any;
+export function jsxBind<T>(cb: () => T): T {
+	return Object.defineProperties({ cb }, jsxBindPrototype) as any;
 }
 
 /**

@@ -1,5 +1,5 @@
 import {
-	bind,
+	jsxBind,
 	computed,
 	useComputed,
 	useSignalEffect,
@@ -725,7 +725,7 @@ describe("@preact/signals", () => {
 		});
 	});
 
-	describe("inline computed bindings", () => {
+	describe("jsxBind", () => {
 		it("should bind a callback to a JSX attribute", async () => {
 			const count = signal(0);
 			const double = signal(2);
@@ -733,7 +733,9 @@ describe("@preact/signals", () => {
 
 			function App() {
 				spy();
-				return <div data-value={bind(() => count.value * double.value)}></div>;
+				return (
+					<div data-value={jsxBind(() => count.value * double.value)}></div>
+				);
 			}
 
 			render(<App />, scratch);
@@ -763,7 +765,9 @@ describe("@preact/signals", () => {
 
 			function App() {
 				spy();
-				return <div>{bind(() => `${firstName.value} ${lastName.value}`)}</div>;
+				return (
+					<div>{jsxBind(() => `${firstName.value} ${lastName.value}`)}</div>
+				);
 			}
 
 			render(<App />, scratch);
@@ -790,8 +794,8 @@ describe("@preact/signals", () => {
 			function App() {
 				renderSpy();
 				return (
-					<button disabled={bind(() => !enabled.value)}>
-						{bind(boundSpy)}
+					<button disabled={jsxBind(() => !enabled.value)}>
+						{jsxBind(boundSpy)}
 					</button>
 				);
 			}
