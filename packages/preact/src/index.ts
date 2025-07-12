@@ -1,4 +1,4 @@
-import { options, Component, isValidElement, Fragment, h } from "preact";
+import { options, Component, isValidElement, Fragment } from "preact";
 import { useRef, useMemo, useEffect } from "preact/hooks";
 import {
 	signal,
