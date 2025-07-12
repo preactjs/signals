@@ -822,6 +822,60 @@ describe("@preact/signals", () => {
 				`<button disabled="">disabled</button>`
 			);
 		});
+
+		it("can toggle between JSX text and JSX element", async () => {
+			const bold = signal(false);
+			const label = signal("Hello");
+			const renderSpy = sinon.spy();
+
+			function App() {
+				renderSpy();
+				return (
+					<div>
+						{jsxBind(() =>
+							bold.value ? <strong>{label.value}</strong> : label.value
+						)}
+					</div>
+				);
+			}
+
+			render(<App />, scratch);
+			expect(renderSpy).to.have.been.calledOnce;
+			expect(scratch.innerHTML).to.equal("<div>Hello</div>");
+
+			// Text-to-text update.
+			act(() => {
+				label.value = "Bonjour";
+			});
+
+			expect(renderSpy).to.have.been.calledOnce;
+			expect(scratch.innerHTML).to.equal("<div>Bonjour</div>");
+
+			// Text-to-element update.
+			act(() => {
+				bold.value = true;
+			});
+
+			expect(renderSpy).to.have.been.calledOnce;
+			expect(scratch.innerHTML).to.equal("<div><strong>Bonjour</strong></div>");
+
+			// Element-to-element update.
+			act(() => {
+				label.value = "Pryvit";
+			});
+
+			expect(renderSpy).to.have.been.calledOnce;
+			expect(scratch.innerHTML).to.equal("<div><strong>Pryvit</strong></div>");
+
+			// Element-to-text update.
+			act(() => {
+				label.value = "Hola";
+				bold.value = false;
+			});
+
+			expect(renderSpy).to.have.been.calledOnce;
+			expect(scratch.innerHTML).to.equal("<div>Hola</div>");
+		});
 	});
 
 	describe("hooks mixed with signals", () => {
