@@ -84,7 +84,10 @@ function createUpdater(update: () => void) {
  * A wrapper component that renders a Signal directly as a Text node.
  * @todo: in Preact 11, just decorate Signal with `type:null`
  */
-function SignalValue(this: AugmentedComponent, { data }: { data: Signal }) {
+function SignalValue(
+	this: AugmentedComponent,
+	{ data }: { data: ReadonlySignal }
+) {
 	// hasComputeds.add(this);
 
 	// Store the props.data signal in another signal so that
@@ -105,6 +108,10 @@ function SignalValue(this: AugmentedComponent, { data }: { data: Signal }) {
 
 		const wrappedSignal = computed(() => {
 			let s = currentSignal.value.value;
+			// This is possibly an inline computed from jsxBind
+			if (typeof s === "function") {
+				s = s();
+			}
 			return s === 0 ? 0 : s === true ? "" : s || "";
 		});
 
@@ -172,6 +179,7 @@ Object.defineProperties(Signal.prototype, {
 /** Inject low-level property/attribute bindings for Signals into Preact's diff */
 hook(OptionsTypes.DIFF, (old, vnode) => {
 	if (typeof vnode.type === "string") {
+		const oldSignalProps = vnode.__np;
 		let signalProps: Record<string, any> | undefined;
 
 		let props = vnode.props;
@@ -179,6 +187,9 @@ hook(OptionsTypes.DIFF, (old, vnode) => {
 			if (i === "children") continue;
 
 			let value = props[i];
+			if (value && typeof value === "object" && value.__proto__ === jsxBind) {
+				value = oldSignalProps?.[i] || computed(value.value);
+			}
 			if (value instanceof Signal) {
 				if (!signalProps) vnode.__np = signalProps = {};
 				signalProps[i] = value;
@@ -464,6 +475,17 @@ export function useSignalEffect(
 		}, options);
 	}, []);
 }
+
+/**
+ * Bind the given callback to a JSX attribute or JSX child. This allows for "inline computed"
+ * signals that derive their value from other signals. Like with `useComputed`, any non-signal
+ * values used in the callback are captured at the time of binding and won't change after that.
+ */
+export function jsxBind<T>(cb: () => T): T {
+	return { value: cb, __proto__: jsxBind } as any;
+}
+
+Object.setPrototypeOf(jsxBind, Signal.prototype);
 
 /**
  * @todo Determine which Reactive implementation we'll be using.
