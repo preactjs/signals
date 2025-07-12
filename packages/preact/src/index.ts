@@ -108,6 +108,9 @@ function SignalValue(
 
 		const wrappedSignal = computed(() => {
 			let s = currentSignal.value.value;
+			if (typeof s === "function") {
+				s = s();
+			}
 			return s === 0 ? 0 : s === true ? "" : s || "";
 		});
 
@@ -183,8 +186,8 @@ hook(OptionsTypes.DIFF, (old, vnode) => {
 			if (i === "children") continue;
 
 			let value = props[i];
-			if (value && value.type === JSXBind) {
-				value = oldSignalProps?.[i] ?? computed(value.cb);
+			if (value && typeof value === "object" && value.__proto__ === jsxBind) {
+				value = oldSignalProps?.[i] ?? computed(value.value);
 			}
 			if (value instanceof Signal) {
 				if (!signalProps) vnode.__np = signalProps = {};
@@ -472,28 +475,16 @@ export function useSignalEffect(
 	}, []);
 }
 
-function JSXBind({ cb }: { cb: () => unknown }) {
-	return h(SignalValue, {
-		data: useComputed(cb),
-	});
-}
-
-const jsxBindPrototype = Object.getOwnPropertyDescriptors({
-	constructor: undefined,
-	type: JSXBind,
-	get props() {
-		return this;
-	},
-});
-
 /**
  * Bind the given callback to a JSX attribute or JSX child. This allows for "inline computed"
  * signals that derive their value from other signals. Like with `useComputed`, any non-signal
  * values used in the callback are captured at the time of binding and won't change after that.
  */
 export function jsxBind<T>(cb: () => T): T {
-	return Object.defineProperties({ cb }, jsxBindPrototype) as any;
+	return { value: cb, __proto__: jsxBind } as any;
 }
+
+Object.setPrototypeOf(jsxBind, Signal.prototype);
 
 /**
  * @todo Determine which Reactive implementation we'll be using.
