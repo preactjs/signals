@@ -108,6 +108,7 @@ function SignalValue(
 
 		const wrappedSignal = computed(() => {
 			let s = currentSignal.value.value;
+            // This is possibly an inline computed from jsxBind
 			if (typeof s === "function") {
 				s = s();
 			}
