@@ -2,6 +2,8 @@
 import { Signal, Effect, Computed, effect } from "@preact/signals-core";
 import { formatValue, getSignalName } from "./utils";
 import { UpdateInfo, Node, Computed as ComputedType } from "./internal";
+import { getExtensionBridge } from "./extension-bridge";
+import "./devtools"; // Initialize DevTools integration
 
 const inflightUpdates = new Set<Signal | Effect>();
 const updateInfoMap = new WeakMap<Signal | Effect, UpdateInfo[]>();
@@ -192,9 +194,29 @@ Effect.prototype._callback = function (this: Effect) {
 function flushUpdates() {
 	const signals = Array.from(inflightUpdates);
 	inflightUpdates.clear();
+	const bridge = getExtensionBridge();
 
 	for (const signal of signals) {
 		const updateInfoList = updateInfoMap.get(signal) || [];
+
+		// Send updates to Chrome DevTools extension with filtering and throttling
+		if (typeof window !== "undefined" && !bridge.shouldThrottleUpdate()) {
+			// Filter updates based on signal names
+			const filteredUpdates = updateInfoList.filter(updateInfo => {
+				const signalName = getSignalName(updateInfo.signal);
+				return bridge.matchesFilter(signalName);
+			});
+
+			if (
+				filteredUpdates.length > 0 &&
+				(window as any).__PREACT_SIGNALS_DEVTOOLS__
+			) {
+				(window as any).__PREACT_SIGNALS_DEVTOOLS__.sendUpdate?.(
+					filteredUpdates
+				);
+			}
+		}
+
 		let prevDepth = -1;
 		for (const updateInfo of updateInfoList) {
 			logUpdate(updateInfo, prevDepth);
@@ -256,3 +278,6 @@ function endUpdateGroup() {
 	}
 }
 /* eslint-enable no-console */
+
+// Export extension utilities
+export type { ExtensionConfig } from "./extension-bridge";

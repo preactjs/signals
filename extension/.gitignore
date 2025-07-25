@@ -1,0 +1,34 @@
+# Extension artifacts
+*.crx
+*.pem
+*.zip
+
+# Build outputs
+dist/
+build/
+
+# Node modules
+node_modules/
+
+# Temporary files
+.tmp/
+.cache/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Web-ext artifacts
+web-ext-artifacts/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

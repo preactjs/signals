@@ -1,8 +1,8 @@
+import "@preact/signals-debug";
 import { render } from "preact";
 import { LocationProvider, Router, useLocation, lazy } from "preact-iso";
 import { signal, useSignal } from "@preact/signals";
 import { setFlashingEnabled, constrainFlashToChildren } from "./render-flasher";
-import "@preact/signals-debug";
 
 // disable flashing during initial render:
 setFlashingEnabled(false);
