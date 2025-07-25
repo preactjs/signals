@@ -25,6 +25,7 @@ export interface ValueUpdate {
 	newValue: any;
 	timestamp: number;
 	depth: number;
+	subscribedTo?: string; // signalId of the signal this signal is subscribed to
 }
 
 interface EffectUpdate {
@@ -32,4 +33,5 @@ interface EffectUpdate {
 	timestamp: number;
 	signal: Effect;
 	depth: number;
+	subscribedTo?: string; // signalId of the signal this effect is subscribed to
 }

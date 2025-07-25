@@ -1,15 +1,17 @@
-import { render, h } from "preact";
+import { render, h, Fragment } from "preact";
 import { useState, useEffect, useRef } from "preact/hooks";
 
 // Types
 interface SignalUpdate {
 	type: "update" | "effect";
 	signalName: string;
+	signalId?: string;
 	prevValue?: any;
 	newValue?: any;
 	timestamp?: number;
 	receivedAt: number;
 	depth?: number;
+	subscribedTo?: string;
 }
 
 interface Settings {
@@ -22,6 +24,25 @@ interface Settings {
 interface ConnectionStatus {
 	status: "connected" | "disconnected" | "connecting" | "warning";
 	message: string;
+}
+
+interface GraphNode {
+	id: string;
+	name: string;
+	type: "signal" | "computed" | "effect";
+	x: number;
+	y: number;
+	depth: number;
+}
+
+interface GraphLink {
+	source: string;
+	target: string;
+}
+
+interface GraphData {
+	nodes: GraphNode[];
+	links: GraphLink[];
 }
 
 // Header Component
@@ -222,15 +243,15 @@ function UpdateItem({ update }: { update: SignalUpdate }) {
 
 	if (update.type === "effect") {
 		return (
-			<div className={`update-item ${update.type}`}>
+			<div
+				style={{ marginLeft: `${(update.depth || 0) * 4}px` }}
+				className={`update-item ${update.type}`}
+			>
 				<div className="update-header">
 					<span className="signal-name">
 						{depth}↪️ {update.signalName}
 					</span>
 					<span className="update-time">{time}</span>
-				</div>
-				<div className="update-depth">
-					Effect triggered at depth {update.depth}
 				</div>
 			</div>
 		);
@@ -239,8 +260,13 @@ function UpdateItem({ update }: { update: SignalUpdate }) {
 	const prevValue = formatValue(update.prevValue);
 	const newValue = formatValue(update.newValue);
 
+	console.log(update);
+
 	return (
-		<div className={`update-item ${update.type}`}>
+		<div
+			style={{ marginLeft: `${(update.depth || 0) * 4}px` }}
+			className={`update-item ${update.type}`}
+		>
 			<div className="update-header">
 				<span className="signal-name">
 					{depth}
@@ -253,9 +279,6 @@ function UpdateItem({ update }: { update: SignalUpdate }) {
 				<span className="value-arrow">→</span>
 				<span className="value-new">{newValue}</span>
 			</div>
-			{update.depth && update.depth > 0 && (
-				<div className="update-depth">Triggered at depth {update.depth}</div>
-			)}
 		</div>
 	);
 }
@@ -265,7 +288,7 @@ function UpdatesContainer({
 	updates,
 	signalCounts,
 }: {
-	updates: SignalUpdate[];
+	updates: (SignalUpdate | Divider)[];
 	signalCounts: Map<string, number>;
 }) {
 	const updatesListRef = useRef<HTMLDivElement>(null);
@@ -282,7 +305,8 @@ function UpdatesContainer({
 			<div className="updates-header">
 				<div className="updates-stats">
 					<span>
-						Updates: <strong>{updates.length}</strong>
+						Updates:{" "}
+						<strong>{updates.filter(x => x.type !== "divider").length}</strong>
 					</span>
 					<span>
 						Signals: <strong>{signalCounts.size}</strong>
@@ -291,12 +315,236 @@ function UpdatesContainer({
 			</div>
 
 			<div className="updates-list" ref={updatesListRef}>
-				{recentUpdates.map((update, index) => (
-					<div key={`${update.receivedAt}-${index}`}>
-						<UpdateItem update={update} />
-						{index < recentUpdates.length - 1 && <div className="divider" />}
+				{recentUpdates.map((update, index) =>
+					update.type === "divider" ? (
+						index === recentUpdates.length - 1 ? null : (
+							<div key={`${update.type}-${index}`} className="divider" />
+						)
+					) : (
+						<div key={`${update.receivedAt}-${index}`}>
+							<UpdateItem update={update} />
+						</div>
+					)
+				)}
+			</div>
+		</div>
+	);
+}
+
+type Divider = { type: "divider" };
+
+// Graph Visualization Component
+function GraphVisualization({
+	updates,
+}: {
+	updates: (SignalUpdate | Divider)[];
+}) {
+	const [graphData, setGraphData] = useState<GraphData>({
+		nodes: [],
+		links: [],
+	});
+	const svgRef = useRef<SVGSVGElement>(null);
+
+	// Build graph data from updates
+	useEffect(() => {
+		const nodes = new Map<string, GraphNode>();
+		const links = new Map<string, GraphLink>();
+		const depthMap = new Map<string, number>();
+
+		// Process updates to build graph structure
+		const signalUpdates = updates.filter(
+			update => update.type !== "divider"
+		) as SignalUpdate[];
+
+		signalUpdates.forEach(update => {
+			if (!update.signalId) return;
+
+			// Determine signal type
+			let type: "signal" | "computed" | "effect" = "signal";
+			if (update.type === "effect") {
+				type = "effect";
+			} else if (update.subscribedTo) {
+				type = "computed";
+			}
+
+			// Track depth
+			const currentDepth = update.depth || 0;
+			depthMap.set(update.signalId, currentDepth);
+
+			// Add node
+			if (!nodes.has(update.signalId)) {
+				nodes.set(update.signalId, {
+					id: update.signalId,
+					name: update.signalName,
+					type,
+					x: 0,
+					y: 0,
+					depth: currentDepth,
+				});
+			}
+
+			// Add link if this signal is subscribed to another
+			if (update.subscribedTo) {
+				const linkKey = `${update.subscribedTo}->${update.signalId}`;
+				if (!links.has(linkKey)) {
+					links.set(linkKey, {
+						source: update.subscribedTo,
+						target: update.signalId,
+					});
+
+					// Also ensure source node exists
+					if (!nodes.has(update.subscribedTo)) {
+						nodes.set(update.subscribedTo, {
+							id: update.subscribedTo,
+							name: `Signal_${update.subscribedTo.slice(-4)}`,
+							type: "signal",
+							x: 0,
+							y: 0,
+							depth: currentDepth - 1,
+						});
+					}
+				}
+			}
+		});
+
+		// Layout nodes by depth
+		const nodesByDepth = new Map<number, GraphNode[]>();
+		nodes.forEach(node => {
+			if (!nodesByDepth.has(node.depth)) {
+				nodesByDepth.set(node.depth, []);
+			}
+			nodesByDepth.get(node.depth)!.push(node);
+		});
+
+		// Position nodes
+		const nodeSpacing = 120;
+		const depthSpacing = 200;
+		const startX = 100;
+		const startY = 100;
+
+		nodesByDepth.forEach((depthNodes, depth) => {
+			const totalHeight = (depthNodes.length - 1) * nodeSpacing;
+			const offsetY = -totalHeight / 2;
+
+			depthNodes.forEach((node, index) => {
+				node.x = startX + depth * depthSpacing;
+				node.y = startY + offsetY + index * nodeSpacing;
+			});
+		});
+
+		setGraphData({
+			nodes: Array.from(nodes.values()),
+			links: Array.from(links.values()),
+		});
+	}, [updates]);
+
+	if (graphData.nodes.length === 0) {
+		return (
+			<div className="graph-empty">
+				<div>
+					<h3>No Signal Dependencies</h3>
+					<p>
+						Create some signals with dependencies to see the graph
+						visualization.
+					</p>
+				</div>
+			</div>
+		);
+	}
+
+	return (
+		<div className="graph-container">
+			<div className="graph-content">
+				<svg ref={svgRef} className="graph-svg">
+					{/* Arrow marker definition */}
+					<defs>
+						<marker
+							id="arrowhead"
+							markerWidth="10"
+							markerHeight="7"
+							refX="9"
+							refY="3.5"
+							orient="auto"
+						>
+							<polygon points="0 0, 10 3.5, 0 7" fill="#666" />
+						</marker>
+					</defs>
+
+					{/* Links */}
+					<g className="links">
+						{graphData.links.map((link, index) => {
+							const sourceNode = graphData.nodes.find(
+								n => n.id === link.source
+							);
+							const targetNode = graphData.nodes.find(
+								n => n.id === link.target
+							);
+
+							if (!sourceNode || !targetNode) return null;
+
+							return (
+								<line
+									key={`link-${index}`}
+									className="graph-link"
+									x1={sourceNode.x + 30}
+									y1={sourceNode.y}
+									x2={targetNode.x - 30}
+									y2={targetNode.y}
+								/>
+							);
+						})}
+					</g>
+
+					{/* Nodes */}
+					<g className="nodes">
+						{graphData.nodes.map(node => (
+							<g key={node.id} className="graph-node-group">
+								<circle
+									className={`graph-node ${node.type}`}
+									cx={node.x}
+									cy={node.y}
+									r="25"
+								/>
+								<text
+									className="graph-text"
+									x={node.x}
+									y={node.y}
+									textLength="40"
+									lengthAdjust="spacingAndGlyphs"
+								>
+									{node.name.length > 8
+										? node.name.slice(0, 8) + "..."
+										: node.name}
+								</text>
+							</g>
+						))}
+					</g>
+				</svg>
+
+				{/* Legend */}
+				<div className="graph-legend">
+					<div className="legend-item">
+						<div
+							className="legend-color"
+							style={{ backgroundColor: "#2196f3" }}
+						></div>
+						<span>Signal</span>
 					</div>
-				))}
+					<div className="legend-item">
+						<div
+							className="legend-color"
+							style={{ backgroundColor: "#ff9800" }}
+						></div>
+						<span>Computed</span>
+					</div>
+					<div className="legend-item">
+						<div
+							className="legend-color"
+							style={{ backgroundColor: "#4caf50" }}
+						></div>
+						<span>Effect</span>
+					</div>
+				</div>
 			</div>
 		</div>
 	);
@@ -304,11 +552,12 @@ function UpdatesContainer({
 
 // Main Panel Component
 function SignalsDevToolsPanel() {
-	const [updates, setUpdates] = useState<SignalUpdate[]>([]);
+	const [updates, setUpdates] = useState<(SignalUpdate | Divider)[]>([]);
 	const [signalCounts, setSignalCounts] = useState<Map<string, number>>(
 		new Map()
 	);
 	const [isPaused, setIsPaused] = useState(false);
+	const [activeTab, setActiveTab] = useState<"updates" | "graph">("updates");
 	const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>({
 		status: "connecting",
 		message: "Connecting...",
@@ -355,15 +604,20 @@ function SignalsDevToolsPanel() {
 	) => {
 		if (isPaused) return;
 
-		const updatesArray = Array.isArray(signalUpdates)
+		const updatesArray: Array<SignalUpdate | Divider> = Array.isArray(
+			signalUpdates
+		)
 			? signalUpdates
 			: [signalUpdates];
 
+		updatesArray.reverse();
+		updatesArray.push({ type: "divider" });
 		setUpdates(prev => {
 			const newUpdates = [...prev];
 			updatesArray.forEach(update => {
 				newUpdates.push({
 					...update,
+					// @ts-expect-error
 					receivedAt: Date.now(),
 				});
 			});
@@ -373,6 +627,7 @@ function SignalsDevToolsPanel() {
 		setSignalCounts(prev => {
 			const newCounts = new Map(prev);
 			updatesArray.forEach(update => {
+				if (update.type === "divider") return;
 				const signalName = update.signalName || "Unknown";
 				newCounts.set(signalName, (newCounts.get(signalName) || 0) + 1);
 			});
@@ -490,11 +745,40 @@ function SignalsDevToolsPanel() {
 			/>
 
 			<main className="main-content">
-				{showEmptyState ? (
-					<EmptyState onRefresh={refreshDetection} />
-				) : (
-					<UpdatesContainer updates={updates} signalCounts={signalCounts} />
-				)}
+				{/* Tabs */}
+				<div className="tabs">
+					<button
+						className={`tab ${activeTab === "updates" ? "active" : ""}`}
+						onClick={() => setActiveTab("updates")}
+					>
+						Updates
+					</button>
+					<button
+						className={`tab ${activeTab === "graph" ? "active" : ""}`}
+						onClick={() => setActiveTab("graph")}
+					>
+						Dependency Graph
+					</button>
+				</div>
+
+				{/* Tab Content */}
+				<div className="tab-content">
+					{showEmptyState ? (
+						<EmptyState onRefresh={refreshDetection} />
+					) : (
+						<>
+							{activeTab === "updates" && (
+								<UpdatesContainer
+									updates={updates}
+									signalCounts={signalCounts}
+								/>
+							)}
+							{activeTab === "graph" && (
+								<GraphVisualization updates={updates} />
+							)}
+						</>
+					)}
+				</div>
 			</main>
 		</div>
 	);

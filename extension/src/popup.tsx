@@ -1,6 +1,5 @@
 import { render, h, Fragment } from "preact";
-import { useState, useEffect } from "preact/hooks";
-import type { StatusInfo } from "../types/chrome";
+import { useSignal, useSignalEffect } from "@preact/signals";
 
 interface StatusProps {
 	status: "connected" | "disconnected";
@@ -50,7 +49,7 @@ function InfoSection() {
 }
 
 function PopupApp() {
-	const [status, setStatus] = useState<StatusInfo>({
+	const status = useSignal<StatusProps>({
 		status: "disconnected",
 		message: "Not connected to any page",
 	});
@@ -66,27 +65,27 @@ function PopupApp() {
 				// Try to check if content script is loaded and signals are available
 				try {
 					await chrome.tabs.sendMessage(tab.id, { type: "PING" });
-					setStatus({
+					status.value = {
 						status: "connected",
 						message: "Connected to active tab",
-					});
+					};
 				} catch {
-					setStatus({
+					status.value = {
 						status: "disconnected",
 						message: "Content script not loaded",
-					});
+					};
 				}
 			} else {
-				setStatus({
+				status.value = {
 					status: "disconnected",
 					message: "No active tab found",
-				});
+				};
 			}
 		} catch (error) {
-			setStatus({
+			status.value = {
 				status: "disconnected",
 				message: "Unable to connect",
-			});
+			};
 		}
 	};
 
@@ -115,10 +114,10 @@ function PopupApp() {
 	};
 
 	const refreshDetection = async () => {
-		setStatus({
+		status.value = {
 			status: "disconnected",
 			message: "Refreshing...",
-		});
+		};
 
 		try {
 			const [tab] = await chrome.tabs.query({
@@ -139,16 +138,16 @@ function PopupApp() {
 				}, 1000);
 			}
 		} catch (error) {
-			setStatus({
+			status.value = {
 				status: "disconnected",
 				message: "Failed to refresh",
-			});
+			};
 		}
 	};
 
-	useEffect(() => {
+	useSignalEffect(() => {
 		checkConnectionStatus();
-	}, []);
+	});
 
 	return (
 		<div>
@@ -157,7 +156,10 @@ function PopupApp() {
 				<p>DevTools Extension</p>
 			</div>
 
-			<StatusIndicator status={status.status} message={status.message} />
+			<StatusIndicator
+				status={status.value.status}
+				message={status.value.message}
+			/>
 
 			<div className="actions">
 				<ActionButton onClick={openDevTools} className="btn primary">

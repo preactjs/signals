@@ -58,7 +58,7 @@ function displayName(name: string) {
 }
 
 function Counter() {
-	const count = useSignal(0, "counter");
+	const count = useSignal(0, { name: "counter" });
 
 	return (
 		<div class="card">
@@ -69,7 +69,7 @@ function Counter() {
 	);
 }
 
-const globalCount = signal(0, "global-counter");
+const globalCount = signal(0, { name: "global-counter" });
 function GlobalCounter({ explain = true }) {
 	return (
 		<>

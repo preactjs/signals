@@ -11,6 +11,7 @@ const trackers = new WeakMap<Signal | Effect, number>();
 const signalValues = new WeakMap<Signal | Effect, any>();
 const subscriptions = new WeakMap<Signal | Effect, () => void>();
 const internalEffects = new WeakSet<Effect>();
+const signalDependencies = new WeakMap<Signal | Effect, Set<string>>(); // Track what each signal depends on
 
 export function setDebugOptions(options: {
 	grouped?: boolean;
@@ -26,6 +27,23 @@ let isGrouped = true,
 	debugEnabled = true,
 	initializing = false,
 	spacing = 0;
+
+function getSignalId(signal: Signal | Effect): string {
+	if (!(signal as any)._debugId) {
+		(signal as any)._debugId =
+			`signal_${Math.random().toString(36).substr(2, 9)}`;
+	}
+	return (signal as any)._debugId;
+}
+
+function trackDependency(target: Signal | Effect, source: Signal | Effect) {
+	const sourceId = getSignalId(source);
+
+	if (!signalDependencies.has(target)) {
+		signalDependencies.set(target, new Set());
+	}
+	signalDependencies.get(target)?.add(sourceId);
+}
 
 // Store original methods
 const originalSubscribe = Signal.prototype._subscribe;
@@ -89,6 +107,9 @@ Computed.prototype._refresh = function () {
 	const newValue = this._value;
 	const baseSignal = bubbleUpToBaseSignal(this as any);
 	if (baseSignal && prevValue !== newValue) {
+		// Track dependency
+		trackDependency(this, baseSignal.signal);
+
 		const updateInfoList = updateInfoMap.get(baseSignal.signal) || [];
 		updateInfoList.push({
 			signal: this,
@@ -97,6 +118,7 @@ Computed.prototype._refresh = function () {
 			timestamp: Date.now(),
 			depth: baseSignal.depth,
 			type: "value",
+			subscribedTo: getSignalId(baseSignal.signal),
 		});
 		updateInfoMap.set(baseSignal.signal, updateInfoList);
 	}
@@ -177,12 +199,16 @@ Effect.prototype._callback = function (this: Effect) {
 	if ("_sources" in this) {
 		const baseSignal = bubbleUpToBaseSignal(this as any);
 		if (baseSignal) {
+			// Track dependency
+			trackDependency(this, baseSignal.signal);
+
 			const updateInfoList = updateInfoMap.get(baseSignal.signal) || [];
 			updateInfoList.push({
 				signal: this,
 				timestamp: Date.now(),
 				depth: baseSignal.depth,
 				type: "effect",
+				subscribedTo: getSignalId(baseSignal.signal),
 			});
 			updateInfoMap.set(baseSignal.signal, updateInfoList);
 		}
