@@ -187,7 +187,11 @@ hook(OptionsTypes.DIFF, (old, vnode) => {
 			if (i === "children") continue;
 
 			let value = props[i];
-			if (value && typeof value === "object" && value.__proto__ === jsxBind) {
+			if (
+				value &&
+				typeof value === "object" &&
+				Object.getPrototypeOf(value) === jsxBind
+			) {
 				value = oldSignalProps?.[i] || computed(value.value);
 			}
 			if (value instanceof Signal) {
