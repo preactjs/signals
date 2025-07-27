@@ -12,11 +12,12 @@
     "lint": "web-ext lint --source-dir ."
   },
   "dependencies": {
-    "preact": "^10.26.9",
     "@preact/signals": "workspace:*",
-    "@preact/signals-core": "workspace:*"
+    "@preact/signals-core": "workspace:*",
+    "preact": "^10.26.9"
   },
   "devDependencies": {
+    "@preact/preset-vite": "^2.3.0",
     "@types/chrome": "^0.0.270",
     "typescript": "^5.8.3",
     "vite": "^7.0.0",

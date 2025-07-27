@@ -1,36 +1,11 @@
-import { render, h, Fragment } from "preact";
+import { render } from "preact";
 import { useSignal, useSignalEffect } from "@preact/signals";
+import { StatusIndicator } from "./components/StatusIndicator";
+import { Button } from "./components/Button";
 
 interface StatusProps {
 	status: "connected" | "disconnected";
 	message: string;
-}
-
-function StatusIndicator({ status, message }: StatusProps) {
-	return (
-		<div className={`status ${status}`}>
-			<div className="status-indicator"></div>
-			<span>{message}</span>
-		</div>
-	);
-}
-
-interface ActionButtonProps {
-	onClick: () => void;
-	className?: string;
-	children: preact.ComponentChildren;
-}
-
-function ActionButton({
-	onClick,
-	className = "btn",
-	children,
-}: ActionButtonProps) {
-	return (
-		<button onClick={onClick} className={className}>
-			{children}
-		</button>
-	);
 }
 
 function InfoSection() {
@@ -159,15 +134,15 @@ function PopupApp() {
 			<StatusIndicator
 				status={status.value.status}
 				message={status.value.message}
+				showIndicator={true}
+				className="status"
 			/>
 
 			<div className="actions">
-				<ActionButton onClick={openDevTools} className="btn primary">
+				<Button onClick={openDevTools} variant="primary" className="primary">
 					Open DevTools Panel
-				</ActionButton>
-				<ActionButton onClick={refreshDetection}>
-					Refresh Detection
-				</ActionButton>
+				</Button>
+				<Button onClick={refreshDetection}>Refresh Detection</Button>
 			</div>
 
 			<InfoSection />

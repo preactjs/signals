@@ -100,7 +100,7 @@ chrome.devtools.panels.create(
 						panelWindow.postMessage(
 							{
 								type: "DEVTOOLS_READY",
-								connected: isConnected,
+								payload: { connected: isConnected },
 							},
 							"*"
 						);

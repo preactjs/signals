@@ -1,13 +1,9 @@
 import { defineConfig } from "vite";
 import { resolve } from "path";
+import preact from "@preact/preset-vite";
 
 export default defineConfig({
-	esbuild: {
-		jsx: "transform",
-		jsxFactory: "h",
-		jsxFragment: "Fragment",
-		jsxImportSource: "preact",
-	},
+	plugins: [preact()],
 	build: {
 		outDir: "dist",
 		rollupOptions: {

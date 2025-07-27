@@ -1,5 +1,5 @@
-// @ts-expect-error
-import { getDevToolsCommunicator, DevToolsMessage } from "./devtools";
+import { setDebugOptions } from ".";
+import { getDevToolsCommunicator } from "./devtools";
 
 /**
  * Chrome Extension Bridge
@@ -50,7 +50,8 @@ class ExtensionBridge {
 	}
 
 	private updateConfig(newConfig: Partial<ExtensionConfig>) {
-		// TODO
+		this.config = { ...this.config, ...newConfig };
+		setDebugOptions(this.config);
 	}
 
 	private sendCurrentState() {
