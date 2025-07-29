@@ -17,11 +17,11 @@ export default defineConfig({
 			'@preact/signals': path.join(
 				dirname, './packages/preact/dist/signals.min.js'
 			),
-			'@preact/signals-react': path.join(
-				dirname, './packages/react/dist/signals.min.js'
-			),
 			'@preact/signals-react/runtime': path.join(
 				dirname, './packages/react/runtime/dist/runtime.min.js'
+			),
+			'@preact/signals-react': path.join(
+				dirname, './packages/react/dist/signals.min.js'
 			),
 			'@preact/signals-react-runtime': path.join(
 				dirname, './packages/react/runtime/dist/runtime.min.js'
