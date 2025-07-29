@@ -5,11 +5,7 @@
   },
   "minify": {
     "mangle": {
-      "reserved": [
-        "useSignal",
-        "useComputed",
-        "useSignalEffect"
-      ],
+      "reserved": ["useSignal", "useComputed", "useSignalEffect"],
       "keep_classnames": true,
       "properties": {
         "regex": "^_[^_]",
