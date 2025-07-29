@@ -1,10 +1,10 @@
-import { useState, useEffect } from "preact/hooks";
+import { Signal, useSignal, useSignalEffect } from "@preact/signals";
 import { Button } from "./Button";
 import { Settings } from "../types";
 
 interface SettingsPanelProps {
-	isVisible: boolean;
-	settings: Settings;
+	isVisible: Signal<boolean>;
+	settings: Signal<Settings>;
 	onApply: (settings: Settings) => void;
 	onCancel: () => void;
 }
@@ -15,17 +15,19 @@ export function SettingsPanel({
 	onApply,
 	onCancel,
 }: SettingsPanelProps) {
-	const [localSettings, setLocalSettings] = useState<Settings>(settings);
+	const localSettings = useSignal<Settings>(settings.value);
 
-	useEffect(() => {
-		setLocalSettings(settings);
-	}, [settings]);
+	useSignalEffect(() => {
+		localSettings.value = settings.value;
+	});
 
 	const handleApply = () => {
-		onApply(localSettings);
+		onApply(localSettings.value);
 	};
 
-	if (!isVisible) return null;
+	if (!isVisible.value) {
+		return null;
+	}
 
 	return (
 		<div className="settings-panel">
@@ -36,10 +38,10 @@ export function SettingsPanel({
 					<label>
 						<input
 							type="checkbox"
-							checked={localSettings.enabled}
+							checked={localSettings.value.enabled}
 							onChange={e =>
-								setLocalSettings({
-									...localSettings,
+								(localSettings.value = {
+									...localSettings.value,
 									enabled: (e.target as HTMLInputElement).checked,
 								})
 							}
@@ -52,10 +54,10 @@ export function SettingsPanel({
 					<label>
 						<input
 							type="checkbox"
-							checked={localSettings.grouped}
+							checked={localSettings.value.grouped}
 							onChange={e =>
-								setLocalSettings({
-									...localSettings,
+								(localSettings.value = {
+									...localSettings.value,
 									grouped: (e.target as HTMLInputElement).checked,
 								})
 							}
@@ -69,12 +71,12 @@ export function SettingsPanel({
 					<input
 						type="number"
 						id="maxUpdatesInput"
-						value={localSettings.maxUpdatesPerSecond}
+						value={localSettings.value.maxUpdatesPerSecond}
 						min="1"
 						max="1000"
 						onChange={e =>
-							setLocalSettings({
-								...localSettings,
+							(localSettings.value = {
+								...localSettings.value,
 								maxUpdatesPerSecond:
 									parseInt((e.target as HTMLInputElement).value) || 60,
 							})
@@ -89,10 +91,10 @@ export function SettingsPanel({
 					<textarea
 						id="filterPatternsInput"
 						placeholder="user.*&#10;.*State$&#10;global"
-						value={localSettings.filterPatterns.join("\n")}
+						value={localSettings.value.filterPatterns.join("\n")}
 						onChange={e =>
-							setLocalSettings({
-								...localSettings,
+							(localSettings.value = {
+								...localSettings.value,
 								filterPatterns: (e.target as HTMLTextAreaElement).value
 									.split("\n")
 									.map(pattern => pattern.trim())

@@ -97,6 +97,12 @@ class DevToolsCommunicator {
 			payload: {
 				updates: updateInfoList.map(({ signal, ...info }) => ({
 					...info,
+					signalType:
+						info.type === "effect"
+							? "effect"
+							: "_fn" in signal
+								? "computed"
+								: "signal",
 					signalName: this.getSignalName(signal),
 					signalId: this.getSignalId(signal),
 				})),

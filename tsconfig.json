@@ -27,5 +27,5 @@
       ]
     }
   },
-  "exclude": ["docs", "packages/*/dist/**"]
+  "exclude": ["docs", "extension", "packages/*/dist/**"]
 }

@@ -3,55 +3,23 @@ import { useSignal, useSignalEffect } from "@preact/signals";
 import { EmptyState } from "./components/EmptyState";
 import { Header } from "./components/Header";
 import { SettingsPanel } from "./components/SettingsPanel";
-import { SignalUpdate, Divider, ConnectionStatus, Settings } from "./types";
+import { Settings } from "./types";
 import { GraphVisualization } from "./components/Graph";
-import { createUpdatesModel } from "./models/UpdatesModel";
+import { updatesStore } from "./models/UpdatesModel";
 import { UpdatesContainer } from "./components/UpdatesContainer";
-
-const updatesStore = createUpdatesModel();
+import { connectionStore, sendMessage } from "./models/ConnectionModel";
 
 function SignalsDevToolsPanel() {
 	const showSettings = useSignal(false);
 	const activeTab = useSignal<"updates" | "graph">("updates");
 
-	// TODO: model
-	const connectionStatus = useSignal<ConnectionStatus>({
-		status: "connecting",
-		message: "Connecting...",
-	});
-	const isPaused = useSignal(false);
+	// TODO: settings model
 	const settings = useSignal<Settings>({
 		enabled: true,
 		grouped: true,
 		maxUpdatesPerSecond: 60,
 		filterPatterns: [],
 	});
-	const isBackgroundConnected = useSignal(false);
-	const isContentScriptConnected = useSignal(false);
-	const isConnected = useSignal(false);
-
-	const sendMessage = (message: any) => {
-		window.postMessage(message, "*");
-	};
-
-	const handleSignalsUpdate = (
-		signalUpdates: SignalUpdate | SignalUpdate[]
-	) => {
-		const updatesArray: Array<SignalUpdate | Divider> = Array.isArray(
-			signalUpdates
-		)
-			? signalUpdates
-			: [signalUpdates];
-
-		updatesArray.reverse();
-		updatesArray.push({ type: "divider" });
-
-		updatesStore.addUpdate(updatesArray);
-	};
-
-	const togglePause = () => {
-		isPaused.value = !isPaused.value;
-	};
 
 	const toggleSettings = () => {
 		showSettings.value = !showSettings.value;
@@ -66,35 +34,7 @@ function SignalsDevToolsPanel() {
 		showSettings.value = false;
 	};
 
-	const refreshDetection = () => {
-		connectionStatus.value = { status: "connecting", message: "Refreshing..." };
-		sendMessage({ type: "REQUEST_STATE" });
-	};
-
-	// TODO: computed
 	useSignalEffect(() => {
-		let status: ConnectionStatus["status"], message: string;
-
-		if (!isBackgroundConnected.value) {
-			status = "disconnected";
-			message = "Disconnected from background";
-		} else if (!isContentScriptConnected.value) {
-			status = "connecting";
-			message = "Connecting to page...";
-		} else if (!isConnected.value) {
-			status = "warning";
-			message = "No signals detected";
-		} else {
-			status = "connected";
-			message = "Connected";
-		}
-
-		connectionStatus.value = { status, message };
-	});
-
-	useSignalEffect(() => {
-		if (isPaused.value) return;
-
 		const handleMessage = (event: MessageEvent) => {
 			// Only accept messages from the same origin (devtools context)
 			if (event.origin !== window.location.origin) return;
@@ -102,41 +42,9 @@ function SignalsDevToolsPanel() {
 			const { type, payload } = event.data;
 
 			switch (type) {
-				case "SIGNALS_UPDATE":
-					handleSignalsUpdate(payload.updates);
-					break;
-
-				case "SIGNALS_AVAILABILITY":
-					isConnected.value = payload.available;
-					break;
-
 				case "SIGNALS_CONFIG":
 					settings.value = payload.settings;
 					break;
-
-				case "CONNECTION_LOST":
-					isBackgroundConnected.value = false;
-					isContentScriptConnected.value = false;
-					break;
-
-				case "DEVTOOLS_READY":
-					isBackgroundConnected.value = true;
-					setTimeout(() => {
-						refreshDetection();
-					}, 500);
-					break;
-
-				case "BACKGROUND_READY":
-					isBackgroundConnected.value = true;
-					isContentScriptConnected.value = payload;
-					break;
-
-				case "CONTENT_SCRIPT_DISCONNECTED":
-					isContentScriptConnected.value = false;
-					break;
-
-				default:
-					console.log("Unhandled message type:", type);
 			}
 		};
 
@@ -146,17 +54,11 @@ function SignalsDevToolsPanel() {
 
 	return (
 		<div id="app">
-			<Header
-				connectionStatus={connectionStatus.value}
-				onClear={() => updatesStore.clearUpdates()}
-				onTogglePause={togglePause}
-				onToggleSettings={toggleSettings}
-				isPaused={isPaused.value}
-			/>
+			<Header onToggleSettings={toggleSettings} />
 
 			<SettingsPanel
-				isVisible={showSettings.value}
-				settings={settings.value}
+				isVisible={showSettings}
+				settings={settings}
 				onApply={applySettings}
 				onCancel={() => (showSettings.value = false)}
 			/>
@@ -177,8 +79,8 @@ function SignalsDevToolsPanel() {
 					</button>
 				</div>
 				<div className="tab-content">
-					{!isConnected.value ? (
-						<EmptyState onRefresh={refreshDetection} />
+					{!connectionStore.isConnected ? (
+						<EmptyState onRefresh={connectionStore.refreshConnection} />
 					) : (
 						<>
 							{activeTab.value === "updates" && (

@@ -1,6 +1,6 @@
 export interface SignalUpdate {
-	// TODO: add computed
 	type: "update" | "effect";
+	signalType: "signal" | "computed" | "effect";
 	signalName: string;
 	signalId?: string;
 	prevValue?: any;

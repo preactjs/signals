@@ -1,7 +1,7 @@
 import { signal, computed } from "@preact/signals";
 import { Divider, SignalUpdate } from "../types";
 
-export const createUpdatesModel = () => {
+const createUpdatesModel = () => {
 	const updates = signal<(SignalUpdate | Divider)[]>([]);
 	const lastUpdateId = signal<number>(0);
 
@@ -46,3 +46,5 @@ export const createUpdatesModel = () => {
 		hasUpdates,
 	};
 };
+
+export const updatesStore = createUpdatesModel();
