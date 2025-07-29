@@ -21,7 +21,15 @@ import {
 } from "react";
 import type { FunctionComponent } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { beforeEach, afterEach, describe, it, expect, vi } from "vitest";
+import {
+	beforeEach,
+	afterEach,
+	describe,
+	it,
+	expect,
+	vi,
+	MockInstance,
+} from "vitest";
 
 import {
 	act,
@@ -524,7 +532,7 @@ export function updateSignalsTests(usingTransform = false) {
 		it("should minimize rerenders when passing signals through context", async () => {
 			function spyOn<P = { children?: React.ReactNode }>(
 				c: FunctionComponent<P>
-			) {
+			): FunctionComponent<P> & MockInstance<FunctionComponent<P>> {
 				return vi.fn(c);
 			}
 
