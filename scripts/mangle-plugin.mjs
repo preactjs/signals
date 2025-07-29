@@ -18,11 +18,6 @@ export const manglePlugin = {
 			return null;
 		}
 
-		const shouldTransform = id.includes('src') || id.includes('test');
-		if (!shouldTransform) {
-			return null;
-		}
-
 		const transformed = await transformAsync(code, {
 			filename: id,
 			configFile: false,

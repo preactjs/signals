@@ -12,28 +12,34 @@ export default defineConfig({
 	resolve: {
 		alias: MINIFY ? {
 			'@preact/signals-core': path.join(
-				dirname, './packages/core/dist/signals-core.min.js'
+				dirname, './packages/core/dist/signals-core.module.js'
+			),
+			'@preact/signals/utils': path.join(
+				dirname, './packages/preact/utils/dist/utils.module.js'
 			),
 			'@preact/signals': path.join(
-				dirname, './packages/preact/dist/signals.min.js'
+				dirname, './packages/preact/dist/signals.module.js'
 			),
 			'@preact/signals-react/runtime': path.join(
-				dirname, './packages/react/runtime/dist/runtime.min.js'
+				dirname, './packages/react/runtime/dist/runtime.module.js'
+			),
+			'@preact/signals-react/utils': path.join(
+				dirname, './packages/react/utils/dist/utils.module.js'
 			),
 			'@preact/signals-react': path.join(
-				dirname, './packages/react/dist/signals.min.js'
+				dirname, './packages/react/dist/signals.module.js'
 			),
 			'@preact/signals-react-runtime': path.join(
-				dirname, './packages/react/runtime/dist/runtime.min.js'
+				dirname, './packages/react/runtime/dist/runtime.module.js'
 			),
 			'@preact/signals-react-utils': path.join(
-				dirname, './packages/react/utils/utils.min.js'
+				dirname, './packages/react/utils/dist/utils.module.js'
 			),
 			'@preact/signals-react-transform': path.join(
 				dirname ,'./packages/react-transform/dist/signals-transform.mjs'
 			),
 			'@preact/signals-utils': path.join(
-				dirname, './packages/preact/utils/dist/utils.min.js'
+				dirname, './packages/preact/utils/dist/utils.module.js'
 			),
 		} : {}
 	},

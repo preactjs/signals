@@ -32,6 +32,7 @@ export function createEsbuildPlugin() {
 			}
 
 			let result = code;
+			let map = null;
 
 			if (!pending.has(id)) {
 				pending.set(id, []);
@@ -63,14 +64,15 @@ export function createEsbuildPlugin() {
 
 				const tmp = await transformAsync(result, {
 					filename: id,
-					sourceMaps: "inline",
+					sourceMaps: true,
 					presets: [ts, jsx],
 					plugins: [
 						signalsTransform,
 					],
 				});
 				result = (tmp && tmp.code) || result;
-				cache.set(id, { input: code, result });
+				map = (tmp && tmp.map) || map;
+				cache.set(id, { input: code, result, map });
 
 				const waited = pending.get(id);
 				pending.delete(id);
@@ -79,13 +81,14 @@ export function createEsbuildPlugin() {
 				await new Promise(r => {
 					pending.get(id).push(r);
 				});
-				result = cache.get(id).result;
+				const cached = cache.get(id);
+				result = cached.result;
+				map = cached.map;
 			}
 
 			return {
 				code: result,
-				// TODO (43081j): will this mess sourcemaps up in tests?
-				map: null,
+				map,
 			};
 		}
 	};
