@@ -1,5 +1,18 @@
 # @preact/signals
 
+## 2.3.0
+
+### Minor Changes
+
+- [#681](https://github.com/preactjs/signals/pull/681) [`6cc7005`](https://github.com/preactjs/signals/commit/6cc700595278d241f276c40dd0ecf162c9e432d8) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Allow for naming your singals/computeds/effects
+
+### Patch Changes
+
+- [#728](https://github.com/preactjs/signals/pull/728) [`0fd9503`](https://github.com/preactjs/signals/commit/0fd9503a53ad6836ac445d7d384b8f153b93a158) Thanks [@marvinhagemeister](https://github.com/marvinhagemeister)! - Fix prefresh HMR not working with `useSignal`.
+
+- Updated dependencies [[`6cc7005`](https://github.com/preactjs/signals/commit/6cc700595278d241f276c40dd0ecf162c9e432d8)]:
+  - @preact/signals-core@1.12.0
+
 ## 2.2.1
 
 ### Patch Changes
