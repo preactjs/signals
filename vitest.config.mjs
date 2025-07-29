@@ -19,6 +19,9 @@ export default defineConfig({
 			'@preact/signals-react': path.join(
 				dirname, './packages/react/dist/signals.min.js'
 			),
+			'@preact/signals-react-runtime': path.join(
+				dirname, './packages/react/runtime/dist/runtime.min.js'
+			),
 			'@preact/signals-react-utils': path.join(
 				dirname, './packages/react/utils/utils.min.js'
 			),
@@ -31,7 +34,7 @@ export default defineConfig({
 		} : {}
 	},
 	plugins: [
-		manglePlugin
+		manglePlugin,
 	],
 	// TODO (43081j): stop faking node globals and sort out the transform
 	// tests. Either run them in node, or somehow run babel in node but the
