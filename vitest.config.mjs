@@ -1,5 +1,6 @@
 import { defineConfig } from 'vitest/config';
 import { manglePlugin } from './scripts/mangle-plugin.mjs';
+import { createEsbuildPlugin } from './scripts/transform-plugin.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -35,6 +36,7 @@ export default defineConfig({
 	},
 	plugins: [
 		manglePlugin,
+		createEsbuildPlugin()
 	],
 	// TODO (43081j): stop faking node globals and sort out the transform
 	// tests. Either run them in node, or somehow run babel in node but the
