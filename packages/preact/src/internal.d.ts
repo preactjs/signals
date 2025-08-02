@@ -1,5 +1,6 @@
 import { Component } from "preact";
 import { Signal } from "@preact/signals-core";
+import type { SignalsDevToolsAPI } from "../../debug/src/devtools";
 
 export interface Effect {
 	_sources: object | undefined;
@@ -62,3 +63,9 @@ export type HookFn<T extends keyof OptionsType> = (
 	old: OptionsType[T],
 	...a: Parameters<OptionsType[T]>
 ) => ReturnType<OptionsType[T]>;
+
+declare global {
+	interface Window {
+		__PREACT_SIGNALS_DEVTOOLS__: SignalsDevToolsAPI;
+	}
+}

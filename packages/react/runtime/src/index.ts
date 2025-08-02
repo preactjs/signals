@@ -404,7 +404,10 @@ export function useComputed<T>(
 	return useMemo(() => computed<T>(() => $compute.current(), options), Empty);
 }
 
-export function useSignalEffect(cb: () => void | (() => void), options?: EffectOptions) {
+export function useSignalEffect(
+	cb: () => void | (() => void),
+	options?: EffectOptions
+) {
 	const callback = useRef(cb);
 	callback.current = cb;
 

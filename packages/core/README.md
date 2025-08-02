@@ -49,7 +49,7 @@ You can also pass options to `signal()` and `computed()` to be notified when the
 
 ```js
 const counter = signal(0, {
-	name: 'counter',
+	name: "counter",
 	watched: function () {
 		console.log("Signal has its first subscriber");
 	},
