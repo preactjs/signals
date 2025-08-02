@@ -1,5 +1,5 @@
 import { options, Component, isValidElement, Fragment } from "preact";
-import { useRef, useMemo, useEffect } from "preact/hooks";
+import { useRef, useMemo, useEffect, useState } from "preact/hooks";
 import {
 	signal,
 	computed,
@@ -417,10 +417,9 @@ Component.prototype.shouldComponentUpdate = function (
 export function useSignal<T>(value: T, options?: SignalOptions<T>): Signal<T>;
 export function useSignal<T = undefined>(): Signal<T | undefined>;
 export function useSignal<T>(value?: T, options?: SignalOptions<T>) {
-	return useMemo(
-		() => signal<T | undefined>(value, options as SignalOptions),
-		[]
-	);
+	return useState(() =>
+		signal<T | undefined>(value, options as SignalOptions)
+	)[0];
 }
 
 export function useComputed<T>(compute: () => T, options?: SignalOptions<T>) {
