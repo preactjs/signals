@@ -9,7 +9,7 @@ interface HeaderProps {
 
 export function Header({ onToggleSettings }: HeaderProps) {
 	const onTogglePause = () => {
-		connectionStore.isPaused = !connectionStore.isPaused;
+		updatesStore.isPaused.value = !updatesStore.isPaused.value;
 	};
 
 	const onClear = () => {
@@ -28,8 +28,8 @@ export function Header({ onToggleSettings }: HeaderProps) {
 			<div className="header-controls">
 				{onClear && <Button onClick={onClear}>Clear</Button>}
 				{onTogglePause && (
-					<Button onClick={onTogglePause} active={connectionStore.isPaused}>
-						{connectionStore.isPaused ? "Resume" : "Pause"}
+					<Button onClick={onTogglePause} active={updatesStore.isPaused.value}>
+						{updatesStore.isPaused.value ? "Resume" : "Pause"}
 					</Button>
 				)}
 				{onToggleSettings && (

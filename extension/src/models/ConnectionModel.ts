@@ -10,7 +10,6 @@ export const sendMessage = (message: any) => {
 
 const createConnectionModel = () => {
 	const status = signal<Status>("connecting");
-	const isPaused = signal<boolean>(false);
 	const isBackgroundConnected = signal(false);
 	const isContentScriptConnected = signal(false);
 	const isConnected = signal(false);
@@ -34,8 +33,6 @@ const createConnectionModel = () => {
 	};
 
 	effect(() => {
-		if (isPaused.value) return;
-
 		const handleMessage = (event: MessageEvent) => {
 			// Only accept messages from the same origin (devtools context)
 			if (event.origin !== window.location.origin) return;
@@ -109,9 +106,6 @@ const createConnectionModel = () => {
 		get status() {
 			return status.value;
 		},
-		get isPaused() {
-			return isPaused.value;
-		},
 		get message() {
 			return message.value;
 		},
@@ -121,9 +115,6 @@ const createConnectionModel = () => {
 		// Actions
 		set status(newStatus: Status) {
 			status.value = newStatus;
-		},
-		set isPaused(newPaused: boolean) {
-			isPaused.value = newPaused;
 		},
 		set isBackgroundConnected(newConnected: boolean) {
 			isBackgroundConnected.value = newConnected;

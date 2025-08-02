@@ -2,17 +2,24 @@ import { UpdateInfo } from "./internal";
 
 // Communication layer for Chrome DevTools Extension
 export interface DevToolsMessage {
-	type: "SIGNALS_UPDATE" | "SIGNALS_INIT" | "SIGNALS_CONFIG";
+	type:
+		| "SIGNALS_UPDATE"
+		| "SIGNALS_INIT"
+		| "SIGNALS_CONFIG"
+		| "ENTER_COMPONENT"
+		| "EXIT_COMPONENT";
 	payload: any;
 	timestamp: number;
 }
 
-interface SignalsDevToolsAPI {
+export interface SignalsDevToolsAPI {
 	onUpdate: (callback: (updateInfo: UpdateInfo[]) => void) => () => void;
 	onInit: (callback: () => void) => () => void;
 	sendConfig: (config: any) => void;
 	sendUpdate: (updateInfo: UpdateInfo[]) => void;
 	isConnected: () => boolean;
+	enterComponent: (name: string) => void;
+	exitComponent: () => void;
 }
 
 class DevToolsCommunicator {
@@ -20,6 +27,7 @@ class DevToolsCommunicator {
 	public isExtensionConnected = false;
 	public messageQueue: DevToolsMessage[] = [];
 	public readonly maxQueueSize = 100;
+	public componentName: string | null = null;
 
 	constructor() {
 		this.setupCommunication();
@@ -139,6 +147,14 @@ class DevToolsCommunicator {
 		};
 	}
 
+	public enterComponent(name: string) {
+		this.componentName = name;
+	}
+
+	public exitComponent() {
+		this.componentName = null;
+	}
+
 	public getSignalName(signal: any): string {
 		// Try to get a meaningful name for the signal
 		if (signal.displayName) return signal.displayName;
@@ -182,10 +198,16 @@ if (typeof window !== "undefined") {
 		sendConfig: config => getDevToolsCommunicator().sendConfig(config),
 		sendUpdate: updateInfo => getDevToolsCommunicator().sendUpdate(updateInfo),
 		isConnected: () => getDevToolsCommunicator().isConnected(),
+		enterComponent: name => {
+			getDevToolsCommunicator().enterComponent(name);
+		},
+		exitComponent: () => {
+			getDevToolsCommunicator().exitComponent();
+		},
 	};
 
 	// Expose API globally for the Chrome extension to use
-	(window as any).__PREACT_SIGNALS_DEVTOOLS__ = api;
+	window.__PREACT_SIGNALS_DEVTOOLS__ = api;
 
 	// Announce availability to Chrome extension
 	if (window.postMessage) {
@@ -208,5 +230,11 @@ if (typeof window !== "undefined") {
 				window.location.origin
 			);
 		}, 100);
+	}
+}
+
+declare global {
+	interface Window {
+		__PREACT_SIGNALS_DEVTOOLS__: SignalsDevToolsAPI;
 	}
 }

@@ -1,9 +1,10 @@
-import { signal, computed } from "@preact/signals";
+import { signal, computed, effect } from "@preact/signals";
 import { Divider, SignalUpdate } from "../types";
 
 const createUpdatesModel = () => {
 	const updates = signal<(SignalUpdate | Divider)[]>([]);
 	const lastUpdateId = signal<number>(0);
+	const isPaused = signal<boolean>(false);
 
 	const addUpdate = (
 		update: SignalUpdate | Divider | Array<SignalUpdate | Divider>
@@ -38,12 +39,44 @@ const createUpdatesModel = () => {
 		lastUpdateId.value = 0;
 	};
 
+	effect(() => {
+		if (isPaused.value) return;
+
+		const handleMessage = (event: MessageEvent) => {
+			// Only accept messages from the same origin (devtools context)
+			if (event.origin !== window.location.origin) return;
+
+			const { type, payload } = event.data;
+
+			switch (type) {
+				case "SIGNALS_UPDATE": {
+					const signalUpdates = payload.updates;
+					const updatesArray: Array<SignalUpdate | Divider> = Array.isArray(
+						signalUpdates
+					)
+						? signalUpdates
+						: [signalUpdates];
+
+					updatesArray.reverse();
+					updatesArray.push({ type: "divider" });
+
+					updatesStore.addUpdate(updatesArray);
+					break;
+				}
+			}
+		};
+
+		window.addEventListener("message", handleMessage);
+		return () => window.removeEventListener("message", handleMessage);
+	});
+
 	return {
 		updates,
 		signalCounts,
 		addUpdate,
 		clearUpdates,
 		hasUpdates,
+		isPaused,
 	};
 };
 

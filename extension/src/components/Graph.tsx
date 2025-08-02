@@ -33,13 +33,7 @@ export function GraphVisualization({
 			if (!update.signalId) return;
 
 			// Determine signal type
-			let type: "signal" | "computed" | "effect" = "signal";
-			if (update.type === "effect") {
-				type = "effect";
-			} else if (update.subscribedTo) {
-				type = "computed";
-			}
-
+			let type: "signal" | "computed" | "effect" = update.signalType;
 			// Track depth
 			const currentDepth = update.depth || 0;
 			depthMap.set(update.signalId, currentDepth);
@@ -64,18 +58,6 @@ export function GraphVisualization({
 						source: update.subscribedTo,
 						target: update.signalId,
 					});
-
-					// Also ensure source node exists
-					if (!nodes.has(update.subscribedTo)) {
-						nodes.set(update.subscribedTo, {
-							id: update.subscribedTo,
-							name: update.signalName,
-							type: "signal",
-							x: 0,
-							y: 0,
-							depth: currentDepth - 1,
-						});
-					}
 				}
 			}
 		});
@@ -182,7 +164,9 @@ export function GraphVisualization({
 									className="graph-text"
 									x={node.x}
 									y={node.y}
-									textLength="40"
+									textLength={
+										8 * (node.name.length > 8 ? 11 : node.name.length)
+									}
 									lengthAdjust="spacingAndGlyphs"
 								>
 									{node.name.length > 8

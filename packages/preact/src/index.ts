@@ -171,6 +171,14 @@ Object.defineProperties(Signal.prototype, {
 
 /** Inject low-level property/attribute bindings for Signals into Preact's diff */
 hook(OptionsTypes.DIFF, (old, vnode) => {
+	if (
+		typeof vnode.type === "function" &&
+		typeof window !== "undefined" &&
+		window.__PREACT_SIGNALS_DEVTOOLS__
+	) {
+		window.__PREACT_SIGNALS_DEVTOOLS__.exitComponent();
+	}
+
 	if (typeof vnode.type === "string") {
 		let signalProps: Record<string, any> | undefined;
 
@@ -192,6 +200,16 @@ hook(OptionsTypes.DIFF, (old, vnode) => {
 
 /** Set up Updater before rendering a component */
 hook(OptionsTypes.RENDER, (old, vnode) => {
+	if (
+		typeof vnode.type === "function" &&
+		typeof window !== "undefined" &&
+		window.__PREACT_SIGNALS_DEVTOOLS__
+	) {
+		window.__PREACT_SIGNALS_DEVTOOLS__.enterComponent(
+			vnode.type.displayName || vnode.type.name || "Unknown"
+		);
+	}
+
 	// Ignore the Fragment inserted by preact.createElement().
 	if (vnode.type !== Fragment) {
 		setCurrentUpdater();
@@ -220,6 +238,10 @@ hook(OptionsTypes.RENDER, (old, vnode) => {
 
 /** Finish current updater if a component errors */
 hook(OptionsTypes.CATCH_ERROR, (old, error, vnode, oldVNode) => {
+	if (typeof window !== "undefined" && window.__PREACT_SIGNALS_DEVTOOLS__) {
+		window.__PREACT_SIGNALS_DEVTOOLS__.exitComponent();
+	}
+
 	setCurrentUpdater();
 	currentComponent = undefined;
 	old(error, vnode, oldVNode);
@@ -227,6 +249,14 @@ hook(OptionsTypes.CATCH_ERROR, (old, error, vnode, oldVNode) => {
 
 /** Finish current updater after rendering any VNode */
 hook(OptionsTypes.DIFFED, (old, vnode) => {
+	if (
+		typeof vnode.type === "function" &&
+		typeof window !== "undefined" &&
+		window.__PREACT_SIGNALS_DEVTOOLS__
+	) {
+		window.__PREACT_SIGNALS_DEVTOOLS__.exitComponent();
+	}
+
 	setCurrentUpdater();
 	currentComponent = undefined;
 
