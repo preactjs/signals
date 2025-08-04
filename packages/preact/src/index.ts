@@ -152,7 +152,8 @@ function SignalValue(this: AugmentedComponent, { data }: { data: Signal }) {
 	// leaving them to the optimized path above.
 	return isText.value ? s.peek() : s.value;
 }
-SignalValue.displayName = "_st";
+
+SignalValue.displayName = "ReactiveTextNode";
 
 Object.defineProperties(Signal.prototype, {
 	constructor: { configurable: true, value: undefined },

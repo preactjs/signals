@@ -20,6 +20,7 @@ export interface SignalsDevToolsAPI {
 	isConnected: () => boolean;
 	enterComponent: (name: string) => void;
 	exitComponent: () => void;
+	trackSignalOwnership: (signal: any) => void;
 }
 
 class DevToolsCommunicator {
@@ -28,6 +29,7 @@ class DevToolsCommunicator {
 	public messageQueue: DevToolsMessage[] = [];
 	public readonly maxQueueSize = 100;
 	public componentName: string | null = null;
+	public signalOwnership = new WeakMap<any, Set<string>>();
 
 	constructor() {
 		this.setupCommunication();
@@ -103,17 +105,22 @@ class DevToolsCommunicator {
 		this.postMessage({
 			type: "SIGNALS_UPDATE",
 			payload: {
-				updates: updateInfoList.map(({ signal, ...info }) => ({
-					...info,
-					signalType:
-						info.type === "effect"
-							? "effect"
-							: "_fn" in signal
-								? "computed"
-								: "signal",
-					signalName: this.getSignalName(signal),
-					signalId: this.getSignalId(signal),
-				})),
+				updates: updateInfoList.map(({ signal, ...info }) => {
+					const owners = this.getSignalOwners(signal);
+					return {
+						...info,
+						signalType:
+							info.type === "effect"
+								? "effect"
+								: "_fn" in signal
+									? "computed"
+									: "signal",
+						signalName: this.getSignalName(signal),
+						signalId: this.getSignalId(signal),
+						componentName: owners.length > 0 ? owners[0] : null,
+						componentNames: owners.length > 1 ? owners : undefined,
+					};
+				}),
 			},
 			timestamp: Date.now(),
 		});
@@ -153,6 +160,20 @@ class DevToolsCommunicator {
 
 	public exitComponent() {
 		this.componentName = null;
+	}
+
+	public trackSignalOwnership(signal: any) {
+		if (this.componentName) {
+			if (!this.signalOwnership.has(signal)) {
+				this.signalOwnership.set(signal, new Set());
+			}
+			this.signalOwnership.get(signal)!.add(this.componentName);
+		}
+	}
+
+	public getSignalOwners(signal: any): string[] {
+		const owners = this.signalOwnership.get(signal);
+		return owners ? Array.from(owners) : [];
 	}
 
 	public getSignalName(signal: any): string {
@@ -198,6 +219,8 @@ if (typeof window !== "undefined") {
 		sendConfig: config => getDevToolsCommunicator().sendConfig(config),
 		sendUpdate: updateInfo => getDevToolsCommunicator().sendUpdate(updateInfo),
 		isConnected: () => getDevToolsCommunicator().isConnected(),
+		trackSignalOwnership: signal =>
+			getDevToolsCommunicator().trackSignalOwnership(signal),
 		enterComponent: name => {
 			getDevToolsCommunicator().enterComponent(name);
 		},

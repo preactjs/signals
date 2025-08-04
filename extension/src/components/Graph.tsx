@@ -4,6 +4,7 @@ import {
 	GraphData,
 	GraphLink,
 	GraphNode,
+	ComponentGroup,
 	SignalUpdate,
 } from "../types";
 
@@ -15,6 +16,7 @@ export function GraphVisualization({
 	const [graphData, setGraphData] = useState<GraphData>({
 		nodes: [],
 		links: [],
+		components: [],
 	});
 	const svgRef = useRef<SVGSVGElement>(null);
 
@@ -47,6 +49,7 @@ export function GraphVisualization({
 					x: 0,
 					y: 0,
 					depth: currentDepth,
+					componentName: update.componentName || undefined,
 				});
 			}
 
@@ -62,34 +65,101 @@ export function GraphVisualization({
 			}
 		});
 
-		// Layout nodes by depth
-		const nodesByDepth = new Map<number, GraphNode[]>();
+		// Group nodes by component
+		const componentGroups = new Map<string, GraphNode[]>();
+		const ungroupedNodes: GraphNode[] = [];
+
 		nodes.forEach(node => {
-			if (!nodesByDepth.has(node.depth)) {
-				nodesByDepth.set(node.depth, []);
+			if (node.componentName) {
+				if (!componentGroups.has(node.componentName)) {
+					componentGroups.set(node.componentName, []);
+				}
+				componentGroups.get(node.componentName)!.push(node);
+			} else {
+				ungroupedNodes.push(node);
 			}
-			nodesByDepth.get(node.depth)!.push(node);
 		});
 
-		// Position nodes
-		const nodeSpacing = 120;
-		const depthSpacing = 200;
-		const startX = 100;
+		// Layout nodes and create component groups
+		const nodeSpacing = 80;
+		const componentSpacing = 60;
+		const depthSpacing = 300;
+		const startX = 150;
 		const startY = 100;
+		let currentY = startY;
 
-		nodesByDepth.forEach((depthNodes, depth) => {
-			const totalHeight = (depthNodes.length - 1) * nodeSpacing;
-			const offsetY = -totalHeight / 2;
+		const components: ComponentGroup[] = [];
+		const allNodes: GraphNode[] = [];
 
+		// Layout component groups
+		componentGroups.forEach((componentNodes, componentName) => {
+			// Group nodes by depth within component
+			const nodesByDepth = new Map<number, GraphNode[]>();
+			componentNodes.forEach(node => {
+				if (!nodesByDepth.has(node.depth)) {
+					nodesByDepth.set(node.depth, []);
+				}
+				nodesByDepth.get(node.depth)!.push(node);
+			});
+
+			const minDepth = Math.min(...componentNodes.map(n => n.depth));
+			const maxDepth = Math.max(...componentNodes.map(n => n.depth));
+			const componentWidth = (maxDepth - minDepth + 1) * depthSpacing + 100;
+
+			let componentMinY = currentY;
+			let componentMaxY = currentY;
+
+			// Position nodes within component
+			nodesByDepth.forEach((depthNodes, depth) => {
+				depthNodes.forEach((node, index) => {
+					node.x = startX + depth * depthSpacing;
+					node.y = currentY + index * nodeSpacing;
+					componentMaxY = Math.max(componentMaxY, node.y);
+				});
+				currentY = componentMaxY + nodeSpacing;
+			});
+
+			const componentHeight = componentMaxY - componentMinY + 80;
+
+			components.push({
+				id: componentName,
+				name: componentName,
+				x: startX + minDepth * depthSpacing - 40,
+				y: componentMinY - 40,
+				width: componentWidth,
+				height: componentHeight,
+				nodes: componentNodes,
+			});
+
+			allNodes.push(...componentNodes);
+			currentY = componentMaxY + componentSpacing;
+		});
+
+		// Layout ungrouped nodes
+		const ungroupedByDepth = new Map<number, GraphNode[]>();
+		ungroupedNodes.forEach(node => {
+			if (!ungroupedByDepth.has(node.depth)) {
+				ungroupedByDepth.set(node.depth, []);
+			}
+			ungroupedByDepth.get(node.depth)!.push(node);
+		});
+
+		ungroupedByDepth.forEach((depthNodes, depth) => {
 			depthNodes.forEach((node, index) => {
 				node.x = startX + depth * depthSpacing;
-				node.y = startY + offsetY + index * nodeSpacing;
+				node.y = currentY + index * nodeSpacing;
 			});
+			if (depthNodes.length > 0) {
+				currentY += (depthNodes.length - 1) * nodeSpacing + componentSpacing;
+			}
 		});
 
+		allNodes.push(...ungroupedNodes);
+
 		setGraphData({
-			nodes: Array.from(nodes.values()),
+			nodes: allNodes,
 			links: Array.from(links.values()),
+			components: components,
 		});
 	}, [updates]);
 
@@ -124,6 +194,36 @@ export function GraphVisualization({
 							<polygon points="0 0, 10 3.5, 0 7" fill="#666" />
 						</marker>
 					</defs>
+
+					{/* Component Groups */}
+					<g className="component-groups">
+						{graphData.components.map(component => (
+							<g key={`component-${component.id}`}>
+								<rect
+									className="component-boundary"
+									x={component.x}
+									y={component.y}
+									width={component.width}
+									height={component.height}
+									fill="rgba(100, 149, 237, 0.1)"
+									stroke="rgba(100, 149, 237, 0.3)"
+									strokeWidth="2"
+									strokeDasharray="5,5"
+									rx="8"
+								/>
+								<text
+									className="component-label"
+									x={component.x + 10}
+									y={component.y + 20}
+									fill="#4169E1"
+									fontSize="12"
+									fontWeight="bold"
+								>
+									{component.name}
+								</text>
+							</g>
+						))}
+					</g>
 
 					{/* Links */}
 					<g className="links">

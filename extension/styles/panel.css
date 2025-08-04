@@ -309,6 +309,12 @@ body {
   color: #673ab7;
 }
 
+.component-name {
+  font-weight: 400;
+  color: #4169E1;
+  font-style: italic;
+}
+
 .update-time {
   color: #999;
   font-size: 11px;
@@ -457,6 +463,20 @@ body {
   width: 16px;
   height: 16px;
   border-radius: 50%;
+}
+
+.component-boundary {
+  transition: all 0.2s ease;
+}
+
+.component-boundary:hover {
+  fill: rgba(100, 149, 237, 0.15);
+  stroke: rgba(100, 149, 237, 0.5);
+}
+
+.component-label {
+  user-select: none;
+  pointer-events: none;
 }
 
 .graph-empty {

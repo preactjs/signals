@@ -3,6 +3,8 @@ export interface SignalUpdate {
 	signalType: "signal" | "computed" | "effect";
 	signalName: string;
 	signalId?: string;
+	componentName?: string | null;
+	componentNames?: string[];
 	prevValue?: any;
 	newValue?: any;
 	timestamp?: number;
@@ -30,6 +32,7 @@ export interface GraphNode {
 	x: number;
 	y: number;
 	depth: number;
+	componentName?: string;
 }
 
 export interface GraphLink {
@@ -37,9 +40,20 @@ export interface GraphLink {
 	target: string;
 }
 
+export interface ComponentGroup {
+	id: string;
+	name: string;
+	x: number;
+	y: number;
+	width: number;
+	height: number;
+	nodes: GraphNode[];
+}
+
 export interface GraphData {
 	nodes: GraphNode[];
 	links: GraphLink[];
+	components: ComponentGroup[];
 }
 
 export type Divider = { type: "divider" };

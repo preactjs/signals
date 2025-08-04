@@ -34,6 +34,9 @@ export function UpdateItem({ update }: UpdateItemProps) {
 				<div className="update-header">
 					<span className="signal-name">
 						{depth}↪️ {update.signalName}
+						{update.componentName && (
+							<span className="component-name"> in {update.componentName}</span>
+						)}
 					</span>
 					<span className="update-time">{time}</span>
 				</div>
@@ -53,6 +56,9 @@ export function UpdateItem({ update }: UpdateItemProps) {
 				<span className="signal-name">
 					{depth}
 					{update.depth === 0 ? "🎯" : "↪️"} {update.signalName}
+					{update.componentName && (
+						<span className="component-name"> in {update.componentName}</span>
+					)}
 				</span>
 				<span className="update-time">{time}</span>
 			</div>

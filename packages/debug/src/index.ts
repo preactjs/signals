@@ -52,6 +52,9 @@ const originalUnsubscribe = Signal.prototype._unsubscribe;
 Signal.prototype._subscribe = function (node: Node) {
 	if (initializing) return originalSubscribe.call(this, node);
 
+	// Track signal ownership when subscribing
+	window.__PREACT_SIGNALS_DEVTOOLS__?.trackSignalOwnership?.(this);
+
 	const tracker = trackers.get(this) || 0;
 	trackers.set(this, tracker + 1);
 
