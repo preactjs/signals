@@ -70,6 +70,11 @@ function Counter() {
 	);
 }
 
+function Test(props: any) {
+	const value = props.sig.value;
+	return { value };
+}
+
 function Sum() {
 	const a = useSignal(0, { name: "a" });
 	const b = useSignal(0, { name: "b" });
@@ -78,6 +83,8 @@ function Sum() {
 
 	return (
 		<div class="card">
+			<Test sig={a} />
+			<Test sig={b} />
 			<p>
 				<label>
 					A:{" "}

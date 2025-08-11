@@ -40,20 +40,6 @@ const createConnectionModel = () => {
 			const { type, payload } = event.data;
 
 			switch (type) {
-				case "SIGNALS_UPDATE": {
-					const signalUpdates = payload.updates;
-					const updatesArray: Array<SignalUpdate | Divider> = Array.isArray(
-						signalUpdates
-					)
-						? signalUpdates
-						: [signalUpdates];
-
-					updatesArray.reverse();
-					updatesArray.push({ type: "divider" });
-
-					updatesStore.addUpdate(updatesArray);
-					break;
-				}
 				case "SIGNALS_AVAILABILITY":
 					isConnected.value = payload.available;
 					break;

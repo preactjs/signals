@@ -90,7 +90,7 @@ function SignalsDevToolsPanel() {
 								/>
 							)}
 							{activeTab.value === "graph" && (
-								<GraphVisualization updates={updatesStore.updates.value} />
+								<GraphVisualization updates={updatesStore.updates} />
 							)}
 						</>
 					)}

@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "preact/hooks";
+import { useRef } from "preact/hooks";
+import { Signal, computed } from "@preact/signals";
 import {
 	Divider,
 	GraphData,
@@ -11,36 +12,30 @@ import {
 export function GraphVisualization({
 	updates,
 }: {
-	updates: (SignalUpdate | Divider)[];
+	updates: Signal<(SignalUpdate | Divider)[]>;
 }) {
-	const [graphData, setGraphData] = useState<GraphData>({
-		nodes: [],
-		links: [],
-		components: [],
-	});
+	console.log(updates);
 	const svgRef = useRef<SVGSVGElement>(null);
 
-	// Build graph data from updates
-	useEffect(() => {
+	// Build graph data from updates signal using a computed
+	const graphData = computed<GraphData>(() => {
+		const rawUpdates = updates.value;
+		if (!rawUpdates || rawUpdates.length === 0)
+			return { nodes: [], links: [], components: [] };
+
 		const nodes = new Map<string, GraphNode>();
 		const links = new Map<string, GraphLink>();
-		const depthMap = new Map<string, number>();
 
 		// Process updates to build graph structure
-		const signalUpdates = updates.filter(
+		const signalUpdates = rawUpdates.filter(
 			update => update.type !== "divider"
 		) as SignalUpdate[];
 
-		signalUpdates.forEach(update => {
-			if (!update.signalId) return;
-
-			// Determine signal type
-			let type: "signal" | "computed" | "effect" = update.signalType;
-			// Track depth
+		for (const update of signalUpdates) {
+			if (!update.signalId) continue;
+			const type: "signal" | "computed" | "effect" = update.signalType;
 			const currentDepth = update.depth || 0;
-			depthMap.set(update.signalId, currentDepth);
 
-			// Add node
 			if (!nodes.has(update.signalId)) {
 				nodes.set(update.signalId, {
 					id: update.signalId,
@@ -53,7 +48,6 @@ export function GraphVisualization({
 				});
 			}
 
-			// Add link if this signal is subscribed to another
 			if (update.subscribedTo) {
 				const linkKey = `${update.subscribedTo}->${update.signalId}`;
 				if (!links.has(linkKey)) {
@@ -63,12 +57,11 @@ export function GraphVisualization({
 					});
 				}
 			}
-		});
+		}
 
 		// Group nodes by component
 		const componentGroups = new Map<string, GraphNode[]>();
 		const ungroupedNodes: GraphNode[] = [];
-
 		nodes.forEach(node => {
 			if (node.componentName) {
 				if (!componentGroups.has(node.componentName)) {
@@ -80,7 +73,7 @@ export function GraphVisualization({
 			}
 		});
 
-		// Layout nodes and create component groups
+		// Layout constants
 		const nodeSpacing = 80;
 		const componentSpacing = 60;
 		const depthSpacing = 300;
@@ -93,12 +86,9 @@ export function GraphVisualization({
 
 		// Layout component groups
 		componentGroups.forEach((componentNodes, componentName) => {
-			// Group nodes by depth within component
 			const nodesByDepth = new Map<number, GraphNode[]>();
 			componentNodes.forEach(node => {
-				if (!nodesByDepth.has(node.depth)) {
-					nodesByDepth.set(node.depth, []);
-				}
+				if (!nodesByDepth.has(node.depth)) nodesByDepth.set(node.depth, []);
 				nodesByDepth.get(node.depth)!.push(node);
 			});
 
@@ -109,7 +99,6 @@ export function GraphVisualization({
 			let componentMinY = currentY;
 			let componentMaxY = currentY;
 
-			// Position nodes within component
 			nodesByDepth.forEach((depthNodes, depth) => {
 				depthNodes.forEach((node, index) => {
 					node.x = startX + depth * depthSpacing;
@@ -120,7 +109,6 @@ export function GraphVisualization({
 			});
 
 			const componentHeight = componentMaxY - componentMinY + 80;
-
 			components.push({
 				id: componentName,
 				name: componentName,
@@ -130,7 +118,6 @@ export function GraphVisualization({
 				height: componentHeight,
 				nodes: componentNodes,
 			});
-
 			allNodes.push(...componentNodes);
 			currentY = componentMaxY + componentSpacing;
 		});
@@ -138,12 +125,10 @@ export function GraphVisualization({
 		// Layout ungrouped nodes
 		const ungroupedByDepth = new Map<number, GraphNode[]>();
 		ungroupedNodes.forEach(node => {
-			if (!ungroupedByDepth.has(node.depth)) {
+			if (!ungroupedByDepth.has(node.depth))
 				ungroupedByDepth.set(node.depth, []);
-			}
 			ungroupedByDepth.get(node.depth)!.push(node);
 		});
-
 		ungroupedByDepth.forEach((depthNodes, depth) => {
 			depthNodes.forEach((node, index) => {
 				node.x = startX + depth * depthSpacing;
@@ -153,17 +138,16 @@ export function GraphVisualization({
 				currentY += (depthNodes.length - 1) * nodeSpacing + componentSpacing;
 			}
 		});
-
 		allNodes.push(...ungroupedNodes);
 
-		setGraphData({
+		return {
 			nodes: allNodes,
 			links: Array.from(links.values()),
-			components: components,
-		});
-	}, [updates]);
+			components,
+		};
+	});
 
-	if (graphData.nodes.length === 0) {
+	if (graphData.value.nodes.length === 0) {
 		return (
 			<div className="graph-empty">
 				<div>
@@ -197,7 +181,7 @@ export function GraphVisualization({
 
 					{/* Component Groups */}
 					<g className="component-groups">
-						{graphData.components.map(component => (
+						{graphData.value.components.map(component => (
 							<g key={`component-${component.id}`}>
 								<rect
 									className="component-boundary"
@@ -227,11 +211,11 @@ export function GraphVisualization({
 
 					{/* Links */}
 					<g className="links">
-						{graphData.links.map((link, index) => {
-							const sourceNode = graphData.nodes.find(
+						{graphData.value.links.map((link, index) => {
+							const sourceNode = graphData.value.nodes.find(
 								n => n.id === link.source
 							);
-							const targetNode = graphData.nodes.find(
+							const targetNode = graphData.value.nodes.find(
 								n => n.id === link.target
 							);
 
@@ -252,7 +236,7 @@ export function GraphVisualization({
 
 					{/* Nodes */}
 					<g className="nodes">
-						{graphData.nodes.map(node => (
+						{graphData.value.nodes.map(node => (
 							<g key={node.id} className="graph-node-group">
 								<circle
 									className={`graph-node ${node.type}`}
