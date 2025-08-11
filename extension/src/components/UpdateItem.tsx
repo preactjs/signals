@@ -50,23 +50,29 @@ export function UpdateItem({ update }: UpdateItemProps) {
 	return (
 		<div
 			style={{ marginLeft: `${(update.depth || 0) * 4}px` }}
-			className={`update-item ${update.type}`}
+			class={`update-item ${update.type}`}
 		>
-			<div className="update-header">
-				<span className="signal-name">
+			<div class="update-header">
+				<span class="signal-name">
 					{depth}
 					{update.depth === 0 ? "🎯" : "↪️"} {update.signalName}
-					{update.componentName && (
-						<span className="component-name"> in {update.componentName}</span>
-					)}
 				</span>
-				<span className="update-time">{time}</span>
+				<span class="update-time">{time}</span>
 			</div>
-			<div className="value-change">
-				<span className="value-prev">{prevValue}</span>
-				<span className="value-arrow">→</span>
-				<span className="value-new">{newValue}</span>
+			<div class="value-change">
+				<span class="value-prev">{prevValue}</span>
+				<span class="value-arrow">→</span>
+				<span class="value-new">{newValue}</span>
 			</div>
+			<ul class="component-list">
+				<span class="component-name-header">Rerendered</span>
+				{update.componentNames?.map((componentName, i) => (
+					<li key={componentName} class="component-name">
+						{componentName}
+						{i < update.componentNames!.length - 1 ? ", " : ""}
+					</li>
+				))}
+			</ul>
 		</div>
 	);
 }

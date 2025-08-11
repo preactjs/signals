@@ -28,7 +28,7 @@ export interface ConnectionStatus {
 export interface GraphNode {
 	id: string;
 	name: string;
-	type: "signal" | "computed" | "effect";
+	type: "signal" | "computed" | "effect" | "component";
 	x: number;
 	y: number;
 	depth: number;

@@ -293,6 +293,26 @@ body {
   border-left: 4px solid #ff9800;
 }
 
+.component-name-header {
+	margin-right: 8px;
+}
+
+.component-list {
+	list-style: none;
+	display: flex;
+	padding: 0;
+	margin: 0;
+	font-family: monospace;
+  background: #f8f9fa;
+  padding: 4px 6px;
+  border-radius: 3px;
+}
+
+.update-item.rerender {
+  border-left: 4px solid #9c27b0;
+  background-color: #fafafa;
+}
+
 .update-item.value {
   border-left: 4px solid #2196f3;
 }
@@ -413,6 +433,10 @@ body {
 
 .graph-node.effect {
   fill: #4caf50;
+}
+
+.graph-node.component {
+  fill: #9c27b0;
 }
 
 .graph-link {

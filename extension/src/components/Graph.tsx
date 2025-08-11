@@ -31,6 +31,8 @@ export function GraphVisualization({
 			update => update.type !== "divider"
 		) as SignalUpdate[];
 
+		const componentNodes = new Set<string>();
+
 		for (const update of signalUpdates) {
 			if (!update.signalId) continue;
 			const type: "signal" | "computed" | "effect" = update.signalType;
@@ -55,6 +57,35 @@ export function GraphVisualization({
 						source: update.subscribedTo,
 						target: update.signalId,
 					});
+				}
+			}
+
+			// Create component nodes for each component that will rerender
+			if (update.componentNames && update.componentNames.length > 0) {
+				for (const componentName of update.componentNames) {
+					const componentId = `component:${componentName}`;
+					componentNodes.add(componentId);
+
+					if (!nodes.has(componentId)) {
+						nodes.set(componentId, {
+							id: componentId,
+							name: componentName,
+							type: "component",
+							x: 0,
+							y: 0,
+							depth: currentDepth + 1, // Components are one level deeper than the signal that triggers them
+							componentName: componentName,
+						});
+					}
+
+					// Create link from signal to component rerender
+					const rerenderLinkKey = `${update.signalId}->${componentId}`;
+					if (!links.has(rerenderLinkKey)) {
+						links.set(rerenderLinkKey, {
+							source: update.signalId,
+							target: componentId,
+						});
+					}
 				}
 			}
 		}
@@ -179,36 +210,6 @@ export function GraphVisualization({
 						</marker>
 					</defs>
 
-					{/* Component Groups */}
-					<g className="component-groups">
-						{graphData.value.components.map(component => (
-							<g key={`component-${component.id}`}>
-								<rect
-									className="component-boundary"
-									x={component.x}
-									y={component.y}
-									width={component.width}
-									height={component.height}
-									fill="rgba(100, 149, 237, 0.1)"
-									stroke="rgba(100, 149, 237, 0.3)"
-									strokeWidth="2"
-									strokeDasharray="5,5"
-									rx="8"
-								/>
-								<text
-									className="component-label"
-									x={component.x + 10}
-									y={component.y + 20}
-									fill="#4169E1"
-									fontSize="12"
-									fontWeight="bold"
-								>
-									{component.name}
-								</text>
-							</g>
-						))}
-					</g>
-
 					{/* Links */}
 					<g className="links">
 						{graphData.value.links.map((link, index) => {
@@ -284,6 +285,13 @@ export function GraphVisualization({
 							style={{ backgroundColor: "#4caf50" }}
 						></div>
 						<span>Effect</span>
+					</div>
+					<div className="legend-item">
+						<div
+							className="legend-color"
+							style={{ backgroundColor: "#9c27b0" }}
+						></div>
+						<span>Component</span>
 					</div>
 				</div>
 			</div>
