@@ -437,6 +437,8 @@ body {
 
 .graph-node.component {
   fill: #9c27b0;
+  stroke: #7b1fa2;
+  stroke-width: 2;
 }
 
 .graph-link {

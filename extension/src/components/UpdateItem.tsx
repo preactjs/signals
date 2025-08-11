@@ -64,15 +64,17 @@ export function UpdateItem({ update }: UpdateItemProps) {
 				<span class="value-arrow">→</span>
 				<span class="value-new">{newValue}</span>
 			</div>
-			<ul class="component-list">
-				<span class="component-name-header">Rerendered</span>
-				{update.componentNames?.map((componentName, i) => (
-					<li key={componentName} class="component-name">
-						{componentName}
-						{i < update.componentNames!.length - 1 ? ", " : ""}
-					</li>
-				))}
-			</ul>
+			{update.componentNames && update.componentNames.length > 0 && (
+				<ul class="component-list">
+					<span class="component-name-header">Rerendered</span>
+					{update.componentNames?.map((componentName, i) => (
+						<li key={componentName} class="component-name">
+							{componentName}
+							{i < update.componentNames!.length - 1 ? ", " : ""}
+						</li>
+					))}
+				</ul>
+			)}
 		</div>
 	);
 }

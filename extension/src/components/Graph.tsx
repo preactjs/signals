@@ -90,86 +90,35 @@ export function GraphVisualization({
 			}
 		}
 
-		// Group nodes by component
-		const componentGroups = new Map<string, GraphNode[]>();
-		const ungroupedNodes: GraphNode[] = [];
-		nodes.forEach(node => {
-			if (node.componentName) {
-				if (!componentGroups.has(node.componentName)) {
-					componentGroups.set(node.componentName, []);
-				}
-				componentGroups.get(node.componentName)!.push(node);
-			} else {
-				ungroupedNodes.push(node);
+		// Simple depth-based layout
+		const allNodes = Array.from(nodes.values());
+		const nodeSpacing = 120; // More spacing between nodes
+		const depthSpacing = 250; // Distance between depth levels
+		const startX = 100;
+		const startY = 80;
+
+		// Group nodes by depth
+		const nodesByDepth = new Map<number, GraphNode[]>();
+		allNodes.forEach(node => {
+			if (!nodesByDepth.has(node.depth)) {
+				nodesByDepth.set(node.depth, []);
 			}
+			nodesByDepth.get(node.depth)!.push(node);
 		});
 
-		// Layout constants
-		const nodeSpacing = 80;
-		const componentSpacing = 60;
-		const depthSpacing = 300;
-		const startX = 150;
-		const startY = 100;
-		let currentY = startY;
+		// Layout nodes by depth, centering each depth level vertically
+		const maxDepth = Math.max(...allNodes.map(n => n.depth));
+		nodesByDepth.forEach((depthNodes, depth) => {
+			const depthHeight = (depthNodes.length - 1) * nodeSpacing;
+			const depthStartY = startY + maxDepth * 100 - depthHeight / 2; // Center this depth level
 
-		const components: ComponentGroup[] = [];
-		const allNodes: GraphNode[] = [];
-
-		// Layout component groups
-		componentGroups.forEach((componentNodes, componentName) => {
-			const nodesByDepth = new Map<number, GraphNode[]>();
-			componentNodes.forEach(node => {
-				if (!nodesByDepth.has(node.depth)) nodesByDepth.set(node.depth, []);
-				nodesByDepth.get(node.depth)!.push(node);
-			});
-
-			const minDepth = Math.min(...componentNodes.map(n => n.depth));
-			const maxDepth = Math.max(...componentNodes.map(n => n.depth));
-			const componentWidth = (maxDepth - minDepth + 1) * depthSpacing + 100;
-
-			let componentMinY = currentY;
-			let componentMaxY = currentY;
-
-			nodesByDepth.forEach((depthNodes, depth) => {
-				depthNodes.forEach((node, index) => {
-					node.x = startX + depth * depthSpacing;
-					node.y = currentY + index * nodeSpacing;
-					componentMaxY = Math.max(componentMaxY, node.y);
-				});
-				currentY = componentMaxY + nodeSpacing;
-			});
-
-			const componentHeight = componentMaxY - componentMinY + 80;
-			components.push({
-				id: componentName,
-				name: componentName,
-				x: startX + minDepth * depthSpacing - 40,
-				y: componentMinY - 40,
-				width: componentWidth,
-				height: componentHeight,
-				nodes: componentNodes,
-			});
-			allNodes.push(...componentNodes);
-			currentY = componentMaxY + componentSpacing;
-		});
-
-		// Layout ungrouped nodes
-		const ungroupedByDepth = new Map<number, GraphNode[]>();
-		ungroupedNodes.forEach(node => {
-			if (!ungroupedByDepth.has(node.depth))
-				ungroupedByDepth.set(node.depth, []);
-			ungroupedByDepth.get(node.depth)!.push(node);
-		});
-		ungroupedByDepth.forEach((depthNodes, depth) => {
 			depthNodes.forEach((node, index) => {
 				node.x = startX + depth * depthSpacing;
-				node.y = currentY + index * nodeSpacing;
+				node.y = depthStartY + index * nodeSpacing;
 			});
-			if (depthNodes.length > 0) {
-				currentY += (depthNodes.length - 1) * nodeSpacing + componentSpacing;
-			}
 		});
-		allNodes.push(...ungroupedNodes);
+
+		const components: ComponentGroup[] = []; // Remove component grouping for now
 
 		return {
 			nodes: allNodes,
@@ -192,10 +141,20 @@ export function GraphVisualization({
 		);
 	}
 
+	// Calculate SVG dimensions based on nodes
+	const svgWidth = Math.max(800, ...graphData.value.nodes.map(n => n.x + 100));
+	const svgHeight = Math.max(600, ...graphData.value.nodes.map(n => n.y + 100));
+
 	return (
 		<div className="graph-container">
 			<div className="graph-content">
-				<svg ref={svgRef} className="graph-svg">
+				<svg
+					ref={svgRef}
+					className="graph-svg"
+					width={svgWidth}
+					height={svgHeight}
+					viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+				>
 					{/* Arrow marker definition */}
 					<defs>
 						<marker
@@ -222,14 +181,24 @@ export function GraphVisualization({
 
 							if (!sourceNode || !targetNode) return null;
 
+							// Use curved paths for better visual flow
+							const sourceX = sourceNode.x + 25;
+							const sourceY = sourceNode.y;
+							const targetX = targetNode.x - 25;
+							const targetY = targetNode.y;
+
+							const midX = sourceX + (targetX - sourceX) * 0.6;
+							const pathData = `M ${sourceX} ${sourceY} Q ${midX} ${sourceY} ${targetX} ${targetY}`;
+
 							return (
-								<line
+								<path
 									key={`link-${index}`}
 									className="graph-link"
-									x1={sourceNode.x + 30}
-									y1={sourceNode.y}
-									x2={targetNode.x - 30}
-									y2={targetNode.y}
+									d={pathData}
+									fill="none"
+									stroke="#666"
+									strokeWidth="2"
+									markerEnd="url(#arrowhead)"
 								/>
 							);
 						})}
@@ -237,29 +206,47 @@ export function GraphVisualization({
 
 					{/* Nodes */}
 					<g className="nodes">
-						{graphData.value.nodes.map(node => (
-							<g key={node.id} className="graph-node-group">
-								<circle
-									className={`graph-node ${node.type}`}
-									cx={node.x}
-									cy={node.y}
-									r="25"
-								/>
-								<text
-									className="graph-text"
-									x={node.x}
-									y={node.y}
-									textLength={
-										8 * (node.name.length > 8 ? 11 : node.name.length)
-									}
-									lengthAdjust="spacingAndGlyphs"
-								>
-									{node.name.length > 8
-										? node.name.slice(0, 8) + "..."
-										: node.name}
-								</text>
-							</g>
-						))}
+						{graphData.value.nodes.map(node => {
+							const radius = node.type === "component" ? 35 : 25;
+							const displayName =
+								node.name.length > 10
+									? node.name.slice(0, 10) + "..."
+									: node.name;
+
+							return (
+								<g key={node.id} className="graph-node-group">
+									{node.type === "component" ? (
+										// Rectangular shape for components
+										<rect
+											className={`graph-node ${node.type}`}
+											x={node.x - radius}
+											y={node.y - 20}
+											width={radius * 2}
+											height={40}
+											rx="8"
+										/>
+									) : (
+										// Circular shape for signals/computed/effects
+										<circle
+											className={`graph-node ${node.type}`}
+											cx={node.x}
+											cy={node.y}
+											r={radius}
+										/>
+									)}
+									<text
+										className="graph-text"
+										x={node.x}
+										y={node.y + 4}
+										textAnchor="middle"
+										fontSize="12"
+										fontWeight="bold"
+									>
+										{displayName}
+									</text>
+								</g>
+							);
+						})}
 					</g>
 				</svg>
 
