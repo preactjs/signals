@@ -14,7 +14,6 @@ export function GraphVisualization({
 }: {
 	updates: Signal<(SignalUpdate | Divider)[]>;
 }) {
-	console.log(updates);
 	const svgRef = useRef<SVGSVGElement>(null);
 
 	// Build graph data from updates signal using a computed

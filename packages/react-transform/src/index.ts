@@ -361,6 +361,119 @@ function isJSXAlternativeCall(
 	return false;
 }
 
+function isSignalCall(path: NodePath<BabelTypes.CallExpression>): boolean {
+	const callee = path.get("callee");
+
+	// Check direct function calls like signal(), computed(), useSignal(), useComputed()
+	if (callee.isIdentifier()) {
+		const name = callee.node.name;
+		return (
+			name === "signal" ||
+			name === "computed" ||
+			name === "useSignal" ||
+			name === "useComputed"
+		);
+	}
+
+	return false;
+}
+
+function getVariableNameFromDeclarator(
+	path: NodePath<BabelTypes.CallExpression>
+): string | null {
+	// Walk up the AST to find a variable declarator
+	let currentPath: NodePath | null = path;
+	while (currentPath) {
+		if (
+			currentPath.isVariableDeclarator() &&
+			currentPath.node.id.type === "Identifier"
+		) {
+			return currentPath.node.id.name;
+		}
+		currentPath = currentPath.parentPath;
+	}
+	return null;
+}
+
+function hasNameInOptions(
+	t: typeof BabelTypes,
+	args: NodePath<
+		| BabelTypes.Expression
+		| BabelTypes.SpreadElement
+		| BabelTypes.JSXNamespacedName
+		| BabelTypes.ArgumentPlaceholder
+	>[]
+): boolean {
+	// Check if there's a second argument with a name property
+	if (args.length >= 2) {
+		const optionsArg = args[1];
+		if (optionsArg.isObjectExpression()) {
+			return optionsArg.node.properties.some(prop => {
+				if (t.isObjectProperty(prop) && !prop.computed) {
+					if (t.isIdentifier(prop.key, { name: "name" })) {
+						return true;
+					}
+					if (t.isStringLiteral(prop.key) && prop.key.value === "name") {
+						return true;
+					}
+				}
+				return false;
+			});
+		}
+	}
+	return false;
+}
+
+function injectSignalName(
+	t: typeof BabelTypes,
+	path: NodePath<BabelTypes.CallExpression>,
+	variableName: string,
+	filename: string | undefined
+): void {
+	const args = path.get("arguments");
+
+	// Create enhanced name with filename and line number
+	let nameValue = variableName;
+	if (filename) {
+		const baseName = basename(filename);
+		const lineNumber = path.node.loc?.start.line;
+		if (baseName && lineNumber) {
+			nameValue = `${variableName} (${baseName}:${lineNumber})`;
+		}
+	}
+
+	const name = t.stringLiteral(nameValue);
+
+	if (args.length === 0) {
+		// No arguments, add both value and options
+		const nameOption = t.objectExpression([
+			t.objectProperty(t.identifier("name"), name),
+		]);
+		path.node.arguments.push(t.identifier("undefined"), nameOption);
+	} else if (args.length === 1) {
+		// One argument (value), add options object
+		const nameOption = t.objectExpression([
+			t.objectProperty(t.identifier("name"), name),
+		]);
+		path.node.arguments.push(nameOption);
+	} else if (args.length >= 2) {
+		// Two or more arguments, modify existing options object
+		const optionsArg = args[1];
+		if (optionsArg.isObjectExpression()) {
+			// Add name property to existing options object
+			optionsArg.node.properties.push(
+				t.objectProperty(t.identifier("name"), name)
+			);
+		} else {
+			// Replace second argument with options object containing name
+			const nameOption = t.objectExpression([
+				t.objectProperty(t.identifier("name"), name),
+			]);
+			args[1].replaceWith(nameOption);
+		}
+	}
+}
+
 function hasValuePropertyInPattern(pattern: BabelTypes.ObjectPattern): boolean {
 	for (const property of pattern.properties) {
 		if (BabelTypes.isObjectProperty(property)) {
@@ -381,24 +494,66 @@ try {
 	STORE_IDENTIFIER.f();
 }`;
 
+const debugTryCatchTemplate = template.statements(
+	`var STORE_IDENTIFIER = HOOK_IDENTIFIER(HOOK_USAGE);
+try {
+	if (window.__PREACT_SIGNALS_DEVTOOLS__) {
+		window.__PREACT_SIGNALS_DEVTOOLS__.enterComponent(
+			COMPONENT_NAME
+		);
+	}
+	BODY
+} finally {
+	STORE_IDENTIFIER.f();
+	if (window.__PREACT_SIGNALS_DEVTOOLS__) {
+		window.__PREACT_SIGNALS_DEVTOOLS__.exitComponent();
+	}
+}`,
+	{
+		placeholderWhitelist: new Set([
+			"STORE_IDENTIFIER",
+			"HOOK_USAGE",
+			"HOOK_IDENTIFIER",
+			"BODY",
+			"COMPONENT_NAME",
+			"STORE_IDENTIFIER",
+		]),
+		placeholderPattern: false,
+	}
+);
+
 function wrapInTryFinally(
 	t: typeof BabelTypes,
 	path: NodePath<FunctionLike>,
 	state: PluginPass,
-	hookUsage: HookUsage
+	hookUsage: HookUsage,
+	componentName: string,
+	isDebug: boolean
 ): BabelTypes.BlockStatement {
 	const stopTrackingIdentifier = path.scope.generateUidIdentifier("effect");
 
-	return t.blockStatement(
-		tryCatchTemplate({
+	if (isDebug) {
+		const statements = debugTryCatchTemplate({
+			COMPONENT_NAME: t.stringLiteral(componentName),
 			STORE_IDENTIFIER: stopTrackingIdentifier,
 			HOOK_IDENTIFIER: get(state, getHookIdentifier)(),
 			HOOK_USAGE: hookUsage,
 			BODY: t.isBlockStatement(path.node.body)
-				? path.node.body.body // TODO: Is it okay to elide the block statement here?
+				? path.node.body.body
 				: t.returnStatement(path.node.body),
-		})
-	);
+		});
+		return t.blockStatement(statements);
+	} else {
+		const statements = tryCatchTemplate({
+			STORE_IDENTIFIER: stopTrackingIdentifier,
+			HOOK_IDENTIFIER: get(state, getHookIdentifier)(),
+			HOOK_USAGE: hookUsage,
+			BODY: t.isBlockStatement(path.node.body)
+				? path.node.body.body
+				: t.returnStatement(path.node.body),
+		});
+		return t.blockStatement(statements);
+	}
 }
 
 function prependUseSignals<T extends FunctionLike>(
@@ -426,7 +581,8 @@ function transformFunction(
 	options: PluginOptions,
 	path: NodePath<FunctionLike>,
 	functionName: string | null,
-	state: PluginPass
+	state: PluginPass,
+	filename: string
 ) {
 	const isHook = isCustomHookName(functionName);
 	const isComponent = isComponentName(functionName);
@@ -440,7 +596,14 @@ function transformFunction(
 
 	let newBody: BabelTypes.BlockStatement;
 	if (hookUsage !== UNMANAGED) {
-		newBody = wrapInTryFinally(t, path, state, hookUsage);
+		newBody = wrapInTryFinally(
+			t,
+			path,
+			state,
+			hookUsage,
+			`${functionName || "Unknown"}:${basename(filename)}`,
+			isComponent && !!options.experimental?.debug
+		);
 	} else {
 		newBody = prependUseSignals(t, path, state);
 	}
@@ -609,6 +772,17 @@ export interface PluginOptions {
 	detectTransformedJSX?: boolean;
 	experimental?: {
 		/**
+		 * If set to true the plugin will inject names into all invocations of
+		 *
+		 * - computed/useComputed
+		 * - signal/useSignal
+		 *
+		 * these names hook into @preact/signals-debug.
+		 *
+		 * @default false
+		 */
+		debug?: boolean;
+		/**
 		 * If set to true, the component body will not be wrapped in a try/finally
 		 * block and instead the next component render or a microtick will stop
 		 * tracking signals for this component. This is an experimental feature and
@@ -673,7 +847,14 @@ export default function signalsTransform(
 			}
 
 			if (shouldTransform(path, functionName, state.opts)) {
-				transformFunction(t, state.opts, path, functionName, state);
+				transformFunction(
+					t,
+					state.opts,
+					path,
+					functionName,
+					state,
+					this.filename || ""
+				);
 				log(true, path, functionName, this.filename);
 			} else if (isComponentLike(path, functionName)) {
 				log(false, path, functionName, this.filename);
@@ -717,6 +898,19 @@ export default function signalsTransform(
 				if (options.detectTransformedJSX) {
 					if (isJSXAlternativeCall(path, state)) {
 						setOnFunctionScope(path, containsJSX, true, this.filename);
+					}
+				}
+
+				// Handle signal naming
+				if (options.experimental?.debug && isSignalCall(path)) {
+					const args = path.get("arguments");
+
+					// Only inject name if it doesn't already have one
+					if (!hasNameInOptions(t, args)) {
+						const variableName = getVariableNameFromDeclarator(path);
+						if (variableName) {
+							injectSignalName(t, path, variableName, this.filename);
+						}
 					}
 				}
 			},
