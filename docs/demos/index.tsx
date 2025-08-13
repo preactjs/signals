@@ -1,8 +1,8 @@
+import "@preact/signals-debug";
 import { render } from "preact";
 import { LocationProvider, Router, useLocation, lazy } from "preact-iso";
-import { signal, useSignal } from "@preact/signals";
+import { signal, useComputed, useSignal } from "@preact/signals";
 import { setFlashingEnabled, constrainFlashToChildren } from "./render-flasher";
-import "@preact/signals-debug";
 
 // disable flashing during initial render:
 setFlashingEnabled(false);
@@ -10,6 +10,7 @@ setTimeout(setFlashingEnabled, 100, true);
 
 const demos = {
 	Counter,
+	Sum,
 	GlobalCounter,
 	DuelingCounters,
 	Nesting: lazy(() => import("./nesting")),
@@ -58,7 +59,7 @@ function displayName(name: string) {
 }
 
 function Counter() {
-	const count = useSignal(0, "counter");
+	const count = useSignal(0, { name: "counter" });
 
 	return (
 		<div class="card">
@@ -69,7 +70,40 @@ function Counter() {
 	);
 }
 
-const globalCount = signal(0, "global-counter");
+function Sum() {
+	const a = useSignal(0, { name: "a" });
+	const b = useSignal(0, { name: "b" });
+
+	const sum = useComputed(() => a.value + b.value, { name: "sum" });
+
+	return (
+		<div class="card">
+			<p>
+				<label>
+					A:{" "}
+					<input
+						type="number"
+						value={a}
+						onInput={e => (a.value = +e.currentTarget.value)}
+					/>
+				</label>
+			</p>
+			<p>
+				<label>
+					B:{" "}
+					<input
+						type="number"
+						value={b}
+						onInput={e => (b.value = +e.currentTarget.value)}
+					/>
+				</label>
+			</p>
+			<output>Sum: {sum}</output>
+		</div>
+	);
+}
+
+const globalCount = signal(0, { name: "global-counter" });
 function GlobalCounter({ explain = true }) {
 	return (
 		<>

@@ -2,6 +2,8 @@
 import { Signal, Effect, Computed, effect } from "@preact/signals-core";
 import { formatValue, getSignalName } from "./utils";
 import { UpdateInfo, Node, Computed as ComputedType } from "./internal";
+import { getExtensionBridge } from "./extension-bridge";
+import "./devtools"; // Initialize DevTools integration
 
 const inflightUpdates = new Set<Signal | Effect>();
 const updateInfoMap = new WeakMap<Signal | Effect, UpdateInfo[]>();
@@ -9,6 +11,7 @@ const trackers = new WeakMap<Signal | Effect, number>();
 const signalValues = new WeakMap<Signal | Effect, any>();
 const subscriptions = new WeakMap<Signal | Effect, () => void>();
 const internalEffects = new WeakSet<Effect>();
+const signalDependencies = new WeakMap<Signal | Effect, Set<string>>(); // Track what each signal depends on
 
 export function setDebugOptions(options: {
 	grouped?: boolean;
@@ -25,12 +28,32 @@ let isGrouped = true,
 	initializing = false,
 	spacing = 0;
 
+function getSignalId(signal: Signal | Effect): string {
+	if (!(signal as any)._debugId) {
+		(signal as any)._debugId =
+			`signal_${Math.random().toString(36).substr(2, 9)}`;
+	}
+	return (signal as any)._debugId;
+}
+
+function trackDependency(target: Signal | Effect, source: Signal | Effect) {
+	const sourceId = getSignalId(source);
+
+	if (!signalDependencies.has(target)) {
+		signalDependencies.set(target, new Set());
+	}
+	signalDependencies.get(target)?.add(sourceId);
+}
+
 // Store original methods
 const originalSubscribe = Signal.prototype._subscribe;
 const originalUnsubscribe = Signal.prototype._unsubscribe;
 // Track subscriptions for statistics
 Signal.prototype._subscribe = function (node: Node) {
 	if (initializing) return originalSubscribe.call(this, node);
+
+	// Track signal ownership when subscribing
+	window.__PREACT_SIGNALS_DEVTOOLS__?.trackSignalOwnership?.(this);
 
 	const tracker = trackers.get(this) || 0;
 	trackers.set(this, tracker + 1);
@@ -87,6 +110,9 @@ Computed.prototype._refresh = function () {
 	const newValue = this._value;
 	const baseSignal = bubbleUpToBaseSignal(this as any);
 	if (baseSignal && prevValue !== newValue) {
+		// Track dependency
+		trackDependency(this, baseSignal.signal);
+
 		const updateInfoList = updateInfoMap.get(baseSignal.signal) || [];
 		updateInfoList.push({
 			signal: this,
@@ -95,6 +121,7 @@ Computed.prototype._refresh = function () {
 			timestamp: Date.now(),
 			depth: baseSignal.depth,
 			type: "value",
+			subscribedTo: getSignalId(baseSignal.signal),
 		});
 		updateInfoMap.set(baseSignal.signal, updateInfoList);
 	}
@@ -175,12 +202,16 @@ Effect.prototype._callback = function (this: Effect) {
 	if ("_sources" in this) {
 		const baseSignal = bubbleUpToBaseSignal(this as any);
 		if (baseSignal) {
+			// Track dependency
+			trackDependency(this, baseSignal.signal);
+
 			const updateInfoList = updateInfoMap.get(baseSignal.signal) || [];
 			updateInfoList.push({
 				signal: this,
 				timestamp: Date.now(),
 				depth: baseSignal.depth,
 				type: "effect",
+				subscribedTo: getSignalId(baseSignal.signal),
 			});
 			updateInfoMap.set(baseSignal.signal, updateInfoList);
 		}
@@ -192,9 +223,29 @@ Effect.prototype._callback = function (this: Effect) {
 function flushUpdates() {
 	const signals = Array.from(inflightUpdates);
 	inflightUpdates.clear();
+	const bridge = getExtensionBridge();
 
 	for (const signal of signals) {
 		const updateInfoList = updateInfoMap.get(signal) || [];
+
+		// Send updates to Chrome DevTools extension with filtering and throttling
+		if (typeof window !== "undefined" && !bridge.shouldThrottleUpdate()) {
+			// Filter updates based on signal names
+			const filteredUpdates = updateInfoList.filter(updateInfo => {
+				const signalName = getSignalName(updateInfo.signal);
+				return bridge.matchesFilter(signalName);
+			});
+
+			if (
+				filteredUpdates.length > 0 &&
+				(window as any).__PREACT_SIGNALS_DEVTOOLS__
+			) {
+				(window as any).__PREACT_SIGNALS_DEVTOOLS__.sendUpdate?.(
+					filteredUpdates
+				);
+			}
+		}
+
 		let prevDepth = -1;
 		for (const updateInfo of updateInfoList) {
 			logUpdate(updateInfo, prevDepth);
@@ -256,3 +307,6 @@ function endUpdateGroup() {
 	}
 }
 /* eslint-enable no-console */
+
+// Export extension utilities
+export type { ExtensionConfig } from "./extension-bridge";

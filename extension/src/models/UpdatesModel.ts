@@ -1,0 +1,83 @@
+import { signal, computed, effect } from "@preact/signals";
+import { Divider, SignalUpdate } from "../types";
+
+const createUpdatesModel = () => {
+	const updates = signal<(SignalUpdate | Divider)[]>([]);
+	const lastUpdateId = signal<number>(0);
+	const isPaused = signal<boolean>(false);
+
+	const addUpdate = (
+		update: SignalUpdate | Divider | Array<SignalUpdate | Divider>
+	) => {
+		if (Array.isArray(update)) {
+			update.forEach(item => {
+				if (item.type !== "divider") item.receivedAt = Date.now();
+			});
+		} else if (update.type === "update") {
+			update.receivedAt = Date.now();
+		}
+		updates.value = [
+			...updates.value,
+			...(Array.isArray(update) ? update : [update]),
+		];
+	};
+
+	const hasUpdates = computed(() => updates.value.length > 0);
+
+	const signalCounts = computed(() => {
+		const counts = new Map<string, number>();
+		updates.value.forEach(update => {
+			if (update.type === "divider") return;
+			const signalName = update.signalName || "Unknown";
+			counts.set(signalName, (counts.get(signalName) || 0) + 1);
+		});
+		return counts;
+	});
+
+	const clearUpdates = () => {
+		updates.value = [];
+		lastUpdateId.value = 0;
+	};
+
+	effect(() => {
+		if (isPaused.value) return;
+
+		const handleMessage = (event: MessageEvent) => {
+			// Only accept messages from the same origin (devtools context)
+			if (event.origin !== window.location.origin) return;
+
+			const { type, payload } = event.data;
+
+			switch (type) {
+				case "SIGNALS_UPDATE": {
+					const signalUpdates = payload.updates;
+					const updatesArray: Array<SignalUpdate | Divider> = Array.isArray(
+						signalUpdates
+					)
+						? signalUpdates
+						: [signalUpdates];
+
+					updatesArray.reverse();
+					updatesArray.push({ type: "divider" });
+
+					updatesStore.addUpdate(updatesArray);
+					break;
+				}
+			}
+		};
+
+		window.addEventListener("message", handleMessage);
+		return () => window.removeEventListener("message", handleMessage);
+	});
+
+	return {
+		updates,
+		signalCounts,
+		addUpdate,
+		clearUpdates,
+		hasUpdates,
+		isPaused,
+	};
+};
+
+export const updatesStore = createUpdatesModel();
