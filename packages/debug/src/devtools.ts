@@ -117,8 +117,7 @@ class DevToolsCommunicator {
 									: "signal",
 						signalName: this.getSignalName(signal),
 						signalId: this.getSignalId(signal),
-						componentName: owners.length > 0 ? owners[0] : null,
-						componentNames: owners.length > 1 ? owners : undefined,
+						componentNames: owners.length > 0 ? owners : undefined,
 					};
 				}),
 			},

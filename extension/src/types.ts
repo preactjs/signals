@@ -3,8 +3,7 @@ export interface SignalUpdate {
 	signalType: "signal" | "computed" | "effect";
 	signalName: string;
 	signalId?: string;
-	componentName?: string | null;
-	componentNames?: string[];
+	componentNames: string[];
 	prevValue?: any;
 	newValue?: any;
 	timestamp?: number;
@@ -32,7 +31,6 @@ export interface GraphNode {
 	x: number;
 	y: number;
 	depth: number;
-	componentName?: string;
 }
 
 export interface GraphLink {

@@ -1,31 +1,31 @@
-import { Signal, useSignal, useSignalEffect } from "@preact/signals";
+import { useSignal, useSignalEffect } from "@preact/signals";
 import { Button } from "./Button";
 import { Settings } from "../types";
+import { settingsStore } from "../models/SettingsModel";
 
 interface SettingsPanelProps {
-	isVisible: Signal<boolean>;
-	settings: Signal<Settings>;
+	isVisible: boolean;
 	onApply: (settings: Settings) => void;
 	onCancel: () => void;
 }
 
 export function SettingsPanel({
 	isVisible,
-	settings,
 	onApply,
 	onCancel,
 }: SettingsPanelProps) {
-	const localSettings = useSignal<Settings>(settings.value);
+	const settings = settingsStore.settings;
+	const localSettings = useSignal<Settings>(settings);
 
 	useSignalEffect(() => {
-		localSettings.value = settings.value;
+		localSettings.value = settingsStore.settings;
 	});
 
 	const handleApply = () => {
 		onApply(localSettings.value);
 	};
 
-	if (!isVisible.value) {
+	if (!isVisible) {
 		return null;
 	}
 
