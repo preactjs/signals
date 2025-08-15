@@ -514,6 +514,68 @@ body {
   color: #666;
 }
 
+/* Tree Node Styles */
+.tree-node {
+  margin-bottom: 4px;
+}
+
+.tree-node-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.collapse-button {
+  background: none;
+  border: none;
+  color: #666;
+  cursor: pointer;
+  font-size: 12px;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin-top: 8px;
+  flex-shrink: 0;
+  transition: color 0.2s;
+}
+
+.collapse-button:hover {
+  color: #333;
+  background: #f0f0f0;
+  border-radius: 2px;
+}
+
+.collapse-spacer {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  margin-top: 8px;
+}
+
+.update-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.tree-children {
+  margin-left: 20px;
+  border-left: 1px solid #e0e0e0;
+  padding-left: 4px;
+  margin-top: 4px;
+}
+
+.tree-children .tree-node:last-child {
+  margin-bottom: 0;
+}
+
+/* Update existing update-item styles to work better with tree */
+.tree-node .update-item {
+  margin-bottom: 0;
+}
+
 /* Responsive adjustments */
 @media (max-width: 600px) {
   .header {
@@ -533,5 +595,9 @@ body {
   .graph-legend {
     position: static;
     margin: 16px;
+  }
+
+  .tree-children {
+    margin-left: 12px;
   }
 }

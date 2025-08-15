@@ -8,7 +8,6 @@ export function UpdateItem({ update }: UpdateItemProps) {
 	const time = new Date(
 		update.timestamp || update.receivedAt
 	).toLocaleTimeString();
-	const depth = "  ".repeat(update.depth || 0);
 
 	const formatValue = (value: any): string => {
 		if (value === null) return "null";
@@ -27,13 +26,10 @@ export function UpdateItem({ update }: UpdateItemProps) {
 
 	if (update.type === "effect") {
 		return (
-			<div
-				style={{ marginLeft: `${(update.depth || 0) * 4}px` }}
-				className={`update-item ${update.type}`}
-			>
+			<div className={`update-item ${update.type}`}>
 				<div className="update-header">
 					<span className="signal-name">
-						{depth}↪️ {update.signalName}
+						↪️ {update.signalName}
 						{update.componentNames && update.componentNames.length > 0 && (
 							<ul class="component-list">
 								<span class="component-name-header">Rerendered</span>
@@ -56,13 +52,9 @@ export function UpdateItem({ update }: UpdateItemProps) {
 	const newValue = formatValue(update.newValue);
 
 	return (
-		<div
-			style={{ marginLeft: `${(update.depth || 0) * 4}px` }}
-			class={`update-item ${update.type}`}
-		>
+		<div class={`update-item ${update.type}`}>
 			<div class="update-header">
 				<span class="signal-name">
-					{depth}
 					{update.depth === 0 ? "🎯" : "↪️"} {update.signalName}
 				</span>
 				<span class="update-time">{time}</span>
