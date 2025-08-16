@@ -8,12 +8,10 @@ import {
 	ComponentGroup,
 	SignalUpdate,
 } from "../types";
+import { updatesStore } from "../models/UpdatesModel";
 
-export function GraphVisualization({
-	updates,
-}: {
-	updates: Signal<(SignalUpdate | Divider)[]>;
-}) {
+export function GraphVisualization() {
+	const updates = updatesStore.updates;
 	const svgRef = useRef<SVGSVGElement>(null);
 
 	// Build graph data from updates signal using a computed

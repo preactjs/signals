@@ -2,12 +2,10 @@ import { StatusIndicator } from "./StatusIndicator";
 import { Button } from "./Button";
 import { connectionStore } from "../models/ConnectionModel";
 import { updatesStore } from "../models/UpdatesModel";
+import { settingsStore } from "../models/SettingsModel";
 
-interface HeaderProps {
-	onToggleSettings?: () => void;
-}
-
-export function Header({ onToggleSettings }: HeaderProps) {
+export function Header() {
+	const onToggleSettings = settingsStore.toggleSettings;
 	const onTogglePause = () => {
 		updatesStore.isPaused.value = !updatesStore.isPaused.value;
 	};

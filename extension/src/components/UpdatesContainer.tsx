@@ -1,49 +1,38 @@
-import { useEffect, useRef } from "preact/hooks";
-import { Divider, SignalUpdate } from "../types";
-import { UpdateItem } from "./UpdateItem";
+import { useRef } from "preact/hooks";
+import { updatesStore } from "../models/UpdatesModel";
+import { UpdateTreeNodeComponent } from "./UpdateTreeNode";
+import { useSignalEffect } from "@preact/signals";
 
-export function UpdatesContainer({
-	updates,
-	signalCounts,
-}: {
-	updates: (SignalUpdate | Divider)[];
-	signalCounts: Map<string, number>;
-}) {
+export function UpdatesContainer() {
 	const updatesListRef = useRef<HTMLDivElement>(null);
-	const recentUpdates = updates.slice(-50).reverse();
+	const updateTree = updatesStore.updateTree.value;
 
-	useEffect(() => {
+	useSignalEffect(() => {
+		// Register scroll restoration
+		// When a new update is added we scroll to top
+		const tree = updatesStore.updateTree.value;
 		if (updatesListRef.current) {
 			updatesListRef.current.scrollTop = 0;
 		}
-	}, [updates]);
+	});
 
 	return (
 		<div className="updates-container">
 			<div className="updates-header">
 				<div className="updates-stats">
 					<span>
-						Updates:{" "}
-						<strong>{updates.filter(x => x.type !== "divider").length}</strong>
+						Updates: <strong>{updatesStore.totalUpdates.value}</strong>
 					</span>
 					<span>
-						Signals: <strong>{signalCounts.size}</strong>
+						Signals: <strong>{updatesStore.signalCounts.value.size}</strong>
 					</span>
 				</div>
 			</div>
 
 			<div className="updates-list" ref={updatesListRef}>
-				{recentUpdates.map((update, index) =>
-					update.type === "divider" ? (
-						index === recentUpdates.length - 1 ? null : (
-							<div key={`${update.type}-${index}`} className="divider" />
-						)
-					) : (
-						<div key={`${update.receivedAt}-${index}`}>
-							<UpdateItem update={update} />
-						</div>
-					)
-				)}
+				{updateTree.map(node => (
+					<UpdateTreeNodeComponent key={node.id} node={node} />
+				))}
 			</div>
 		</div>
 	);

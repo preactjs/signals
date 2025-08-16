@@ -4,23 +4,17 @@ import { EmptyState } from "./components/EmptyState";
 import { Header } from "./components/Header";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { GraphVisualization } from "./components/Graph";
-import { updatesStore } from "./models/UpdatesModel";
 import { UpdatesContainer } from "./components/UpdatesContainer";
 import { connectionStore } from "./models/ConnectionModel";
-import { settingsStore } from "./models/SettingsModel";
 
 function SignalsDevToolsPanel() {
 	const activeTab = useSignal<"updates" | "graph">("updates");
 
 	return (
 		<div id="app">
-			<Header onToggleSettings={settingsStore.toggleSettings} />
+			<Header />
 
-			<SettingsPanel
-				isVisible={settingsStore.showSettings}
-				onApply={settingsStore.applySettings}
-				onCancel={settingsStore.hideSettings}
-			/>
+			<SettingsPanel />
 
 			<main className="main-content">
 				<div className="tabs">
@@ -42,15 +36,8 @@ function SignalsDevToolsPanel() {
 						<EmptyState onRefresh={connectionStore.refreshConnection} />
 					) : (
 						<>
-							{activeTab.value === "updates" && (
-								<UpdatesContainer
-									updates={updatesStore.updates.value}
-									signalCounts={updatesStore.signalCounts.value}
-								/>
-							)}
-							{activeTab.value === "graph" && (
-								<GraphVisualization updates={updatesStore.updates} />
-							)}
+							{activeTab.value === "updates" && <UpdatesContainer />}
+							{activeTab.value === "graph" && <GraphVisualization />}
 						</>
 					)}
 				</div>
