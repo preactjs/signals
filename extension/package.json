@@ -1,6 +1,6 @@
 {
   "name": "preact-signals-devtools",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Chrome DevTools extension for debugging Preact Signals",
   "private": true,
   "type": "module",

@@ -1,5 +1,22 @@
 # @preact/signals
 
+## 2.3.0
+
+### Minor Changes
+
+- [#727](https://github.com/preactjs/signals/pull/727) [`8fe8dec`](https://github.com/preactjs/signals/commit/8fe8decd9b5c6c4fd5b357730838eda030c25ae2) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Call into component tracking of the chrome extension
+
+- [#681](https://github.com/preactjs/signals/pull/681) [`6cc7005`](https://github.com/preactjs/signals/commit/6cc700595278d241f276c40dd0ecf162c9e432d8) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Allow for naming your singals/computeds/effects
+
+### Patch Changes
+
+- [#728](https://github.com/preactjs/signals/pull/728) [`0fd9503`](https://github.com/preactjs/signals/commit/0fd9503a53ad6836ac445d7d384b8f153b93a158) Thanks [@marvinhagemeister](https://github.com/marvinhagemeister)! - Fix prefresh HMR not working with `useSignal`.
+
+- [#729](https://github.com/preactjs/signals/pull/729) [`b45c2b6`](https://github.com/preactjs/signals/commit/b45c2b6e7e0c852a2df4ff7dd541864b4dd5c663) Thanks [@rschristian](https://github.com/rschristian)! - Expand semver range to support the upcoming v11 beta release
+
+- Updated dependencies [[`6cc7005`](https://github.com/preactjs/signals/commit/6cc700595278d241f276c40dd0ecf162c9e432d8)]:
+  - @preact/signals-core@1.12.0
+
 ## 2.2.1
 
 ### Patch Changes
