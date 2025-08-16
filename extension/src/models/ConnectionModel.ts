@@ -42,6 +42,7 @@ const createConnectionModel = () => {
 			switch (type) {
 				case "SIGNALS_AVAILABILITY":
 					isConnected.value = payload.available;
+					connectionStore.isContentScriptConnected = true;
 					break;
 
 				case "CONNECTION_LOST":
@@ -64,9 +65,6 @@ const createConnectionModel = () => {
 				case "CONTENT_SCRIPT_DISCONNECTED":
 					connectionStore.isContentScriptConnected = false;
 					break;
-
-				default:
-					console.log("Unhandled message type:", type);
 			}
 		};
 
@@ -75,8 +73,6 @@ const createConnectionModel = () => {
 	});
 
 	effect(() => {
-		if (isConnected.value) status.value = "connected";
-
 		if (!isBackgroundConnected.value) {
 			status.value = "disconnected";
 		} else if (!isContentScriptConnected.value) {

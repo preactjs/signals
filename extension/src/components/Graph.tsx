@@ -45,7 +45,6 @@ export function GraphVisualization({
 					x: 0,
 					y: 0,
 					depth: currentDepth,
-					componentName: update.componentName || undefined,
 				});
 			}
 
@@ -73,7 +72,6 @@ export function GraphVisualization({
 							x: 0,
 							y: 0,
 							depth: currentDepth + 1, // Components are one level deeper than the signal that triggers them
-							componentName: componentName,
 						});
 					}
 

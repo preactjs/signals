@@ -34,8 +34,16 @@ export function UpdateItem({ update }: UpdateItemProps) {
 				<div className="update-header">
 					<span className="signal-name">
 						{depth}↪️ {update.signalName}
-						{update.componentName && (
-							<span className="component-name"> in {update.componentName}</span>
+						{update.componentNames && update.componentNames.length > 0 && (
+							<ul class="component-list">
+								<span class="component-name-header">Rerendered</span>
+								{update.componentNames?.map((componentName, i) => (
+									<li key={componentName} class="component-name">
+										{componentName}
+										{i < update.componentNames!.length - 1 ? ", " : ""}
+									</li>
+								))}
+							</ul>
 						)}
 					</span>
 					<span className="update-time">{time}</span>
