@@ -3,18 +3,12 @@ import { Button } from "./Button";
 import { Settings } from "../types";
 import { settingsStore } from "../models/SettingsModel";
 
-interface SettingsPanelProps {
-	isVisible: boolean;
-	onApply: (settings: Settings) => void;
-	onCancel: () => void;
-}
-
-export function SettingsPanel({
-	isVisible,
-	onApply,
-	onCancel,
-}: SettingsPanelProps) {
+export function SettingsPanel() {
+	const onCancel = settingsStore.hideSettings;
+	const onApply = settingsStore.applySettings;
 	const settings = settingsStore.settings;
+	const isVisible = settingsStore.showSettings;
+
 	const localSettings = useSignal<Settings>(settings);
 
 	useSignalEffect(() => {
