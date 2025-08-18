@@ -1,12 +1,12 @@
 {
-  "name": "@preact/signals-react-transform",
-  "version": "0.5.2",
+  "name": "@preact/signals-preact-transform",
+  "version": "0.0.0",
   "license": "MIT",
-  "description": "Manage state with style in React",
+  "description": "Manage state with style in Preact",
   "keywords": [
     "babel",
     "signals",
-    "react"
+    "preact"
   ],
   "authors": [
     "The Preact Authors (https://github.com/preactjs/signals/contributors)"
@@ -14,7 +14,7 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/preactjs/signals",
-    "directory": "packages/react-transform"
+    "directory": "packages/preact-transform"
   },
   "bugs": "https://github.com/preactjs/signals/issues",
   "homepage": "https://preactjs.com",
@@ -42,18 +42,15 @@
     "README.md"
   ],
   "scripts": {
-    "prepublishOnly": "cd ../.. && pnpm build:react-transform"
+    "prepublishOnly": "cd ../.. && pnpm build:preact-transform"
   },
   "dependencies": {
     "@babel/helper-module-imports": "^7.22.5",
     "@babel/helper-plugin-utils": "^7.22.5",
-    "@preact/signals-react": "workspace:^3.0.0",
-    "debug": "^4.3.4",
-    "use-sync-external-store": "^1.2.0"
+    "debug": "^4.3.4"
   },
   "peerDependencies": {
-    "@babel/core": "^7.0.0",
-    "react": "^16.14.0 || 17.x || 18.x || 19.x"
+    "@babel/core": "^7.0.0"
   },
   "devDependencies": {
     "@babel/core": "^7.22.8",
@@ -62,16 +59,10 @@
     "@types/babel__helper-plugin-utils": "^7.10.0",
     "@types/debug": "^4.1.12",
     "@types/prettier": "^2.7.3",
-    "@types/react": "^18.0.18",
-    "@types/react-dom": "^18.0.6",
-    "@types/use-sync-external-store": "^0.0.3",
     "assert": "^2.0.0",
     "buffer": "^6.0.3",
     "path": "^0.12.7",
-    "prettier": "^2.7.1",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "react-router-dom": "^6.9.0"
+    "prettier": "^2.7.1"
   },
   "publishConfig": {
     "provenance": true

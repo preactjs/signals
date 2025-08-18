@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "prebuild": "shx rm -rf packages/*/dist/",
-    "build": "pnpm build:core && pnpm build:debug && pnpm build:preact && pnpm build:preact-utils && pnpm build:react-runtime && pnpm build:react && pnpm build:react-transform && pnpm build:react-utils",
+    "build": "pnpm build:core && pnpm build:debug && pnpm build:preact && pnpm build:preact-transform && pnpm build:preact-utils && pnpm build:react-runtime && pnpm build:react && pnpm build:react-transform && pnpm build:react-utils",
     "_build": "microbundle --raw --globals @preact/signals-core=preactSignalsCore,preact/hooks=preactHooks,@preact/signals-react/runtime=reactSignalsRuntime",
     "build:core": "pnpm _build --cwd packages/core && pnpm postbuild:core",
     "build:debug": "pnpm _build --cwd packages/debug && pnpm postbuild:debug",
@@ -13,6 +13,7 @@
     "build:react-utils": "pnpm _build --cwd packages/react/utils && pnpm postbuild:react-utils",
     "build:react-runtime": "pnpm _build --cwd packages/react/runtime && pnpm postbuild:react-runtime",
     "build:react-transform": "pnpm _build --no-compress --cwd packages/react-transform",
+    "build:preact-transform": "pnpm _build --no-compress --cwd packages/preact-transform",
     "postbuild:core": "cd packages/core/dist && shx mv -f index.d.ts signals-core.d.ts",
     "postbuild:debug": "cd packages/debug/dist && shx mv -f debug/src/index.d.ts signals-debug.d.ts",
     "postbuild:preact": "cd packages/preact/dist && shx mv -f preact/src/index.d.ts signals.d.ts && shx rm -rf preact",
