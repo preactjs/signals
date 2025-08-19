@@ -240,13 +240,13 @@ importers:
   packages/debug:
     devDependencies:
       '@preact/signals-core':
-        specifier: workspace:^1.7.0
+        specifier: workspace:^1.12.0
         version: link:../core
 
   packages/preact:
     dependencies:
       '@preact/signals-core':
-        specifier: workspace:^1.11.0
+        specifier: workspace:^1.12.0
         version: link:../core
     devDependencies:
       preact:
@@ -302,7 +302,7 @@ importers:
   packages/react:
     dependencies:
       '@preact/signals-core':
-        specifier: workspace:^1.11.0
+        specifier: workspace:^1.12.0
         version: link:../core
       use-sync-external-store:
         specifier: ^1.2.0
@@ -336,7 +336,7 @@ importers:
         specifier: ^7.22.5
         version: 7.27.1
       '@preact/signals-react':
-        specifier: workspace:^3.0.0
+        specifier: workspace:^3.3.0
         version: link:../react
       debug:
         specifier: ^4.3.4
