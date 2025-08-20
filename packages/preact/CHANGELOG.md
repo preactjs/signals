@@ -1,5 +1,11 @@
 # @preact/signals
 
+## 2.3.1
+
+### Patch Changes
+
+- [#744](https://github.com/preactjs/signals/pull/744) [`b178480`](https://github.com/preactjs/signals/commit/b17848089b3d396e0160e9d54a73d109d4674845) Thanks [@rschristian](https://github.com/rschristian)! - Correct semver range to support _beta_ releases of Preact v11
+
 ## 2.3.0
 
 ### Minor Changes
