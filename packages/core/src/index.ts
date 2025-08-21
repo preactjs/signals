@@ -544,7 +544,9 @@ function cleanupSources(target: Computed | Effect) {
 	target._sources = head;
 }
 
-/** @internal */
+/**
+ * The base class for computed signals.
+ */
 declare class Computed<T = any> extends Signal<T> {
 	_fn: () => T;
 	_sources?: Node;
@@ -780,7 +782,9 @@ type EffectFn =
 	| ((this: { dispose: () => void }) => void | (() => void))
 	| (() => void | (() => void));
 
-/** @internal */
+/**
+ * The base class for reactive effects.
+ */
 declare class Effect {
 	_fn?: EffectFn;
 	_cleanup?: () => void;
