@@ -417,10 +417,13 @@ body {
 .graph-node {
   cursor: pointer;
   transition: all 0.2s;
+  stroke: #fff;
+  stroke-width: 2;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
 }
 
 .graph-node:hover {
-  filter: brightness(1.1);
+  filter: brightness(1.1) drop-shadow(0 2px 4px rgba(0,0,0,0.1));
 }
 
 .graph-node.signal {
@@ -437,8 +440,6 @@ body {
 
 .graph-node.component {
   fill: #9c27b0;
-  stroke: #7b1fa2;
-  stroke-width: 2;
 }
 
 .graph-link {
@@ -460,6 +461,7 @@ body {
   font-size: 12px;
   font-weight: 500;
   pointer-events: none;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
 }
 
 .graph-legend {
