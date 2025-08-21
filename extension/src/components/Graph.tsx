@@ -202,11 +202,14 @@ export function GraphVisualization() {
 					{/* Nodes */}
 					<g className="nodes">
 						{graphData.value.nodes.map(node => {
-							const radius = node.type === "component" ? 35 : 25;
+							const radius = node.type === "component" ? 40 : 30;
+							// For circles, use a smaller character limit to fit within the circle with padding
+							const maxChars = node.type === "component" ? 10 : 7;
 							const displayName =
-								node.name.length > 10
-									? node.name.slice(0, 10) + "..."
+								node.name.length > maxChars
+									? node.name.slice(0, maxChars) + "..."
 									: node.name;
+							const isTextTruncated = node.name.length > maxChars;
 
 							return (
 								<g key={node.id} className="graph-node-group">
@@ -215,11 +218,13 @@ export function GraphVisualization() {
 										<rect
 											className={`graph-node ${node.type}`}
 											x={node.x - radius}
-											y={node.y - 20}
+											y={node.y - 22}
 											width={radius * 2}
-											height={40}
-											rx="8"
-										/>
+											height={44}
+											rx="10"
+										>
+											{isTextTruncated && <title>{node.name}</title>}
+										</rect>
 									) : (
 										// Circular shape for signals/computed/effects
 										<circle
@@ -227,17 +232,21 @@ export function GraphVisualization() {
 											cx={node.x}
 											cy={node.y}
 											r={radius}
-										/>
+										>
+											{isTextTruncated && <title>{node.name}</title>}
+										</circle>
 									)}
 									<text
 										className="graph-text"
 										x={node.x}
 										y={node.y + 4}
 										textAnchor="middle"
+										dominantBaseline="middle"
 										fontSize="12"
-										fontWeight="bold"
+										fontWeight="500"
 									>
 										{displayName}
+										{isTextTruncated && <title>{node.name}</title>}
 									</text>
 								</g>
 							);
