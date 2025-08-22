@@ -206,8 +206,15 @@ hook(OptionsTypes.RENDER, (old, vnode) => {
 		typeof window !== "undefined" &&
 		window.__PREACT_SIGNALS_DEVTOOLS__
 	) {
+		let parentComponent: VNode | undefined = vnode.__;
+		while (parentComponent && typeof parentComponent.type === "string") {
+			parentComponent = parentComponent.__;
+		}
 		window.__PREACT_SIGNALS_DEVTOOLS__.enterComponent(
-			vnode.type.displayName || vnode.type.name || "Unknown"
+			(parentComponent && typeof parentComponent.type !== "string"
+				? (parentComponent.type.displayName || parentComponent.type.name) +
+					" > "
+				: "") + (vnode.type.displayName || vnode.type.name || "Unknown")
 		);
 	}
 
