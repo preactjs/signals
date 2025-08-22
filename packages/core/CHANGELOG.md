@@ -1,5 +1,11 @@
 # @preact/signals-core
 
+## 1.12.1
+
+### Patch Changes
+
+- [#747](https://github.com/preactjs/signals/pull/747) [`57bc903`](https://github.com/preactjs/signals/commit/57bc9033422b308d0e9c4204c037fd339011dd6f) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Remove internal annotation as it confused TS
+
 ## 1.12.0
 
 ### Minor Changes
