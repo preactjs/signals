@@ -1,5 +1,14 @@
 # preact-signals-devtools
 
+## 1.0.3
+
+### Patch Changes
+
+- [#748](https://github.com/preactjs/signals/pull/748) [`90d3020`](https://github.com/preactjs/signals/commit/90d3020475380bd329d1184fe3d551e6d6f7dc50) Thanks [@43081j](https://github.com/43081j)! - Truncate titles of dependency nodes and improve styling.
+
+- Updated dependencies [[`57bc903`](https://github.com/preactjs/signals/commit/57bc9033422b308d0e9c4204c037fd339011dd6f)]:
+  - @preact/signals-core@1.12.1
+
 ## 1.0.2
 
 ### Patch Changes
