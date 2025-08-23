@@ -19,13 +19,17 @@ export interface SignalsDevToolsAPI {
 	sendConfig: (config: any) => void;
 	sendUpdate: (updateInfo: UpdateInfo[]) => void;
 	isConnected: () => boolean;
-	enterComponent: (node: VNode) => void;
+	enterComponent: (node: VNode | string) => void;
 	exitComponent: () => void;
 	trackSignalOwnership: (signal: any) => void;
 }
 
-function getComponentName(vnode: VNode): string {
+function getComponentName(vnode: VNode | string): string {
 	let name;
+
+	if (typeof vnode === "string") {
+		return vnode;
+	}
 
 	if (typeof vnode.type === "string") {
 		name = vnode.type;
@@ -44,7 +48,7 @@ class DevToolsCommunicator {
 	public isExtensionConnected = false;
 	public messageQueue: DevToolsMessage[] = [];
 	public readonly maxQueueSize = 100;
-	public component: VNode | null = null;
+	public componentName: string | null = null;
 	public signalOwnership = new WeakMap<any, Set<string>>();
 
 	constructor() {
@@ -169,20 +173,20 @@ class DevToolsCommunicator {
 		};
 	}
 
-	public enterComponent(node: VNode) {
-		this.component = node;
+	public enterComponent(node: VNode | string) {
+		this.componentName = getComponentName(node);
 	}
 
 	public exitComponent() {
-		this.component = null;
+		this.componentName = null;
 	}
 
 	public trackSignalOwnership(signal: any) {
-		if (this.component) {
+		if (this.componentName) {
 			if (!this.signalOwnership.has(signal)) {
 				this.signalOwnership.set(signal, new Set());
 			}
-			this.signalOwnership.get(signal)!.add(getComponentName(this.component));
+			this.signalOwnership.get(signal)!.add(this.componentName);
 		}
 	}
 
