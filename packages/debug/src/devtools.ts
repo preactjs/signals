@@ -25,10 +25,14 @@ export interface SignalsDevToolsAPI {
 }
 
 function getComponentName(vnode: VNode): string {
+	let name;
+
 	if (typeof vnode.type === "string") {
-		return vnode.type;
+		name = vnode.type;
+	} else {
+		name = vnode.type.displayName || vnode.type.name || "Unknown";
 	}
-	const name = vnode.type.displayName || vnode.type.name || "Unknown";
+
 	if (name === "ReactiveTextNode" && vnode.__) {
 		return `${getComponentName(vnode.__)} > ${name}`;
 	}
