@@ -1,3 +1,4 @@
+import { VNode } from "../../preact/src/internal";
 import { UpdateInfo } from "./internal";
 
 // Communication layer for Chrome DevTools Extension
@@ -18,9 +19,20 @@ export interface SignalsDevToolsAPI {
 	sendConfig: (config: any) => void;
 	sendUpdate: (updateInfo: UpdateInfo[]) => void;
 	isConnected: () => boolean;
-	enterComponent: (name: string) => void;
+	enterComponent: (node: VNode) => void;
 	exitComponent: () => void;
 	trackSignalOwnership: (signal: any) => void;
+}
+
+function getComponentName(vnode: VNode): string {
+	if (typeof vnode.type === "string") {
+		return vnode.type;
+	}
+	const name = vnode.type.displayName || vnode.type.name || "Unknown";
+	if (name === "ReactiveTextNode" && vnode.__) {
+		return `${getComponentName(vnode.__)} > ${name}`;
+	}
+	return name;
 }
 
 class DevToolsCommunicator {
@@ -28,7 +40,7 @@ class DevToolsCommunicator {
 	public isExtensionConnected = false;
 	public messageQueue: DevToolsMessage[] = [];
 	public readonly maxQueueSize = 100;
-	public componentName: string | null = null;
+	public component: VNode | null = null;
 	public signalOwnership = new WeakMap<any, Set<string>>();
 
 	constructor() {
@@ -153,20 +165,20 @@ class DevToolsCommunicator {
 		};
 	}
 
-	public enterComponent(name: string) {
-		this.componentName = name;
+	public enterComponent(node: VNode) {
+		this.component = node;
 	}
 
 	public exitComponent() {
-		this.componentName = null;
+		this.component = null;
 	}
 
 	public trackSignalOwnership(signal: any) {
-		if (this.componentName) {
+		if (this.component) {
 			if (!this.signalOwnership.has(signal)) {
 				this.signalOwnership.set(signal, new Set());
 			}
-			this.signalOwnership.get(signal)!.add(this.componentName);
+			this.signalOwnership.get(signal)!.add(getComponentName(this.component));
 		}
 	}
 
@@ -220,8 +232,8 @@ if (typeof window !== "undefined") {
 		isConnected: () => getDevToolsCommunicator().isConnected(),
 		trackSignalOwnership: signal =>
 			getDevToolsCommunicator().trackSignalOwnership(signal),
-		enterComponent: name => {
-			getDevToolsCommunicator().enterComponent(name);
+		enterComponent: node => {
+			getDevToolsCommunicator().enterComponent(node);
 		},
 		exitComponent: () => {
 			getDevToolsCommunicator().exitComponent();
