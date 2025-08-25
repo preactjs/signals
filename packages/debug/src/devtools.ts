@@ -1,3 +1,4 @@
+import { VNode } from "../../preact/src/internal";
 import { UpdateInfo } from "./internal";
 
 // Communication layer for Chrome DevTools Extension
@@ -18,9 +19,28 @@ export interface SignalsDevToolsAPI {
 	sendConfig: (config: any) => void;
 	sendUpdate: (updateInfo: UpdateInfo[]) => void;
 	isConnected: () => boolean;
-	enterComponent: (name: string) => void;
+	enterComponent: (node: VNode | string) => void;
 	exitComponent: () => void;
 	trackSignalOwnership: (signal: any) => void;
+}
+
+function getComponentName(vnode: VNode | string): string {
+	let name;
+
+	if (typeof vnode === "string") {
+		return vnode;
+	}
+
+	if (typeof vnode.type === "string") {
+		name = vnode.type;
+	} else {
+		name = vnode.type.displayName || vnode.type.name || "Unknown";
+	}
+
+	if (name === "ReactiveTextNode" && vnode.__) {
+		return `${getComponentName(vnode.__)} > ${name}`;
+	}
+	return name;
 }
 
 class DevToolsCommunicator {
@@ -153,8 +173,8 @@ class DevToolsCommunicator {
 		};
 	}
 
-	public enterComponent(name: string) {
-		this.componentName = name;
+	public enterComponent(node: VNode | string) {
+		this.componentName = getComponentName(node);
 	}
 
 	public exitComponent() {
@@ -220,8 +240,8 @@ if (typeof window !== "undefined") {
 		isConnected: () => getDevToolsCommunicator().isConnected(),
 		trackSignalOwnership: signal =>
 			getDevToolsCommunicator().trackSignalOwnership(signal),
-		enterComponent: name => {
-			getDevToolsCommunicator().enterComponent(name);
+		enterComponent: node => {
+			getDevToolsCommunicator().enterComponent(node);
 		},
 		exitComponent: () => {
 			getDevToolsCommunicator().exitComponent();

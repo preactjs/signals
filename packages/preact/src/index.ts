@@ -206,9 +206,7 @@ hook(OptionsTypes.RENDER, (old, vnode) => {
 		typeof window !== "undefined" &&
 		window.__PREACT_SIGNALS_DEVTOOLS__
 	) {
-		window.__PREACT_SIGNALS_DEVTOOLS__.enterComponent(
-			vnode.type.displayName || vnode.type.name || "Unknown"
-		);
+		window.__PREACT_SIGNALS_DEVTOOLS__.enterComponent(vnode);
 	}
 
 	// Ignore the Fragment inserted by preact.createElement().
