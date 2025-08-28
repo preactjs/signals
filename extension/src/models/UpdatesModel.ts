@@ -1,5 +1,6 @@
 import { signal, computed, effect } from "@preact/signals";
 import { Divider, SignalUpdate } from "../types";
+import { settingsStore } from "./SettingsModel";
 
 export interface UpdateTreeNode {
 	id: string;
@@ -8,6 +9,37 @@ export interface UpdateTreeNode {
 	depth: number;
 	hasChildren: boolean;
 }
+
+interface CollapsedTree {
+	tree: UpdateTreeNode[];
+	counts?: WeakMap<UpdateTreeNode, number>;
+}
+
+const nodesAreEqual = (a: UpdateTreeNode, b: UpdateTreeNode): boolean => {
+	return (
+		a.update.signalId === b.update.signalId &&
+		a.children.length === b.children.length &&
+		a.children.every((child, index) => nodesAreEqual(child, b.children[index]))
+	);
+};
+
+const collapseTree = (nodes: UpdateTreeNode[]): CollapsedTree => {
+	const tree: UpdateTreeNode[] = [];
+	let lastNode: UpdateTreeNode | null = null;
+	const counts = new WeakMap<UpdateTreeNode, number>();
+
+	for (const node of nodes) {
+		if (lastNode && nodesAreEqual(lastNode, node)) {
+			// If the current node is equal to the last one, skip it
+			counts.set(lastNode, (counts.get(lastNode) ?? 1) + 1);
+			continue;
+		}
+		tree.push(node);
+		lastNode = node;
+	}
+
+	return { tree, counts };
+};
 
 const createUpdatesModel = () => {
 	const updates = signal<(SignalUpdate | Divider)[]>([]);
@@ -134,9 +166,19 @@ const createUpdatesModel = () => {
 		return () => window.removeEventListener("message", handleMessage);
 	});
 
+	const collapsedUpdateTree = computed(() => {
+		const updateTreeValue = updateTree.value;
+		let result: CollapsedTree = { tree: updateTreeValue };
+		if (settingsStore.settings.grouped) {
+			result = collapseTree(updateTreeValue);
+		}
+		return result;
+	});
+
 	return {
 		updates,
 		updateTree,
+		collapsedUpdateTree,
 		totalUpdates: computed(() => Object.keys(updateTree.value).length),
 		signalCounts,
 		addUpdate,
