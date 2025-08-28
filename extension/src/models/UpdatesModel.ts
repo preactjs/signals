@@ -8,11 +8,7 @@ export interface UpdateTreeNode {
 	children: UpdateTreeNode[];
 	depth: number;
 	hasChildren: boolean;
-}
-
-interface CollapsedTree {
-	tree: UpdateTreeNode[];
-	counts?: WeakMap<UpdateTreeNode, number>;
+	count?: number;
 }
 
 const nodesAreEqual = (a: UpdateTreeNode, b: UpdateTreeNode): boolean => {
@@ -23,22 +19,28 @@ const nodesAreEqual = (a: UpdateTreeNode, b: UpdateTreeNode): boolean => {
 	);
 };
 
-const collapseTree = (nodes: UpdateTreeNode[]): CollapsedTree => {
+const collapseTree = (nodes: UpdateTreeNode[]): UpdateTreeNode[] => {
 	const tree: UpdateTreeNode[] = [];
-	let lastNode: UpdateTreeNode | null = null;
-	const counts = new WeakMap<UpdateTreeNode, number>();
+	let lastNode: UpdateTreeNode | undefined;
 
 	for (const node of nodes) {
 		if (lastNode && nodesAreEqual(lastNode, node)) {
+			if (!lastNode.count) {
+				// TODO (jg): maybe its safe to mutate lastNode instead of cloning?
+				tree.pop();
+				lastNode = { ...lastNode, count: 2 };
+				tree.push(lastNode);
+			} else {
+				lastNode.count++;
+			}
 			// If the current node is equal to the last one, skip it
-			counts.set(lastNode, (counts.get(lastNode) ?? 1) + 1);
 			continue;
 		}
 		tree.push(node);
 		lastNode = node;
 	}
 
-	return { tree, counts };
+	return tree;
 };
 
 const createUpdatesModel = () => {
@@ -168,11 +170,10 @@ const createUpdatesModel = () => {
 
 	const collapsedUpdateTree = computed(() => {
 		const updateTreeValue = updateTree.value;
-		let result: CollapsedTree = { tree: updateTreeValue };
 		if (settingsStore.settings.grouped) {
-			result = collapseTree(updateTreeValue);
+			return collapseTree(updateTreeValue);
 		}
-		return result;
+		return updateTreeValue;
 	});
 
 	return {

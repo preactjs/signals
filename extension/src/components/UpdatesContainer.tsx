@@ -5,7 +5,7 @@ import { useSignalEffect } from "@preact/signals";
 
 export function UpdatesContainer() {
 	const updatesListRef = useRef<HTMLDivElement>(null);
-	const { tree: updateTree, counts } = updatesStore.collapsedUpdateTree.value;
+	const updateTree = updatesStore.collapsedUpdateTree.value;
 
 	useSignalEffect(() => {
 		// Register scroll restoration
@@ -31,11 +31,7 @@ export function UpdatesContainer() {
 
 			<div className="updates-list" ref={updatesListRef}>
 				{updateTree.map(node => (
-					<UpdateTreeNodeComponent
-						key={node.id}
-						node={node}
-						count={counts?.get(node)}
-					/>
+					<UpdateTreeNodeComponent key={node.id} node={node} />
 				))}
 			</div>
 		</div>
