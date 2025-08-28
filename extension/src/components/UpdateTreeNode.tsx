@@ -4,9 +4,10 @@ import { UpdateItem } from "./UpdateItem";
 
 interface UpdateTreeNodeProps {
 	node: UpdateTreeNode;
+	count?: number;
 }
 
-export function UpdateTreeNodeComponent({ node }: UpdateTreeNodeProps) {
+export function UpdateTreeNodeComponent({ node, count }: UpdateTreeNodeProps) {
 	const isCollapsed = useSignal(false);
 
 	const toggleCollapse = () => {
@@ -29,7 +30,7 @@ export function UpdateTreeNodeComponent({ node }: UpdateTreeNodeProps) {
 				)}
 				{!hasChildren && <div className="collapse-spacer" />}
 				<div className="update-content">
-					<UpdateItem update={node.update} />
+					<UpdateItem update={node.update} count={count} />
 				</div>
 			</div>
 
