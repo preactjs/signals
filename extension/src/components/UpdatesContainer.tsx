@@ -5,7 +5,7 @@ import { useSignalEffect } from "@preact/signals";
 
 export function UpdatesContainer() {
 	const updatesListRef = useRef<HTMLDivElement>(null);
-	const updateTree = updatesStore.updateTree.value;
+	const updateTree = updatesStore.collapsedUpdateTree.value;
 
 	useSignalEffect(() => {
 		// Register scroll restoration

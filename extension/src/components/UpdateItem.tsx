@@ -2,9 +2,11 @@ import { SignalUpdate } from "../types";
 
 interface UpdateItemProps {
 	update: SignalUpdate;
+	firstUpdate?: SignalUpdate;
+	count?: number;
 }
 
-export function UpdateItem({ update }: UpdateItemProps) {
+export function UpdateItem({ update, count, firstUpdate }: UpdateItemProps) {
 	const time = new Date(
 		update.timestamp || update.receivedAt
 	).toLocaleTimeString();
@@ -23,6 +25,11 @@ export function UpdateItem({ update }: UpdateItemProps) {
 		}
 		return String(value);
 	};
+	const countLabel = count && (
+		<span class="update-count" title="Number of grouped identical updates">
+			x{count}
+		</span>
+	);
 
 	if (update.type === "effect") {
 		return (
@@ -30,6 +37,7 @@ export function UpdateItem({ update }: UpdateItemProps) {
 				<div className="update-header">
 					<span className="signal-name">
 						↪️ {update.signalName}
+						{countLabel}
 						{update.componentNames && update.componentNames.length > 0 && (
 							<ul class="component-list">
 								<span class="component-name-header">Rerendered</span>
@@ -50,16 +58,25 @@ export function UpdateItem({ update }: UpdateItemProps) {
 
 	const prevValue = formatValue(update.prevValue);
 	const newValue = formatValue(update.newValue);
+	const firstValue =
+		firstUpdate !== undefined ? formatValue(firstUpdate.prevValue) : undefined;
 
 	return (
 		<div class={`update-item ${update.type}`}>
 			<div class="update-header">
 				<span class="signal-name">
 					{update.depth === 0 ? "🎯" : "↪️"} {update.signalName}
+					{countLabel}
 				</span>
 				<span class="update-time">{time}</span>
 			</div>
 			<div class="value-change">
+				{firstValue && firstValue !== prevValue && (
+					<>
+						<span class="value-prev">{firstValue}</span>
+						<span class="value-arrow">...</span>
+					</>
+				)}
 				<span class="value-prev">{prevValue}</span>
 				<span class="value-arrow">→</span>
 				<span class="value-new">{newValue}</span>

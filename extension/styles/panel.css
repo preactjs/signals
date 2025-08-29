@@ -324,6 +324,14 @@ body {
   margin-bottom: 4px;
 }
 
+.update-count {
+  display: inline-block;
+  padding: 0 6px;
+  background: #e0e0e0;
+  border-radius: 12px;
+  margin: 0 2px;
+}
+
 .signal-name {
   font-weight: 600;
   color: #673ab7;
