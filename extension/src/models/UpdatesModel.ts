@@ -2,14 +2,25 @@ import { signal, computed, effect } from "@preact/signals";
 import { Divider, SignalUpdate } from "../types";
 import { settingsStore } from "./SettingsModel";
 
-export interface UpdateTreeNode {
+export interface UpdateTreeNodeBase {
 	id: string;
 	update: SignalUpdate;
 	children: UpdateTreeNode[];
 	depth: number;
 	hasChildren: boolean;
-	count?: number;
 }
+
+export interface UpdateTreeNodeSingle extends UpdateTreeNodeBase {
+	type: "single";
+}
+
+export interface UpdateTreeNodeGroup extends UpdateTreeNodeBase {
+	type: "group";
+	count: number;
+	firstUpdate: SignalUpdate;
+}
+
+export type UpdateTreeNode = UpdateTreeNodeGroup | UpdateTreeNodeSingle;
 
 const nodesAreEqual = (a: UpdateTreeNode, b: UpdateTreeNode): boolean => {
 	return (
@@ -19,19 +30,25 @@ const nodesAreEqual = (a: UpdateTreeNode, b: UpdateTreeNode): boolean => {
 	);
 };
 
-const collapseTree = (nodes: UpdateTreeNode[]): UpdateTreeNode[] => {
+const collapseTree = (nodes: UpdateTreeNodeSingle[]): UpdateTreeNode[] => {
 	const tree: UpdateTreeNode[] = [];
 	let lastNode: UpdateTreeNode | undefined;
 
 	for (const node of nodes) {
 		if (lastNode && nodesAreEqual(lastNode, node)) {
-			if (!lastNode.count) {
+			if (lastNode.type !== "group") {
 				// TODO (jg): maybe its safe to mutate lastNode instead of cloning?
 				tree.pop();
-				lastNode = { ...lastNode, count: 2 };
+				lastNode = {
+					...lastNode,
+					type: "group",
+					count: 2,
+					firstUpdate: node.update,
+				};
 				tree.push(lastNode);
 			} else {
 				lastNode.count++;
+				lastNode.firstUpdate = node.update;
 			}
 			// If the current node is equal to the last one, skip it
 			continue;
@@ -79,9 +96,9 @@ const createUpdatesModel = () => {
 	const updateTree = computed(() => {
 		const buildTree = (
 			updates: (SignalUpdate | Divider)[]
-		): UpdateTreeNode[] => {
-			const tree: UpdateTreeNode[] = [];
-			const stack: UpdateTreeNode[] = [];
+		): UpdateTreeNodeSingle[] => {
+			const tree: UpdateTreeNodeSingle[] = [];
+			const stack: UpdateTreeNodeSingle[] = [];
 
 			// Process updates in reverse order to show newest first
 			const recentUpdates = updates.slice(-100).reverse();
@@ -101,6 +118,7 @@ const createUpdatesModel = () => {
 				const nodeId = `${update.signalName}-${update.receivedAt}-${i}`;
 
 				const node: UpdateTreeNode = {
+					type: "single",
 					id: nodeId,
 					update,
 					children: [],

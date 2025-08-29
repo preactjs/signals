@@ -14,6 +14,8 @@ export function UpdateTreeNodeComponent({ node }: UpdateTreeNodeProps) {
 	};
 
 	const hasChildren = node.children.length > 0;
+	const nodeCount = node.type === "group" ? node.count : undefined;
+	const firstUpdate = node.type === "group" ? node.firstUpdate : undefined;
 
 	return (
 		<div className="tree-node">
@@ -29,7 +31,11 @@ export function UpdateTreeNodeComponent({ node }: UpdateTreeNodeProps) {
 				)}
 				{!hasChildren && <div className="collapse-spacer" />}
 				<div className="update-content">
-					<UpdateItem update={node.update} count={node.count} />
+					<UpdateItem
+						update={node.update}
+						count={nodeCount}
+						firstUpdate={firstUpdate}
+					/>
 				</div>
 			</div>
 

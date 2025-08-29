@@ -2,10 +2,11 @@ import { SignalUpdate } from "../types";
 
 interface UpdateItemProps {
 	update: SignalUpdate;
+	firstUpdate?: SignalUpdate;
 	count?: number;
 }
 
-export function UpdateItem({ update, count }: UpdateItemProps) {
+export function UpdateItem({ update, count, firstUpdate }: UpdateItemProps) {
 	const time = new Date(
 		update.timestamp || update.receivedAt
 	).toLocaleTimeString();
@@ -57,6 +58,8 @@ export function UpdateItem({ update, count }: UpdateItemProps) {
 
 	const prevValue = formatValue(update.prevValue);
 	const newValue = formatValue(update.newValue);
+	const firstValue =
+		firstUpdate !== undefined ? formatValue(firstUpdate.prevValue) : undefined;
 
 	return (
 		<div class={`update-item ${update.type}`}>
@@ -68,6 +71,12 @@ export function UpdateItem({ update, count }: UpdateItemProps) {
 				<span class="update-time">{time}</span>
 			</div>
 			<div class="value-change">
+				{firstValue && firstValue !== prevValue && (
+					<>
+						<span class="value-prev">{firstValue}</span>
+						<span class="value-arrow">...</span>
+					</>
+				)}
 				<span class="value-prev">{prevValue}</span>
 				<span class="value-arrow">→</span>
 				<span class="value-new">{newValue}</span>
