@@ -29,6 +29,10 @@ jobs:
         with:
           node-version: 18
           cache: pnpm
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Update npm
+        run: npm install -g npm@latest
 
       - name: Install dependencies
         run: pnpm install
@@ -40,4 +44,3 @@ jobs:
           publish: pnpm changeset publish
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
