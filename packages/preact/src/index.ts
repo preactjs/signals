@@ -421,11 +421,18 @@ export function useSignal<T>(value?: T, options?: SignalOptions<T>) {
 	)[0];
 }
 
-export function useComputed<T>(compute: () => T, options?: SignalOptions<T>) {
-	const $compute = useRef(compute);
-	$compute.current = compute;
+export function useComputed<T>(
+	compute: () => T,
+	options?: SignalOptions<T>
+): ReadonlySignal<T> {
+	const [$fn, $computed] = useMemo(() => {
+		const $fn = signal(compute);
+		return [$fn, computed(() => $fn.value(), options)] as const;
+	}, []);
+
 	(currentComponent as AugmentedComponent)._updateFlags |= HAS_COMPUTEDS;
-	return useMemo(() => computed<T>(() => $compute.current(), options), []);
+	$fn.value = compute;
+	return $computed;
 }
 
 function safeRaf(callback: () => void) {
