@@ -1,5 +1,11 @@
 # @preact/signals
 
+## 2.3.2
+
+### Patch Changes
+
+- [#754](https://github.com/preactjs/signals/pull/754) [`5db1295`](https://github.com/preactjs/signals/commit/5db1295fd46404c32802d89989d891d0389f7031) Thanks [@jviide](https://github.com/jviide)! - Update useComputed compute function on rerender
+
 ## 2.3.1
 
 ### Patch Changes
