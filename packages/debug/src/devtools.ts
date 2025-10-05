@@ -127,18 +127,23 @@ class DevToolsCommunicator {
 			payload: {
 				updates: updateInfoList.map(({ signal, ...info }) => {
 					const owners = this.getSignalOwners(signal);
-					return {
-						...info,
-						signalType:
-							info.type === "effect"
-								? "effect"
-								: "_fn" in signal
-									? "computed"
-									: "signal",
-						signalName: this.getSignalName(signal),
-						signalId: this.getSignalId(signal),
-						componentNames: owners.length > 0 ? owners : undefined,
-					};
+					return info.type === "value"
+						? {
+								...info,
+								newValue: deeplyRemoveFunctions(info.newValue),
+								prevValue: deeplyRemoveFunctions(info.prevValue),
+								signalType: "_fn" in signal ? "computed" : "signal",
+								signalName: this.getSignalName(signal),
+								signalId: this.getSignalId(signal),
+								componentNames: owners.length > 0 ? owners : undefined,
+							}
+						: {
+								...info,
+								signalType: "effect",
+								signalName: this.getSignalName(signal),
+								signalId: this.getSignalId(signal),
+								componentNames: owners.length > 0 ? owners : undefined,
+							};
 				}),
 			},
 			timestamp: Date.now(),
@@ -218,6 +223,24 @@ class DevToolsCommunicator {
 	public isConnected(): boolean {
 		return this.isExtensionConnected;
 	}
+}
+
+function deeplyRemoveFunctions(obj: any): any {
+	if (obj === null || obj === undefined) return obj;
+	if (typeof obj === "function") return "[Function]";
+	if (typeof obj !== "object") return obj;
+
+	if (Array.isArray(obj)) {
+		return obj.map(deeplyRemoveFunctions);
+	}
+
+	const result: any = {};
+	for (const key in obj) {
+		if (Object.prototype.hasOwnProperty.call(obj, key)) {
+			result[key] = deeplyRemoveFunctions(obj[key]);
+		}
+	}
+	return result;
 }
 
 // Global instance
