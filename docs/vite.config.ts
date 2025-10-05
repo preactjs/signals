@@ -16,10 +16,12 @@ function packages(prod: boolean) {
 		if (pkg.private) continue;
 		const entry = prod ? "." : pkg.source;
 		alias[pkg.name] = resolve(root, name, entry);
+		console.log(`alias: ${pkg.name} -> ${alias[pkg.name]}`);
 	}
 	return alias;
 }
 
+// @ts-expect-error
 export default defineConfig(env => ({
 	plugins: [
 		process.env.DEBUG
@@ -69,7 +71,10 @@ export default defineConfig(env => ({
 						// the package that needs to be resolved.
 						"@preact/signals-react/runtime": join(root, "react/runtime"),
 					}
-				: packages(false),
+				: {
+						"@preact/signals/utils": join(root, "preact/utils/src"),
+						...packages(false),
+					},
 	},
 }));
 

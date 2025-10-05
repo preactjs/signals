@@ -1,6 +1,7 @@
 import { useSignal } from "@preact/signals";
-import { Show, For } from "./utils";
+import { Show, For } from "@preact/signals/utils";
 import { computed, signal } from "@preact/signals-core";
+import "./devtools.css";
 
 type TodoModel = {
 	id: number;
@@ -71,14 +72,7 @@ function TodosList() {
 	return (
 		<div>
 			<h2>Todos</h2>
-			<div
-				style={{
-					display: "flex",
-					alignItems: "center",
-					gap: "8px",
-					marginBottom: "8px",
-				}}
-			>
+			<div class="new-todo">
 				<label>
 					New Todo:{" "}
 					<input
@@ -113,14 +107,7 @@ function TodosList() {
 function TodoItem({ todo }: { todo: TodoModel }) {
 	const isEditing = useSignal(false, { name: `todo-${todo.id}-isEditing` });
 	return (
-		<li
-			style={{
-				display: "flex",
-				alignItems: "center",
-				gap: "8px",
-				marginBottom: "4px",
-			}}
-		>
+		<li class="todo-item">
 			<input
 				type="checkbox"
 				checked={todo.done}
