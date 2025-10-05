@@ -70,6 +70,7 @@ export default defineConfig(env => ({
 						// one, as expected. I'm working around this by just mainly aliasing
 						// the package that needs to be resolved.
 						"@preact/signals-react/runtime": join(root, "react/runtime"),
+						"@preact/signals": join(root, "preact"),
 					}
 				: {
 						"@preact/signals/utils": join(root, "preact/utils/src"),
