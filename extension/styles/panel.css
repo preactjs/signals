@@ -413,13 +413,40 @@ body {
   flex: 1;
   position: relative;
   background: #fafafa;
-  overflow: auto;
+  overflow: hidden;
+  user-select: none;
 }
 
 .graph-svg {
   width: 100%;
   height: 100%;
   min-height: 500px;
+}
+
+.graph-reset-button {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  transition: all 0.2s;
+  z-index: 10;
+}
+
+.graph-reset-button:hover {
+  background: #f5f5f5;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+
+.graph-reset-button:active {
+  background: #eeeeee;
+  transform: translateY(1px);
 }
 
 .graph-node {
