@@ -24,9 +24,6 @@ function Demos() {
 	return (
 		<div id="app">
 			<header>
-				<h1>
-					<a href="/demos/">Demos</a>
-				</h1>
 				<nav>
 					{Object.keys(demos).map(name => (
 						<a href={"./" + name} class={name === demo ? "current" : ""}>
@@ -41,7 +38,7 @@ function Demos() {
 					{constrainFlashToChildren(
 						Object.keys(demos).map(demo => {
 							const Demo = demos[demo as keyof typeof demos];
-							return <Demo path={`/demos/${demo}`} />;
+							return <Demo path={`/${demo}`} />;
 						}),
 						<NotFound default />
 					)}
