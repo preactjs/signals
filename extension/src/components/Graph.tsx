@@ -13,6 +13,13 @@ import { updatesStore } from "../models/UpdatesModel";
 export function GraphVisualization() {
 	const updates = updatesStore.updates;
 	const svgRef = useRef<SVGSVGElement>(null);
+	const containerRef = useRef<HTMLDivElement>(null);
+
+	// Pan and zoom state using signals
+	const panOffset = useSignal({ x: 0, y: 0 });
+	const zoom = useSignal(1);
+	const isPanning = useSignal(false);
+	const startPan = useSignal({ x: 0, y: 0 });
 
 	// Build graph data from updates signal using a computed
 	const graphData = useComputed<GraphData>(() => {
@@ -122,6 +129,58 @@ export function GraphVisualization() {
 		};
 	});
 
+	// Mouse event handlers for panning
+	const handleMouseDown = (e: MouseEvent) => {
+		if (e.button !== 0) return; // Only left mouse button
+		isPanning.value = true;
+		startPan.value = {
+			x: e.clientX - panOffset.value.x,
+			y: e.clientY - panOffset.value.y,
+		};
+	};
+
+	const handleMouseMove = (e: MouseEvent) => {
+		if (!isPanning.value) return;
+		panOffset.value = {
+			x: e.clientX - startPan.value.x,
+			y: e.clientY - startPan.value.y,
+		};
+	};
+
+	const handleMouseUp = () => {
+		isPanning.value = false;
+	};
+
+	const handleWheel = (e: WheelEvent) => {
+		e.preventDefault();
+
+		const container = containerRef.current;
+		if (!container) return;
+
+		// Get mouse position relative to container
+		const rect = container.getBoundingClientRect();
+		const mouseX = e.clientX - rect.left;
+		const mouseY = e.clientY - rect.top;
+
+		// Calculate zoom change
+		const delta = e.deltaY > 0 ? 0.9 : 1.1;
+		const newZoom = Math.min(Math.max(0.1, zoom.value * delta), 5);
+
+		// Adjust pan offset to zoom towards mouse cursor
+		const zoomRatio = newZoom / zoom.value;
+		panOffset.value = {
+			x: mouseX - (mouseX - panOffset.value.x) * zoomRatio,
+			y: mouseY - (mouseY - panOffset.value.y) * zoomRatio,
+		};
+
+		zoom.value = newZoom;
+	};
+
+	const resetView = () => {
+		panOffset.value = { x: 0, y: 0 };
+		zoom.value = 1;
+	};
+
 	if (graphData.value.nodes.length === 0) {
 		return (
 			<div className="graph-empty">
@@ -142,7 +201,16 @@ export function GraphVisualization() {
 
 	return (
 		<div className="graph-container">
-			<div className="graph-content">
+			<div
+				ref={containerRef}
+				className="graph-content"
+				onMouseDown={handleMouseDown}
+				onMouseMove={handleMouseMove}
+				onMouseUp={handleMouseUp}
+				onMouseLeave={handleMouseUp}
+				onWheel={handleWheel}
+				style={{ cursor: isPanning.value ? "grabbing" : "grab" }}
+			>
 				<svg
 					ref={svgRef}
 					className="graph-svg"
@@ -164,95 +232,108 @@ export function GraphVisualization() {
 						</marker>
 					</defs>
 
-					{/* Links */}
-					<g className="links">
-						{graphData.value.links.map((link, index) => {
-							const sourceNode = graphData.value.nodes.find(
-								n => n.id === link.source
-							);
-							const targetNode = graphData.value.nodes.find(
-								n => n.id === link.target
-							);
+					<g
+						transform={`translate(${panOffset.value.x}, ${panOffset.value.y}) scale(${zoom.value})`}
+					>
+						{/* Links */}
+						<g className="links">
+							{graphData.value.links.map((link, index) => {
+								const sourceNode = graphData.value.nodes.find(
+									n => n.id === link.source
+								);
+								const targetNode = graphData.value.nodes.find(
+									n => n.id === link.target
+								);
 
-							if (!sourceNode || !targetNode) return null;
+								if (!sourceNode || !targetNode) return null;
 
-							// Use curved paths for better visual flow
-							const sourceX = sourceNode.x + 25;
-							const sourceY = sourceNode.y;
-							const targetX = targetNode.x - 25;
-							const targetY = targetNode.y;
+								// Use curved paths for better visual flow
+								const sourceX = sourceNode.x + 25;
+								const sourceY = sourceNode.y;
+								const targetX = targetNode.x - 25;
+								const targetY = targetNode.y;
 
-							const midX = sourceX + (targetX - sourceX) * 0.6;
-							const pathData = `M ${sourceX} ${sourceY} Q ${midX} ${sourceY} ${targetX} ${targetY}`;
+								const midX = sourceX + (targetX - sourceX) * 0.6;
+								const pathData = `M ${sourceX} ${sourceY} Q ${midX} ${sourceY} ${targetX} ${targetY}`;
 
-							return (
-								<path
-									key={`link-${index}`}
-									className="graph-link"
-									d={pathData}
-									fill="none"
-									stroke="#666"
-									strokeWidth="2"
-									markerEnd="url(#arrowhead)"
-								/>
-							);
-						})}
-					</g>
+								return (
+									<path
+										key={`link-${index}`}
+										className="graph-link"
+										d={pathData}
+										fill="none"
+										stroke="#666"
+										strokeWidth="2"
+										markerEnd="url(#arrowhead)"
+									/>
+								);
+							})}
+						</g>
 
-					{/* Nodes */}
-					<g className="nodes">
-						{graphData.value.nodes.map(node => {
-							const radius = node.type === "component" ? 40 : 30;
-							// For circles, use a smaller character limit to fit within the circle with padding
-							const maxChars = node.type === "component" ? 10 : 7;
-							const displayName =
-								node.name.length > maxChars
-									? node.name.slice(0, maxChars) + "..."
-									: node.name;
-							const isTextTruncated = node.name.length > maxChars;
+						{/* Nodes */}
+						<g className="nodes">
+							{graphData.value.nodes.map(node => {
+								const radius = node.type === "component" ? 40 : 30;
+								// For circles, use a smaller character limit to fit within the circle with padding
+								const maxChars = node.type === "component" ? 10 : 7;
+								const displayName =
+									node.name.length > maxChars
+										? node.name.slice(0, maxChars) + "..."
+										: node.name;
+								const isTextTruncated = node.name.length > maxChars;
 
-							return (
-								<g key={node.id} className="graph-node-group">
-									{node.type === "component" ? (
-										// Rectangular shape for components
-										<rect
-											className={`graph-node ${node.type}`}
-											x={node.x - radius}
-											y={node.y - 22}
-											width={radius * 2}
-											height={44}
-											rx="10"
+								return (
+									<g key={node.id} className="graph-node-group">
+										{node.type === "component" ? (
+											// Rectangular shape for components
+											<rect
+												className={`graph-node ${node.type}`}
+												x={node.x - radius}
+												y={node.y - 22}
+												width={radius * 2}
+												height={44}
+												rx="10"
+											>
+												{isTextTruncated && <title>{node.name}</title>}
+											</rect>
+										) : (
+											// Circular shape for signals/computed/effects
+											<circle
+												className={`graph-node ${node.type}`}
+												cx={node.x}
+												cy={node.y}
+												r={radius}
+											>
+												{isTextTruncated && <title>{node.name}</title>}
+											</circle>
+										)}
+										<text
+											className="graph-text"
+											x={node.x}
+											y={node.y + 4}
+											textAnchor="middle"
+											dominantBaseline="middle"
+											fontSize="12"
+											fontWeight="500"
 										>
+											{displayName}
 											{isTextTruncated && <title>{node.name}</title>}
-										</rect>
-									) : (
-										// Circular shape for signals/computed/effects
-										<circle
-											className={`graph-node ${node.type}`}
-											cx={node.x}
-											cy={node.y}
-											r={radius}
-										>
-											{isTextTruncated && <title>{node.name}</title>}
-										</circle>
-									)}
-									<text
-										className="graph-text"
-										x={node.x}
-										y={node.y + 4}
-										textAnchor="middle"
-										dominantBaseline="middle"
-										fontSize="12"
-										fontWeight="500"
-									>
-										{displayName}
-										{isTextTruncated && <title>{node.name}</title>}
-									</text>
-								</g>
-							);
-						})}
+										</text>
+									</g>
+								);
+							})}
+						</g>
 					</g>
 				</svg>
+
+				{/* Reset view button */}
+				<button
+					className="graph-reset-button"
+					onClick={resetView}
+					title="Reset view"
+				>
+					⟲ Reset View
+				</button>
 
 				{/* Legend */}
 				<div className="graph-legend">
