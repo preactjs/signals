@@ -1,5 +1,5 @@
 import { useRef } from "preact/hooks";
-import { Signal, computed } from "@preact/signals";
+import { Signal, computed, useComputed, useSignal } from "@preact/signals";
 import {
 	Divider,
 	GraphData,
@@ -15,7 +15,7 @@ export function GraphVisualization() {
 	const svgRef = useRef<SVGSVGElement>(null);
 
 	// Build graph data from updates signal using a computed
-	const graphData = computed<GraphData>(() => {
+	const graphData = useComputed<GraphData>(() => {
 		const rawUpdates = updates.value;
 		if (!rawUpdates || rawUpdates.length === 0)
 			return { nodes: [], links: [], components: [] };
