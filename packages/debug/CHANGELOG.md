@@ -1,5 +1,11 @@
 # @preact/signals-debug
 
+## 1.0.1
+
+### Patch Changes
+
+- [#761](https://github.com/preactjs/signals/pull/761) [`c7c3218`](https://github.com/preactjs/signals/commit/c7c32180008d583b2ef490fab05e84bd99d1c51e) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Fix reporting complex values to the extension
+
 ## 1.0.0
 
 ### Minor Changes
