@@ -376,7 +376,7 @@ Object.defineProperties(Signal.prototype, {
 	props: {
 		configurable: true,
 		get() {
-			return { data: this };
+			return { data: this.value };
 		},
 	},
 	ref: { configurable: true, value: null },
