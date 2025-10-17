@@ -10,6 +10,18 @@ import {
 } from "../types";
 import { updatesStore } from "../models/UpdatesModel";
 
+const copyToClipboard = (text: string) => {
+	const copyEl = document.createElement("textarea");
+	try {
+		copyEl.value = text;
+		document.body.append(copyEl);
+		copyEl.select();
+		document.execCommand("copy");
+	} finally {
+		copyEl.remove();
+	}
+};
+
 export function GraphVisualization() {
 	const updates = updatesStore.updates;
 	const svgRef = useRef<SVGSVGElement>(null);
@@ -238,13 +250,13 @@ export function GraphVisualization() {
 			lines.push(`  ${sourceId} --> ${targetId}`);
 		}
 
-		await navigator.clipboard.writeText(lines.join("\n"));
+		copyToClipboard(lines.join("\n"));
 	};
 
 	const handleExportJSON = async () => {
 		showExportMenu.value = false;
 		const value = JSON.stringify(graphData.value, null, 2);
-		await navigator.clipboard.writeText(value);
+		copyToClipboard(value);
 	};
 
 	if (graphData.value.nodes.length === 0) {

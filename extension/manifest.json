@@ -3,7 +3,7 @@
   "name": "Preact Signals DevTools",
   "version": "1.0.0",
   "description": "Debug and inspect Preact Signals in your web applications",
-  "permissions": ["activeTab", "scripting"],
+  "permissions": ["activeTab", "scripting", "clipboardWrite"],
   "host_permissions": ["<all_urls>"],
   "content_scripts": [
     {
