@@ -369,6 +369,7 @@ function SignalValue({ data }: { data: Signal }) {
 	}
 }
 
+const obj = { data: null };
 // Decorate Signals so React renders them as <SignalValue> components.
 Object.defineProperties(Signal.prototype, {
 	$$typeof: { configurable: true, value: ReactElemType },
@@ -376,7 +377,8 @@ Object.defineProperties(Signal.prototype, {
 	props: {
 		configurable: true,
 		get() {
-			return { data: this.value };
+			obj.data = this;
+			return obj;
 		},
 	},
 	ref: { configurable: true, value: null },
