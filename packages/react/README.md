@@ -103,6 +103,34 @@ function Counter() {
 }
 ```
 
+> **Optimizing `useComputed` performance**
+>
+> The `useComputed` hook follows the convention of keeping closures fresh. By default, the callback function passed to `useComputed` will re-run on every component render to ensure it always has access to the latest values from the component's scope. However, if the computed value doesn't change, updates won't propagate to dependent nodes in the signal graph.
+>
+> For expensive computations, you can optimize performance by memoizing the callback with `useCallback`:
+>
+> ```js
+> import { useSignal, useComputed } from "@preact/signals-react";
+> import { useCallback } from "react";
+>
+> function Counter() {
+> 	const count = useSignal(0);
+>
+> 	// Memoize the callback to avoid re-running expensive calculations
+> 	const expensiveComputation = useCallback(() => {
+> 		for (let i = 0; i < 10000000; i++) {
+> 			result += 1;
+> 		}
+> 		return result;
+> 		// Empty deps means callback never changes, alternatively add count here so that if the identity of the signal changes this re-runs
+> 	}, []);
+>
+> 	const computed = useComputed(expensiveComputation);
+>
+> 	return <div>Result: {computed.value}</div>;
+> }
+> ```
+
 ### Using signals with React's SSR APIs
 
 Components rendered using SSR APIs (e.g. `renderToString`) in a server environment (i.e. an environment without a global `window` object) will not track signals used during render. Components generally don't rerender when using SSR APIs so tracking signal usage is useless since changing these signals can't trigger a rerender.
