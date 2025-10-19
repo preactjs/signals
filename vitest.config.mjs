@@ -45,7 +45,29 @@ export default defineConfig({
 	},
 	plugins: [
 		manglePlugin,
-		createEsbuildPlugin()
+		createEsbuildPlugin(),
+		{
+			name: 'react-create-root-legacy-fallback',
+			enforce: 'pre',
+			async resolveId(source, importer) {
+				if (!importer.startsWith(path.join(dirname, 'packages/react/'))) {
+					return null;
+				}
+				const resolved = await this.resolve(source, importer);
+				if (!resolved || resolved.id !== path.join(dirname, 'packages/react/test/shared/create-root.ts')) {
+					return null;
+				}
+				const hasClient = await this.resolve('react-dom/client', importer);
+				if (!hasClient) {
+					return this.resolve(path.join(
+						dirname,
+						'packages/react/test/shared/create-root-legacy.ts'
+					), importer);
+				}
+				return null;
+			},
+		},
+
 	],
 	// TODO (43081j): stop faking node globals and sort out the transform
 	// tests. Either run them in node, or somehow run babel in node but the
