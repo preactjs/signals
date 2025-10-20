@@ -82,8 +82,8 @@ export default defineConfig({
 		coverage: {
 			enabled: COVERAGE,
 			include: [
-				'packages/**/src/**/*.tsx',
-				'packages/**/src/**/*.ts'
+				'packages/**/dist/**/*.js',
+				'packages/react-transform/src/**/*.ts'
 			],
 			provider: 'v8',
 			reporter: ['text-summary', 'lcov'],
@@ -95,8 +95,11 @@ export default defineConfig({
 				test: {
 					include: [
 						'./packages/**/test/**/*.test.tsx',
-						'!./packages/**/test/browser/**/*.test.tsx'
 					],
+					exclude: [
+						'./packages/**/test/browser/**/*.test.tsx',
+						'**/node_modules/**'
+					]
 				}
 			},
 			{
