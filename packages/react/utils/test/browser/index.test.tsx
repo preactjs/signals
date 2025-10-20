@@ -7,6 +7,7 @@ import {
 } from "../../../test/shared/utils";
 import { signal } from "@preact/signals-react";
 import { createElement } from "react";
+import { describe, beforeEach, afterEach, it, expect } from "vitest";
 
 describe("@preact/signals-react-utils", () => {
 	let scratch: HTMLDivElement;

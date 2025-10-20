@@ -1,6 +1,6 @@
 import { signal, computed } from "@preact/signals-core";
 import { useComputed, useSignal } from "@preact/signals-react/runtime";
-import { expect } from "chai";
+import { describe, it, expect } from "vitest";
 import { createElement, useReducer, StrictMode, useState } from "react";
 
 export function mountSignalsTests(

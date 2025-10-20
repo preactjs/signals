@@ -1,5 +1,6 @@
 import { defineConfig } from 'vitest/config';
 import { manglePlugin } from './scripts/mangle-plugin.mjs';
+import { createEsbuildPlugin } from './scripts/transform-plugin.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -11,28 +12,72 @@ export default defineConfig({
 	resolve: {
 		alias: MINIFY ? {
 			'@preact/signals-core': path.join(
-				dirname, './packages/core/dist/signals-core.min.js'
+				dirname, './packages/core/dist/signals-core.module.js'
+			),
+			'@preact/signals/utils': path.join(
+				dirname, './packages/preact/utils/dist/utils.module.js'
 			),
 			'@preact/signals': path.join(
-				dirname, './packages/preact/dist/signals.min.js'
+				dirname, './packages/preact/dist/signals.module.js'
+			),
+			'@preact/signals-react/runtime': path.join(
+				dirname, './packages/react/runtime/dist/runtime.module.js'
+			),
+			'@preact/signals-react/utils': path.join(
+				dirname, './packages/react/utils/dist/utils.module.js'
 			),
 			'@preact/signals-react': path.join(
-				dirname, './packages/react/dist/signals.min.js'
+				dirname, './packages/react/dist/signals.module.js'
+			),
+			'@preact/signals-react-runtime': path.join(
+				dirname, './packages/react/runtime/dist/runtime.module.js'
 			),
 			'@preact/signals-react-utils': path.join(
-				dirname, './packages/react/utils/utils.min.js'
+				dirname, './packages/react/utils/dist/utils.module.js'
 			),
 			'@preact/signals-react-transform': path.join(
 				dirname ,'./packages/react-transform/dist/signals-transform.mjs'
 			),
 			'@preact/signals-utils': path.join(
-				dirname, './packages/preact/utils/dist/utils.min.js'
+				dirname, './packages/preact/utils/dist/utils.module.js'
 			),
 		} : {}
 	},
 	plugins: [
-		manglePlugin
+		manglePlugin,
+		createEsbuildPlugin(),
+		{
+			name: 'react-create-root-legacy-fallback',
+			enforce: 'pre',
+			async resolveId(source, importer) {
+				if (!importer.startsWith(path.join(dirname, 'packages/react/'))) {
+					return null;
+				}
+				const resolved = await this.resolve(source, importer);
+				if (!resolved || resolved.id !== path.join(dirname, 'packages/react/test/shared/create-root.ts')) {
+					return null;
+				}
+				const hasClient = await this.resolve('react-dom/client', importer);
+				if (!hasClient) {
+					return this.resolve(path.join(
+						dirname,
+						'packages/react/test/shared/create-root-legacy.ts'
+					), importer);
+				}
+				return null;
+			},
+		},
+
 	],
+	// TODO (43081j): stop faking node globals and sort out the transform
+	// tests. Either run them in node, or somehow run babel in node but the
+	// tests in browser
+	define: {
+		IS_REACT_ACT_ENVIRONMENT: true,
+		process: {
+			env: {}
+		}
+	},
 	test: {
 		coverage: {
 			enabled: COVERAGE,
@@ -49,15 +94,15 @@ export default defineConfig({
 				extends: true,
 				test: {
 					include: [
-						'./packages/{,preact/utils,preact,core}/test/**/*.test.tsx',
-						'!./packages/{,preact/utils,preact,core}/test/browser/**/*.test.tsx'
+						'./packages/**/test/**/*.test.tsx',
+						'!./packages/**/test/browser/**/*.test.tsx'
 					],
 				}
 			},
 			{
 				extends: true,
 				test: {
-					include: ['./packages/{,preact/utils,preact,core}/test/browser/**/*.test.tsx'],
+					include: ['./packages/**/test/browser/**/*.test.tsx'],
 					browser: {
 						provider: 'playwright',
 						enabled: true,
