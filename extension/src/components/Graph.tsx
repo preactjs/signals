@@ -34,6 +34,7 @@ export function GraphVisualization() {
 	const isPanning = useSignal(false);
 	const startPan = useSignal({ x: 0, y: 0 });
 	const showExportMenu = useSignal(false);
+	const toastText = useSignal<string>();
 
 	useEffect(() => {
 		const handleClickOutside = (e: MouseEvent) => {
@@ -219,6 +220,13 @@ export function GraphVisualization() {
 	const mermaidIdPattern = /[^a-zA-Z0-9]/g;
 	const computeMermaidId = (id: string) => id.replace(mermaidIdPattern, "_");
 
+	const showToast = (text: string) => {
+		toastText.value = text;
+		setTimeout(() => {
+			toastText.value = undefined;
+		}, 2000);
+	};
+
 	const handleExportMermaid = async () => {
 		showExportMenu.value = false;
 
@@ -251,12 +259,14 @@ export function GraphVisualization() {
 		}
 
 		copyToClipboard(lines.join("\n"));
+		showToast("Copied to clipboard!");
 	};
 
 	const handleExportJSON = async () => {
 		showExportMenu.value = false;
 		const value = JSON.stringify(graphData.value, null, 2);
 		copyToClipboard(value);
+		showToast("Copied to clipboard!");
 	};
 
 	if (graphData.value.nodes.length === 0) {
@@ -428,18 +438,23 @@ export function GraphVisualization() {
 									className="graph-export-menu-item"
 									onClick={handleExportMermaid}
 								>
-									Mermaid (clipboard)
+									Mermaid
 								</button>
 								<button
 									className="graph-export-menu-item"
 									onClick={handleExportJSON}
 								>
-									JSON (clipboard)
+									JSON
 								</button>
 							</div>
 						)}
 					</div>
 				</div>
+
+				{/* Toast notification */}
+				{toastText.value && (
+					<div className="graph-toast">{toastText.value}</div>
+				)}
 
 				{/* Legend */}
 				<div className="graph-legend">
