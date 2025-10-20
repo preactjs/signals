@@ -423,10 +423,17 @@ body {
   min-height: 500px;
 }
 
-.graph-reset-button {
+.graph-controls {
   position: absolute;
   top: 16px;
   left: 16px;
+  display: flex;
+  gap: 8px;
+  z-index: 10;
+}
+
+.graph-reset-button,
+.graph-export-button {
   background: white;
   border: 1px solid #e0e0e0;
   border-radius: 4px;
@@ -436,17 +443,60 @@ body {
   cursor: pointer;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   transition: all 0.2s;
-  z-index: 10;
 }
 
-.graph-reset-button:hover {
+.graph-reset-button:hover,
+.graph-export-button:hover {
   background: #f5f5f5;
   box-shadow: 0 2px 6px rgba(0,0,0,0.15);
 }
 
-.graph-reset-button:active {
+.graph-reset-button:active,
+.graph-export-button:active {
   background: #eeeeee;
   transform: translateY(1px);
+}
+
+.graph-export-container {
+  position: relative;
+}
+
+.graph-export-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+  overflow: hidden;
+  min-width: 180px;
+}
+
+.graph-export-menu-item {
+  display: block;
+  width: 100%;
+  background: white;
+  border: none;
+  padding: 10px 12px;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+
+.graph-export-menu-item:hover {
+  background: #f5f5f5;
+}
+
+.graph-export-menu-item:active {
+  background: #eeeeee;
+}
+
+.graph-export-menu-item:not(:last-child) {
+  border-bottom: 1px solid #e0e0e0;
 }
 
 .graph-node {
@@ -549,6 +599,32 @@ body {
   height: 100%;
   text-align: center;
   color: #666;
+}
+
+.graph-toast {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: #323232;
+  color: white;
+  padding: 12px 16px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  z-index: 1000;
+  animation: slideInFade 0.3s ease-out;
+}
+
+@keyframes slideInFade {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Tree Node Styles */

@@ -1,4 +1,4 @@
-import { useRef } from "preact/hooks";
+import { useRef, useEffect } from "preact/hooks";
 import { Signal, computed, useComputed, useSignal } from "@preact/signals";
 import {
 	Divider,
@@ -10,16 +10,48 @@ import {
 } from "../types";
 import { updatesStore } from "../models/UpdatesModel";
 
+const copyToClipboard = (text: string) => {
+	const copyEl = document.createElement("textarea");
+	try {
+		copyEl.value = text;
+		document.body.append(copyEl);
+		copyEl.select();
+		document.execCommand("copy");
+	} finally {
+		copyEl.remove();
+	}
+};
+
 export function GraphVisualization() {
 	const updates = updatesStore.updates;
 	const svgRef = useRef<SVGSVGElement>(null);
 	const containerRef = useRef<HTMLDivElement>(null);
+	const exportMenuRef = useRef<HTMLDivElement>(null);
 
 	// Pan and zoom state using signals
 	const panOffset = useSignal({ x: 0, y: 0 });
 	const zoom = useSignal(1);
 	const isPanning = useSignal(false);
 	const startPan = useSignal({ x: 0, y: 0 });
+	const showExportMenu = useSignal(false);
+	const toastText = useSignal<string>();
+
+	useEffect(() => {
+		const handleClickOutside = (e: MouseEvent) => {
+			if (
+				showExportMenu.value &&
+				exportMenuRef.current &&
+				!exportMenuRef.current.contains(e.target as Node)
+			) {
+				showExportMenu.value = false;
+			}
+		};
+
+		document.addEventListener("mousedown", handleClickOutside);
+		return () => {
+			document.removeEventListener("mousedown", handleClickOutside);
+		};
+	}, []);
 
 	// Build graph data from updates signal using a computed
 	const graphData = useComputed<GraphData>(() => {
@@ -181,6 +213,62 @@ export function GraphVisualization() {
 		zoom.value = 1;
 	};
 
+	const toggleExportMenu = () => {
+		showExportMenu.value = !showExportMenu.value;
+	};
+
+	const mermaidIdPattern = /[^a-zA-Z0-9]/g;
+	const computeMermaidId = (id: string) => id.replace(mermaidIdPattern, "_");
+
+	const showToast = (text: string) => {
+		toastText.value = text;
+		setTimeout(() => {
+			toastText.value = undefined;
+		}, 2000);
+	};
+
+	const handleExportMermaid = async () => {
+		showExportMenu.value = false;
+
+		const lines: string[] = ["graph LR"];
+
+		graphData.value.nodes.forEach(node => {
+			const id = computeMermaidId(node.id);
+			const name = node.name;
+
+			switch (node.type) {
+				case "signal":
+					lines.push(`  ${id}((${name}))`);
+					break;
+				case "computed":
+					lines.push(`  ${id}(${name})`);
+					break;
+				case "effect":
+					lines.push(`  ${id}([${name}])`);
+					break;
+				case "component":
+					lines.push(`  ${id}[${name}]`);
+					break;
+			}
+		});
+
+		for (const link of graphData.value.links) {
+			const sourceId = computeMermaidId(link.source);
+			const targetId = computeMermaidId(link.target);
+			lines.push(`  ${sourceId} --> ${targetId}`);
+		}
+
+		copyToClipboard(lines.join("\n"));
+		showToast("Copied to clipboard!");
+	};
+
+	const handleExportJSON = async () => {
+		showExportMenu.value = false;
+		const value = JSON.stringify(graphData.value, null, 2);
+		copyToClipboard(value);
+		showToast("Copied to clipboard!");
+	};
+
 	if (graphData.value.nodes.length === 0) {
 		return (
 			<div className="graph-empty">
@@ -326,14 +414,47 @@ export function GraphVisualization() {
 					</g>
 				</svg>
 
-				{/* Reset view button */}
-				<button
-					className="graph-reset-button"
-					onClick={resetView}
-					title="Reset view"
-				>
-					⟲ Reset View
-				</button>
+				{/* Control buttons */}
+				<div className="graph-controls">
+					<button
+						className="graph-reset-button"
+						onClick={resetView}
+						title="Reset view"
+					>
+						⟲ Reset View
+					</button>
+
+					<div ref={exportMenuRef} className="graph-export-container">
+						<button
+							className="graph-export-button"
+							onClick={toggleExportMenu}
+							title="Export graph"
+						>
+							↓ Export
+						</button>
+						{showExportMenu.value && (
+							<div className="graph-export-menu">
+								<button
+									className="graph-export-menu-item"
+									onClick={handleExportMermaid}
+								>
+									Mermaid
+								</button>
+								<button
+									className="graph-export-menu-item"
+									onClick={handleExportJSON}
+								>
+									JSON
+								</button>
+							</div>
+						)}
+					</div>
+				</div>
+
+				{/* Toast notification */}
+				{toastText.value && (
+					<div className="graph-toast">{toastText.value}</div>
+				)}
 
 				{/* Legend */}
 				<div className="graph-legend">
