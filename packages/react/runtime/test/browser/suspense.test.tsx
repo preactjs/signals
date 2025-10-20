@@ -15,6 +15,7 @@ import {
 	checkHangingAct,
 	getConsoleErrorSpy,
 } from "../../../test/shared/utils";
+import { beforeEach, afterEach, describe, it, expect } from "vitest";
 
 describe("Suspense", () => {
 	let scratch: HTMLDivElement;
@@ -28,7 +29,7 @@ describe("Suspense", () => {
 		scratch = document.createElement("div");
 		document.body.appendChild(scratch);
 		root = await createRoot(scratch);
-		getConsoleErrorSpy().resetHistory();
+		getConsoleErrorSpy().mockClear();
 	});
 
 	afterEach(async () => {

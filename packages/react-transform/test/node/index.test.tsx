@@ -19,6 +19,7 @@ import {
 	objMethodComp,
 	variableHooks,
 } from "./helpers";
+import { it, describe, expect } from "vitest";
 
 // To help interactively debug a specific test case, add the test ids of the
 // test cases you want to debug to the `debugTestIds` array, e.g. (["258",
