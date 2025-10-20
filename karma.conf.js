@@ -185,7 +185,7 @@ function createEsbuildPlugin(filteredPkgList) {
 					];
 
 					const explicitResourceManagement = [
-						"@babel/plugin-proposal-explicit-resource-management",
+						"@babel/plugin-transform-explicit-resource-management",
 					];
 
 					const tmp = await babel.transformAsync(result, {
