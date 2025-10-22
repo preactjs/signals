@@ -45,8 +45,8 @@
     "prepublishOnly": "cd ../.. && pnpm build:react-transform"
   },
   "dependencies": {
-    "@babel/helper-module-imports": "^7.22.5",
-    "@babel/helper-plugin-utils": "^7.22.5",
+    "@babel/helper-module-imports": "^7.27.1",
+    "@babel/helper-plugin-utils": "^7.27.1",
     "@preact/signals-react": "workspace:^3.3.0",
     "debug": "^4.3.4",
     "use-sync-external-store": "^1.2.0"
@@ -56,10 +56,10 @@
     "react": "^16.14.0 || 17.x || 18.x || 19.x"
   },
   "devDependencies": {
-    "@babel/core": "^7.22.8",
-    "@types/babel__core": "^7.20.1",
-    "@types/babel__helper-module-imports": "^7.18.0",
-    "@types/babel__helper-plugin-utils": "^7.10.0",
+    "@babel/core": "^7.28.4",
+    "@types/babel__core": "^7.20.5",
+    "@types/babel__helper-module-imports": "^7.18.3",
+    "@types/babel__helper-plugin-utils": "^7.10.3",
     "@types/debug": "^4.1.12",
     "@types/prettier": "^2.7.3",
     "@types/react": "^18.0.18",

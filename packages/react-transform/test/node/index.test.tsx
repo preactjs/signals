@@ -772,7 +772,7 @@ describe("React Signals Babel Transform", () => {
 			}
 
 			const state: VisitorState = {};
-			traverse(result.ast, programScopeVisitor, undefined, state);
+			traverse(result.ast!, programScopeVisitor, undefined, state);
 
 			const scope = state.programScope;
 			if (!scope) {
