@@ -1,5 +1,11 @@
 # preact-signals-devtools
 
+## 1.0.5
+
+### Patch Changes
+
+- [#774](https://github.com/preactjs/signals/pull/774) [`2e6ff95`](https://github.com/preactjs/signals/commit/2e6ff95205b4fa9b835e075fa5d43edfba376cae) Thanks [@43081j](https://github.com/43081j)! - Allow dependency graphs to be exported as JSON or mermaid syntax.
+
 ## 1.0.4
 
 ### Patch Changes
