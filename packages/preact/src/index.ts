@@ -324,7 +324,9 @@ function createPropUpdater(
 			if (setAsProperty) {
 				// @ts-ignore-next-line silly
 				dom[prop] = value;
-			} else if (value) {
+				// Match Preact's attribute handling: data-* and aria-* attributes
+				// https://github.com/preactjs/preact/blob/main/src/diff/props.js#L132
+			} else if (value != null && (value !== false || prop[4] === "-")) {
 				dom.setAttribute(prop, value);
 			} else {
 				dom.removeAttribute(prop);
