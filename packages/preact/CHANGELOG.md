@@ -1,5 +1,13 @@
 # @preact/signals
 
+## 2.3.3
+
+### Patch Changes
+
+- [#782](https://github.com/preactjs/signals/pull/782) [`fbf69a9`](https://github.com/preactjs/signals/commit/fbf69a904c425806b01ccf05c9834f9895918617) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Ensure aria/data attributes stick around when going back to an empty string
+
+- [#783](https://github.com/preactjs/signals/pull/783) [`86575b4`](https://github.com/preactjs/signals/commit/86575b41ec097c3ecdefc7b54a4cabfbe23f7984) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Ensure `For` and `Show` account for nested reactivity
+
 ## 2.3.2
 
 ### Patch Changes

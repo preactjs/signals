@@ -1,5 +1,11 @@
 # @preact/signals-react
 
+## 3.3.2
+
+### Patch Changes
+
+- [#783](https://github.com/preactjs/signals/pull/783) [`86575b4`](https://github.com/preactjs/signals/commit/86575b41ec097c3ecdefc7b54a4cabfbe23f7984) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Ensure `For` and `Show` account for nested reactivity
+
 ## 3.3.1
 
 ### Patch Changes
