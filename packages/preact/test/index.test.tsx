@@ -728,6 +728,75 @@ describe("@preact/signals", () => {
 				s.value = "scale(1, 2)";
 			});
 		});
+
+		// https://github.com/preactjs/signals/issues/781
+		it("should handle empty string data-* attributes consistently", async () => {
+			const s = signal("");
+			const spy = sinon.spy();
+
+			function App() {
+				spy();
+				// @ts-ignore
+				return <div data-text={s} />;
+			}
+
+			render(<App />, scratch);
+			spy.resetHistory();
+
+			const div = scratch.firstChild as HTMLDivElement;
+
+			expect(div.hasAttribute("data-text")).to.equal(true);
+			expect(div.getAttribute("data-text")).to.equal("");
+
+			act(() => {
+				s.value = "test";
+			});
+
+			expect(div.getAttribute("data-text")).to.equal("test");
+			expect(spy).not.to.have.been.called;
+
+			act(() => {
+				s.value = "";
+			});
+
+			expect(div.hasAttribute("data-text")).to.equal(true);
+			expect(div.getAttribute("data-text")).to.equal("");
+			expect(spy).not.to.have.been.called;
+		});
+
+		it("should handle empty string on regular attributes consistently", async () => {
+			const s = signal("");
+			const spy = sinon.spy();
+
+			function App() {
+				spy();
+				// @ts-ignore
+				return <div title={s} />;
+			}
+
+			render(<App />, scratch);
+			spy.resetHistory();
+
+			const div = scratch.firstChild as HTMLDivElement;
+
+			expect(div.hasAttribute("title")).to.equal(true);
+			expect(div.getAttribute("title")).to.equal("");
+
+			act(() => {
+				s.value = "test";
+			});
+
+			expect(div.getAttribute("title")).to.equal("test");
+			expect(spy).not.to.have.been.called;
+
+			act(() => {
+				s.value = "";
+			});
+
+			expect(div.hasAttribute("title")).to.equal(true);
+			expect(div.getAttribute("title")).to.equal("");
+			expect(spy).not.to.have.been.called;
+		});
 	});
 
 	describe("hooks mixed with signals", () => {
