@@ -7,7 +7,7 @@
   "module": "dist/utils.module.js",
   "unpkg": "dist/utils.min.js",
   "types": "dist/index.d.ts",
-  "source": "src/index.ts",
+  "source": "src/index.tsx",
   "mangle": "../../../mangle.json",
   "exports": {
     ".": {
