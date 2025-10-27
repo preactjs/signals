@@ -50,7 +50,15 @@ export function For<T>(props: ForProps<T>): JSX.Element | null {
 
 	const items = list.map((value, key) => {
 		if (!cache.has(value)) {
-			return <Item v={value} i={key} children={props.children} cache={cache} />;
+			return (
+				<Item
+					v={value}
+					key={key}
+					i={key}
+					children={props.children}
+					cache={cache}
+				/>
+			);
 		}
 		return cache.get(value);
 	});
