@@ -32,6 +32,9 @@ var localLaunchers = {
 
 const subPkgPath = pkgName => {
 	if (!minify) {
+		if (pkgName.includes("preact/utils") || pkgName.includes("react/utils")) {
+			return path.join(__dirname, pkgName, "src", "index.tsx");
+		}
 		return path.join(__dirname, pkgName, "src", "index.ts");
 	}
 
