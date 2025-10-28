@@ -1,5 +1,16 @@
 # @preact/signals-react-transform
 
+## 0.6.0
+
+### Minor Changes
+
+- [#730](https://github.com/preactjs/signals/pull/730) [`8423511`](https://github.com/preactjs/signals/commit/842351176eb5588290786db55a5596c920df109d) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Surface component-name and automatically name signals/computeds during the transform. This is gated behind the `experimental.debug` option
+
+### Patch Changes
+
+- Updated dependencies [[`6cc7005`](https://github.com/preactjs/signals/commit/6cc700595278d241f276c40dd0ecf162c9e432d8)]:
+  - @preact/signals-react@3.3.0
+
 ## 0.5.2
 
 ### Patch Changes

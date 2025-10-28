@@ -215,13 +215,13 @@ function addDependency(signal: Signal): Node | undefined {
 /**
  * The base class for plain and computed signals.
  */
-// @ts-ignore: "Cannot redeclare exported variable 'Signal'."
 //
 // A function with the same name is defined later, so we need to ignore TypeScript's
 // warning about a redeclared variable.
 //
 // The class is declared here, but later implemented with ES5-style prototypes.
 // This enables better control of the transpiled output size.
+// @ts-ignore: "Cannot redeclare exported variable 'Signal'."
 declare class Signal<T = any> {
 	/** @internal */
 	_value: unknown;
@@ -258,6 +258,8 @@ declare class Signal<T = any> {
 
 	subscribe(fn: (value: T) => void): () => void;
 
+	name?: string;
+
 	valueOf(): T;
 
 	toString(): string;
@@ -275,16 +277,16 @@ declare class Signal<T = any> {
 export interface SignalOptions<T = any> {
 	watched?: (this: Signal<T>) => void;
 	unwatched?: (this: Signal<T>) => void;
+	name?: string;
 }
 
 /** @internal */
-// @ts-ignore: "Cannot redeclare exported variable 'Signal'."
-//
 // A class with the same name has already been declared, so we need to ignore
 // TypeScript's warning about a redeclared variable.
 //
 // The previously declared class is implemented here with ES5-style prototypes.
 // This enables better control of the transpiled output size.
+// @ts-ignore: "Cannot redeclare exported variable 'Signal'."
 function Signal(this: Signal, value?: unknown, options?: SignalOptions) {
 	this._value = value;
 	this._version = 0;
@@ -292,6 +294,7 @@ function Signal(this: Signal, value?: unknown, options?: SignalOptions) {
 	this._targets = undefined;
 	this._watched = options?.watched;
 	this._unwatched = options?.unwatched;
+	this.name = options?.name;
 }
 
 Signal.prototype.brand = BRAND_SYMBOL;
@@ -343,17 +346,19 @@ Signal.prototype._unsubscribe = function (node) {
 };
 
 Signal.prototype.subscribe = function (fn) {
-	return effect(() => {
-		const value = this.value;
-
-		const prevContext = evalContext;
-		evalContext = undefined;
-		try {
-			fn(value);
-		} finally {
-			evalContext = prevContext;
-		}
-	});
+	return effect(
+		() => {
+			const value = this.value;
+			const prevContext = evalContext;
+			evalContext = undefined;
+			try {
+				fn(value);
+			} finally {
+				evalContext = prevContext;
+			}
+		},
+		{ name: "sub" }
+	);
 };
 
 Signal.prototype.valueOf = function () {
@@ -539,6 +544,9 @@ function cleanupSources(target: Computed | Effect) {
 	target._sources = head;
 }
 
+/**
+ * The base class for computed signals.
+ */
 declare class Computed<T = any> extends Signal<T> {
 	_fn: () => T;
 	_sources?: Node;
@@ -551,6 +559,7 @@ declare class Computed<T = any> extends Signal<T> {
 	get value(): T;
 }
 
+/** @internal */
 function Computed(this: Computed, fn: () => unknown, options?: SignalOptions) {
 	Signal.call(this, undefined);
 
@@ -560,6 +569,7 @@ function Computed(this: Computed, fn: () => unknown, options?: SignalOptions) {
 	this._flags = OUTDATED;
 	this._watched = options?.watched;
 	this._unwatched = options?.unwatched;
+	this.name = options?.name;
 }
 
 Computed.prototype = new Signal() as Computed;
@@ -772,14 +782,18 @@ type EffectFn =
 	| ((this: { dispose: () => void }) => void | (() => void))
 	| (() => void | (() => void));
 
+/**
+ * The base class for reactive effects.
+ */
 declare class Effect {
 	_fn?: EffectFn;
 	_cleanup?: () => void;
 	_sources?: Node;
 	_nextBatchedEffect?: Effect;
 	_flags: number;
+	name?: string;
 
-	constructor(fn: EffectFn);
+	constructor(fn: EffectFn, options?: EffectOptions);
 
 	_callback(): void;
 	_start(): () => void;
@@ -788,12 +802,18 @@ declare class Effect {
 	dispose(): void;
 }
 
-function Effect(this: Effect, fn: EffectFn) {
+export interface EffectOptions {
+	name?: string;
+}
+
+/** @internal */
+function Effect(this: Effect, fn: EffectFn, options?: EffectOptions) {
 	this._fn = fn;
 	this._cleanup = undefined;
 	this._sources = undefined;
 	this._nextBatchedEffect = undefined;
 	this._flags = TRACKING;
+	this.name = options?.name;
 }
 
 Effect.prototype._callback = function () {
@@ -858,8 +878,8 @@ Effect.prototype.dispose = function () {
  * @param fn The effect callback.
  * @returns A function for disposing the effect.
  */
-function effect(fn: EffectFn): { (): void; [Symbol.dispose](): void } {
-	const effect = new Effect(fn);
+function effect(fn: EffectFn, options?: EffectOptions): () => void {
+	const effect = new Effect(fn, options);
 	try {
 		effect._callback();
 	} catch (err) {
@@ -873,4 +893,13 @@ function effect(fn: EffectFn): { (): void; [Symbol.dispose](): void } {
 	return dispose as any;
 }
 
-export { computed, effect, batch, untracked, Signal, ReadonlySignal };
+export {
+	computed,
+	effect,
+	batch,
+	untracked,
+	Signal,
+	ReadonlySignal,
+	Effect,
+	Computed,
+};

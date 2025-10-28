@@ -18,6 +18,7 @@ import {
 	useContext,
 	createContext,
 	useRef,
+	useCallback,
 } from "react";
 import type { FunctionComponent } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -853,6 +854,61 @@ export function updateSignalsTests(usingTransform = false) {
 			// @note: React v18 cleans up the ref eagerly, so it's already null by the
 			// time the callback runs. this is probably worth fixing at some point.
 			expect(cleanup).toHaveBeenCalledWith("foo", isReact16 ? child : null);
+		});
+	});
+
+	describe("useComputed", () => {
+		it("should recompute and update dependency list when the compute function changes", async () => {
+			const s1 = signal(1);
+			const s2 = signal("a");
+
+			function App({ x }: { x: Signal }) {
+				const fn = useCallback(() => {
+					return x.value;
+				}, [x]);
+
+				const c = useComputed(fn);
+				return <span>{c.value}</span>;
+			}
+
+			await render(<App x={s1} />);
+			expect(scratch.textContent).to.equal("1");
+
+			await render(<App x={s2} />);
+			expect(scratch.textContent).to.equal("a");
+
+			await act(() => {
+				s1.value = 2;
+			});
+			expect(scratch.textContent).to.equal("a");
+
+			await act(() => {
+				s2.value = "b";
+			});
+			expect(scratch.textContent).to.equal("b");
+		});
+
+		it("should not recompute when the compute function doesn't change and dependency values don't change", async () => {
+			const s1 = signal(1);
+			const spy = sinon.spy();
+
+			function App({ x }: { x: Signal }) {
+				const fn = useCallback(() => {
+					spy();
+					return x.value;
+				}, [x]);
+
+				const c = useComputed(fn);
+				return <span>{c.value}</span>;
+			}
+
+			await render(<App x={s1} />);
+			expect(scratch.textContent).to.equal("1");
+			expect(spy).to.have.been.calledOnce;
+
+			await render(<App x={s1} />);
+			expect(scratch.textContent).to.equal("1");
+			expect(spy).to.have.been.calledOnce;
 		});
 	});
 }

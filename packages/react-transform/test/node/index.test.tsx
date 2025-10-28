@@ -773,7 +773,7 @@ describe("React Signals Babel Transform", () => {
 			}
 
 			const state: VisitorState = {};
-			traverse(result.ast, programScopeVisitor, undefined, state);
+			traverse(result.ast!, programScopeVisitor, undefined, state);
 
 			const scope = state.programScope;
 			if (!scope) {
@@ -796,6 +796,154 @@ describe("React Signals Babel Transform", () => {
 			expect(signalsBinding).to.exist;
 			expect(signalsBinding.kind).to.equal("module");
 			expect(signalsBinding.referenced).to.be.true;
+		});
+	});
+
+	describe("signal naming", () => {
+		const DEBUG_OPTIONS = { mode: "auto", experimental: { debug: true } };
+
+		const PREAMBLE = `if (window.__PREACT_SIGNALS_DEVTOOLS__) {
+	window.__PREACT_SIGNALS_DEVTOOLS__.enterComponent(
+		"MyComponent:Component.js"
+	);
+}`;
+
+		const POSTAMBLE = `	if (window.__PREACT_SIGNALS_DEVTOOLS__) {
+	window.__PREACT_SIGNALS_DEVTOOLS__.exitComponent();
+}`;
+
+		const runDebugTest = (
+			inputCode: string,
+			expectedOutput: string,
+			fileName: string
+		) => {
+			// @ts-expect-error
+			runTest(inputCode, expectedOutput, DEBUG_OPTIONS, fileName);
+		};
+
+		it("injects names for signal calls", () => {
+			const inputCode = `
+				function MyComponent() {
+					const count = signal(0);
+					const double = computed(() => count.value * 2);
+					return <div>{double.value}</div>;
+				}
+			`;
+
+			const expectedOutput = `
+				import { useSignals as _useSignals } from "@preact/signals-react/runtime";
+				function MyComponent() {
+					var _effect = _useSignals(1);
+					try {
+					    ${PREAMBLE}
+						const count = signal(0, {
+							name: "count (Component.js:3)",
+						});
+						const double = computed(() => count.value * 2, {
+							name: "double (Component.js:4)",
+						});
+						return <div>{double.value}</div>;
+					} finally {
+						_effect.f();
+						${POSTAMBLE}
+					}
+				}
+			`;
+
+			runDebugTest(inputCode, expectedOutput, "Component.js");
+		});
+
+		it("injects names for useSignal calls", () => {
+			const inputCode = `
+				function MyComponent() {
+					const count = useSignal(0);
+					const message = useSignal("hello");
+					return <div>{count.value} {message.value}</div>;
+				}
+			`;
+
+			const expectedOutput = `
+				import { useSignals as _useSignals } from "@preact/signals-react/runtime";
+				function MyComponent() {
+					var _effect = _useSignals(1);
+					try {
+					    ${PREAMBLE}
+						const count = useSignal(0, {
+							name: "count (Component.js:3)",
+						});
+						const message = useSignal("hello", {
+							name: "message (Component.js:4)",
+						});
+						return <div>{count.value} {message.value}</div>;
+					} finally {
+						_effect.f();
+						${POSTAMBLE}
+					}
+				}
+			`;
+
+			runDebugTest(inputCode, expectedOutput, "Component.js");
+		});
+
+		it("doesn't inject names when already provided", () => {
+			const inputCode = `
+				function MyComponent() {
+					const count = signal(0, { name: "myCounter" });
+					const data = useSignal(null, { name: "userData", watched: () => {} });
+					return <div>{count.value}</div>;
+				}
+			`;
+
+			const expectedOutput = `
+				import { useSignals as _useSignals } from "@preact/signals-react/runtime";
+				function MyComponent() {
+					var _effect = _useSignals(1);
+					try {
+					    ${PREAMBLE}
+						const count = signal(0, {
+							name: "myCounter",
+						});
+						const data = useSignal(null, {
+							name: "userData",
+							watched: () => {},
+						});
+						return <div>{count.value}</div>;
+					} finally {
+						_effect.f();
+						${POSTAMBLE}
+					}
+				}
+			`;
+
+			runDebugTest(inputCode, expectedOutput, "Component.js");
+		});
+
+		it("handles signals with no initial value", () => {
+			const inputCode = `
+				function MyComponent() {
+					const count = useSignal();
+					return <div>{count.value}</div>;
+				}
+			`;
+
+			const expectedOutput = `
+				import { useSignals as _useSignals } from "@preact/signals-react/runtime";
+				function MyComponent() {
+					var _effect = _useSignals(1);
+					try {
+					    ${PREAMBLE}
+						const count = useSignal(undefined, {
+							name: "count (Component.js:3)",
+						});
+						return <div>{count.value}</div>;
+					} finally {
+						_effect.f();
+						${POSTAMBLE}
+					}
+				}
+			`;
+
+			runDebugTest(inputCode, expectedOutput, "Component.js");
 		});
 	});
 

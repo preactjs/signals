@@ -1,5 +1,5 @@
 import { options, Component, isValidElement, Fragment } from "preact";
-import { useRef, useMemo, useEffect } from "preact/hooks";
+import { useRef, useMemo, useEffect, useState } from "preact/hooks";
 import {
 	signal,
 	computed,
@@ -9,6 +9,7 @@ import {
 	type ReadonlySignal,
 	untracked,
 	SignalOptions,
+	EffectOptions,
 } from "@preact/signals-core";
 import {
 	VNode,
@@ -151,7 +152,8 @@ function SignalValue(this: AugmentedComponent, { data }: { data: Signal }) {
 	// leaving them to the optimized path above.
 	return isText.value ? s.peek() : s.value;
 }
-SignalValue.displayName = "_st";
+
+SignalValue.displayName = "ReactiveTextNode";
 
 Object.defineProperties(Signal.prototype, {
 	constructor: { configurable: true, value: undefined },
@@ -170,6 +172,14 @@ Object.defineProperties(Signal.prototype, {
 
 /** Inject low-level property/attribute bindings for Signals into Preact's diff */
 hook(OptionsTypes.DIFF, (old, vnode) => {
+	if (
+		typeof vnode.type === "function" &&
+		typeof window !== "undefined" &&
+		window.__PREACT_SIGNALS_DEVTOOLS__
+	) {
+		window.__PREACT_SIGNALS_DEVTOOLS__.exitComponent();
+	}
+
 	if (typeof vnode.type === "string") {
 		let signalProps: Record<string, any> | undefined;
 
@@ -191,6 +201,14 @@ hook(OptionsTypes.DIFF, (old, vnode) => {
 
 /** Set up Updater before rendering a component */
 hook(OptionsTypes.RENDER, (old, vnode) => {
+	if (
+		typeof vnode.type === "function" &&
+		typeof window !== "undefined" &&
+		window.__PREACT_SIGNALS_DEVTOOLS__
+	) {
+		window.__PREACT_SIGNALS_DEVTOOLS__.enterComponent(vnode);
+	}
+
 	// Ignore the Fragment inserted by preact.createElement().
 	if (vnode.type !== Fragment) {
 		setCurrentUpdater();
@@ -219,6 +237,10 @@ hook(OptionsTypes.RENDER, (old, vnode) => {
 
 /** Finish current updater if a component errors */
 hook(OptionsTypes.CATCH_ERROR, (old, error, vnode, oldVNode) => {
+	if (typeof window !== "undefined" && window.__PREACT_SIGNALS_DEVTOOLS__) {
+		window.__PREACT_SIGNALS_DEVTOOLS__.exitComponent();
+	}
+
 	setCurrentUpdater();
 	currentComponent = undefined;
 	old(error, vnode, oldVNode);
@@ -226,6 +248,14 @@ hook(OptionsTypes.CATCH_ERROR, (old, error, vnode, oldVNode) => {
 
 /** Finish current updater after rendering any VNode */
 hook(OptionsTypes.DIFFED, (old, vnode) => {
+	if (
+		typeof vnode.type === "function" &&
+		typeof window !== "undefined" &&
+		window.__PREACT_SIGNALS_DEVTOOLS__
+	) {
+		window.__PREACT_SIGNALS_DEVTOOLS__.exitComponent();
+	}
+
 	setCurrentUpdater();
 	currentComponent = undefined;
 
@@ -294,7 +324,9 @@ function createPropUpdater(
 			if (setAsProperty) {
 				// @ts-ignore-next-line silly
 				dom[prop] = value;
-			} else if (value) {
+				// Match Preact's attribute handling: data-* and aria-* attributes
+				// https://github.com/preactjs/preact/blob/main/src/diff/props.js#L132
+			} else if (value != null && (value !== false || prop[4] === "-")) {
 				dom.setAttribute(prop, value);
 			} else {
 				dom.removeAttribute(prop);
@@ -386,17 +418,23 @@ Component.prototype.shouldComponentUpdate = function (
 export function useSignal<T>(value: T, options?: SignalOptions<T>): Signal<T>;
 export function useSignal<T = undefined>(): Signal<T | undefined>;
 export function useSignal<T>(value?: T, options?: SignalOptions<T>) {
-	return useMemo(
-		() => signal<T | undefined>(value, options as SignalOptions),
-		[]
-	);
+	return useState(() =>
+		signal<T | undefined>(value, options as SignalOptions)
+	)[0];
 }
 
-export function useComputed<T>(compute: () => T, options?: SignalOptions<T>) {
-	const $compute = useRef(compute);
-	$compute.current = compute;
+export function useComputed<T>(
+	compute: () => T,
+	options?: SignalOptions<T>
+): ReadonlySignal<T> {
+	const [$fn, $computed] = useMemo(() => {
+		const $fn = signal(compute);
+		return [$fn, computed(() => $fn.value(), options)] as const;
+	}, []);
+
 	(currentComponent as AugmentedComponent)._updateFlags |= HAS_COMPUTEDS;
-	return useMemo(() => computed<T>(() => $compute.current(), options), []);
+	$fn.value = compute;
+	return $computed;
 }
 
 function safeRaf(callback: () => void) {
@@ -449,7 +487,10 @@ function notifyDomUpdates(this: Effect) {
 	}
 }
 
-export function useSignalEffect(cb: () => void | (() => void)) {
+export function useSignalEffect(
+	cb: () => void | (() => void),
+	options?: EffectOptions
+) {
 	const callback = useRef(cb);
 	callback.current = cb;
 
@@ -457,7 +498,7 @@ export function useSignalEffect(cb: () => void | (() => void)) {
 		return effect(function (this: Effect) {
 			this._notify = notifyEffects;
 			return callback.current();
-		});
+		}, options);
 	}, []);
 }
 

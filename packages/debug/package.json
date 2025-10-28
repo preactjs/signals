@@ -1,0 +1,52 @@
+{
+  "name": "@preact/signals-debug",
+  "version": "1.0.1",
+  "license": "MIT",
+  "description": "Debugging tools for @preact/signals",
+  "keywords": [],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/preactjs/signals",
+    "directory": "packages/debug"
+  },
+  "bugs": "https://github.com/preactjs/signals/issues",
+  "homepage": "https://preactjs.com",
+  "funding": {
+    "type": "opencollective",
+    "url": "https://opencollective.com/preact"
+  },
+  "amdName": "preactSignalsDebug",
+  "main": "dist/debug.js",
+  "module": "dist/debug.module.js",
+  "unpkg": "dist/debug.min.js",
+  "types": "dist/debug.d.ts",
+  "source": "src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/debug.d.ts",
+      "browser": "./dist/debug.module.js",
+      "import": "./dist/debug.mjs",
+      "require": "./dist/debug.js"
+    }
+  },
+  "mangle": "../../mangle.json",
+  "files": [
+    "src",
+    "dist",
+    "CHANGELOG.md",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "prepublishOnly": "cd ../.. && pnpm build:debug"
+  },
+  "devDependencies": {
+    "@preact/signals-core": "workspace:^1.12.0"
+  },
+  "peerDependencies": {
+    "@preact/signals-core": ">=1.12.0"
+  },
+  "publishConfig": {
+    "provenance": true
+  }
+}

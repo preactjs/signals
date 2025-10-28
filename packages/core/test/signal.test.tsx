@@ -791,6 +791,7 @@ describe("effect()", () => {
 		const a = signal(0);
 		const spy = vi.fn();
 		{
+			// @ts-expect-error This is a test for the dispose API
 			using _dispose = effect(() => {
 				a.value;
 				return spy;

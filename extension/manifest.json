@@ -1,0 +1,39 @@
+{
+  "manifest_version": 3,
+  "name": "Preact Signals DevTools",
+  "version": "1.0.0",
+  "description": "Debug and inspect Preact Signals in your web applications",
+  "permissions": ["activeTab", "scripting", "clipboardWrite"],
+  "host_permissions": ["<all_urls>"],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_start",
+      "all_frames": true
+    }
+  ],
+  "devtools_page": "devtools.html",
+  "background": {
+    "service_worker": "background.js"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Preact Signals DevTools"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["inject.js"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self';"
+  }
+}

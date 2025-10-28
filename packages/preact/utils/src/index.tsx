@@ -9,12 +9,21 @@ interface ShowProps<T = boolean> {
 	children: JSX.Element | ((value: NonNullable<T>) => JSX.Element);
 }
 
+const Item = (props: any) => {
+	const result =
+		typeof props.children === "function"
+			? props.children(props.v, props.i)
+			: props.children;
+	if (props.cache) {
+		props.cache.set(props.v, result);
+	}
+	return result;
+};
+
 export function Show<T = boolean>(props: ShowProps<T>): JSX.Element | null {
 	const value = props.when.value;
 	if (!value) return props.fallback || null;
-	return typeof props.children === "function"
-		? props.children(value)
-		: props.children;
+	return <Item v={value} children={props.children} />;
 }
 
 interface ForProps<T> {
@@ -38,7 +47,7 @@ export function For<T>(props: ForProps<T>): JSX.Element | null {
 
 	const items = list.map((value, key) => {
 		if (!cache.has(value)) {
-			cache.set(value, props.children(value, key));
+			return <Item v={value} i={key} children={props.children} cache={cache} />;
 		}
 		return cache.get(value);
 	});

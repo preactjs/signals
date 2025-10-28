@@ -1,0 +1,70 @@
+{
+  "name": "@preact/signals-preact-transform",
+  "version": "0.1.0",
+  "license": "MIT",
+  "description": "Manage state with style in Preact",
+  "keywords": [
+    "babel",
+    "signals",
+    "preact"
+  ],
+  "authors": [
+    "The Preact Authors (https://github.com/preactjs/signals/contributors)"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/preactjs/signals",
+    "directory": "packages/preact-transform"
+  },
+  "bugs": "https://github.com/preactjs/signals/issues",
+  "homepage": "https://preactjs.com",
+  "funding": {
+    "type": "opencollective",
+    "url": "https://opencollective.com/preact"
+  },
+  "main": "dist/signals-transform.js",
+  "module": "dist/signals-transform.module.js",
+  "types": "dist/signals-transform.d.ts",
+  "source": "src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/signals-transform.d.ts",
+      "import": "./dist/signals-transform.mjs",
+      "require": "./dist/signals-transform.js"
+    }
+  },
+  "mangle": "../../mangle.json",
+  "files": [
+    "dist",
+    "src",
+    "CHANGELOG.md",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "prepublishOnly": "cd ../.. && pnpm build:preact-transform"
+  },
+  "dependencies": {
+    "@babel/helper-module-imports": "^7.27.1",
+    "@babel/helper-plugin-utils": "^7.27.1",
+    "debug": "^4.3.4"
+  },
+  "peerDependencies": {
+    "@babel/core": "^7.0.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.28.4",
+    "@types/babel__core": "^7.20.5",
+    "@types/babel__helper-module-imports": "^7.18.3",
+    "@types/babel__helper-plugin-utils": "^7.10.3",
+    "@types/debug": "^4.1.12",
+    "@types/prettier": "^2.7.3",
+    "assert": "^2.0.0",
+    "buffer": "^6.0.3",
+    "path": "^0.12.7",
+    "prettier": "^2.7.1"
+  },
+  "publishConfig": {
+    "provenance": true
+  }
+}
