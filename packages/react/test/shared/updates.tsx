@@ -904,11 +904,11 @@ export function updateSignalsTests(usingTransform = false) {
 
 			await render(<App x={s1} />);
 			expect(scratch.textContent).to.equal("1");
-			expect(spy).to.have.been.calledOnce;
+			expect(spy.callCount).to.equal(1);
 
 			await render(<App x={s1} />);
 			expect(scratch.textContent).to.equal("1");
-			expect(spy).to.have.been.calledOnce;
+			expect(spy.callCount).to.equal(1);
 		});
 	});
 }
