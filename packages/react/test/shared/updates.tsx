@@ -890,7 +890,7 @@ export function updateSignalsTests(usingTransform = false) {
 
 		it("should not recompute when the compute function doesn't change and dependency values don't change", async () => {
 			const s1 = signal(1);
-			const spy = sinon.spy();
+			const spy = vi.fn();
 
 			function App({ x }: { x: Signal }) {
 				const fn = useCallback(() => {
@@ -904,11 +904,11 @@ export function updateSignalsTests(usingTransform = false) {
 
 			await render(<App x={s1} />);
 			expect(scratch.textContent).to.equal("1");
-			expect(spy.callCount).to.equal(1);
+			expect(spy).toHaveBeenCalledOnce();
 
 			await render(<App x={s1} />);
 			expect(scratch.textContent).to.equal("1");
-			expect(spy.callCount).to.equal(1);
+			expect(spy).toHaveBeenCalledOnce();
 		});
 	});
 }
