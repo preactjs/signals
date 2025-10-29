@@ -729,7 +729,7 @@ describe("@preact/signals", () => {
 		// https://github.com/preactjs/signals/issues/781
 		it("should handle empty string data-* attributes consistently", async () => {
 			const s = signal("");
-			const spy = sinon.spy();
+			const spy = vi.fn();
 
 			function App() {
 				spy();
@@ -738,7 +738,7 @@ describe("@preact/signals", () => {
 			}
 
 			render(<App />, scratch);
-			spy.resetHistory();
+			spy.mockReset();
 
 			const div = scratch.firstChild as HTMLDivElement;
 
@@ -750,7 +750,7 @@ describe("@preact/signals", () => {
 			});
 
 			expect(div.getAttribute("data-text")).to.equal("test");
-			expect(spy).not.to.have.been.called;
+			expect(spy).not.toHaveBeenCalled();
 
 			act(() => {
 				s.value = "";
@@ -758,12 +758,12 @@ describe("@preact/signals", () => {
 
 			expect(div.hasAttribute("data-text")).to.equal(true);
 			expect(div.getAttribute("data-text")).to.equal("");
-			expect(spy).not.to.have.been.called;
+			expect(spy).not.toHaveBeenCalled();
 		});
 
 		it("should handle empty string on regular attributes consistently", async () => {
 			const s = signal("");
-			const spy = sinon.spy();
+			const spy = vi.fn();
 
 			function App() {
 				spy();
@@ -772,7 +772,7 @@ describe("@preact/signals", () => {
 			}
 
 			render(<App />, scratch);
-			spy.resetHistory();
+			spy.mockReset();
 
 			const div = scratch.firstChild as HTMLDivElement;
 
@@ -784,7 +784,7 @@ describe("@preact/signals", () => {
 			});
 
 			expect(div.getAttribute("title")).to.equal("test");
-			expect(spy).not.to.have.been.called;
+			expect(spy).not.toHaveBeenCalled();
 
 			act(() => {
 				s.value = "";
@@ -792,7 +792,7 @@ describe("@preact/signals", () => {
 
 			expect(div.hasAttribute("title")).to.equal(true);
 			expect(div.getAttribute("title")).to.equal("");
-			expect(spy).not.to.have.been.called;
+			expect(spy).not.toHaveBeenCalled();
 		});
 	});
 
@@ -1100,7 +1100,7 @@ describe("@preact/signals", () => {
 
 		it("should not recompute when the compute function doesn't change and dependency values don't change", async () => {
 			const s1 = signal(1);
-			const spy = sinon.spy();
+			const spy = vi.fn();
 
 			function App({ x }: { x: Signal }) {
 				const fn = useCallback(() => {
@@ -1114,11 +1114,11 @@ describe("@preact/signals", () => {
 
 			render(<App x={s1} />, scratch);
 			expect(scratch.textContent).to.equal("1");
-			expect(spy).to.have.been.calledOnce;
+			expect(spy).toHaveBeenCalledTimes(1);
 
 			rerender();
 			expect(scratch.textContent).to.equal("1");
-			expect(spy).to.have.been.calledOnce;
+			expect(spy).toHaveBeenCalledTimes(1);
 		});
 	});
 });
