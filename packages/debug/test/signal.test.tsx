@@ -1,3 +1,4 @@
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
 	signal,
 	computed,
@@ -6,27 +7,23 @@ import {
 	ReadonlySignal,
 } from "@preact/signals-core";
 import { setDebugOptions } from "@preact/signals-debug";
-import { SinonSpy } from "sinon";
 
 describe("Signal Debug", () => {
-	let consoleSpy: SinonSpy;
-	let groupSpy: SinonSpy;
-	let groupEndSpy: SinonSpy;
-	let groupCollapsedSpy: SinonSpy;
+	let consoleSpy: ReturnType<typeof vi.spyOn>;
+	let groupSpy: ReturnType<typeof vi.spyOn>;
+	let groupEndSpy: ReturnType<typeof vi.spyOn>;
+	let groupCollapsedSpy: ReturnType<typeof vi.spyOn>;
 
 	beforeEach(() => {
-		consoleSpy = sinon.spy(console, "log");
-		groupSpy = sinon.spy(console, "group");
-		groupCollapsedSpy = sinon.spy(console, "groupCollapsed");
-		groupEndSpy = sinon.spy(console, "groupEnd");
+		consoleSpy = vi.spyOn(console, "log");
+		groupSpy = vi.spyOn(console, "group");
+		groupCollapsedSpy = vi.spyOn(console, "groupCollapsed");
+		groupEndSpy = vi.spyOn(console, "groupEnd");
 		setDebugOptions({ grouped: true, enabled: true, spacing: 2 });
 	});
 
 	afterEach(() => {
-		consoleSpy.restore();
-		groupSpy.restore();
-		groupCollapsedSpy.restore();
-		groupEndSpy.restore();
+		vi.restoreAllMocks();
 	});
 
 	describe("Basic Signal Updates", () => {
@@ -37,13 +34,13 @@ describe("Signal Debug", () => {
 
 			await new Promise(resolve => setTimeout(resolve, 0));
 
-			expect(groupSpy).to.be.calledWith("🎯 Signal Update: count");
-			expect(consoleSpy).to.be.calledWith("From:", "0");
-			expect(consoleSpy).to.be.calledWith("To:", "1");
-			expect(groupCollapsedSpy).to.be.calledWith(
+			expect(groupSpy).toHaveBeenCalledWith("🎯 Signal Update: count");
+			expect(consoleSpy).toHaveBeenCalledWith("From:", "0");
+			expect(consoleSpy).toHaveBeenCalledWith("To:", "1");
+			expect(groupCollapsedSpy).toHaveBeenCalledWith(
 				"  ↪️ Triggered effect: count-subscribe"
 			);
-			expect(groupEndSpy).to.be.calledTwice;
+			expect(groupEndSpy).toHaveBeenCalledTimes(2);
 		});
 
 		it("should handle object values correctly", async () => {
@@ -53,9 +50,9 @@ describe("Signal Debug", () => {
 
 			await new Promise(resolve => setTimeout(resolve, 0));
 
-			expect(groupSpy).to.be.calledWith("🎯 Signal Update: user");
-			expect(consoleSpy).to.be.calledWith("From:", '{"name":"John"}');
-			expect(consoleSpy).to.be.calledWith("To:", '{"name":"Jane"}');
+			expect(groupSpy).toHaveBeenCalledWith("🎯 Signal Update: user");
+			expect(consoleSpy).toHaveBeenCalledWith("From:", '{"name":"John"}');
+			expect(consoleSpy).toHaveBeenCalledWith("To:", '{"name":"Jane"}');
 		});
 
 		it("should handle undefined and null values", async () => {
@@ -65,9 +62,9 @@ describe("Signal Debug", () => {
 
 			await new Promise(resolve => setTimeout(resolve, 0));
 
-			expect(groupSpy).to.be.calledWith("🎯 Signal Update: nullable");
-			expect(consoleSpy).to.be.calledWith("From:", "null");
-			expect(consoleSpy).to.be.calledWith("To:", "test");
+			expect(groupSpy).toHaveBeenCalledWith("🎯 Signal Update: nullable");
+			expect(consoleSpy).toHaveBeenCalledWith("From:", "null");
+			expect(consoleSpy).toHaveBeenCalledWith("To:", "test");
 		});
 	});
 
@@ -81,11 +78,11 @@ describe("Signal Debug", () => {
 
 			await new Promise(resolve => setTimeout(resolve, 0));
 
-			expect(groupSpy).to.be.calledWith("🎯 Signal Update: count");
-			expect(groupCollapsedSpy).to.be.calledWith(
+			expect(groupSpy).toHaveBeenCalledWith("🎯 Signal Update: count");
+			expect(groupCollapsedSpy).toHaveBeenCalledWith(
 				"  ↪️ Triggered update: doubled"
 			);
-			expect(consoleSpy).to.be.calledWith("  Type: Computed");
+			expect(consoleSpy).toHaveBeenCalledWith("  Type: Computed");
 		});
 
 		it("should handle nested computed signals", async () => {
@@ -100,11 +97,11 @@ describe("Signal Debug", () => {
 
 			await new Promise(resolve => setTimeout(resolve, 0));
 
-			expect(groupSpy).to.be.calledWith("🎯 Signal Update: count");
-			expect(groupCollapsedSpy).to.be.calledWith(
+			expect(groupSpy).toHaveBeenCalledWith("🎯 Signal Update: count");
+			expect(groupCollapsedSpy).toHaveBeenCalledWith(
 				"  ↪️ Triggered update: doubled"
 			);
-			expect(groupCollapsedSpy).to.be.calledWith(
+			expect(groupCollapsedSpy).toHaveBeenCalledWith(
 				"    ↪️ Triggered update: message"
 			);
 		});
@@ -120,11 +117,11 @@ describe("Signal Debug", () => {
 
 			await new Promise(resolve => setTimeout(resolve, 0));
 
-			expect(groupSpy).to.be.calledWith("🎯 Signal Update: count");
-			expect(groupCollapsedSpy).to.be.calledWith(
+			expect(groupSpy).toHaveBeenCalledWith("🎯 Signal Update: count");
+			expect(groupCollapsedSpy).toHaveBeenCalledWith(
 				"  ↪️ Triggered update: tripled"
 			);
-			expect(groupCollapsedSpy).to.be.calledWith(
+			expect(groupCollapsedSpy).toHaveBeenCalledWith(
 				"  ↪️ Triggered update: doubled"
 			);
 		});
@@ -139,8 +136,10 @@ describe("Signal Debug", () => {
 
 			await new Promise(resolve => setTimeout(resolve, 0));
 
-			expect(groupSpy).to.be.calledWith("🎯 Signal Update: count2");
-			expect(groupCollapsedSpy).to.be.calledWith("  ↪️ Triggered update: sum");
+			expect(groupSpy).toHaveBeenCalledWith("🎯 Signal Update: count2");
+			expect(groupCollapsedSpy).toHaveBeenCalledWith(
+				"  ↪️ Triggered update: sum"
+			);
 		});
 	});
 
@@ -158,9 +157,11 @@ describe("Signal Debug", () => {
 
 			await new Promise(resolve => setTimeout(resolve, 0));
 
-			expect(groupSpy).to.be.calledWith("🎯 Signal Update: count");
-			expect(groupCollapsedSpy).to.be.calledWith("  ↪️ Triggered update: sum");
-			expect(consoleSpy).to.be.calledWith("  Type: Computed");
+			expect(groupSpy).toHaveBeenCalledWith("🎯 Signal Update: count");
+			expect(groupCollapsedSpy).toHaveBeenCalledWith(
+				"  ↪️ Triggered update: sum"
+			);
+			expect(consoleSpy).toHaveBeenCalledWith("  Type: Computed");
 		});
 
 		it("should show batched signal updates w/ independent subscribers", async () => {
@@ -179,13 +180,13 @@ describe("Signal Debug", () => {
 			await new Promise(resolve => setTimeout(resolve, 0));
 
 			// Should have two groups
-			expect(groupSpy).to.be.calledWith("🎯 Signal Update: count");
-			expect(groupCollapsedSpy).to.be.calledWith(
+			expect(groupSpy).toHaveBeenCalledWith("🎯 Signal Update: count");
+			expect(groupCollapsedSpy).toHaveBeenCalledWith(
 				"  ↪️ Triggered update: doubled2"
 			);
-			expect(consoleSpy).to.be.calledWith("  Type: Computed");
-			expect(groupSpy).to.be.calledWith("🎯 Signal Update: count2");
-			expect(groupCollapsedSpy).to.be.calledWith(
+			expect(consoleSpy).toHaveBeenCalledWith("  Type: Computed");
+			expect(groupSpy).toHaveBeenCalledWith("🎯 Signal Update: count2");
+			expect(groupCollapsedSpy).toHaveBeenCalledWith(
 				"  ↪️ Triggered update: doubled"
 			);
 		});
@@ -205,11 +206,11 @@ describe("Signal Debug", () => {
 
 			await new Promise(resolve => setTimeout(resolve, 0));
 
-			expect(groupSpy).to.be.calledWith("🎯 Signal Update: count");
-			expect(groupCollapsedSpy).to.be.calledWith(
+			expect(groupSpy).toHaveBeenCalledWith("🎯 Signal Update: count");
+			expect(groupCollapsedSpy).toHaveBeenCalledWith(
 				"  ↪️ Triggered effect: count-effect"
 			);
-			expect(groupEndSpy).to.be.calledTwice;
+			expect(groupEndSpy).toHaveBeenCalledTimes(2);
 		});
 
 		it("should show effect deep updates", async () => {
@@ -226,14 +227,14 @@ describe("Signal Debug", () => {
 
 			await new Promise(resolve => setTimeout(resolve, 0));
 
-			expect(groupSpy).to.be.calledWith("🎯 Signal Update: count");
-			expect(groupCollapsedSpy).to.be.calledWith(
+			expect(groupSpy).toHaveBeenCalledWith("🎯 Signal Update: count");
+			expect(groupCollapsedSpy).toHaveBeenCalledWith(
 				"  ↪️ Triggered update: doubled"
 			);
-			expect(groupCollapsedSpy).to.be.calledWith(
+			expect(groupCollapsedSpy).toHaveBeenCalledWith(
 				"    ↪️ Triggered effect: logger"
 			);
-			expect(groupEndSpy).to.be.calledThrice;
+			expect(groupEndSpy).toHaveBeenCalledTimes(3);
 		});
 	});
 
@@ -247,8 +248,8 @@ describe("Signal Debug", () => {
 
 			await new Promise(resolve => setTimeout(resolve, 0));
 
-			expect(groupSpy).to.not.be.called;
-			expect(consoleSpy).to.not.be.called;
+			expect(groupSpy).not.toHaveBeenCalled();
+			expect(consoleSpy).not.toHaveBeenCalled();
 		});
 
 		it("should support flat logging mode", async () => {
@@ -261,14 +262,14 @@ describe("Signal Debug", () => {
 
 			await new Promise(resolve => setTimeout(resolve, 0));
 
-			expect(groupSpy).to.not.be.called;
-			expect(consoleSpy).to.be.calledWith("🎯 count: 0 → 2");
-			expect(consoleSpy).to.be.calledWith("↪️ doubled: 0 → 4");
+			expect(groupSpy).not.toHaveBeenCalled();
+			expect(consoleSpy).toHaveBeenCalledWith("🎯 count: 0 → 2");
+			expect(consoleSpy).toHaveBeenCalledWith("↪️ doubled: 0 → 4");
 		});
 	});
 
 	it("should not recompute dependencies unnecessarily", () => {
-		const spy = sinon.spy();
+		const spy = vi.fn();
 		const a = signal(0);
 		const b = signal(0);
 		const c = computed(() => {
@@ -280,13 +281,13 @@ describe("Signal Debug", () => {
 				c.value;
 			}
 		});
-		expect(spy).to.be.calledOnce;
+		expect(spy).toHaveBeenCalledOnce();
 
 		batch(() => {
 			b.value = 1;
 			a.value = 1;
 		});
-		expect(spy).to.be.calledOnce;
+		expect(spy).toHaveBeenCalledOnce();
 	});
 
 	it("should be garbage collectable after it has lost all of its listeners", async () => {
@@ -319,10 +320,10 @@ describe("Signal Debug", () => {
 		//  |
 		// *C
 		const a = signal("a");
-		const spyB = sinon.spy(() => a.value);
+		const spyB = vi.fn(() => a.value);
 		const b = computed(spyB);
 
-		const spyC = sinon.spy(() => b.value);
+		const spyC = vi.fn(() => b.value);
 		const c = computed(spyC);
 
 		const d = computed(() => a.value);
@@ -335,14 +336,14 @@ describe("Signal Debug", () => {
 		expect(result).to.equal("a");
 		expect(d.value).to.equal("a");
 
-		spyB.resetHistory();
-		spyC.resetHistory();
+		spyB.mockClear();
+		spyC.mockClear();
 		unsub();
 
 		a.value = "aa";
 
-		expect(spyB).not.to.be.called;
-		expect(spyC).not.to.be.called;
+		expect(spyB).not.toHaveBeenCalled();
+		expect(spyC).not.toHaveBeenCalled();
 		expect(d.value).to.equal("aa");
 	});
 });
