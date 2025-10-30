@@ -2,6 +2,7 @@ import { computed, signal } from "@preact/signals";
 import { For, Show, useSignalRef } from "@preact/signals/utils";
 import { render, createElement } from "preact";
 import { act } from "preact/test-utils";
+import { describe, beforeEach, afterEach, it, expect } from "vitest";
 
 describe("@preact/signals-utils", () => {
 	let scratch: HTMLDivElement;

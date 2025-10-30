@@ -1,5 +1,5 @@
 import React from "react";
-import sinon from "sinon";
+import { vi, expect, type MockInstance } from "vitest";
 import { act as realAct } from "react-dom/test-utils";
 
 export interface Root {
@@ -10,35 +10,7 @@ export interface Root {
 export const isProd = process.env.NODE_ENV === "production";
 export const isReact16 = React.version.startsWith("16.");
 
-// We need to use createRoot() if it's available, but it's only available in
-// React 18. To enable local testing with React 16 & 17, we'll create a fake
-// createRoot() that uses render() and unmountComponentAtNode() instead.
-let createRootCache: ((container: Element) => Root) | undefined;
-export async function createRoot(container: Element): Promise<Root> {
-	if (!createRootCache) {
-		try {
-			// @ts-expect-error ESBuild will replace this import with a require() call
-			// if it resolves react-dom/client. If it doesn't, it will leave the
-			// import untouched causing a runtime error we'll handle below.
-			const { createRoot } = await import("react-dom/client");
-			createRootCache = createRoot;
-		} catch (e) {
-			// @ts-expect-error ESBuild will replace this import with a require() call
-			// if it resolves react-dom.
-			const { render, unmountComponentAtNode } = await import("react-dom");
-			createRootCache = (container: Element) => ({
-				render(element: JSX.Element) {
-					render(element, container);
-				},
-				unmount() {
-					unmountComponentAtNode(container);
-				},
-			});
-		}
-	}
-
-	return createRootCache(container);
-}
+export { createRoot } from "./create-root";
 
 // When testing using react's production build, we can't use act (React
 // explicitly throws an error in this situation). So instead we'll fake act by
@@ -96,15 +68,15 @@ export function consoleFormat(str: string, ...values: unknown[]): string {
 }
 
 declare global {
-	let errorSpy: sinon.SinonSpy | undefined;
+	let errorSpy: MockInstance<typeof console.error> | undefined;
 }
 
 // Only one spy can be active on an object at a time and since all tests share
 // the same console object we need to make sure we're only spying on it once.
 // We'll use this method to share the spy across all tests.
-export function getConsoleErrorSpy(): sinon.SinonSpy {
+export function getConsoleErrorSpy(): MockInstance<typeof console.error> {
 	if (typeof errorSpy === "undefined") {
-		(globalThis as any).errorSpy = sinon.spy(console, "error");
+		(globalThis as any).errorSpy = vi.spyOn(console, "error");
 	}
 
 	return errorSpy!;
@@ -127,13 +99,13 @@ if (isReact16) {
 
 export function checkConsoleErrorLogs(): void {
 	const errorSpy = getConsoleErrorSpy();
-	if (errorSpy.called) {
+	if (errorSpy.mock.calls.length > 0) {
 		let message: string;
-		if (errorSpy.firstCall.args[0].toString().includes("%s")) {
-			const firstArg = errorSpy.firstCall.args[0];
-			message = consoleFormat(firstArg, ...errorSpy.firstCall.args.slice(1));
+		if (errorSpy.mock.calls[0][0].toString().includes("%s")) {
+			const firstArg = errorSpy.mock.calls[0][0];
+			message = consoleFormat(firstArg, ...errorSpy.mock.calls[0].slice(1));
 		} else {
-			message = errorSpy.firstCall.args.join(" ");
+			message = errorSpy.mock.calls[0].join(" ");
 		}
 
 		if (messagesToIgnore.every(re => re.test(message) === false)) {

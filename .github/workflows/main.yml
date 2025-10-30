@@ -46,6 +46,11 @@ jobs:
       - name: Test react production build
         run: pnpm test:prod
 
+      - name: Prepare runtime with React 16
+        working-directory: packages/react/runtime
+        run: |
+          pnpm i react@16 react-dom@16 react-router-dom@5
+
       - name: Test React 16
         working-directory: packages/react
         run: |
