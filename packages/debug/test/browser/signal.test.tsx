@@ -1,4 +1,6 @@
+/// <reference types="@vitest/browser/providers/playwright" />
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { cdp } from "@vitest/browser/context";
 import {
 	signal,
 	computed,
@@ -292,6 +294,9 @@ describe("Signal Debug", () => {
 
 	it("should be garbage collectable after it has lost all of its listeners", async () => {
 		const s = signal(0);
+		const cdpSession = cdp();
+
+		await cdpSession.send("HeapProfiler.enable");
 
 		let ref: WeakRef<ReadonlySignal>;
 		let dispose: () => void;
@@ -304,9 +309,9 @@ describe("Signal Debug", () => {
 		})();
 
 		dispose();
-		(gc as () => void)();
+		await cdpSession.send("HeapProfiler.collectGarbage");
 		await new Promise(resolve => setTimeout(resolve, 0));
-		(gc as () => void)();
+		await cdpSession.send("HeapProfiler.collectGarbage");
 		expect(ref.deref()).to.be.undefined;
 	});
 

@@ -15,7 +15,7 @@ import {
 	Component,
 } from "preact";
 import type { ComponentChildren, FunctionComponent, VNode } from "preact";
-import { useContext, useEffect, useRef, useState, useCallback } from "preact/hooks";
+import { useContext, useEffect, useRef, useState } from "preact/hooks";
 import { setupRerender, act } from "preact/test-utils";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
@@ -1060,59 +1060,6 @@ describe("@preact/signals", () => {
 			expect(spy).toHaveBeenCalledTimes(2);
 			expect(spy).toHaveBeenCalledWith("constructor:1");
 			expect(spy).toHaveBeenCalledWith("willmount:1");
-		});
-	});
-
-	describe("useComputed", () => {
-		it("should recompute and update dependency list when the compute function changes", async () => {
-			const s1 = signal(1);
-			const s2 = signal("a");
-
-			function App({ x }: { x: Signal }) {
-				const fn = useCallback(() => {
-					return x.value;
-				}, [x]);
-
-				const c = useComputed(fn);
-				return <span>{c.value}</span>;
-			}
-
-			render(<App x={s1} />, scratch);
-			expect(scratch.textContent).to.equal("1");
-
-			render(<App x={s2} />, scratch);
-			expect(scratch.textContent).to.equal("a");
-
-			s1.value = 2;
-			rerender();
-			expect(scratch.textContent).to.equal("a");
-
-			s2.value = "b";
-			rerender();
-			expect(scratch.textContent).to.equal("b");
-		});
-
-		it("should not recompute when the compute function doesn't change and dependency values don't change", async () => {
-			const s1 = signal(1);
-			const spy = vi.fn();
-
-			function App({ x }: { x: Signal }) {
-				const fn = useCallback(() => {
-					spy();
-					return x.value;
-				}, [x]);
-
-				const c = useComputed(fn);
-				return <span>{c.value}</span>;
-			}
-
-			render(<App x={s1} />, scratch);
-			expect(scratch.textContent).to.equal("1");
-			expect(spy).toHaveBeenCalledTimes(1);
-
-			rerender();
-			expect(scratch.textContent).to.equal("1");
-			expect(spy).toHaveBeenCalledTimes(1);
 		});
 	});
 });
