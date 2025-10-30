@@ -1,3 +1,4 @@
+import { describe, it, expect } from "vitest";
 import { transform } from "@babel/core";
 import prettier from "prettier";
 import signalsTransform, { PluginOptions } from "../../src/index";
