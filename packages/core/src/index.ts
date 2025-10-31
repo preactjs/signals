@@ -425,7 +425,10 @@ Object.defineProperty(Signal.prototype, "value", {
  */
 export function signal<T>(value: T, options?: SignalOptions<T>): Signal<T>;
 export function signal<T = undefined>(): Signal<T | undefined>;
-export function signal<T>(value?: T, options?: SignalOptions<T>): Signal<T> {
+export function signal<T>(
+	value?: T,
+	options?: SignalOptions<T | undefined>
+): Signal<T | undefined> {
 	return new Signal(value, options);
 }
 
