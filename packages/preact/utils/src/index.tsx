@@ -41,13 +41,20 @@ export function For<T>(props: ForProps<T>): JSX.Element | null {
 
 	if (!list.length) return props.fallback || null;
 
+	const removed = new Set(cache.keys());
+
 	const items = list.map((value, key) => {
+		removed.delete(value);
 		if (!cache.has(value)) {
 			const result = <Item v={value} i={key} children={props.children} />;
 			cache.set(value, result);
 			return result;
 		}
 		return cache.get(value);
+	});
+
+	removed.forEach(value => {
+		cache.delete(value);
 	});
 
 	return createElement(Fragment, null, items);
