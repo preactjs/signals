@@ -4,7 +4,7 @@ import { Fragment, createElement, JSX } from "preact";
 import { useMemo } from "preact/hooks";
 
 interface ShowProps<T = boolean> {
-	when: Signal<T> | ReadonlySignal<T>;
+	when: Signal<T> | ReadonlySignal<T> | (() => T);
 	fallback?: JSX.Element;
 	children: JSX.Element | ((value: NonNullable<T>) => JSX.Element);
 }
@@ -16,7 +16,8 @@ const Item = (props: any) => {
 };
 
 export function Show<T = boolean>(props: ShowProps<T>): JSX.Element | null {
-	const value = props.when.value;
+	const value =
+		typeof props.when === "function" ? props.when() : props.when.value;
 	if (!value) return props.fallback || null;
 	return <Item v={value} children={props.children} />;
 }
