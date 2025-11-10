@@ -1,5 +1,15 @@
 # @preact/signals-react
 
+## 3.4.0
+
+### Minor Changes
+
+- [#777](https://github.com/preactjs/signals/pull/777) [`d31738f`](https://github.com/preactjs/signals/commit/d31738f646fda6bd00113b8e6e1dfae46e14f08e) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Revert the changes to `useComputed`, sincere apologies for the inconvenience we've discussed this at length and are going to side on the perf side.
+
+### Patch Changes
+
+- [#783](https://github.com/preactjs/signals/pull/783) [`86575b4`](https://github.com/preactjs/signals/commit/86575b41ec097c3ecdefc7b54a4cabfbe23f7984) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Ensure `For` and `Show` account for nested reactivity
+
 ## 3.3.1
 
 ### Patch Changes
