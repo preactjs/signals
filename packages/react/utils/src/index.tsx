@@ -11,14 +11,9 @@ interface ShowProps<T = boolean> {
 
 const Item = (props: any) => {
 	useSignals();
-	const result =
-		typeof props.children === "function"
-			? props.children(props.v, props.i)
-			: props.children;
-	if (props.cache) {
-		props.cache.set(props.v, result);
-	}
-	return result;
+	return typeof props.children === "function"
+		? props.children(props.v, props.i)
+		: props.children;
 };
 
 export function Show<T = boolean>(props: ShowProps<T>): JSX.Element | null {
@@ -51,15 +46,11 @@ export function For<T>(props: ForProps<T>): JSX.Element | null {
 
 	const items = list.map((value, key) => {
 		if (!cache.has(value)) {
-			return (
-				<Item
-					v={value}
-					key={key}
-					i={key}
-					children={props.children}
-					cache={cache}
-				/>
+			const result = (
+				<Item v={value} key={key} i={key} children={props.children} />
 			);
+			cache.set(value, result);
+			return result;
 		}
 		return cache.get(value);
 	});
