@@ -113,7 +113,7 @@ function startComponentEffect(
 	prevStore: EffectStore | undefined,
 	nextStore: EffectStore
 ) {
-	nextStore._sub = Signal.prototype._subscribe;
+	nextStore._sub = prevStore ? prevStore._sub : Signal.prototype._subscribe;
 	Signal.prototype._subscribe = function (this: Signal, node: any) {
 		nextStore._subscribers.push({ signal: this, node });
 	};
