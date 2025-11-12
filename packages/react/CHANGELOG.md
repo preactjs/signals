@@ -1,5 +1,17 @@
 # @preact/signals-react
 
+## 3.5.0
+
+### Minor Changes
+
+- [#792](https://github.com/preactjs/signals/pull/792) [`95dcf41`](https://github.com/preactjs/signals/commit/95dcf41c95baa5d9c6aa8f94c7592722c0cefc3f) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Allow the `when` property of `Show` to be a function so not everything has to be transformed into a boolean computed
+
+### Patch Changes
+
+- [#790](https://github.com/preactjs/signals/pull/790) [`4b143a7`](https://github.com/preactjs/signals/commit/4b143a7164d58edda05a23a482f06afc20543234) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Ensure the cached and non-cached shape is the same
+
+- [#791](https://github.com/preactjs/signals/pull/791) [`358a758`](https://github.com/preactjs/signals/commit/358a7585a27deff6cf0b804f5f02739b893c7a02) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Prevent `For` cache from expanding infinitely
+
 ## 3.4.0
 
 ### Minor Changes
