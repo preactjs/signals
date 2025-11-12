@@ -99,6 +99,8 @@ export interface EffectStore {
 	getSnapshot(): number;
 	/** startEffect - begin tracking signals used in this component */
 	_start(): void;
+	_subscribers: Array<{ signal: Signal; node: any }>;
+	_sub: typeof Signal.prototype._subscribe;
 	/** finishEffect - stop tracking the signals used in this component */
 	f(): void;
 	[symDispose](): void;
@@ -106,10 +108,15 @@ export interface EffectStore {
 
 let currentStore: EffectStore | undefined;
 
+const realSubscribe = Signal.prototype._subscribe;
 function startComponentEffect(
 	prevStore: EffectStore | undefined,
 	nextStore: EffectStore
 ) {
+	nextStore._sub = Signal.prototype._subscribe;
+	Signal.prototype._subscribe = function (this: Signal, node: any) {
+		nextStore._subscribers.push({ signal: this, node });
+	};
 	const endEffect = nextStore.effect._start();
 	currentStore = nextStore;
 
@@ -121,6 +128,7 @@ function finishComponentEffect(
 	prevStore: EffectStore | undefined,
 	endEffect: () => void
 ) {
+	Signal.prototype._subscribe = this._sub;
 	endEffect();
 	currentStore = prevStore;
 }
@@ -171,6 +179,8 @@ function createEffectStore(
 
 	return {
 		_usage,
+		_subscribers: [],
+		_sub: realSubscribe,
 		effect: effectInstance,
 		subscribe(onStoreChange) {
 			onChangeNotifyReact = onStoreChange;
@@ -305,6 +315,8 @@ const noop = () => {};
 
 function createEmptyEffectStore(): EffectStore {
 	return {
+		_subscribers: [],
+		_sub: noop as any,
 		_usage: UNMANAGED,
 		effect: {
 			_sources: undefined,
@@ -368,6 +380,13 @@ export function _useSignalsImplementation(
 	store._start();
 	// note: _usage is a constant here, so conditional is okay
 	if (_usage === UNMANAGED) useIsomorphicLayoutEffect(cleanupTrailingStore);
+
+	useIsomorphicLayoutEffect(() => {
+		store._subscribers.forEach(({ signal, node }) => {
+			realSubscribe.call(signal, node);
+		});
+		store._subscribers = [];
+	});
 
 	return store;
 }
