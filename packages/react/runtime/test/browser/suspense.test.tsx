@@ -2,7 +2,7 @@
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
 import { createElement, lazy, useLayoutEffect, Suspense } from "react";
-import { signal } from "@preact/signals-core";
+import { signal, Signal } from "@preact/signals-core";
 import {
 	useComputed,
 	useSignalEffect,
@@ -19,6 +19,7 @@ import {
 describe("Suspense", () => {
 	let scratch: HTMLDivElement;
 	let root: Root;
+	let originalSubscribe: typeof Signal.prototype._subscribe;
 
 	async function render(element: Parameters<Root["render"]>[0]) {
 		await act(() => root.render(element));
@@ -29,6 +30,7 @@ describe("Suspense", () => {
 		document.body.appendChild(scratch);
 		root = await createRoot(scratch);
 		getConsoleErrorSpy().resetHistory();
+		originalSubscribe = Signal.prototype._subscribe;
 	});
 
 	afterEach(async () => {
@@ -40,6 +42,7 @@ describe("Suspense", () => {
 		//
 		// checkConsoleErrorLogs();
 		checkHangingAct();
+		expect(Signal.prototype._subscribe).to.equal(originalSubscribe);
 	});
 
 	it("should handle suspending and unsuspending", async () => {
@@ -122,15 +125,19 @@ describe("Suspense", () => {
 			signal1.value++;
 			signal2.value++;
 		});
+		expect(Signal.prototype._subscribe).to.equal(originalSubscribe);
+
 		await act(async () => {
 			signal1.value--;
 			signal2.value--;
 		});
+		expect(Signal.prototype._subscribe).to.equal(originalSubscribe);
 
 		await act(async () => {
 			resolveMiddleProm();
 			await middleProm;
 		});
+		expect(Signal.prototype._subscribe).to.equal(originalSubscribe);
 
 		expect(scratch.innerHTML).to.be.oneOf([
 			// react 17+
@@ -143,6 +150,7 @@ describe("Suspense", () => {
 			unsuspend();
 			await prom;
 		});
+		expect(Signal.prototype._subscribe).to.equal(originalSubscribe);
 
 		// react 16 uses `style.setProperty()` to clear display value, which leaves an empty style attr in innerHTML.
 		// react 17 does not do this, so we normalize 16 behavior to 17 here.
@@ -157,6 +165,8 @@ describe("Suspense", () => {
 			signal1.value++;
 			signal2.value++;
 		});
+		expect(Signal.prototype._subscribe).to.equal(originalSubscribe);
+
 		expect(scratch.innerHTML).to.equal(
 			`<p>1</p><div data-foo="1"><span>lazy</span></div>`
 		);
@@ -236,6 +246,7 @@ describe("Suspense", () => {
 
 		// Initial render - should trigger watched callback
 		await render(<Parent />);
+		expect(Signal.prototype._subscribe).to.equal(originalSubscribe);
 		expect(scratch.innerHTML).to.contain("Loading first...");
 		expect(scratch.innerHTML).to.contain("Loading second...");
 		expect(scratch.innerHTML).to.contain("Regular");
@@ -249,6 +260,7 @@ describe("Suspense", () => {
 			resolveFirstProm();
 			await firstProm;
 		});
+		expect(Signal.prototype._subscribe).to.equal(originalSubscribe);
 
 		expect(scratch.innerHTML).to.contain("First");
 		expect(scratch.innerHTML).to.contain("Loading second...");
@@ -258,6 +270,7 @@ describe("Suspense", () => {
 			resolveSecondProm();
 			await secondProm;
 		});
+		expect(Signal.prototype._subscribe).to.equal(originalSubscribe);
 
 		expect(scratch.innerHTML).to.contain("First");
 		expect(scratch.innerHTML).to.contain("Second");
@@ -267,6 +280,7 @@ describe("Suspense", () => {
 		await act(async () => {
 			trackedSignal.value = 42;
 		});
+		expect(Signal.prototype._subscribe).to.equal(originalSubscribe);
 
 		expect(scratch.innerHTML).to.contain('data-parent="42"');
 		expect(scratch.innerHTML).to.contain('data-regular="42"');
@@ -281,7 +295,7 @@ describe("Suspense", () => {
 		expect(scratch.innerHTML).to.equal("");
 
 		// Wait for cleanup to complete
-		await new Promise(resolve => setTimeout(resolve, 10));
+		await new Promise(resolve => setTimeout(resolve, 100));
 
 		// After unmount, the signal should be unwatched
 		expect(unwatchedCallCount).to.be.greaterThan(0);
@@ -385,6 +399,7 @@ describe("Suspense", () => {
 
 		// Initial render - should trigger watched callback
 		await render(<Parent />);
+		expect(Signal.prototype._subscribe).to.equal(originalSubscribe);
 		expect(scratch.innerHTML).to.contain("Loading first...");
 		expect(scratch.innerHTML).to.contain("Loading second...");
 		expect(scratch.innerHTML).to.contain("Regular");
@@ -399,6 +414,7 @@ describe("Suspense", () => {
 			await firstProm;
 		});
 
+		expect(Signal.prototype._subscribe).to.equal(originalSubscribe);
 		expect(scratch.innerHTML).to.contain("First");
 		expect(scratch.innerHTML).to.contain("Loading second...");
 
@@ -408,6 +424,7 @@ describe("Suspense", () => {
 			await secondProm;
 		});
 
+		expect(Signal.prototype._subscribe).to.equal(originalSubscribe);
 		expect(scratch.innerHTML).to.contain("First");
 		expect(scratch.innerHTML).to.contain("Second");
 		expect(scratch.innerHTML).to.contain("Regular");
@@ -417,6 +434,7 @@ describe("Suspense", () => {
 			trackedSignal.value = 42;
 		});
 
+		expect(Signal.prototype._subscribe).to.equal(originalSubscribe);
 		expect(scratch.innerHTML).to.contain('data-parent="42"');
 		expect(scratch.innerHTML).to.contain('data-regular="42"');
 		expect(scratch.innerHTML).to.contain('data-first="42"');
@@ -427,10 +445,11 @@ describe("Suspense", () => {
 			root.unmount();
 		});
 
+		expect(Signal.prototype._subscribe).to.equal(originalSubscribe);
 		expect(scratch.innerHTML).to.equal("");
 
 		// Wait for cleanup to complete
-		await new Promise(resolve => setTimeout(resolve, 10));
+		await new Promise(resolve => setTimeout(resolve, 100));
 
 		// After unmount, the signal should be unwatched
 		expect(unwatchedCallCount).to.be.greaterThan(0);
@@ -478,6 +497,7 @@ describe("Suspense", () => {
 
 		// Initial render - should trigger watched callback
 		await render(<Parent />);
+		expect(Signal.prototype._subscribe).to.equal(originalSubscribe);
 		expect(scratch.innerHTML).to.contain("Regular");
 
 		// Signal should be watched by now
@@ -488,6 +508,7 @@ describe("Suspense", () => {
 		await act(async () => {
 			trackedSignal.value = 10;
 		});
+		expect(Signal.prototype._subscribe).to.equal(originalSubscribe);
 
 		expect(scratch.innerHTML).to.contain('data-parent="10"');
 		expect(scratch.innerHTML).to.contain('data-regular="10"');
@@ -497,6 +518,7 @@ describe("Suspense", () => {
 			trackedSignal.value = 20;
 		});
 
+		expect(Signal.prototype._subscribe).to.equal(originalSubscribe);
 		expect(scratch.innerHTML).to.contain('data-parent="20"');
 		expect(scratch.innerHTML).to.contain('data-regular="20"');
 
@@ -508,10 +530,11 @@ describe("Suspense", () => {
 			root.unmount();
 		});
 
+		expect(Signal.prototype._subscribe).to.equal(originalSubscribe);
 		expect(scratch.innerHTML).to.equal("");
 
 		// Wait for cleanup to complete
-		await new Promise(resolve => setTimeout(resolve, 10));
+		await new Promise(resolve => setTimeout(resolve, 100));
 
 		// After unmount, the signal should be unwatched
 		expect(unwatchedCallCount).to.be.greaterThan(0);
