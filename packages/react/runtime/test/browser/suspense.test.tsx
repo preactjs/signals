@@ -162,4 +162,367 @@ describe("Suspense", () => {
 			`<p>1</p><div data-foo="1"><span>lazy</span></div>`
 		);
 	});
+
+	it("should clean up signals after unmount with multiple suspense boundaries", async () => {
+		let watchedCallCount = 0;
+		let unwatchedCallCount = 0;
+
+		// Create a signal with watched/unwatched callbacks to track cleanup
+		const trackedSignal = signal(0, {
+			name: "trackedSignal",
+			watched: function () {
+				watchedCallCount++;
+			},
+			unwatched: function () {
+				unwatchedCallCount++;
+			},
+		});
+
+		let resolveFirstProm!: () => void;
+		let firstPromResolved = false;
+		const firstProm = new Promise(resolve => {
+			resolveFirstProm = () => {
+				firstPromResolved = true;
+				resolve(undefined);
+			};
+		});
+
+		let resolveSecondProm!: () => void;
+		let secondPromResolved = false;
+		const secondProm = new Promise(resolve => {
+			resolveSecondProm = () => {
+				secondPromResolved = true;
+				resolve(undefined);
+			};
+		});
+
+		function FirstSuspendingComponent() {
+			useSignals(0);
+			// Access the signal before any suspense
+			const value = trackedSignal.value;
+			if (!firstPromResolved) throw firstProm;
+			return <div data-first={value}>First</div>;
+		}
+
+		function SecondSuspendingComponent() {
+			useSignals();
+			// Access the signal after first suspense
+			const value = trackedSignal.value;
+			if (!secondPromResolved) throw secondProm;
+			return <div data-second={value}>Second</div>;
+		}
+
+		function RegularComponent() {
+			useSignals();
+			// Access the signal normally
+			return <div data-regular={trackedSignal.value}>Regular</div>;
+		}
+
+		function Parent() {
+			useSignals();
+			// Access the signal at the top level
+			const value = trackedSignal.value;
+			return (
+				<div data-parent={value}>
+					<RegularComponent />
+					<Suspense fallback={<span>Loading first...</span>}>
+						<FirstSuspendingComponent />
+					</Suspense>
+					<Suspense fallback={<span>Loading second...</span>}>
+						<SecondSuspendingComponent />
+					</Suspense>
+				</div>
+			);
+		}
+
+		// Initial render - should trigger watched callback
+		await render(<Parent />);
+		expect(scratch.innerHTML).to.contain("Loading first...");
+		expect(scratch.innerHTML).to.contain("Loading second...");
+		expect(scratch.innerHTML).to.contain("Regular");
+
+		// Signal should be watched by now
+		expect(watchedCallCount).to.be.greaterThan(0);
+		expect(unwatchedCallCount).to.equal(0);
+
+		// Resolve first suspense
+		await act(async () => {
+			resolveFirstProm();
+			await firstProm;
+		});
+
+		expect(scratch.innerHTML).to.contain("First");
+		expect(scratch.innerHTML).to.contain("Loading second...");
+
+		// Resolve second suspense
+		await act(async () => {
+			resolveSecondProm();
+			await secondProm;
+		});
+
+		expect(scratch.innerHTML).to.contain("First");
+		expect(scratch.innerHTML).to.contain("Second");
+		expect(scratch.innerHTML).to.contain("Regular");
+
+		// Update signal to verify it's still being watched
+		await act(async () => {
+			trackedSignal.value = 42;
+		});
+
+		expect(scratch.innerHTML).to.contain('data-parent="42"');
+		expect(scratch.innerHTML).to.contain('data-regular="42"');
+		expect(scratch.innerHTML).to.contain('data-first="42"');
+		expect(scratch.innerHTML).to.contain('data-second="42"');
+
+		// Now unmount the entire tree
+		await act(async () => {
+			root.unmount();
+		});
+
+		expect(scratch.innerHTML).to.equal("");
+
+		// Wait for cleanup to complete
+		await new Promise(resolve => setTimeout(resolve, 10));
+
+		// After unmount, the signal should be unwatched
+		expect(unwatchedCallCount).to.be.greaterThan(0);
+
+		// Verify the signal is no longer being watched by trying to update it
+		// (this won't trigger any re-renders since no components are subscribed)
+		trackedSignal.value = 999;
+
+		// The signal value should have changed but no components should re-render
+		expect(trackedSignal.value).to.equal(999);
+		expect(scratch.innerHTML).to.equal("");
+	});
+
+	it("should clean up signals after unmount with multiple suspense boundaries and use of try catch", async () => {
+		let watchedCallCount = 0;
+		let unwatchedCallCount = 0;
+
+		// Create a signal with watched/unwatched callbacks to track cleanup
+		const trackedSignal = signal(0, {
+			name: "trackedSignal",
+			watched: function () {
+				watchedCallCount++;
+			},
+			unwatched: function () {
+				unwatchedCallCount++;
+			},
+		});
+
+		let resolveFirstProm!: () => void;
+		let firstPromResolved = false;
+		const firstProm = new Promise(resolve => {
+			resolveFirstProm = () => {
+				firstPromResolved = true;
+				resolve(undefined);
+			};
+		});
+
+		let resolveSecondProm!: () => void;
+		let secondPromResolved = false;
+		const secondProm = new Promise(resolve => {
+			resolveSecondProm = () => {
+				secondPromResolved = true;
+				resolve(undefined);
+			};
+		});
+
+		function FirstSuspendingComponent() {
+			const store = useSignals(1);
+			try {
+				// Access the signal before any suspense
+				const value = trackedSignal.value;
+				if (!firstPromResolved) throw firstProm;
+				return <div data-first={value}>First</div>;
+			} finally {
+				store.f();
+			}
+		}
+
+		function SecondSuspendingComponent() {
+			const store = useSignals(1);
+			try {
+				// Access the signal after first suspense
+				const value = trackedSignal.value;
+				if (!secondPromResolved) throw secondProm;
+				return <div data-second={value}>Second</div>;
+			} finally {
+				store.f();
+			}
+		}
+
+		function RegularComponent() {
+			const store = useSignals(1);
+			try {
+				// Access the signal normally
+				return <div data-regular={trackedSignal.value}>Regular</div>;
+			} finally {
+				store.f();
+			}
+		}
+
+		function Parent() {
+			const store = useSignals(1);
+			try {
+				// Access the signal at the top level
+				const value = trackedSignal.value;
+				return (
+					<div data-parent={value}>
+						<RegularComponent />
+						<Suspense fallback={<span>Loading first...</span>}>
+							<FirstSuspendingComponent />
+						</Suspense>
+						<Suspense fallback={<span>Loading second...</span>}>
+							<SecondSuspendingComponent />
+						</Suspense>
+					</div>
+				);
+			} finally {
+				store.f();
+			}
+		}
+
+		// Initial render - should trigger watched callback
+		await render(<Parent />);
+		expect(scratch.innerHTML).to.contain("Loading first...");
+		expect(scratch.innerHTML).to.contain("Loading second...");
+		expect(scratch.innerHTML).to.contain("Regular");
+
+		// Signal should be watched by now
+		expect(watchedCallCount).to.be.greaterThan(0);
+		expect(unwatchedCallCount).to.equal(0);
+
+		// Resolve first suspense
+		await act(async () => {
+			resolveFirstProm();
+			await firstProm;
+		});
+
+		expect(scratch.innerHTML).to.contain("First");
+		expect(scratch.innerHTML).to.contain("Loading second...");
+
+		// Resolve second suspense
+		await act(async () => {
+			resolveSecondProm();
+			await secondProm;
+		});
+
+		expect(scratch.innerHTML).to.contain("First");
+		expect(scratch.innerHTML).to.contain("Second");
+		expect(scratch.innerHTML).to.contain("Regular");
+
+		// Update signal to verify it's still being watched
+		await act(async () => {
+			trackedSignal.value = 42;
+		});
+
+		expect(scratch.innerHTML).to.contain('data-parent="42"');
+		expect(scratch.innerHTML).to.contain('data-regular="42"');
+		expect(scratch.innerHTML).to.contain('data-first="42"');
+		expect(scratch.innerHTML).to.contain('data-second="42"');
+
+		// Now unmount the entire tree
+		await act(async () => {
+			root.unmount();
+		});
+
+		expect(scratch.innerHTML).to.equal("");
+
+		// Wait for cleanup to complete
+		await new Promise(resolve => setTimeout(resolve, 10));
+
+		// After unmount, the signal should be unwatched
+		expect(unwatchedCallCount).to.be.greaterThan(0);
+
+		// Verify the signal is no longer being watched by trying to update it
+		// (this won't trigger any re-renders since no components are subscribed)
+		trackedSignal.value = 999;
+
+		// The signal value should have changed but no components should re-render
+		expect(trackedSignal.value).to.equal(999);
+		expect(scratch.innerHTML).to.equal("");
+	});
+
+	it("should maintain signal watching and clean up after unmount", async () => {
+		let watchedCallCount = 0;
+		let unwatchedCallCount = 0;
+
+		// Create a signal with watched/unwatched callbacks to track cleanup
+		const trackedSignal = signal(0, {
+			name: "trackedSignal",
+			watched: function () {
+				watchedCallCount++;
+			},
+			unwatched: function () {
+				unwatchedCallCount++;
+			},
+		});
+
+		function RegularComponent() {
+			useSignals();
+			// Access the signal normally
+			return <div data-regular={trackedSignal.value}>Regular</div>;
+		}
+
+		function Parent() {
+			useSignals();
+			// Access the signal at the top level
+			const value = trackedSignal.value;
+			return (
+				<div data-parent={value}>
+					<RegularComponent />
+				</div>
+			);
+		}
+
+		// Initial render - should trigger watched callback
+		await render(<Parent />);
+		expect(scratch.innerHTML).to.contain("Regular");
+
+		// Signal should be watched by now
+		expect(watchedCallCount).to.be.greaterThan(0);
+		expect(unwatchedCallCount).to.equal(0);
+
+		// Update signal - should work normally
+		await act(async () => {
+			trackedSignal.value = 10;
+		});
+
+		expect(scratch.innerHTML).to.contain('data-parent="10"');
+		expect(scratch.innerHTML).to.contain('data-regular="10"');
+
+		// Update signal again
+		await act(async () => {
+			trackedSignal.value = 20;
+		});
+
+		expect(scratch.innerHTML).to.contain('data-parent="20"');
+		expect(scratch.innerHTML).to.contain('data-regular="20"');
+
+		// Signal should still be watched (no unwatched calls yet)
+		expect(unwatchedCallCount).to.equal(0);
+
+		// Now unmount the entire tree
+		await act(async () => {
+			root.unmount();
+		});
+
+		expect(scratch.innerHTML).to.equal("");
+
+		// Wait for cleanup to complete
+		await new Promise(resolve => setTimeout(resolve, 10));
+
+		// After unmount, the signal should be unwatched
+		expect(unwatchedCallCount).to.be.greaterThan(0);
+
+		// Verify the signal is no longer being watched by trying to update it
+		// (this won't trigger any re-renders since no components are subscribed)
+		trackedSignal.value = 999;
+
+		// The signal value should have changed but no components should re-render
+		expect(trackedSignal.value).to.equal(999);
+		expect(scratch.innerHTML).to.equal("");
+	});
 });
