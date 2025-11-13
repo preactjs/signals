@@ -1,12 +1,12 @@
 import { ReadonlySignal, Signal } from "@preact/signals-core";
 import { useSignal } from "@preact/signals-react";
 import { useSignals } from "@preact/signals-react/runtime";
-import { Fragment, createElement, useMemo } from "react";
+import { Fragment, createElement, useMemo, ReactNode } from "react";
 
 interface ShowProps<T = boolean> {
 	when: Signal<T> | ReadonlySignal<T> | (() => T);
-	fallback?: JSX.Element;
-	children: JSX.Element | ((value: NonNullable<T>) => JSX.Element);
+	fallback?: ReactNode;
+	children: ReactNode | ((value: NonNullable<T>) => ReactNode);
 }
 
 const Item = (props: any) => {
@@ -16,7 +16,7 @@ const Item = (props: any) => {
 		: props.children;
 };
 
-export function Show<T = boolean>(props: ShowProps<T>): JSX.Element | null {
+export function Show<T = boolean>(props: ShowProps<T>): ReactNode | null {
 	useSignals();
 	const value =
 		typeof props.when === "function" ? props.when() : props.when.value;
@@ -29,11 +29,11 @@ interface ForProps<T> {
 		| Signal<Array<T>>
 		| ReadonlySignal<Array<T>>
 		| (() => Signal<Array<T>> | ReadonlySignal<Array<T>>);
-	fallback?: JSX.Element;
-	children: (value: T, index: number) => JSX.Element;
+	fallback?: ReactNode;
+	children: (value: T, index: number) => ReactNode;
 }
 
-export function For<T>(props: ForProps<T>): JSX.Element | null {
+export function For<T>(props: ForProps<T>): ReactNode | null {
 	useSignals();
 	const cache = useMemo(() => new Map(), []);
 	let list = (

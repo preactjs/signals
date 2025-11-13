@@ -1,12 +1,12 @@
 import { ReadonlySignal, Signal } from "@preact/signals-core";
 import { useSignal } from "@preact/signals";
-import { Fragment, createElement, JSX } from "preact";
+import { Fragment, createElement, ComponentChildren } from "preact";
 import { useMemo } from "preact/hooks";
 
 interface ShowProps<T = boolean> {
 	when: Signal<T> | ReadonlySignal<T> | (() => T);
-	fallback?: JSX.Element;
-	children: JSX.Element | ((value: NonNullable<T>) => JSX.Element);
+	fallback?: ComponentChildren;
+	children: ComponentChildren | ((value: NonNullable<T>) => ComponentChildren);
 }
 
 const Item = (props: any) => {
@@ -15,7 +15,7 @@ const Item = (props: any) => {
 		: props.children;
 };
 
-export function Show<T = boolean>(props: ShowProps<T>): JSX.Element | null {
+export function Show<T = boolean>(props: ShowProps<T>): ComponentChildren | null {
 	const value =
 		typeof props.when === "function" ? props.when() : props.when.value;
 	if (!value) return props.fallback || null;
@@ -27,11 +27,11 @@ interface ForProps<T> {
 		| Signal<Array<T>>
 		| ReadonlySignal<Array<T>>
 		| (() => Signal<Array<T>> | ReadonlySignal<Array<T>>);
-	fallback?: JSX.Element;
-	children: (value: T, index: number) => JSX.Element;
+	fallback?: ComponentChildren;
+	children: (value: T, index: number) => ComponentChildren;
 }
 
-export function For<T>(props: ForProps<T>): JSX.Element | null {
+export function For<T>(props: ForProps<T>): ComponentChildren | null {
 	const cache = useMemo(() => new Map(), []);
 	let list = (
 		(typeof props.each === "function" ? props.each() : props.each) as Signal<
