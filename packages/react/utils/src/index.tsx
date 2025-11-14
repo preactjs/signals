@@ -16,11 +16,11 @@ const Item = (props: any) => {
 		: props.children;
 };
 
-export function Show<T = boolean>(props: ShowProps<T>): ReactNode | null {
+export function Show<T = boolean>(props: ShowProps<T>): JSX.Element | null {
 	useSignals();
 	const value =
 		typeof props.when === "function" ? props.when() : props.when.value;
-	if (!value) return props.fallback || null;
+	if (!value) return (props.fallback as JSX.Element) || null;
 	return <Item v={value} children={props.children} />;
 }
 
@@ -33,7 +33,7 @@ interface ForProps<T> {
 	children: (value: T, index: number) => ReactNode;
 }
 
-export function For<T>(props: ForProps<T>): ReactNode | null {
+export function For<T>(props: ForProps<T>): JSX.Element | null {
 	useSignals();
 	const cache = useMemo(() => new Map(), []);
 	let list = (
@@ -42,7 +42,7 @@ export function For<T>(props: ForProps<T>): ReactNode | null {
 		>
 	).value;
 
-	if (!list.length) return props.fallback || null;
+	if (!list.length) return (props.fallback as JSX.Element) || null;
 
 	const removed = new Set(cache.keys());
 
