@@ -31,6 +31,9 @@ export {
 	untracked,
 };
 
+const DEVTOOLS_ENABLED =
+	typeof window !== "undefined" && !!window.__PREACT_SIGNALS_DEVTOOLS__;
+
 const HAS_PENDING_UPDATE = 1 << 0;
 const HAS_HOOK_STATE = 1 << 1;
 const HAS_COMPUTEDS = 1 << 2;
@@ -172,11 +175,7 @@ Object.defineProperties(Signal.prototype, {
 
 /** Inject low-level property/attribute bindings for Signals into Preact's diff */
 hook(OptionsTypes.DIFF, (old, vnode) => {
-	if (
-		typeof vnode.type === "function" &&
-		typeof window !== "undefined" &&
-		window.__PREACT_SIGNALS_DEVTOOLS__
-	) {
+	if (DEVTOOLS_ENABLED && typeof vnode.type === "function") {
 		window.__PREACT_SIGNALS_DEVTOOLS__.exitComponent();
 	}
 
@@ -201,11 +200,7 @@ hook(OptionsTypes.DIFF, (old, vnode) => {
 
 /** Set up Updater before rendering a component */
 hook(OptionsTypes.RENDER, (old, vnode) => {
-	if (
-		typeof vnode.type === "function" &&
-		typeof window !== "undefined" &&
-		window.__PREACT_SIGNALS_DEVTOOLS__
-	) {
+	if (DEVTOOLS_ENABLED && typeof vnode.type === "function") {
 		window.__PREACT_SIGNALS_DEVTOOLS__.enterComponent(vnode);
 	}
 
@@ -237,7 +232,7 @@ hook(OptionsTypes.RENDER, (old, vnode) => {
 
 /** Finish current updater if a component errors */
 hook(OptionsTypes.CATCH_ERROR, (old, error, vnode, oldVNode) => {
-	if (typeof window !== "undefined" && window.__PREACT_SIGNALS_DEVTOOLS__) {
+	if (DEVTOOLS_ENABLED) {
 		window.__PREACT_SIGNALS_DEVTOOLS__.exitComponent();
 	}
 
@@ -248,11 +243,7 @@ hook(OptionsTypes.CATCH_ERROR, (old, error, vnode, oldVNode) => {
 
 /** Finish current updater after rendering any VNode */
 hook(OptionsTypes.DIFFED, (old, vnode) => {
-	if (
-		typeof vnode.type === "function" &&
-		typeof window !== "undefined" &&
-		window.__PREACT_SIGNALS_DEVTOOLS__
-	) {
+	if (DEVTOOLS_ENABLED && typeof vnode.type === "function") {
 		window.__PREACT_SIGNALS_DEVTOOLS__.exitComponent();
 	}
 
