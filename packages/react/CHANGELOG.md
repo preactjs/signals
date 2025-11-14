@@ -1,5 +1,11 @@
 # @preact/signals-react
 
+## 3.6.1
+
+### Patch Changes
+
+- [#795](https://github.com/preactjs/signals/pull/795) [`80712b1`](https://github.com/preactjs/signals/commit/80712b188b11b43efe9e95e09b78f57f0551f6eb) Thanks [@rschristian](https://github.com/rschristian)! - Widen utility component types to accept ComponentChildren/ReactNodes as children and fallbacks
+
 ## 3.6.0
 
 ### Minor Changes
