@@ -399,13 +399,9 @@ export function useComputed<T>(
 	compute: () => T,
 	options?: SignalOptions<T>
 ): ReadonlySignal<T> {
-	const [$fn, $computed] = useMemo(() => {
-		const $fn = signal(compute);
-		return [$fn, computed(() => $fn.value(), options)] as const;
-	}, []);
-
-	$fn.value = compute;
-	return $computed;
+	const $compute = useRef(compute);
+	$compute.current = compute;
+	return useMemo(() => computed<T>(() => $compute.current(), options), Empty);
 }
 
 export function useSignalEffect(
