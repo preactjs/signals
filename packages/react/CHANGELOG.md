@@ -1,5 +1,11 @@
 # @preact/signals-react
 
+## 3.6.0
+
+### Minor Changes
+
+- [#796](https://github.com/preactjs/signals/pull/796) [`035e8af`](https://github.com/preactjs/signals/commit/035e8afc3820632229b8ef6a4ba9adb698a84858) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Revert the changes to `useComputed`, sincere apologies for the inconvenience we've discussed this at length and are going to side on the perf side.
+
 ## 3.5.0
 
 ### Minor Changes
