@@ -1,5 +1,13 @@
 # @preact/signals-react
 
+## 3.6.1
+
+### Patch Changes
+
+- [#795](https://github.com/preactjs/signals/pull/795) [`80712b1`](https://github.com/preactjs/signals/commit/80712b188b11b43efe9e95e09b78f57f0551f6eb) Thanks [@rschristian](https://github.com/rschristian)! - Widen utility component types to accept ComponentChildren/ReactNodes as children and fallbacks
+
+- [#800](https://github.com/preactjs/signals/pull/800) [`bc5b573`](https://github.com/preactjs/signals/commit/bc5b573d3e24d1da2b1f91c051f70e57d7be6bc7) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Allow useLiveSignal to accept plain values
+
 ## 3.6.0
 
 ### Minor Changes
