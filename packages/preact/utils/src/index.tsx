@@ -15,7 +15,9 @@ const Item = (props: any) => {
 		: props.children;
 };
 
-export function Show<T = boolean>(props: ShowProps<T>): ComponentChildren | null {
+export function Show<T = boolean>(
+	props: ShowProps<T>
+): ComponentChildren | null {
 	const value =
 		typeof props.when === "function" ? props.when() : props.when.value;
 	if (!value) return props.fallback || null;
@@ -60,9 +62,7 @@ export function For<T>(props: ForProps<T>): ComponentChildren | null {
 	return createElement(Fragment, null, items);
 }
 
-export function useLiveSignal<T>(
-	value: Signal<T> | ReadonlySignal<T>
-): Signal<Signal<T> | ReadonlySignal<T>> {
+export function useLiveSignal<T>(value: T): Signal<T> {
 	const s = useSignal(value);
 	if (s.peek() !== value) s.value = value;
 	return s;
