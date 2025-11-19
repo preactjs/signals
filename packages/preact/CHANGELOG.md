@@ -1,5 +1,15 @@
 # @preact/signals
 
+## 2.5.1
+
+### Patch Changes
+
+- [#795](https://github.com/preactjs/signals/pull/795) [`80712b1`](https://github.com/preactjs/signals/commit/80712b188b11b43efe9e95e09b78f57f0551f6eb) Thanks [@rschristian](https://github.com/rschristian)! - Widen utility component types to accept ComponentChildren/ReactNodes as children and fallbacks
+
+- [#798](https://github.com/preactjs/signals/pull/798) [`e58734d`](https://github.com/preactjs/signals/commit/e58734d1ad752330c82b0ec949afda3d0cd114d2) Thanks [@marvinhagemeister](https://github.com/marvinhagemeister)! - Fix performance regression by checking if the `@preact/signals-debug` package is enabled only once.
+
+- [#800](https://github.com/preactjs/signals/pull/800) [`bc5b573`](https://github.com/preactjs/signals/commit/bc5b573d3e24d1da2b1f91c051f70e57d7be6bc7) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Allow useLiveSignal to accept plain values
+
 ## 2.5.0
 
 ### Minor Changes
