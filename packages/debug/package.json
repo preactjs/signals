@@ -23,7 +23,7 @@
   "source": "src/index.ts",
   "exports": {
     ".": {
-      "types": "./dist/debug.d.ts",
+      "types": "./dist/signals-debug.d.ts",
       "browser": "./dist/debug.module.js",
       "import": "./dist/debug.mjs",
       "require": "./dist/debug.js"
