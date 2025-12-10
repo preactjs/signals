@@ -19,7 +19,7 @@
   "main": "dist/debug.js",
   "module": "dist/debug.module.js",
   "unpkg": "dist/debug.min.js",
-  "types": "dist/debug.d.ts",
+  "types": "dist/signals-debug.d.ts",
   "source": "src/index.ts",
   "exports": {
     ".": {
