@@ -1,5 +1,11 @@
 # @preact/signals-debug
 
+## 1.0.2
+
+### Patch Changes
+
+- [#805](https://github.com/preactjs/signals/pull/805) [`2beb964`](https://github.com/preactjs/signals/commit/2beb964bfd76eaab273c7756cd91009a8f67f6e9) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Correct types path in package.json for debug package
+
 ## 1.0.1
 
 ### Patch Changes
