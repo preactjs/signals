@@ -1,6 +1,6 @@
 {
   "name": "@preact/signals-debug",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "license": "MIT",
   "description": "Debugging tools for @preact/signals",
   "keywords": [],
