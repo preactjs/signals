@@ -1,5 +1,11 @@
 # @preact/signals-debug
 
+## 1.0.3
+
+### Patch Changes
+
+- [#807](https://github.com/preactjs/signals/pull/807) [`10c50ee`](https://github.com/preactjs/signals/commit/10c50eec83bd1ff0b6de1817b6d71dacb54f9e01) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Update types in the export map of our package.json
+
 ## 1.0.2
 
 ### Patch Changes
