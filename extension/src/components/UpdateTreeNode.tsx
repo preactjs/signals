@@ -17,6 +17,24 @@ export function UpdateTreeNodeComponent({ node }: UpdateTreeNodeProps) {
 	const nodeCount = node.type === "group" ? node.count : undefined;
 	const firstUpdate = node.type === "group" ? node.firstUpdate : undefined;
 
+	let childrenToRender: UpdateTreeNode[];
+
+	if (node.type === "group" && node.firstChildren) {
+		childrenToRender = node.children.map((lastChild, index) => {
+			const firstChild = node.firstChildren[index];
+			const mergedChild: UpdateTreeNode = {
+				...lastChild,
+				type: "group",
+				firstUpdate: firstChild.update,
+				firstChildren: firstChild.children,
+				count: node.count,
+			};
+			return mergedChild;
+		});
+	} else {
+		childrenToRender = node.children;
+	}
+
 	return (
 		<div className="tree-node">
 			<div className="tree-node-content">
@@ -41,7 +59,7 @@ export function UpdateTreeNodeComponent({ node }: UpdateTreeNodeProps) {
 
 			{hasChildren && !isCollapsed.value && (
 				<div className="tree-children">
-					{node.children.map(child => (
+					{childrenToRender.map(child => (
 						<UpdateTreeNodeComponent key={child.id} node={child} />
 					))}
 				</div>

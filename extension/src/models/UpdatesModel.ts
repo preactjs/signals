@@ -18,6 +18,7 @@ export interface UpdateTreeNodeGroup extends UpdateTreeNodeBase {
 	type: "group";
 	count: number;
 	firstUpdate: SignalUpdate;
+	firstChildren: UpdateTreeNode[];
 }
 
 export type UpdateTreeNode = UpdateTreeNodeGroup | UpdateTreeNodeSingle;
@@ -44,11 +45,13 @@ const collapseTree = (nodes: UpdateTreeNodeSingle[]): UpdateTreeNode[] => {
 					type: "group",
 					count: 2,
 					firstUpdate: node.update,
+					firstChildren: node.children,
 				};
 				tree.push(lastNode);
 			} else {
 				lastNode.count++;
 				lastNode.firstUpdate = node.update;
+				lastNode.firstChildren = node.children;
 			}
 			// If the current node is equal to the last one, skip it
 			continue;
