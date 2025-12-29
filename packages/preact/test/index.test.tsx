@@ -1,4 +1,5 @@
 import {
+	jsxBind,
 	computed,
 	useComputed,
 	useSignalEffect,
@@ -790,6 +791,159 @@ describe("@preact/signals", () => {
 			expect(div.hasAttribute("title")).to.equal(true);
 			expect(div.getAttribute("title")).to.equal("");
 			expect(spy).not.to.have.been.called;
+		});
+	});
+
+	describe("jsxBind", () => {
+		it("should bind a callback to a JSX attribute", async () => {
+			const count = signal(0);
+			const double = signal(2);
+			const spy = sinon.spy();
+
+			function App() {
+				spy();
+				return (
+					<div data-value={jsxBind(() => count.value * double.value)}></div>
+				);
+			}
+
+			render(<App />, scratch);
+			expect(spy).to.have.been.calledOnce;
+			expect(scratch.innerHTML).to.equal('<div data-value="0"></div>');
+
+			act(() => {
+				count.value = 5;
+			});
+
+			// Component should not re-render when only the bound value changes
+			expect(spy).to.have.been.calledOnce;
+			expect(scratch.innerHTML).to.equal('<div data-value="10"></div>');
+
+			act(() => {
+				double.value = 3;
+			});
+
+			expect(spy).to.have.been.calledOnce;
+			expect(scratch.innerHTML).to.equal('<div data-value="15"></div>');
+		});
+
+		it("should bind a callback to a JSX child", async () => {
+			const firstName = signal("John");
+			const lastName = signal("Doe");
+			const spy = sinon.spy();
+
+			function App() {
+				spy();
+				return (
+					<div>{jsxBind(() => `${firstName.value} ${lastName.value}`)}</div>
+				);
+			}
+
+			render(<App />, scratch);
+			expect(spy).to.have.been.calledOnce;
+			expect(scratch.innerHTML).to.equal("<div>John Doe</div>");
+
+			act(() => {
+				firstName.value = "Jane";
+			});
+
+			// Component should not re-render when only the bound value changes
+			expect(spy).to.have.been.calledOnce;
+			expect(scratch.innerHTML).to.equal("<div>Jane Doe</div>");
+		});
+
+		it("should update bound values without re-rendering the component", async () => {
+			const count = signal(0);
+			const enabled = signal(true);
+			const renderSpy = sinon.spy();
+			const boundSpy = sinon.spy(() =>
+				enabled.value ? count.value : "disabled"
+			);
+
+			function App() {
+				renderSpy();
+				return (
+					<button disabled={jsxBind(() => !enabled.value)}>
+						{jsxBind(boundSpy)}
+					</button>
+				);
+			}
+
+			render(<App />, scratch);
+			expect(renderSpy).to.have.been.calledOnce;
+			expect(boundSpy).to.have.been.called;
+			expect(scratch.innerHTML).to.equal("<button>0</button>");
+
+			act(() => {
+				count.value = 5;
+			});
+
+			expect(renderSpy).to.have.been.calledOnce;
+			expect(boundSpy).to.have.been.calledTwice;
+			expect(scratch.innerHTML).to.equal("<button>5</button>");
+
+			act(() => {
+				enabled.value = false;
+			});
+
+			expect(renderSpy).to.have.been.calledOnce;
+			expect(scratch.innerHTML).to.equal(
+				`<button disabled="">disabled</button>`
+			);
+		});
+
+		it("can toggle between JSX text and JSX element", async () => {
+			const bold = signal(false);
+			const label = signal("Hello");
+			const renderSpy = sinon.spy();
+
+			function App() {
+				renderSpy();
+				return (
+					<div>
+						{jsxBind(() =>
+							bold.value ? <strong>{label.value}</strong> : label.value
+						)}
+					</div>
+				);
+			}
+
+			render(<App />, scratch);
+			expect(renderSpy).to.have.been.calledOnce;
+			expect(scratch.innerHTML).to.equal("<div>Hello</div>");
+
+			// Text-to-text update.
+			act(() => {
+				label.value = "Bonjour";
+			});
+
+			expect(renderSpy).to.have.been.calledOnce;
+			expect(scratch.innerHTML).to.equal("<div>Bonjour</div>");
+
+			// Text-to-element update.
+			act(() => {
+				bold.value = true;
+			});
+
+			expect(renderSpy).to.have.been.calledOnce;
+			expect(scratch.innerHTML).to.equal("<div><strong>Bonjour</strong></div>");
+
+			// Element-to-element update.
+			act(() => {
+				label.value = "Pryvit";
+			});
+
+			expect(renderSpy).to.have.been.calledOnce;
+			expect(scratch.innerHTML).to.equal("<div><strong>Pryvit</strong></div>");
+
+			// Element-to-text update.
+			act(() => {
+				label.value = "Hola";
+				bold.value = false;
+			});
+
+			expect(renderSpy).to.have.been.calledOnce;
+			expect(scratch.innerHTML).to.equal("<div>Hola</div>");
 		});
 	});
 
