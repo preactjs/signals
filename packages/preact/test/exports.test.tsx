@@ -1,5 +1,6 @@
 import * as core from "@preact/signals-core";
 import * as adapter from "@preact/signals";
+import { describe, it, expect } from "vitest";
 
 describe("@preact/signals", () => {
 	describe("exports", () => {
