@@ -816,7 +816,6 @@ export interface EffectOptions {
 	name?: string;
 }
 
-let capturingEffects = false;
 let capturedEffects: Effect[] | undefined;
 
 /** @internal */
@@ -828,7 +827,7 @@ function Effect(this: Effect, fn: EffectFn, options?: EffectOptions) {
 	this._flags = TRACKING;
 	this.name = options?.name;
 
-	if (capturingEffects && capturedEffects) {
+	if (capturedEffects) {
 		capturedEffects.push(this);
 	}
 }
@@ -950,25 +949,27 @@ function createModel<TModel, TFactoryArgs extends any[] = []>(
 	modelFactory: ModelFactory<ValidateModel<TModel>, TFactoryArgs>
 ): ModelConstructor<TModel, TFactoryArgs> {
 	return function SignalModel(...args: TFactoryArgs): Model<TModel> {
-		capturingEffects = true;
+		let prevCapturedEffects = capturedEffects;
 		capturedEffects = [];
 
-		let modelEffects: Effect[];
+		let modelEffects: Effect[] | undefined;
 		let model: Model<TModel>;
 		try {
 			model = modelFactory(...args) as Model<TModel>;
 		} catch (err) {
 			// Drop any captured effects on error
 			capturedEffects = undefined;
-			capturingEffects = false;
 			throw err;
 		} finally {
 			if (capturedEffects) {
 				modelEffects = capturedEffects;
+
+				if (prevCapturedEffects) {
+					prevCapturedEffects = prevCapturedEffects.concat(capturedEffects);
+				}
 			}
 
-			capturedEffects = undefined;
-			capturingEffects = false;
+			capturedEffects = prevCapturedEffects;
 		}
 
 		for (const key in model) {
@@ -981,9 +982,13 @@ function createModel<TModel, TFactoryArgs extends any[] = []>(
 		}
 
 		model[Symbol.dispose] = function disposeModel() {
-			for (const effect of modelEffects) {
-				effect.dispose();
+			if (modelEffects) {
+				for (const effect of modelEffects) {
+					effect.dispose();
+				}
 			}
+
+			modelEffects = undefined;
 		};
 
 		return model;

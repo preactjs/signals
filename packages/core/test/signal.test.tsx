@@ -2346,6 +2346,38 @@ describe("createModel", () => {
 		expect(counter.count.value).to.equal(1);
 	});
 
+	it("should automatically batch signal updates within actions", () => {
+		let effectRunCount = 0;
+		const TestModel = createModel(() => {
+			const count1 = signal(0);
+			const count2 = signal(0);
+
+			effect(() => {
+				count1.value;
+				count2.value;
+				effectRunCount++;
+			});
+
+			return {
+				count1,
+				count2,
+				incrementBoth() {
+					count1.value += 1;
+					count2.value += 1;
+				},
+			};
+		});
+
+		const model = new TestModel();
+		expect(effectRunCount).to.equal(1);
+
+		// Without batching, this would trigger the effect twice
+		model.incrementBoth();
+		expect(effectRunCount).to.equal(2); // Should only run once due to batching
+		expect(model.count1.value).to.equal(1);
+		expect(model.count2.value).to.equal(1);
+	});
+
 	it("should run effects defined in the model", () => {
 		let effect1RunCount = 0;
 		let effect2RunCount = 0;
@@ -2418,6 +2450,31 @@ describe("createModel", () => {
 		expect(effect2Cleanup).toHaveBeenCalledTimes(2);
 	});
 
+	it("should allow multiple disposal calls without errors", () => {
+		let effectRunCount = 0;
+		const cleanup = vi.fn();
+
+		const TestModel = createModel(() => {
+			const count = signal(0);
+			effect(() => {
+				count.value;
+				effectRunCount++;
+				return cleanup;
+			});
+			return { count };
+		});
+
+		const model = new TestModel();
+		expect(effectRunCount).to.equal(1);
+
+		model[Symbol.dispose]();
+		expect(cleanup).toHaveBeenCalledTimes(1);
+
+		// Second disposal should not throw
+		expect(() => model[Symbol.dispose]()).not.to.throw();
+		expect(cleanup).toHaveBeenCalledTimes(1); // Cleanup should not be called again
+	});
+
 	it("allows creating mutliple instances of the same model", () => {
 		const CounterModel = createModel(() => ({
 			count: signal(0),
@@ -2478,6 +2535,22 @@ describe("createModel", () => {
 		expect(() => model.log("Hello")).not.to.throw();
 	});
 
+	it("should handle errors thrown during model factory execution", () => {
+		let effectRan = false;
+		const ErrorModel = createModel(() => {
+			const count = signal(0);
+			effect(() => {
+				count.value;
+				effectRan = true;
+			});
+
+			throw new Error("Factory error");
+		});
+
+		expect(() => new ErrorModel()).to.throw("Factory error");
+		expect(effectRan).to.equal(true); // Effect runs before error is thrown
+	});
+
 	describe("model composition", () => {
 		it("allows instantiating a model within another model", () => {
 			const InnerModel = createModel(() => ({
@@ -2507,54 +2580,89 @@ describe("createModel", () => {
 			expect(outer.inner.count.value).to.equal(22);
 		});
 
-		it("disposes of models created within other models", () => {
-			let innerEffectRunCount = 0;
-			const innerEffectCleanup = vi.fn();
+		it("supports deep nesting (3+ levels)", () => {
+			const Level3Model = createModel(() => ({
+				value: signal(1),
+			}));
 
-			let outerEffectRunCount = 0;
-			const outerEffectCleanup = vi.fn();
+			const Level2Model = createModel(() => ({
+				level3: new Level3Model(),
+				multiplier: signal(2),
+			}));
 
-			const InnerModel = createModel(() => {
+			const Level1Model = createModel(() => ({
+				level2: new Level2Model(),
+				offset: signal(10),
+			}));
+
+			const model = new Level1Model();
+			expect(model.level2.level3.value.value).to.equal(1);
+			expect(model.level2.multiplier.value).to.equal(2);
+			expect(model.offset.value).to.equal(10);
+
+			model.level2.level3.value.value = 5;
+			expect(model.level2.level3.value.value).to.equal(5);
+		});
+
+		it("captures and disposes effects at all nesting levels", () => {
+			let level1EffectRunCount = 0;
+			let level2EffectRunCount = 0;
+			let level3EffectRunCount = 0;
+
+			const level1Cleanup = vi.fn();
+			const level2Cleanup = vi.fn();
+			const level3Cleanup = vi.fn();
+
+			const Level3Model = createModel(() => {
 				const count = signal(0);
 				effect(() => {
 					count.value;
-					innerEffectRunCount++;
-					return innerEffectCleanup;
+					level3EffectRunCount++;
+					return level3Cleanup;
 				});
 				return { count };
 			});
 
-			const OuterModel = createModel(() => {
-				const inner = new InnerModel();
+			const Level2Model = createModel(() => {
+				const level3 = new Level3Model();
 				effect(() => {
-					inner.count.value;
-					outerEffectRunCount++;
-					return outerEffectCleanup;
+					level3.count.value;
+					level2EffectRunCount++;
+					return level2Cleanup;
 				});
-				return { inner };
+				return { level3 };
 			});
 
-			const outer = new OuterModel();
-			expect(innerEffectRunCount).to.equal(1);
-			expect(outerEffectRunCount).to.equal(1);
-			expect(innerEffectCleanup).not.toHaveBeenCalled();
-			expect(outerEffectCleanup).not.toHaveBeenCalled();
+			const Level1Model = createModel(() => {
+				const level2 = new Level2Model();
+				effect(() => {
+					level2.level3.count.value;
+					level1EffectRunCount++;
+					return level1Cleanup;
+				});
+				return { level2 };
+			});
 
-			outer.inner.count.value = 1;
-			expect(innerEffectRunCount).to.equal(2);
-			expect(outerEffectRunCount).to.equal(2);
-			expect(innerEffectCleanup).toHaveBeenCalledTimes(1);
-			expect(outerEffectCleanup).toHaveBeenCalledTimes(1);
+			const model = new Level1Model();
+			expect(level1EffectRunCount).to.equal(1);
+			expect(level2EffectRunCount).to.equal(1);
+			expect(level3EffectRunCount).to.equal(1);
 
-			outer[Symbol.dispose]();
-			expect(innerEffectCleanup).toHaveBeenCalledTimes(2);
-			expect(outerEffectCleanup).toHaveBeenCalledTimes(2);
+			model.level2.level3.count.value = 1;
+			expect(level1EffectRunCount).to.equal(2);
+			expect(level2EffectRunCount).to.equal(2);
+			expect(level3EffectRunCount).to.equal(2);
 
-			outer.inner.count.value = 2;
-			expect(innerEffectRunCount).to.equal(2);
-			expect(outerEffectRunCount).to.equal(2);
-			expect(innerEffectCleanup).toHaveBeenCalledTimes(2);
-			expect(outerEffectCleanup).toHaveBeenCalledTimes(2);
+			model[Symbol.dispose]();
+			expect(level1Cleanup).toHaveBeenCalledTimes(2);
+			expect(level2Cleanup).toHaveBeenCalledTimes(2);
+			expect(level3Cleanup).toHaveBeenCalledTimes(2);
+
+			// Effects should not run after disposal
+			model.level2.level3.count.value = 2;
+			expect(level1EffectRunCount).to.equal(2);
+			expect(level2EffectRunCount).to.equal(2);
+			expect(level3EffectRunCount).to.equal(2);
 		});
 
 		it("disposes of models created within other models and spread onto returned model", () => {
