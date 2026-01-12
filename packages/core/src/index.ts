@@ -816,6 +816,9 @@ export interface EffectOptions {
 	name?: string;
 }
 
+let capturingEffects = false;
+let capturedEffects: Effect[] | undefined;
+
 /** @internal */
 function Effect(this: Effect, fn: EffectFn, options?: EffectOptions) {
 	this._fn = fn;
@@ -824,6 +827,10 @@ function Effect(this: Effect, fn: EffectFn, options?: EffectOptions) {
 	this._nextBatchedEffect = undefined;
 	this._flags = TRACKING;
 	this.name = options?.name;
+
+	if (capturingEffects && capturedEffects) {
+		capturedEffects.push(this);
+	}
 }
 
 Effect.prototype._callback = function () {
@@ -905,11 +912,93 @@ function effect(fn: EffectFn, options?: EffectOptions): () => void {
 
 //#endregion Effect
 
+//#region Action
+
+function action<TArgs extends unknown[], TReturn>(
+	fn: (...args: TArgs) => TReturn
+): (...args: TArgs) => TReturn {
+	return function actionWrapper(this: unknown, ...args: TArgs) {
+		return batch(() => untracked(() => fn.apply(this, args)));
+	};
+}
+
+//#endregion Action
+
+//#region createModel
+
+/** Models should only contain signals, actions, and nested objects containing only signals and actions. */
+type ValidateModel<TModel> = {
+	[Key in keyof TModel]: TModel[Key] extends ReadonlySignal<unknown>
+		? TModel[Key]
+		: TModel[Key] extends (...args: any[]) => any
+			? TModel[Key]
+			: TModel[Key] extends object
+				? ValidateModel<TModel[Key]>
+				: `Property '${Key extends string ? Key : ""}' is not a Signal, Action, or an object that contains only Signals and Actions.`;
+};
+
+export type Model<TModel> = ValidateModel<TModel> & Disposable;
+
+export type ModelFactory<TModel, TFactoryArgs extends any[] = []> = (
+	...args: TFactoryArgs
+) => TModel;
+export type ModelConstructor<TModel, TFactoryArgs extends any[] = []> = new (
+	...args: TFactoryArgs
+) => Model<TModel>;
+
+function createModel<TModel, TFactoryArgs extends any[] = []>(
+	modelFactory: ModelFactory<ValidateModel<TModel>, TFactoryArgs>
+): ModelConstructor<TModel, TFactoryArgs> {
+	return function SignalModel(...args: TFactoryArgs): Model<TModel> {
+		capturingEffects = true;
+		capturedEffects = [];
+
+		let modelEffects: Effect[];
+		let model: Model<TModel>;
+		try {
+			model = modelFactory(...args) as Model<TModel>;
+		} catch (err) {
+			// Drop any captured effects on error
+			capturedEffects = undefined;
+			capturingEffects = false;
+			throw err;
+		} finally {
+			if (capturedEffects) {
+				modelEffects = capturedEffects;
+			}
+
+			capturedEffects = undefined;
+			capturingEffects = false;
+		}
+
+		for (const key in model) {
+			// @ts-expect-error TypeScript can't infer that model[key] is a valid  here
+			if (typeof model[key] === "function") {
+				// @ts-expect-error TypeScript can't infer that model[key] is a valid function
+				// to pass to action here
+				model[key] = action(model[key]);
+			}
+		}
+
+		model[Symbol.dispose] = function disposeModel() {
+			for (const effect of modelEffects) {
+				effect.dispose();
+			}
+		};
+
+		return model;
+	} as unknown as ModelConstructor<TModel, TFactoryArgs>;
+}
+
+//#endregion createModel
+
 export {
 	computed,
 	effect,
 	batch,
 	untracked,
+	action,
+	createModel,
 	Signal,
 	ReadonlySignal,
 	Effect,
