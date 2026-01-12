@@ -212,6 +212,8 @@ function addDependency(signal: Signal): Node | undefined {
 	return undefined;
 }
 
+//#region Signal
+
 /**
  * The base class for plain and computed signals.
  */
@@ -428,6 +430,10 @@ export function signal<T = undefined>(): Signal<T | undefined>;
 export function signal<T>(value?: T, options?: SignalOptions<T>): Signal<T> {
 	return new Signal(value, options);
 }
+
+//#endregion Signal
+
+//#region Computed
 
 function needsToRecompute(target: Computed | Effect): boolean {
 	// Check the dependencies for changed values. The dependency list is already
@@ -726,6 +732,10 @@ function computed<T>(
 	return new Computed(fn, options);
 }
 
+//#endregion Computed
+
+//#region Effect
+
 function cleanupEffect(effect: Effect) {
 	const cleanup = effect._cleanup;
 	effect._cleanup = undefined;
@@ -892,6 +902,8 @@ function effect(fn: EffectFn, options?: EffectOptions): () => void {
 	(dispose as any)[Symbol.dispose] = dispose;
 	return dispose as any;
 }
+
+//#endregion Effect
 
 export {
 	computed,
