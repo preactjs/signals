@@ -933,7 +933,7 @@ type ValidateModel<TModel> = {
 			? TModel[Key]
 			: TModel[Key] extends object
 				? ValidateModel<TModel[Key]>
-				: `Property '${Key extends string ? Key : ""}' is not a Signal, Action, or an object that contains only Signals and Actions.`;
+				: `Property ${Key extends string ? `'${Key}' ` : ""}is not a Signal, Action, or an object that contains only Signals and Actions.`;
 };
 
 export type Model<TModel> = ValidateModel<TModel> & Disposable;
@@ -945,15 +945,30 @@ export type ModelConstructor<TModel, TFactoryArgs extends any[] = []> = new (
 	...args: TFactoryArgs
 ) => Model<TModel>;
 
+function startCapturingEffects(): () => Effect[] | undefined {
+	let prevCapturedEffects = capturedEffects;
+	capturedEffects = [];
+
+	return function stopCapturingEffects() {
+		let modelEffects = capturedEffects;
+		if (capturedEffects && prevCapturedEffects) {
+			prevCapturedEffects = prevCapturedEffects.concat(capturedEffects);
+		}
+
+		capturedEffects = prevCapturedEffects;
+
+		return modelEffects;
+	};
+}
+
 function createModel<TModel, TFactoryArgs extends any[] = []>(
 	modelFactory: ModelFactory<ValidateModel<TModel>, TFactoryArgs>
 ): ModelConstructor<TModel, TFactoryArgs> {
 	return function SignalModel(...args: TFactoryArgs): Model<TModel> {
-		let prevCapturedEffects = capturedEffects;
-		capturedEffects = [];
-
 		let modelEffects: Effect[] | undefined;
 		let model: Model<TModel>;
+
+		const stopCapturingEffects = startCapturingEffects();
 		try {
 			model = modelFactory(...args) as Model<TModel>;
 		} catch (err) {
@@ -961,15 +976,7 @@ function createModel<TModel, TFactoryArgs extends any[] = []>(
 			capturedEffects = undefined;
 			throw err;
 		} finally {
-			if (capturedEffects) {
-				modelEffects = capturedEffects;
-
-				if (prevCapturedEffects) {
-					prevCapturedEffects = prevCapturedEffects.concat(capturedEffects);
-				}
-			}
-
-			capturedEffects = prevCapturedEffects;
+			modelEffects = stopCapturingEffects();
 		}
 
 		for (const key in model) {
