@@ -9,6 +9,7 @@ import {
 	untracked,
 	ReadonlySignal,
 	ModelConstructor,
+	action,
 } from "@preact/signals-core";
 
 describe("signal", () => {
@@ -2231,6 +2232,14 @@ describe("untracked", () => {
 	});
 });
 
+describe("action", () => {
+	it("passes name option to displayName property", () => {
+		const count = signal(0);
+		const increment = action(() => count.value++, { name: "increment" });
+		expect(increment.displayName).to.equal("increment");
+	});
+});
+
 describe("createModel", () => {
 	it("should create a model with signals and actions", () => {
 		const CounterModel = createModel(() => ({
@@ -2590,6 +2599,14 @@ describe("createModel", () => {
 
 		expect(() => new ErrorModel()).to.throw("Factory error");
 		expect(effectRan).to.equal(true); // Effect runs before error is thrown
+	});
+
+	it("assigns the name option to a special name symbol property", () => {
+		const CounterModel = createModel(() => ({ count: signal(0) }), {
+			name: "CounterModel",
+		});
+
+		expect(CounterModel.displayName).to.equal("CounterModel");
 	});
 
 	describe("model composition", () => {
