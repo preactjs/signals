@@ -18,6 +18,7 @@ const demos = {
 	Nesting: lazy(() => import("./nesting")),
 	Animation: lazy(() => import("./animation")),
 	Bench: lazy(() => import("./bench")),
+	Game: lazy(() => import("./game")),
 };
 
 function Demos() {
