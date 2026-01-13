@@ -2702,6 +2702,20 @@ describe("createModel", () => {
 			expect(innerEffectRunCount).to.equal(1);
 			expect(innerEffectCleanup).toHaveBeenCalledTimes(1);
 		});
+
+		it("should handle errors thrown during nested model factory execution", () => {
+			const InnerModel = createModel(() => {
+				effect(() => {});
+				throw new Error(`InnerModel error`);
+			});
+
+			const OuterModel = createModel(() => {
+				effect(() => {});
+				return { inner: new InnerModel() };
+			});
+
+			expect(() => new OuterModel()).to.throw("InnerModel error");
+		});
 	});
 
 	describe("Typescript Types", () => {

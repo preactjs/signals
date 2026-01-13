@@ -972,7 +972,9 @@ function createModel<TModel, TFactoryArgs extends any[] = []>(
 		try {
 			model = modelFactory(...args) as Model<TModel>;
 		} catch (err) {
-			// Drop any captured effects on error
+			// Drop any captured effects on error. Errors from nested models will bubble
+			// up here and recursively reset capturedEffects to undefined preventing
+			// any captured effects from leaking
 			capturedEffects = undefined;
 			throw err;
 		} finally {
