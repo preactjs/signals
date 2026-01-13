@@ -914,9 +914,14 @@ function effect(fn: EffectFn, options?: EffectOptions): () => void {
 
 //#region Action
 
+export interface Action<TArgs extends unknown[], TReturn> {
+	(...args: TArgs): TReturn;
+	displayName?: string;
+}
+
 function action<TArgs extends unknown[], TReturn>(
 	fn: (...args: TArgs) => TReturn
-): (...args: TArgs) => TReturn {
+): Action<TArgs, TReturn> {
 	return function actionWrapper(this: unknown, ...args: TArgs) {
 		return batch(() => untracked(() => fn.apply(this, args)));
 	};
@@ -928,13 +933,16 @@ function action<TArgs extends unknown[], TReturn>(
 
 /** Models should only contain signals, actions, and nested objects containing only signals and actions. */
 type ValidateModel<TModel> = {
-	[Key in keyof TModel]: TModel[Key] extends ReadonlySignal<unknown>
-		? TModel[Key]
-		: TModel[Key] extends (...args: any[]) => any
+	// Only validate string & number keys. Pass through symbol keys
+	[Key in keyof TModel]: Key extends string | number
+		? TModel[Key] extends ReadonlySignal<unknown>
 			? TModel[Key]
-			: TModel[Key] extends object
-				? ValidateModel<TModel[Key]>
-				: `Property ${Key extends string ? `'${Key}' ` : ""}is not a Signal, Action, or an object that contains only Signals and Actions.`;
+			: TModel[Key] extends (...args: any[]) => any
+				? TModel[Key]
+				: TModel[Key] extends object
+					? ValidateModel<TModel[Key]>
+					: `Property '${Key}' is not a Signal, Action, or an object that contains only Signals and Actions.`
+		: TModel[Key];
 };
 
 export type Model<TModel> = ValidateModel<TModel> & Disposable;
@@ -942,9 +950,11 @@ export type Model<TModel> = ValidateModel<TModel> & Disposable;
 export type ModelFactory<TModel, TFactoryArgs extends any[] = []> = (
 	...args: TFactoryArgs
 ) => ValidateModel<TModel>;
-export type ModelConstructor<TModel, TFactoryArgs extends any[] = []> = new (
-	...args: TFactoryArgs
-) => Model<TModel>;
+
+export interface ModelConstructor<TModel, TFactoryArgs extends any[] = []> {
+	new (...args: TFactoryArgs): Model<TModel>;
+	displayName?: string;
+}
 
 /**
  * The public types for ModelConstructor require using `new` to help
