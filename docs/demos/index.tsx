@@ -19,6 +19,7 @@ const demos = {
 	Animation: lazy(() => import("./animation")),
 	Bench: lazy(() => import("./bench")),
 	Unmount: lazy(() => import("./Unmount")),
+	Game: lazy(() => import("./game")),
 };
 
 function Demos() {
