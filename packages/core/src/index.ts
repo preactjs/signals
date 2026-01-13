@@ -990,7 +990,7 @@ function createModel<TModel, TFactoryArgs extends any[] = []>(
 			}
 		}
 
-		model[Symbol.dispose] = function disposeModel() {
+		model[Symbol.dispose] = action(function disposeModel() {
 			if (modelEffects) {
 				for (const effect of modelEffects) {
 					effect.dispose();
@@ -998,7 +998,7 @@ function createModel<TModel, TFactoryArgs extends any[] = []>(
 			}
 
 			modelEffects = undefined;
-		};
+		});
 
 		return model;
 	} as unknown as ModelConstructor<TModel, TFactoryArgs>;
