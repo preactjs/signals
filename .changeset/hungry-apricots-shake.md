@@ -34,7 +34,6 @@ Key features:
 - Factory functions can accept arguments for initialization
 - All methods are automatically wrapped as actions (batched & untracked)
 - Effects created during model construction are captured and disposed when the model is disposed via `Symbol.dispose`
-- Models implement the `Disposable` interface for use with `using` declarations
 - TypeScript validates that models only contain signals, actions, or nested objects with signals/actions
 
 **`action`** is a helper that wraps a function to run batched and untracked:
