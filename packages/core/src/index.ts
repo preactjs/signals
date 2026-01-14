@@ -1024,8 +1024,8 @@ function createModel<TModel, TFactoryArgs extends any[] = []>(
 
 		model[Symbol.dispose] = action(function disposeModel() {
 			if (modelEffects) {
-				for (const effect of modelEffects) {
-					effect.dispose();
+				for (let i = 0; i < modelEffects.length; i++) {
+					modelEffects[i].dispose();
 				}
 			}
 
