@@ -26,12 +26,12 @@ import { it, describe, expect } from "vitest";
 //
 // To help interactively debug a specific test case, add the test ids of the
 // test cases you want to debug to the `debugTestIds` array, e.g. (["258",
-// "259"]). Set to true to debug all tests.
+// "259"]). Set to true to debug all tests. Set to false to skip all generated tests.
 //
 // The `debugger` statement in `runTestCases` will then trigger for the test case
 // specified in the DEBUG_TEST_IDS. Follow the guide at https://vitest.dev/guide/debugging for
 // instructions on debugging Vitest tests in your environment.
-const DEBUG_TEST_IDS: string[] | true = [];
+const DEBUG_TEST_IDS: string[] | boolean = false;
 
 const format = (code: string) => prettier.format(code, { parser: "babel" });
 
@@ -90,9 +90,10 @@ function runTestCases(config: TestCaseConfig, testCases: GeneratedCode[]) {
 
 		// Only run tests in debugTestIds
 		if (
-			Array.isArray(DEBUG_TEST_IDS) &&
-			DEBUG_TEST_IDS.length > 0 &&
-			!DEBUG_TEST_IDS.includes(testId)
+			DEBUG_TEST_IDS === false ||
+			(Array.isArray(DEBUG_TEST_IDS) &&
+				DEBUG_TEST_IDS.length > 0 &&
+				!DEBUG_TEST_IDS.includes(testId))
 		) {
 			continue;
 		}
@@ -349,6 +350,140 @@ describe("React Signals Babel Transform", () => {
 	});
 
 	describe("auto mode doesn't transform", () => {
+		it.only("should not leak JSX detection outside of component scope", async () => {
+			const inputCode = `
+				function wrapper() {
+					function Component() {
+						return <div>Hello</div>;
+					}
+					const CountModel = createModel(() => ({
+						count: signal(0),
+						increment() {
+							this.count.value++;
+						},
+					}));
+				}
+			`;
+
+			const expectedOutput = inputCode;
+
+			await runTest(inputCode, expectedOutput);
+		});
+
+		it.only("should not leak JSX detection outside of non-components", async () => {
+			const inputCode = `
+				describe("suite", () => {
+					it("test1", () => {
+						render(<Counter />);
+					});
+					it("test2", () => {
+						const CountModel = () => signal.value;
+						function Counter() {
+							return <div>Hello2</div>
+						}
+						render(<Counter />);
+					});
+				});
+			`;
+
+			const expectedOutput = inputCode;
+
+			await runTest(inputCode, expectedOutput);
+		});
+
+		it.only("createModel factories that use signals", async () => {
+			// const inputCode = `
+			// 	describe("useModel", () => {
+			// 		let scratch;
+			// 		let root;
+			// 		async function render(element) {
+			// 			await act(() => {
+			// 				root.render(element);
+			// 			});
+			// 			return scratch.innerHTML;
+			// 		}
+			// 		beforeEach(async () => {
+			// 			scratch = document.createElement("div");
+			// 			document.body.appendChild(scratch);
+			// 			getConsoleErrorSpy().mockClear();
+			// 			root = await createRoot(scratch);
+			// 		});
+			// 		afterEach(async () => {
+			// 			scratch.remove();
+			// 			checkConsoleErrorLogs();
+			// 		});
+			// 		it("creates model instance using model constructor", async () => {
+			// 			const CountModel = createModel(() => ({
+			// 				count: signal(0),
+			// 				increment() {
+			// 					this.count.value++;
+			// 				},
+			// 			}));
+			// 			function Counter() {
+			// 				const model = useModel(CountModel);
+			// 				return <button onClick={() => model.increment()}>{model.count}</button>;
+			// 			}
+			// 			await render(<Counter />);
+			// 			const button = scratch.querySelector("button");
+			// 			expect(button.textContent).toBe("0");
+			// 			await act(() => button.click());
+			// 			expect(button.textContent).toBe("1");
+			// 		});
+			// 		it("creates model instance using wrapper around model constructor", async () => {
+			// 			const CountModel = createModel(() => ({
+			// 				count: signal(0),
+			// 				increment() {
+			// 					this.count.value++;
+			// 				},
+			// 			}));
+			// 			function Counter() {
+			// 				const model = useModel(() => new CountModel());
+			// 				return <button onClick={() => model.increment()}>{model.count}</button>;
+			// 			}
+			// 			await render(<Counter />);
+			// 			const button = scratch.querySelector("button");
+			// 			expect(button.textContent).toBe("0");
+			// 			await act(() => button.click());
+			// 			expect(button.textContent).toBe("1");
+			// 		});
+			// 	});
+			// `;
+
+			const inputCode = `
+				describe("suite", () => {
+					it("test1", async () => {
+						const CountModel = createModel(() => ({
+							count: signal(0),
+							increment() {
+								this.count.value++;
+							},
+						}));
+						function Counter() {
+							const model = useModel(CountModel);
+							return <button onClick={() => model.increment()}>{model.count}</button>;
+						}
+						render(<Counter />);
+					});
+					it("test2", async () => {
+						const CountModel = createModel(() => ({
+							count: signal(0),
+							increment() {
+								this.count.value++;
+							},
+						}));
+						function Counter() {
+							const model = useModel(() => new CountModel());
+							return <button onClick={() => model.increment()}>{model.count}</button>;
+						}
+						render(<Counter />);
+					});
+				});
+			`;
+
+			const expectedOutput = inputCode;
+			await runTest(inputCode, expectedOutput);
+		});
+
 		it("useEffect callbacks that use signals", async () => {
 			const inputCode = `
 				function App() {
@@ -456,6 +591,10 @@ describe("React Signals Babel Transform", () => {
 	// TODO: Figure out what to do with the following
 
 	describe("all mode transformations", () => {
+		it("should not leak", () => {
+			// TODO
+		});
+
 		it("skips transforming arrow function component with leading opt-out JSDoc comment before variable declaration", async () => {
 			const inputCode = `
 				/** @noUseSignals */
