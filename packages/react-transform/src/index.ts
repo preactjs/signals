@@ -45,13 +45,9 @@ const get = (pass: PluginPass, name: any) =>
 const set = (pass: PluginPass, name: string, v: any) =>
 	pass.set(`${dataNamespace}/${name}`, v);
 
-interface DataContainer {
-	getData(name: string): any;
-	setData(name: string, value: any): void;
-}
-const setData = (node: DataContainer, name: string, value: any) =>
+const setNodeData = (node: NodePath<unknown>, name: string, value: any) =>
 	node.setData(`${dataNamespace}/${name}`, value);
-const getData = (node: DataContainer, name: string) =>
+const getNodeData = (node: NodePath<unknown>, name: string) =>
 	node.getData(`${dataNamespace}/${name}`);
 
 function getComponentFunctionDeclaration(
@@ -95,7 +91,7 @@ function setOnFunctionScope(
 ) {
 	const functionScope = getComponentFunctionDeclaration(path, filename);
 	if (functionScope) {
-		setData(functionScope, key, value);
+		setNodeData(functionScope.path, key, value);
 	}
 }
 
@@ -291,7 +287,7 @@ function isComponentFunction(
 	functionName: string | null
 ): boolean {
 	return (
-		getData(path.scope, containsJSX) === true && // Function contains JSX
+		getNodeData(path, containsJSX) === true && // Function contains JSX
 		isComponentName(functionName) // Function name indicates it's a component
 	);
 }
@@ -312,7 +308,7 @@ function shouldTransform(
 
 	if (options.mode == null || options.mode === "auto") {
 		return (
-			getData(path.scope, maybeUsesSignal) === true && // Function appears to use signals;
+			getNodeData(path, maybeUsesSignal) === true && // Function appears to use signals;
 			(isComponentFunction(path, functionName) ||
 				isCustomHookName(functionName))
 		);
@@ -583,7 +579,7 @@ function transformFunction(
 		newBody = prependUseSignals(t, path, state, options, functionName);
 	}
 
-	setData(path, alreadyTransformed, true);
+	setNodeData(path, alreadyTransformed, true);
 	path.get("body").replaceWith(newBody);
 }
 
@@ -790,8 +786,8 @@ function log(
 		logger.transformed(`${functionName} (${relativePath}:${lineNum})`);
 	} else {
 		logger.skipped(`${functionName} (${relativePath}:${lineNum}) %o`, {
-			hasSignals: getData(path.scope, maybeUsesSignal) ?? false,
-			hasJSX: getData(path.scope, containsJSX) ?? false,
+			hasSignals: getNodeData(path, maybeUsesSignal) ?? false,
+			hasJSX: getNodeData(path, containsJSX) ?? false,
 		});
 	}
 }
@@ -800,7 +796,9 @@ function isComponentLike(
 	path: NodePath<FunctionLike>,
 	functionName: string | null
 ): boolean {
-	return !getData(path, alreadyTransformed) && isComponentName(functionName);
+	return (
+		!getNodeData(path, alreadyTransformed) && isComponentName(functionName)
+	);
 }
 
 export default function signalsTransform(
@@ -814,7 +812,7 @@ export default function signalsTransform(
 	// babel pass with plugins on components twice.
 	const visitFunction: VisitNodeObject<PluginPass, FunctionLike> = {
 		exit(path, state) {
-			if (getData(path, alreadyTransformed) === true) return false;
+			if (getNodeData(path, alreadyTransformed) === true) return false;
 
 			let functionName = getFunctionName(path);
 			if (functionName === DefaultExportSymbol) {
