@@ -36,6 +36,7 @@ type HookUsage =
 	| typeof MANAGED_HOOK;
 
 const logger = {
+	verbose: debug("signals:react-transform:verbose"),
 	transformed: debug("signals:react-transform:transformed"),
 	skipped: debug("signals:react-transform:skipped"),
 };
@@ -83,7 +84,7 @@ function getComponentFunctionDeclaration(
 	}
 }
 
-function setOnFunctionScope(
+function setOnFunction(
 	path: NodePath,
 	key: string,
 	value: any,
@@ -91,6 +92,12 @@ function setOnFunctionScope(
 ) {
 	const functionScope = getComponentFunctionDeclaration(path, filename);
 	if (functionScope) {
+		let fnName = getFunctionName(functionScope.path as any);
+		if (fnName === DefaultExportSymbol) {
+			fnName = filename || "default";
+		}
+
+		logger.verbose(`Setting "${key}" on "${fnName}" to ${value}`);
 		setNodeData(functionScope.path, key, value);
 	}
 }
@@ -721,6 +728,10 @@ function detectJSXAlternativeImports(
 		},
 	});
 
+	logger.verbose("Using JSX alternatives: %o", {
+		identifiers: Array.from(jsxIdentifierSet),
+		objects: Array.from(jsxObjectMap.entries()),
+	});
 	set(state, jsxIdentifiers, jsxIdentifierSet);
 	set(state, jsxObjects, jsxObjectMap);
 }
@@ -870,7 +881,7 @@ export default function signalsTransform(
 			CallExpression(path, state) {
 				if (options.detectTransformedJSX) {
 					if (isJSXAlternativeCall(path, state)) {
-						setOnFunctionScope(path, containsJSX, true, this.filename);
+						setOnFunction(path, containsJSX, true, this.filename);
 					}
 				}
 
@@ -890,21 +901,21 @@ export default function signalsTransform(
 
 			MemberExpression(path) {
 				if (isValueMemberExpression(path)) {
-					setOnFunctionScope(path, maybeUsesSignal, true, this.filename);
+					setOnFunction(path, maybeUsesSignal, true, this.filename);
 				}
 			},
 
 			ObjectPattern(path) {
 				if (hasValuePropertyInPattern(path.node)) {
-					setOnFunctionScope(path, maybeUsesSignal, true, this.filename);
+					setOnFunction(path, maybeUsesSignal, true, this.filename);
 				}
 			},
 
 			JSXElement(path) {
-				setOnFunctionScope(path, containsJSX, true, this.filename);
+				setOnFunction(path, containsJSX, true, this.filename);
 			},
 			JSXFragment(path) {
-				setOnFunctionScope(path, containsJSX, true, this.filename);
+				setOnFunction(path, containsJSX, true, this.filename);
 			},
 		},
 	};
