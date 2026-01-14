@@ -2450,6 +2450,47 @@ describe("createModel", () => {
 		expect(effect2Cleanup).toHaveBeenCalledTimes(2);
 	});
 
+	it("should call correctly cleanup effects without signals but with a cleanup fn", () => {
+		let effectWithSignalRunCount = 0;
+		const effectWithSignalCleanup = vi.fn();
+
+		let noSignalEffectRunCount = 0;
+		const noSignalEffectCleanup = vi.fn();
+
+		const CountModel = createModel(() => {
+			const count = signal(0);
+			effect(() => {
+				count.value;
+				effectWithSignalRunCount++;
+				return effectWithSignalCleanup;
+			});
+			effect(() => {
+				noSignalEffectRunCount++;
+				return noSignalEffectCleanup;
+			});
+			return { count };
+		});
+
+		// These assertions demonstrate that an effect with no signal usage is
+		// only run once at start and cleanup is called once on model dispose.
+		// This is comparable in React to a `useEffect(() => {}, [])`.
+		const model = new CountModel();
+		expect(effectWithSignalRunCount).to.equal(1);
+		expect(effectWithSignalCleanup).not.toHaveBeenCalled();
+		expect(noSignalEffectRunCount).to.equal(1);
+		expect(noSignalEffectCleanup).not.toHaveBeenCalled();
+
+		model.count.value++;
+		expect(effectWithSignalRunCount).to.equal(2);
+		expect(effectWithSignalCleanup).toHaveBeenCalledTimes(1);
+		expect(noSignalEffectRunCount).to.equal(1);
+		expect(noSignalEffectCleanup).not.toHaveBeenCalled();
+
+		model[Symbol.dispose]();
+		expect(effectWithSignalCleanup).toHaveBeenCalledTimes(2);
+		expect(noSignalEffectCleanup).toHaveBeenCalledTimes(1);
+	});
+
 	it("should allow multiple disposal calls without errors", () => {
 		let effectRunCount = 0;
 		const cleanup = vi.fn();
