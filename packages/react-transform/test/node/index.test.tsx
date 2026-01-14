@@ -347,7 +347,7 @@ describe("React Signals Babel Transform", () => {
 	});
 
 	describe("auto mode doesn't transform", () => {
-		it.only("should not leak JSX detection outside of component scope", () => {
+		it("should not leak JSX detection outside of component scope", () => {
 			const inputCode = `
 				function wrapper() {
 					function Component() {
@@ -367,16 +367,16 @@ describe("React Signals Babel Transform", () => {
 			runTest(inputCode, expectedOutput);
 		});
 
-		it.only("should not leak JSX detection outside of non-components", () => {
+		it("should not leak JSX detection outside of non-components", () => {
 			const inputCode = `
 				describe("suite", () => {
-					it("test1", () => {
+					it("test 1", () => {
 						render(<Counter />);
 					});
-					it("test2", () => {
+					it("test 2", () => {
 						const CountModel = () => signal.value;
 						function Counter() {
-							return <div>Hello2</div>
+							return <div>Hello2</div>;
 						}
 						render(<Counter />);
 					});
@@ -385,99 +385,6 @@ describe("React Signals Babel Transform", () => {
 
 			const expectedOutput = inputCode;
 
-			runTest(inputCode, expectedOutput);
-		});
-
-		it.only("createModel factories that use signals", () => {
-			// const inputCode = `
-			// 	describe("useModel", () => {
-			// 		let scratch;
-			// 		let root;
-			// 		async function render(element) {
-			// 			await act(() => {
-			// 				root.render(element);
-			// 			});
-			// 			return scratch.innerHTML;
-			// 		}
-			// 		beforeEach(async () => {
-			// 			scratch = document.createElement("div");
-			// 			document.body.appendChild(scratch);
-			// 			getConsoleErrorSpy().mockClear();
-			// 			root = await createRoot(scratch);
-			// 		});
-			// 		afterEach(async () => {
-			// 			scratch.remove();
-			// 			checkConsoleErrorLogs();
-			// 		});
-			// 		it("creates model instance using model constructor", async () => {
-			// 			const CountModel = createModel(() => ({
-			// 				count: signal(0),
-			// 				increment() {
-			// 					this.count.value++;
-			// 				},
-			// 			}));
-			// 			function Counter() {
-			// 				const model = useModel(CountModel);
-			// 				return <button onClick={() => model.increment()}>{model.count}</button>;
-			// 			}
-			// 			await render(<Counter />);
-			// 			const button = scratch.querySelector("button");
-			// 			expect(button.textContent).toBe("0");
-			// 			await act(() => button.click());
-			// 			expect(button.textContent).toBe("1");
-			// 		});
-			// 		it("creates model instance using wrapper around model constructor", async () => {
-			// 			const CountModel = createModel(() => ({
-			// 				count: signal(0),
-			// 				increment() {
-			// 					this.count.value++;
-			// 				},
-			// 			}));
-			// 			function Counter() {
-			// 				const model = useModel(() => new CountModel());
-			// 				return <button onClick={() => model.increment()}>{model.count}</button>;
-			// 			}
-			// 			await render(<Counter />);
-			// 			const button = scratch.querySelector("button");
-			// 			expect(button.textContent).toBe("0");
-			// 			await act(() => button.click());
-			// 			expect(button.textContent).toBe("1");
-			// 		});
-			// 	});
-			// `;
-
-			const inputCode = `
-				describe("suite", () => {
-					it("test1", async () => {
-						const CountModel = createModel(() => ({
-							count: signal(0),
-							increment() {
-								this.count.value++;
-							},
-						}));
-						function Counter() {
-							const model = useModel(CountModel);
-							return <button onClick={() => model.increment()}>{model.count}</button>;
-						}
-						render(<Counter />);
-					});
-					it("test2", async () => {
-						const CountModel = createModel(() => ({
-							count: signal(0),
-							increment() {
-								this.count.value++;
-							},
-						}));
-						function Counter() {
-							const model = useModel(() => new CountModel());
-							return <button onClick={() => model.increment()}>{model.count}</button>;
-						}
-						render(<Counter />);
-					});
-				});
-			`;
-
-			const expectedOutput = inputCode;
 			runTest(inputCode, expectedOutput);
 		});
 
@@ -588,8 +495,82 @@ describe("React Signals Babel Transform", () => {
 	// TODO: Figure out what to do with the following
 
 	describe("all mode transformations", () => {
-		it("should not leak", () => {
-			// TODO
+		it("should not leak JSX detection outside of component scope", () => {
+			const inputCode = `
+				function wrapper() {
+					function Component() {
+						return <div>Hello</div>;
+					}
+					const CountModel = createModel(() => ({
+						count: signal(0),
+						increment() {
+							this.count.value++;
+						},
+					}));
+				}
+			`;
+
+			const expectedOutput = `
+				import { useSignals as _useSignals } from "@preact/signals-react/runtime";
+				function wrapper() {
+					function Component() {
+			    	var _effect = _useSignals(1);
+    				try {
+    				  return <div>Hello</div>;
+    				} finally {
+    				  _effect.f();
+    				}
+					}
+					const CountModel = createModel(() => ({
+						count: signal(0),
+						increment() {
+							this.count.value++;
+						},
+					}));
+				}
+			`;
+
+			runTest(inputCode, expectedOutput, { mode: "all" });
+		});
+
+		it("should not leak JSX detection outside of non-components", () => {
+			const inputCode = `
+				describe("suite", () => {
+					it("test 1", () => {
+						render(<Counter />);
+					});
+					it("test 2", () => {
+						const CountModel = () => signal.value;
+						function Counter() {
+							return <div>Hello2</div>;
+						}
+						render(<Counter />);
+					});
+				});
+			`;
+
+			const expectedOutput = `
+				import { useSignals as _useSignals } from "@preact/signals-react/runtime";
+				describe("suite", () => {
+					it("test 1", () => {
+						render(<Counter />);
+					});
+					it("test 2", () => {
+						const CountModel = () => signal.value;
+						function Counter() {
+							var _effect = _useSignals(1);
+							try {
+								return <div>Hello2</div>;
+							} finally {
+								_effect.f();
+							}
+						}
+						render(<Counter />);
+					});
+				});
+			`;
+
+			runTest(inputCode, expectedOutput, { mode: "all" });
 		});
 
 		it("skips transforming arrow function component with leading opt-out JSDoc comment before variable declaration", () => {
