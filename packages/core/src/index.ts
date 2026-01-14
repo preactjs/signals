@@ -945,6 +945,38 @@ export type ModelConstructor<TModel, TFactoryArgs extends any[] = []> = new (
 	...args: TFactoryArgs
 ) => Model<TModel>;
 
+/**
+ * The public types for ModelConstructor require using `new` to help
+ * disambiguate the function passed into `createModel` and the returned
+ * constructor function. It is easier to say that `createModel` accepts
+ * a factory and returns a class, then to say it accepts a factory and
+ * returns a factory. In other words, this example:
+ *
+ * ```ts
+ * const PersonModel = createModel((name: string) => ({ ... }));
+ * const person = new PersonModel("John");
+ * ```
+ *
+ * is easier to understand than this example:
+ *
+ * ```ts
+ * const createPerson = createModel((name: string) => ({ ... }));
+ * const person = createPerson("John");
+ * ```
+ *
+ * However, internally we implement `createModel` to return a function
+ * that can be called without `new` for simplicity. To bridge the gap
+ * between the public types and the internal implementation, we define
+ * this internal interface that extends the public interface but also
+ * allows calling without `new`.
+ *
+ * @internal
+ */
+interface InternalModelConstructor<TModel, TFactoryArgs extends any[]>
+	extends ModelConstructor<TModel, TFactoryArgs> {
+	(...args: TFactoryArgs): Model<TModel>;
+}
+
 function startCapturingEffects(): () => Effect[] | undefined {
 	let prevCapturedEffects = capturedEffects;
 	capturedEffects = [];
@@ -973,7 +1005,7 @@ function createModel<TModel, TFactoryArgs extends any[] = []>(
 			model = modelFactory(...args) as Model<TModel>;
 		} catch (err) {
 			// Drop any captured effects on error. Errors from nested models will bubble
-			// up here and recursively reset capturedEffects to undefined preventing
+			// up here and recursively reset `capturedEffects` to `undefined` preventing
 			// any captured effects from leaking
 			capturedEffects = undefined;
 			throw err;
@@ -982,7 +1014,7 @@ function createModel<TModel, TFactoryArgs extends any[] = []>(
 		}
 
 		for (const key in model) {
-			// @ts-expect-error TypeScript can't infer that model[key] is a valid  here
+			// @ts-expect-error TypeScript can't infer that model[key] is a valid here
 			if (typeof model[key] === "function") {
 				// @ts-expect-error TypeScript can't infer that model[key] is a valid function
 				// to pass to action here
@@ -1001,7 +1033,7 @@ function createModel<TModel, TFactoryArgs extends any[] = []>(
 		});
 
 		return model;
-	} as unknown as ModelConstructor<TModel, TFactoryArgs>;
+	} as InternalModelConstructor<TModel, TFactoryArgs>;
 }
 
 //#endregion createModel
