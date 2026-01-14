@@ -45,8 +45,8 @@
   "license": "MIT",
   "devDependencies": {
     "@babel/core": "^7.28.4",
-    "@babel/plugin-transform-explicit-resource-management": "^7.28.0",
     "@babel/plugin-syntax-jsx": "^7.27.1",
+    "@babel/plugin-transform-explicit-resource-management": "^7.28.0",
     "@babel/plugin-transform-modules-commonjs": "^7.27.1",
     "@babel/plugin-transform-react-jsx": "^7.27.1",
     "@babel/plugin-transform-typescript": "^7.28.0",
@@ -77,8 +77,8 @@
     "prettier": "^3.6.2",
     "shx": "^0.3.4",
     "typescript": "~5.8.3",
-    "vitest": "^3.2.4",
-    "vite": "^6.3.5"
+    "vite": "^6.3.5",
+    "vitest": "^3.2.4"
   },
   "lint-staged": {
     "**/*.{js,jsx,ts,tsx,yml,json,md}": [
