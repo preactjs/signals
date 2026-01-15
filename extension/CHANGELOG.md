@@ -1,5 +1,11 @@
 # preact-signals-devtools
 
+## 1.1.0
+
+### Minor Changes
+
+- [#810](https://github.com/preactjs/signals/pull/810) [`5aac56f`](https://github.com/preactjs/signals/commit/5aac56f1ffee0203928549f30327c30f8c35d0b6) Thanks [@43081j](https://github.com/43081j)! - Automatically fold child updates and show first/last value.
+
 ## 1.0.7
 
 ### Patch Changes
