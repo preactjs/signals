@@ -351,22 +351,6 @@ describe("React Signals Babel Transform", () => {
 
 	describe("auto mode doesn't transform", () => {
 		it("should not leak JSX detection outside of component scope", async () => {
-			// Bug is multi-faceted
-			//
-			// - Our function search logic was failing cuz `isComponentFunction` expected
-			// `containsJSX` to already be set, but was being called in the function path
-			// that set. So it wouldn't see the current function has a component candidate
-			// to set containsJSX on. and keep searching up.
-			//
-			// - In the search for a component candidate, the setter function would fallback
-			// to the highest level component which is some scenarios (e.g. tests) isn't a
-			// valid component.
-			//
-			// - Then, because we were setting containsJSX on scope, other functions in the
-			// same scope we just set `containsJSX` to could look like components if they used
-			// signals, since their `getData(containsJSX)` would search the parent scope for
-			// the value. In other words, we were setting state on scope so other functions in
-			// the same scope would find data on scopes above them
 			const inputCode = `
 				function wrapper() {
 					function Component() {

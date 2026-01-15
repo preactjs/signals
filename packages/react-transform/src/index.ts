@@ -82,7 +82,6 @@ function findParentComponentOrHook(
 		return null;
 	}
 
-	// TODO: is this path actually the parent function or the parent function block/expression that defines a scope?
 	const parentFunctionPath = parentFunctionScope.path as NodePath<FunctionLike>;
 	const fnName = getFunctionName(parentFunctionPath, filename);
 	if (isComponentName(fnName) || isCustomHookName(fnName)) {
