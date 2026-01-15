@@ -7,7 +7,7 @@ import {
 	template,
 } from "@babel/core";
 import { isModule, addNamed } from "@babel/helper-module-imports";
-import type { Scope, VisitNodeObject } from "@babel/traverse";
+import type { VisitNodeObject } from "@babel/traverse";
 import debug from "debug";
 
 interface PluginArgs {
@@ -51,47 +51,65 @@ const setNodeData = (node: NodePath<unknown>, name: string, value: any) =>
 const getNodeData = (node: NodePath<unknown>, name: string) =>
 	node.getData(`${dataNamespace}/${name}`);
 
-function getComponentFunctionDeclaration(
+/**
+ * Returns the containing component or hook function path. Examples:
+ * ```
+ * function App() {               <- returns this path
+ *   <div>{signal.value}</div>    <- starting from this
+ * }
+ *
+ * function useCustomHook() {     <- returns this path
+ *   <div>{signal.value}</div>    <- starting from this
+ * }
+ * ```
+ *
+ * It will return `null` if the function is passed as a parameter
+ * to a custom hook function. Example:
+ * ```
+ * function Component() {
+ *   useCustomHook(() => {
+ *     <div>{signal.value}</div>    <- returns null
+ *   });
+ * }
+ * ```
+ */
+function findParentComponentOrHook(
 	path: NodePath,
-	filename: string | undefined,
-	prev?: Scope
-): Scope | null {
-	const functionScope = path.scope.getFunctionParent();
-
-	if (functionScope) {
-		const parent = functionScope.path.parent;
-		let functionName = getFunctionName(functionScope.path as any, filename);
-		if (isComponentFunction(functionScope.path as any, functionName)) {
-			return functionScope;
-		} else if (
-			parent.type === "CallExpression" &&
-			parent.callee.type === "Identifier" &&
-			parent.callee.name.startsWith("use") &&
-			parent.callee.name[3] === parent.callee.name[3].toUpperCase()
-		) {
-			return null;
-		}
-		return getComponentFunctionDeclaration(
-			functionScope.parent.path,
-			filename,
-			functionScope
-		);
-	} else {
-		return prev || null;
+	filename: string | undefined
+): NodePath<FunctionLike> | null {
+	const parentFunctionScope = path.scope.getFunctionParent();
+	if (!parentFunctionScope) {
+		return null;
 	}
+
+	// TODO: is this path actually the parent function or the parent function block/expression that defines a scope?
+	const parentFunctionPath = parentFunctionScope.path as NodePath<FunctionLike>;
+	const fnName = getFunctionName(parentFunctionPath, filename);
+	if (isComponentName(fnName) || isCustomHookName(fnName)) {
+		return parentFunctionPath;
+	} else if (isCustomHookCallback(parentFunctionPath)) {
+		return null;
+	} else if (!parentFunctionPath.parentPath) {
+		return null;
+	}
+
+	return findParentComponentOrHook(parentFunctionPath.parentPath, filename);
 }
 
-function setOnFunction(
+function setOnParentComponentOrHook(
 	path: NodePath,
 	key: string,
 	value: any,
 	filename: string | undefined
 ) {
-	const functionScope = getComponentFunctionDeclaration(path, filename);
-	if (functionScope) {
-		let fnName = getFunctionName(functionScope.path as any, filename);
-		logger.verbose(`Setting "${key}" on "${fnName}" to ${value}`);
-		setNodeData(functionScope.path, key, value);
+	const parentFn = findParentComponentOrHook(path, filename);
+	if (parentFn) {
+		if (logger.verbose.enabled) {
+			const fnName = getFunctionName(parentFn, filename);
+			logger.verbose(`Setting "${key}" on "${fnName}" to "${value}"`);
+		}
+
+		setNodeData(parentFn, key, value);
 	}
 }
 
@@ -223,6 +241,16 @@ function isCustomHookName(name: string | null): boolean {
 	return name?.match(/^use[A-Z]/) != null;
 }
 
+/** Returns if the given function path is a parameter passed to a custom hook function */
+function isCustomHookCallback(path: NodePath<FunctionLike>): boolean {
+	const parent = path.parent;
+	return (
+		parent.type === "CallExpression" &&
+		parent.callee.type === "Identifier" &&
+		isCustomHookName(parent.callee.name)
+	);
+}
+
 function hasLeadingComment(path: NodePath, comment: RegExp): boolean {
 	const comments = path.node.leadingComments;
 	return comments?.some(c => c.value.match(comment) !== null) ?? false;
@@ -290,21 +318,23 @@ function isOptedOutOfSignalTracking(path: NodePath | null): boolean {
 	}
 }
 
-function isComponentFunction(
-	path: NodePath<FunctionLike>,
-	functionName: string | null
-): boolean {
-	return (
-		getNodeData(path, containsJSX) === true && // Function contains JSX
-		isComponentName(functionName) // Function name indicates it's a component
-	);
-}
-
 function shouldTransform(
 	path: NodePath<FunctionLike>,
 	functionName: string | null,
 	options: PluginOptions
 ): boolean {
+	// This function should only be called after a function's body has been parsed
+	// and containsJSX and maybeUsesSignal could be set
+	function isComponentFunction(
+		path: NodePath<FunctionLike>,
+		functionName: string | null
+	): boolean {
+		return (
+			getNodeData(path, containsJSX) === true && // Function contains JSX
+			isComponentName(functionName) // Function name indicates it's a component
+		);
+	}
+
 	// Opt-out takes first precedence
 	if (isOptedOutOfSignalTracking(path)) return false;
 	// Opt-in opts in to transformation regardless of mode
@@ -804,15 +834,6 @@ function log(
 	}
 }
 
-function isComponentLike(
-	path: NodePath<FunctionLike>,
-	functionName: string | null
-): boolean {
-	return (
-		!getNodeData(path, alreadyTransformed) && isComponentName(functionName)
-	);
-}
-
 export default function signalsTransform(
 	{ types: t }: PluginArgs,
 	options: PluginOptions
@@ -827,6 +848,8 @@ export default function signalsTransform(
 			if (getNodeData(path, alreadyTransformed) === true) return false;
 
 			const functionName = getFunctionName(path, basename(this.filename));
+			const isComponentLike =
+				!getNodeData(path, alreadyTransformed) && isComponentName(functionName);
 			if (shouldTransform(path, functionName, state.opts)) {
 				transformFunction(
 					t,
@@ -837,7 +860,7 @@ export default function signalsTransform(
 					this.filename || ""
 				);
 				log(true, path, functionName, this.filename);
-			} else if (isComponentLike(path, functionName)) {
+			} else if (isComponentLike) {
 				log(false, path, functionName, this.filename);
 			}
 		},
@@ -878,7 +901,7 @@ export default function signalsTransform(
 			CallExpression(path, state) {
 				if (options.detectTransformedJSX) {
 					if (isJSXAlternativeCall(path, state)) {
-						setOnFunction(path, containsJSX, true, this.filename);
+						setOnParentComponentOrHook(path, containsJSX, true, this.filename);
 					}
 				}
 
@@ -898,21 +921,31 @@ export default function signalsTransform(
 
 			MemberExpression(path) {
 				if (isValueMemberExpression(path)) {
-					setOnFunction(path, maybeUsesSignal, true, this.filename);
+					setOnParentComponentOrHook(
+						path,
+						maybeUsesSignal,
+						true,
+						this.filename
+					);
 				}
 			},
 
 			ObjectPattern(path) {
 				if (hasValuePropertyInPattern(path.node)) {
-					setOnFunction(path, maybeUsesSignal, true, this.filename);
+					setOnParentComponentOrHook(
+						path,
+						maybeUsesSignal,
+						true,
+						this.filename
+					);
 				}
 			},
 
 			JSXElement(path) {
-				setOnFunction(path, containsJSX, true, this.filename);
+				setOnParentComponentOrHook(path, containsJSX, true, this.filename);
 			},
 			JSXFragment(path) {
-				setOnFunction(path, containsJSX, true, this.filename);
+				setOnParentComponentOrHook(path, containsJSX, true, this.filename);
 			},
 		},
 	};

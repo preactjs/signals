@@ -31,7 +31,7 @@ import { it, describe, expect } from "vitest";
 // The `debugger` statement in `runTestCases` will then trigger for the test case
 // specified in the DEBUG_TEST_IDS. Follow the guide at https://vitest.dev/guide/debugging for
 // instructions on debugging Vitest tests in your environment.
-const DEBUG_TEST_IDS: string[] | boolean = false;
+const DEBUG_TEST_IDS: string[] | boolean = [];
 
 const format = (code: string) => prettier.format(code, { parser: "babel" });
 
