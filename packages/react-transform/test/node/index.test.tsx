@@ -24,7 +24,7 @@ import { it, describe, expect } from "vitest";
 // To help interactively debug a specific test case, add the test ids of the
 // test cases you want to debug to the `debugTestIds` array, e.g. (["258",
 // "259"]). Set to true to debug all tests. Set to false to skip all generated tests.
-const DEBUG_TEST_IDS: string[] | boolean = false;
+const DEBUG_TEST_IDS: string[] | boolean = [];
 
 const format = (code: string) => prettier.format(code, { parser: "babel" });
 
