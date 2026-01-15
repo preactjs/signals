@@ -60,10 +60,7 @@ function getComponentFunctionDeclaration(
 
 	if (functionScope) {
 		const parent = functionScope.path.parent;
-		let functionName = getFunctionName(functionScope.path as any);
-		if (functionName === DefaultExportSymbol) {
-			functionName = filename || null;
-		}
+		let functionName = getFunctionName(functionScope.path as any, filename);
 		if (isComponentFunction(functionScope.path as any, functionName)) {
 			return functionScope;
 		} else if (
@@ -92,11 +89,7 @@ function setOnFunction(
 ) {
 	const functionScope = getComponentFunctionDeclaration(path, filename);
 	if (functionScope) {
-		let fnName = getFunctionName(functionScope.path as any);
-		if (fnName === DefaultExportSymbol) {
-			fnName = filename || "default";
-		}
-
+		let fnName = getFunctionName(functionScope.path as any, filename);
 		logger.verbose(`Setting "${key}" on "${fnName}" to ${value}`);
 		setNodeData(functionScope.path, key, value);
 	}
@@ -205,14 +198,22 @@ function getFunctionNameFromParent(
 
 /* Determine the name of a function */
 function getFunctionName(
-	path: NodePath<FunctionLike>
-): string | typeof DefaultExportSymbol | null {
-	let nodeName = getFunctionNodeName(path.node);
-	if (nodeName) {
-		return nodeName;
+	path: NodePath<FunctionLike>,
+	filename: string | undefined
+): string | null {
+	let fnName: string | null = getFunctionNodeName(path.node);
+	if (fnName) {
+		return fnName;
 	}
 
-	return getFunctionNameFromParent(path.parentPath);
+	const nameFromParent = getFunctionNameFromParent(path.parentPath);
+	if (nameFromParent === DefaultExportSymbol) {
+		fnName = filename ?? null;
+	} else {
+		fnName = nameFromParent;
+	}
+
+	return fnName;
 }
 
 function isComponentName(name: string | null): boolean {
@@ -825,11 +826,7 @@ export default function signalsTransform(
 		exit(path, state) {
 			if (getNodeData(path, alreadyTransformed) === true) return false;
 
-			let functionName = getFunctionName(path);
-			if (functionName === DefaultExportSymbol) {
-				functionName = basename(this.filename) ?? null;
-			}
-
+			const functionName = getFunctionName(path, basename(this.filename));
 			if (shouldTransform(path, functionName, state.opts)) {
 				transformFunction(
 					t,
