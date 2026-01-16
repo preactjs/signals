@@ -23,8 +23,8 @@ import { it, describe, expect } from "vitest";
 
 // To help interactively debug a specific test case, add the test ids of the
 // test cases you want to debug to the `debugTestIds` array, e.g. (["258",
-// "259"]). Set to true to debug all tests.
-const DEBUG_TEST_IDS: string[] | true = [];
+// "259"]). Set to true to debug all tests. Set to false to skip all generated tests.
+const DEBUG_TEST_IDS: string[] | boolean = [];
 
 const format = (code: string) => prettier.format(code, { parser: "babel" });
 
@@ -89,9 +89,10 @@ function runTestCases(config: TestCaseConfig, testCases: GeneratedCode[]) {
 
 		// Only run tests in debugTestIds
 		if (
-			Array.isArray(DEBUG_TEST_IDS) &&
-			DEBUG_TEST_IDS.length > 0 &&
-			!DEBUG_TEST_IDS.includes(testId)
+			DEBUG_TEST_IDS === false ||
+			(Array.isArray(DEBUG_TEST_IDS) &&
+				DEBUG_TEST_IDS.length > 0 &&
+				!DEBUG_TEST_IDS.includes(testId))
 		) {
 			continue;
 		}
@@ -346,6 +347,47 @@ describe("React Signals Babel Transform", () => {
 	});
 
 	describe("auto mode doesn't transform", () => {
+		it("should not leak JSX detection outside of component scope", () => {
+			const inputCode = `
+				function wrapper() {
+					function Component() {
+						return <div>Hello</div>;
+					}
+					const CountModel = createModel(() => ({
+						count: signal(0),
+						increment() {
+							this.count.value++;
+						},
+					}));
+				}
+			`;
+
+			const expectedOutput = inputCode;
+
+			runTest(inputCode, expectedOutput);
+		});
+
+		it("should not leak JSX detection outside of non-components", () => {
+			const inputCode = `
+				describe("suite", () => {
+					it("test 1", () => {
+						render(<Counter />);
+					});
+					it("test 2", () => {
+						const CountModel = () => signal.value;
+						function Counter() {
+							return <div>Hello2</div>;
+						}
+						render(<Counter />);
+					});
+				});
+			`;
+
+			const expectedOutput = inputCode;
+
+			runTest(inputCode, expectedOutput);
+		});
+
 		it("useEffect callbacks that use signals", () => {
 			const inputCode = `
 				function App() {
@@ -453,6 +495,84 @@ describe("React Signals Babel Transform", () => {
 	// TODO: Figure out what to do with the following
 
 	describe("all mode transformations", () => {
+		it("should not leak JSX detection outside of component scope", () => {
+			const inputCode = `
+				function wrapper() {
+					function Component() {
+						return <div>Hello</div>;
+					}
+					const CountModel = createModel(() => ({
+						count: signal(0),
+						increment() {
+							this.count.value++;
+						},
+					}));
+				}
+			`;
+
+			const expectedOutput = `
+				import { useSignals as _useSignals } from "@preact/signals-react/runtime";
+				function wrapper() {
+					function Component() {
+			    	var _effect = _useSignals(1);
+    				try {
+    				  return <div>Hello</div>;
+    				} finally {
+    				  _effect.f();
+    				}
+					}
+					const CountModel = createModel(() => ({
+						count: signal(0),
+						increment() {
+							this.count.value++;
+						},
+					}));
+				}
+			`;
+
+			runTest(inputCode, expectedOutput, { mode: "all" });
+		});
+
+		it("should not leak JSX detection outside of non-components", () => {
+			const inputCode = `
+				describe("suite", () => {
+					it("test 1", () => {
+						render(<Counter />);
+					});
+					it("test 2", () => {
+						const CountModel = () => signal.value;
+						function Counter() {
+							return <div>Hello2</div>;
+						}
+						render(<Counter />);
+					});
+				});
+			`;
+
+			const expectedOutput = `
+				import { useSignals as _useSignals } from "@preact/signals-react/runtime";
+				describe("suite", () => {
+					it("test 1", () => {
+						render(<Counter />);
+					});
+					it("test 2", () => {
+						const CountModel = () => signal.value;
+						function Counter() {
+							var _effect = _useSignals(1);
+							try {
+								return <div>Hello2</div>;
+							} finally {
+								_effect.f();
+							}
+						}
+						render(<Counter />);
+					});
+				});
+			`;
+
+			runTest(inputCode, expectedOutput, { mode: "all" });
+		});
+
 		it("skips transforming arrow function component with leading opt-out JSDoc comment before variable declaration", () => {
 			const inputCode = `
 				/** @noUseSignals */
