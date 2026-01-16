@@ -105,6 +105,9 @@ function hasComponentChild(vnode: VNode): boolean {
 }
 
 function flash(nodes: (Node | undefined)[], annotation?: string) {
+	const scrollX = window.scrollX;
+	const scrollY = window.scrollY;
+
 	const range = new Range();
 	for (let node of nodes) {
 		if (!node) continue;
@@ -123,8 +126,8 @@ function flash(nodes: (Node | undefined)[], annotation?: string) {
 			// styled.style.margin = "-2px";
 			styled.style.background = color;
 			styled.style.boxShadow = `0 0 3px 3px ${color}`;
-			styled.style.left = rect.left + "px";
-			styled.style.top = rect.top + "px";
+			styled.style.left = rect.left + scrollX + "px";
+			styled.style.top = rect.top + scrollY + "px";
 			styled.style.width = rect.width + "px";
 			styled.style.height = rect.height + "px";
 			document.documentElement.appendChild(styled);
