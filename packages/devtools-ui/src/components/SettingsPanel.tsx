@@ -1,9 +1,11 @@
 import { useSignal, useSignalEffect } from "@preact/signals";
 import { Button } from "./Button";
-import { Settings } from "../types";
-import { settingsStore } from "../models/SettingsModel";
+import type { Settings } from "@preact/signals-devtools-adapter";
+import { getContext } from "../context";
 
 export function SettingsPanel() {
+	const { settingsStore } = getContext();
+
 	const onCancel = settingsStore.hideSettings;
 	const onApply = settingsStore.applySettings;
 	const settings = settingsStore.settings;

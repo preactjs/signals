@@ -1,4 +1,4 @@
-import { SignalUpdate } from "../types";
+import type { SignalUpdate } from "../context";
 
 interface UpdateItemProps {
 	update: SignalUpdate;

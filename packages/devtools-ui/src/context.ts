@@ -1,6 +1,82 @@
-import { signal, computed, effect } from "@preact/signals";
-import { Divider, SignalUpdate } from "../types";
-import { settingsStore } from "./SettingsModel";
+import { signal, computed } from "@preact/signals";
+import type {
+	DevToolsAdapter,
+	ConnectionStatus,
+	ConnectionStatusType,
+	Settings,
+} from "@preact/signals-devtools-adapter";
+
+export interface DevToolsContext {
+	adapter: DevToolsAdapter;
+	connectionStore: ReturnType<typeof createConnectionStore>;
+	updatesStore: ReturnType<typeof createUpdatesStore>;
+	settingsStore: ReturnType<typeof createSettingsStore>;
+}
+
+let currentContext: DevToolsContext | null = null;
+
+export function getContext(): DevToolsContext {
+	if (!currentContext) {
+		throw new Error(
+			"DevTools context not initialized. Call initDevTools() first."
+		);
+	}
+	return currentContext;
+}
+
+export function createConnectionStore(adapter: DevToolsAdapter) {
+	const status = signal<ConnectionStatusType>("connecting");
+	const message = signal<string>("Connecting...");
+	const isConnected = signal(false);
+
+	// Listen to adapter events
+	adapter.on(
+		"connectionStatusChanged",
+		(connectionStatus: ConnectionStatus) => {
+			status.value = connectionStatus.status;
+			message.value = connectionStatus.message;
+		}
+	);
+
+	adapter.on("signalsAvailable", (available: boolean) => {
+		isConnected.value = available;
+	});
+
+	const refreshConnection = () => {
+		status.value = "connecting";
+		message.value = "Connecting...";
+		adapter.requestState();
+	};
+
+	return {
+		get status() {
+			return status.value;
+		},
+		get message() {
+			return message.value;
+		},
+		get isConnected() {
+			return isConnected.value;
+		},
+		refreshConnection,
+	};
+}
+
+export interface SignalUpdate {
+	type: "update" | "effect";
+	signalType: "signal" | "computed" | "effect";
+	signalName: string;
+	signalId?: string;
+	componentNames: string[];
+	prevValue?: any;
+	newValue?: any;
+	timestamp?: number;
+	receivedAt: number;
+	depth?: number;
+	subscribedTo?: string;
+}
+
+export type Divider = { type: "divider" };
 
 export interface UpdateTreeNodeBase {
 	id: string;
@@ -38,7 +114,6 @@ const collapseTree = (nodes: UpdateTreeNodeSingle[]): UpdateTreeNode[] => {
 	for (const node of nodes) {
 		if (lastNode && nodesAreEqual(lastNode, node)) {
 			if (lastNode.type !== "group") {
-				// TODO (jg): maybe its safe to mutate lastNode instead of cloning?
 				tree.pop();
 				lastNode = {
 					...lastNode,
@@ -53,7 +128,6 @@ const collapseTree = (nodes: UpdateTreeNodeSingle[]): UpdateTreeNode[] => {
 				lastNode.firstUpdate = node.update;
 				lastNode.firstChildren = node.children;
 			}
-			// If the current node is equal to the last one, skip it
 			continue;
 		}
 		tree.push(node);
@@ -63,9 +137,11 @@ const collapseTree = (nodes: UpdateTreeNodeSingle[]): UpdateTreeNode[] => {
 	return tree;
 };
 
-const createUpdatesModel = () => {
+export function createUpdatesStore(
+	adapter: DevToolsAdapter,
+	settingsStore: ReturnType<typeof createSettingsStore>
+) {
 	const updates = signal<(SignalUpdate | Divider)[]>([]);
-	const lastUpdateId = signal<number>(0);
 	const isPaused = signal<boolean>(false);
 
 	const addUpdate = (
@@ -103,13 +179,11 @@ const createUpdatesModel = () => {
 			const tree: UpdateTreeNodeSingle[] = [];
 			const stack: UpdateTreeNodeSingle[] = [];
 
-			// Process updates in reverse order to show newest first
 			const recentUpdates = updates.slice(-100).reverse();
 
 			for (let i = 0; i < recentUpdates.length; i++) {
 				const item = recentUpdates[i];
 
-				// Skip dividers for tree building
 				if (item.type === "divider") {
 					continue;
 				}
@@ -117,10 +191,9 @@ const createUpdatesModel = () => {
 				const update = item as SignalUpdate;
 				const depth = update.depth || 0;
 
-				// Create a unique ID for this node
 				const nodeId = `${update.signalName}-${update.receivedAt}-${i}`;
 
-				const node: UpdateTreeNode = {
+				const node: UpdateTreeNodeSingle = {
 					type: "single",
 					id: nodeId,
 					update,
@@ -129,16 +202,13 @@ const createUpdatesModel = () => {
 					hasChildren: false,
 				};
 
-				// Find the correct parent based on depth
 				while (stack.length > 0 && stack[stack.length - 1].depth >= depth) {
 					stack.pop();
 				}
 
 				if (stack.length === 0) {
-					// This is a root node
 					tree.push(node);
 				} else {
-					// This is a child node
 					const parent = stack[stack.length - 1];
 					parent.children.push(node);
 					parent.hasChildren = true;
@@ -155,38 +225,18 @@ const createUpdatesModel = () => {
 
 	const clearUpdates = () => {
 		updates.value = [];
-		lastUpdateId.value = 0;
 	};
 
-	effect(() => {
+	// Listen to adapter events
+	adapter.on("signalUpdate", (signalUpdates: SignalUpdate[]) => {
 		if (isPaused.value) return;
 
-		const handleMessage = (event: MessageEvent) => {
-			// Only accept messages from the same origin (devtools context)
-			if (event.origin !== window.location.origin) return;
+		const updatesArray: Array<SignalUpdate | Divider> = [
+			...signalUpdates,
+		].reverse();
+		updatesArray.push({ type: "divider" });
 
-			const { type, payload } = event.data;
-
-			switch (type) {
-				case "SIGNALS_UPDATE": {
-					const signalUpdates = payload.updates;
-					const updatesArray: Array<SignalUpdate | Divider> = Array.isArray(
-						signalUpdates
-					)
-						? signalUpdates
-						: [signalUpdates];
-
-					updatesArray.reverse();
-					updatesArray.push({ type: "divider" });
-
-					updatesStore.addUpdate(updatesArray);
-					break;
-				}
-			}
-		};
-
-		window.addEventListener("message", handleMessage);
-		return () => window.removeEventListener("message", handleMessage);
+		addUpdate(updatesArray);
 	});
 
 	const collapsedUpdateTree = computed(() => {
@@ -208,6 +258,73 @@ const createUpdatesModel = () => {
 		hasUpdates,
 		isPaused,
 	};
-};
+}
 
-export const updatesStore = createUpdatesModel();
+export function createSettingsStore(adapter: DevToolsAdapter) {
+	const settings = signal<Settings>({
+		enabled: true,
+		grouped: true,
+		maxUpdatesPerSecond: 60,
+		filterPatterns: [],
+	});
+
+	const showSettings = signal<boolean>(false);
+
+	const applySettings = (newSettings: Settings) => {
+		settings.value = newSettings;
+		adapter.sendConfig(newSettings);
+		showSettings.value = false;
+	};
+
+	const toggleSettings = () => {
+		showSettings.value = !showSettings.value;
+	};
+
+	const hideSettings = () => {
+		showSettings.value = false;
+	};
+
+	// Listen to adapter events
+	adapter.on("configReceived", (config: { settings?: Settings }) => {
+		if (config.settings) {
+			settings.value = config.settings;
+		}
+	});
+
+	return {
+		get settings() {
+			return settings.value;
+		},
+		get showSettings() {
+			return showSettings.value;
+		},
+		set settings(newSettings: Settings) {
+			settings.value = newSettings;
+		},
+		applySettings,
+		toggleSettings,
+		hideSettings,
+	};
+}
+
+export function initDevTools(adapter: DevToolsAdapter): DevToolsContext {
+	const settingsStore = createSettingsStore(adapter);
+	const updatesStore = createUpdatesStore(adapter, settingsStore);
+	const connectionStore = createConnectionStore(adapter);
+
+	currentContext = {
+		adapter,
+		connectionStore,
+		updatesStore,
+		settingsStore,
+	};
+
+	return currentContext;
+}
+
+export function destroyDevTools(): void {
+	if (currentContext) {
+		currentContext.adapter.disconnect();
+		currentContext = null;
+	}
+}

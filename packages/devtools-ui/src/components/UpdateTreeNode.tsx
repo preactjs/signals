@@ -1,5 +1,5 @@
 import { useSignal } from "@preact/signals";
-import { UpdateTreeNode } from "../models/UpdatesModel";
+import type { UpdateTreeNode } from "../context";
 import { UpdateItem } from "./UpdateItem";
 
 interface UpdateTreeNodeProps {

@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "lib": ["ES2021.WeakRef", "ES2015.Symbol", "DOM", "ESNext.Disposable"],
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "strict": true,
+    "jsx": "react-jsx",
+    "jsxImportSource": "preact",
+    "stripInternal": true,
+    "noUnusedLocals": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "paths": {
+      "@preact/signals-core": ["../../packages/core/src/index.ts"],
+      "@preact/signals-debug": ["../../packages/debug/src/index.ts"],
+      "@preact/signals": ["../../packages/preact/src/index.ts"],
+      "@preact/signals-devtools-adapter": [
+        "../../packages/devtools-adapter/src/index.ts"
+      ]
+    }
+  },
+  "include": ["src"]
+}

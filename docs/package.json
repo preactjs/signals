@@ -19,6 +19,8 @@
     "@preact/signals-debug": "workspace:../packages/debug",
     "@preact/signals": "workspace:../packages/preact",
     "@preact/signals-react": "workspace:../packages/react",
+    "@preact/signals-devtools-adapter": "workspace:../packages/devtools-adapter",
+    "@preact/signals-devtools-ui": "workspace:../packages/devtools-ui",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },

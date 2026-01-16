@@ -1,16 +1,18 @@
 import { useRef } from "preact/hooks";
-import { updatesStore } from "../models/UpdatesModel";
-import { UpdateTreeNodeComponent } from "./UpdateTreeNode";
 import { useSignalEffect } from "@preact/signals";
+import { UpdateTreeNodeComponent } from "./UpdateTreeNode";
+import { getContext } from "../context";
 
 export function UpdatesContainer() {
+	const { updatesStore } = getContext();
 	const updatesListRef = useRef<HTMLDivElement>(null);
 	const updateTree = updatesStore.collapsedUpdateTree.value;
 
 	useSignalEffect(() => {
 		// Register scroll restoration
 		// When a new update is added we scroll to top
-		const tree = updatesStore.updateTree.value;
+		// Access the signal to subscribe to updates
+		updatesStore.updateTree.value;
 		if (updatesListRef.current) {
 			updatesListRef.current.scrollTop = 0;
 		}

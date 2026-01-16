@@ -1,0 +1,59 @@
+{
+  "name": "@preact/signals-devtools-ui",
+  "version": "0.0.0",
+  "license": "MIT",
+  "description": "DevTools UI components for @preact/signals",
+  "keywords": [
+    "preact",
+    "signals",
+    "devtools",
+    "ui"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/preactjs/signals",
+    "directory": "packages/devtools-ui"
+  },
+  "bugs": "https://github.com/preactjs/signals/issues",
+  "homepage": "https://preactjs.com",
+  "funding": {
+    "type": "opencollective",
+    "url": "https://opencollective.com/preact"
+  },
+  "amdName": "preactSignalsDevtoolsUI",
+  "main": "dist/devtools-ui.js",
+  "module": "dist/devtools-ui.module.js",
+  "unpkg": "dist/devtools-ui.min.js",
+  "types": "dist/devtools-ui.d.ts",
+  "source": "src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/devtools-ui.d.ts",
+      "browser": "./dist/devtools-ui.module.js",
+      "import": "./dist/devtools-ui.mjs",
+      "require": "./dist/devtools-ui.js"
+    },
+    "./styles": "./dist/styles.css"
+  },
+  "mangle": "../../mangle.json",
+  "files": [
+    "src",
+    "dist",
+    "CHANGELOG.md",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "prepublishOnly": "cd ../.. && pnpm build:devtools-ui"
+  },
+  "dependencies": {
+    "@preact/signals-devtools-adapter": "workspace:*"
+  },
+  "devDependencies": {
+    "@preact/signals": "workspace:*",
+    "preact": "^10.26.9"
+  },
+  "publishConfig": {
+    "provenance": true
+  }
+}

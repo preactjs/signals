@@ -14,6 +14,8 @@
   "dependencies": {
     "@preact/signals": "workspace:*",
     "@preact/signals-core": "workspace:*",
+    "@preact/signals-devtools-adapter": "workspace:*",
+    "@preact/signals-devtools-ui": "workspace:*",
     "preact": "^10.26.9"
   },
   "devDependencies": {

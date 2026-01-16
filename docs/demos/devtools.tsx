@@ -57,11 +57,13 @@ const todosModel = (() => {
 
 export default function DevToolsDemo() {
 	return (
-		<div>
-			<h1>DevTools Demo</h1>
-			<main>
-				<TodosList />
-			</main>
+		<div class="devtools-demo-container">
+			<div class="app-section">
+				<h1>DevTools Demo</h1>
+				<main>
+					<TodosList />
+				</main>
+			</div>
 		</div>
 	);
 }

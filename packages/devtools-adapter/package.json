@@ -1,0 +1,63 @@
+{
+  "name": "@preact/signals-devtools-adapter",
+  "version": "0.0.0",
+  "license": "MIT",
+  "description": "Communication adapters for @preact/signals-devtools-ui",
+  "keywords": [
+    "preact",
+    "signals",
+    "devtools",
+    "adapter"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/preactjs/signals",
+    "directory": "packages/devtools-adapter"
+  },
+  "bugs": "https://github.com/preactjs/signals/issues",
+  "homepage": "https://preactjs.com",
+  "funding": {
+    "type": "opencollective",
+    "url": "https://opencollective.com/preact"
+  },
+  "amdName": "preactSignalsDevtoolsAdapter",
+  "main": "dist/devtools-adapter.js",
+  "module": "dist/devtools-adapter.module.js",
+  "unpkg": "dist/devtools-adapter.min.js",
+  "types": "dist/devtools-adapter.d.ts",
+  "source": "src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/devtools-adapter.d.ts",
+      "browser": "./dist/devtools-adapter.module.js",
+      "import": "./dist/devtools-adapter.mjs",
+      "require": "./dist/devtools-adapter.js"
+    },
+    "./browser-extension": {
+      "types": "./dist/browser-extension.d.ts",
+      "browser": "./dist/browser-extension.module.js",
+      "import": "./dist/browser-extension.mjs",
+      "require": "./dist/browser-extension.js"
+    },
+    "./direct": {
+      "types": "./dist/direct.d.ts",
+      "browser": "./dist/direct.module.js",
+      "import": "./dist/direct.mjs",
+      "require": "./dist/direct.js"
+    }
+  },
+  "mangle": "../../mangle.json",
+  "files": [
+    "src",
+    "dist",
+    "CHANGELOG.md",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "prepublishOnly": "cd ../.. && pnpm build:devtools-adapter"
+  },
+  "publishConfig": {
+    "provenance": true
+  }
+}

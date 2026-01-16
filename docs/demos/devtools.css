@@ -1,3 +1,29 @@
+.devtools-demo-container {
+  display: flex;
+  gap: 20px;
+  height: 100vh;
+  padding: 20px;
+}
+
+.app-section {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.devtools-section {
+  flex: 1;
+  min-width: 600px;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.devtools-panel {
+  height: 100%;
+  width: 100%;
+}
+
 .new-todo {
   display: flex;
   align-items: center;
@@ -11,3 +37,4 @@
   gap: 8px;
   margin-bottom: 4px;
 }
+

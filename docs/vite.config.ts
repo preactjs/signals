@@ -74,7 +74,15 @@ export default defineConfig(env => ({
 					}
 				: {
 						"@preact/signals/utils": join(root, "preact/utils/src"),
+						"@preact/signals-devtools-ui/styles": join(
+							root,
+							"devtools-ui/src/styles.css"
+						),
 						...packages(false),
+						"@preact/signals-devtools-ui": join(
+							root,
+							"devtools-ui/dist/devtools-ui.mjs"
+						),
 					},
 	},
 }));

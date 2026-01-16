@@ -1,14 +1,8 @@
 import { useRef, useEffect } from "preact/hooks";
-import { Signal, computed, useComputed, useSignal } from "@preact/signals";
-import {
-	Divider,
-	GraphData,
-	GraphLink,
-	GraphNode,
-	ComponentGroup,
-	SignalUpdate,
-} from "../types";
-import { updatesStore } from "../models/UpdatesModel";
+import { useComputed, useSignal } from "@preact/signals";
+import type { GraphData, GraphLink, GraphNode } from "../types";
+import type { SignalUpdate } from "../context";
+import { getContext } from "../context";
 
 const copyToClipboard = (text: string) => {
 	const copyEl = document.createElement("textarea");
@@ -23,6 +17,7 @@ const copyToClipboard = (text: string) => {
 };
 
 export function GraphVisualization() {
+	const { updatesStore } = getContext();
 	const updates = updatesStore.updates;
 	const svgRef = useRef<SVGSVGElement>(null);
 	const containerRef = useRef<HTMLDivElement>(null);
@@ -108,7 +103,7 @@ export function GraphVisualization() {
 							type: "component",
 							x: 0,
 							y: 0,
-							depth: currentDepth + 1, // Components are one level deeper than the signal that triggers them
+							depth: currentDepth + 1,
 						});
 					}
 
@@ -126,8 +121,8 @@ export function GraphVisualization() {
 
 		// Simple depth-based layout
 		const allNodes = Array.from(nodes.values());
-		const nodeSpacing = 120; // More spacing between nodes
-		const depthSpacing = 250; // Distance between depth levels
+		const nodeSpacing = 120;
+		const depthSpacing = 250;
 		const startX = 100;
 		const startY = 80;
 
@@ -144,7 +139,7 @@ export function GraphVisualization() {
 		const maxDepth = Math.max(...allNodes.map(n => n.depth));
 		nodesByDepth.forEach((depthNodes, depth) => {
 			const depthHeight = (depthNodes.length - 1) * nodeSpacing;
-			const depthStartY = startY + maxDepth * 100 - depthHeight / 2; // Center this depth level
+			const depthStartY = startY + maxDepth * 100 - depthHeight / 2;
 
 			depthNodes.forEach((node, index) => {
 				node.x = startX + depth * depthSpacing;
@@ -152,18 +147,16 @@ export function GraphVisualization() {
 			});
 		});
 
-		const components: ComponentGroup[] = []; // Remove component grouping for now
-
 		return {
 			nodes: allNodes,
 			links: Array.from(links.values()),
-			components,
+			components: [],
 		};
 	});
 
 	// Mouse event handlers for panning
 	const handleMouseDown = (e: MouseEvent) => {
-		if (e.button !== 0) return; // Only left mouse button
+		if (e.button !== 0) return;
 		isPanning.value = true;
 		startPan.value = {
 			x: e.clientX - panOffset.value.x,
@@ -189,16 +182,13 @@ export function GraphVisualization() {
 		const container = containerRef.current;
 		if (!container) return;
 
-		// Get mouse position relative to container
 		const rect = container.getBoundingClientRect();
 		const mouseX = e.clientX - rect.left;
 		const mouseY = e.clientY - rect.top;
 
-		// Calculate zoom change
 		const delta = e.deltaY > 0 ? 0.9 : 1.1;
 		const newZoom = Math.min(Math.max(0.1, zoom.value * delta), 5);
 
-		// Adjust pan offset to zoom towards mouse cursor
 		const zoomRatio = newZoom / zoom.value;
 		panOffset.value = {
 			x: mouseX - (mouseX - panOffset.value.x) * zoomRatio,
@@ -283,7 +273,6 @@ export function GraphVisualization() {
 		);
 	}
 
-	// Calculate SVG dimensions based on nodes
 	const svgWidth = Math.max(800, ...graphData.value.nodes.map(n => n.x + 100));
 	const svgHeight = Math.max(600, ...graphData.value.nodes.map(n => n.y + 100));
 
@@ -306,7 +295,6 @@ export function GraphVisualization() {
 					height={svgHeight}
 					viewBox={`0 0 ${svgWidth} ${svgHeight}`}
 				>
-					{/* Arrow marker definition */}
 					<defs>
 						<marker
 							id="arrowhead"
@@ -323,7 +311,6 @@ export function GraphVisualization() {
 					<g
 						transform={`translate(${panOffset.value.x}, ${panOffset.value.y}) scale(${zoom.value})`}
 					>
-						{/* Links */}
 						<g className="links">
 							{graphData.value.links.map((link, index) => {
 								const sourceNode = graphData.value.nodes.find(
@@ -335,7 +322,6 @@ export function GraphVisualization() {
 
 								if (!sourceNode || !targetNode) return null;
 
-								// Use curved paths for better visual flow
 								const sourceX = sourceNode.x + 25;
 								const sourceY = sourceNode.y;
 								const targetX = targetNode.x - 25;
@@ -358,11 +344,9 @@ export function GraphVisualization() {
 							})}
 						</g>
 
-						{/* Nodes */}
 						<g className="nodes">
 							{graphData.value.nodes.map(node => {
 								const radius = node.type === "component" ? 40 : 30;
-								// For circles, use a smaller character limit to fit within the circle with padding
 								const maxChars = node.type === "component" ? 10 : 7;
 								const displayName =
 									node.name.length > maxChars
@@ -373,7 +357,6 @@ export function GraphVisualization() {
 								return (
 									<g key={node.id} className="graph-node-group">
 										{node.type === "component" ? (
-											// Rectangular shape for components
 											<rect
 												className={`graph-node ${node.type}`}
 												x={node.x - radius}
@@ -385,7 +368,6 @@ export function GraphVisualization() {
 												{isTextTruncated && <title>{node.name}</title>}
 											</rect>
 										) : (
-											// Circular shape for signals/computed/effects
 											<circle
 												className={`graph-node ${node.type}`}
 												cx={node.x}
@@ -414,7 +396,6 @@ export function GraphVisualization() {
 					</g>
 				</svg>
 
-				{/* Control buttons */}
 				<div className="graph-controls">
 					<button
 						className="graph-reset-button"
@@ -451,12 +432,10 @@ export function GraphVisualization() {
 					</div>
 				</div>
 
-				{/* Toast notification */}
 				{toastText.value && (
 					<div className="graph-toast">{toastText.value}</div>
 				)}
 
-				{/* Legend */}
 				<div className="graph-legend">
 					<div className="legend-item">
 						<div

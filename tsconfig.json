@@ -30,5 +30,5 @@
       ]
     }
   },
-  "exclude": ["docs", "extension", "packages/*/dist/**"]
+  "exclude": ["docs", "extension", "packages/*/dist/**", "packages/devtools-ui"]
 }

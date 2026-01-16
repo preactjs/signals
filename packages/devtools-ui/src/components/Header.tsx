@@ -1,10 +1,10 @@
 import { StatusIndicator } from "./StatusIndicator";
 import { Button } from "./Button";
-import { connectionStore } from "../models/ConnectionModel";
-import { updatesStore } from "../models/UpdatesModel";
-import { settingsStore } from "../models/SettingsModel";
+import { getContext } from "../context";
 
 export function Header() {
+	const { connectionStore, updatesStore, settingsStore } = getContext();
+
 	const onToggleSettings = settingsStore.toggleSettings;
 	const onTogglePause = () => {
 		updatesStore.isPaused.value = !updatesStore.isPaused.value;
