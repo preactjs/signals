@@ -24,7 +24,7 @@
     "postbuild:react-utils": "shx mv -f packages/react/utils/dist/react/utils/src/index.d.ts packages/react/utils/dist/index.d.ts && shx rm -rf packages/react/utils/dist/react",
     "postbuild:react-runtime": "shx mv -f packages/react/runtime/dist/react/runtime/src/*.d.ts packages/react/runtime/dist/ && shx rm -rf packages/react/runtime/dist/react",
     "postbuild:devtools-adapter": "shx mv -f packages/devtools-adapter/dist/index.d.ts packages/devtools-adapter/dist/devtools-adapter.d.ts",
-    "postbuild:devtools-ui": "shx mv -f packages/devtools-ui/src/index.d.ts packages/devtools-ui/dist/devtools-ui.d.ts && shx rm -rf packages/devtools-ui/src && shx cp packages/devtools-ui/src/styles.css packages/devtools-ui/dist/styles.css",
+    "postbuild:devtools-ui": "shx mv -f packages/devtools-ui/dist/devtools-ui/src/index.d.ts packages/devtools-ui/dist/devtools-ui.d.ts && shx cp packages/devtools-ui/src/styles.css packages/devtools-ui/dist/styles.css && shx rm -rf packages/devtools-ui/dist/devtools-ui",
     "lint": "pnpm lint:oxlint && pnpm lint:tsc",
     "lint:oxlint": "oxlint 'packages/**/*.{ts,tsx,js,jsx}'",
     "lint:tsc": "tsc -p tsconfig.json --noEmit",

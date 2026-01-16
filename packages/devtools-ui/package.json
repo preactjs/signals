@@ -1,6 +1,6 @@
 {
   "name": "@preact/signals-devtools-ui",
-  "version": "1.0.0",
+  "version": "0.0.0",
   "license": "MIT",
   "description": "DevTools UI components for @preact/signals",
   "keywords": [
