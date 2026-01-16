@@ -1,6 +1,19 @@
 import { VNode } from "../../preact/src/internal";
 import { UpdateInfo } from "./internal";
 
+/** Formatted signal update for external consumers */
+export interface FormattedSignalUpdate {
+	type: "update" | "effect";
+	signalType: "signal" | "computed" | "effect";
+	signalName: string;
+	signalId: string;
+	componentNames?: string[];
+	prevValue?: any;
+	newValue?: any;
+	timestamp: number;
+	depth: number;
+}
+
 // Communication layer for Chrome DevTools Extension
 export interface DevToolsMessage {
 	type:
@@ -14,7 +27,9 @@ export interface DevToolsMessage {
 }
 
 export interface SignalsDevToolsAPI {
-	onUpdate: (callback: (updateInfo: UpdateInfo[]) => void) => () => void;
+	onUpdate: (
+		callback: (updates: FormattedSignalUpdate[]) => void
+	) => () => void;
 	onInit: (callback: () => void) => () => void;
 	sendConfig: (config: any) => void;
 	sendUpdate: (updateInfo: UpdateInfo[]) => void;
@@ -122,29 +137,39 @@ class DevToolsCommunicator {
 	}
 
 	public sendUpdate(updateInfoList: UpdateInfo[]) {
+		const formattedUpdates = updateInfoList.map(({ signal, ...info }) => {
+			const owners = this.getSignalOwners(signal);
+			return info.type === "value"
+				? {
+						...info,
+						type: "update" as const,
+						newValue: deeplyRemoveFunctions(info.newValue),
+						prevValue: deeplyRemoveFunctions(info.prevValue),
+						signalType: ("_fn" in signal ? "computed" : "signal") as
+							| "signal"
+							| "computed",
+						signalName: this.getSignalName(signal),
+						signalId: this.getSignalId(signal),
+						componentNames: owners.length > 0 ? owners : undefined,
+					}
+				: {
+						...info,
+						type: "effect" as const,
+						signalType: "effect" as const,
+						signalName: this.getSignalName(signal),
+						signalId: this.getSignalId(signal),
+						componentNames: owners.length > 0 ? owners : undefined,
+					};
+		});
+
+		// Emit for direct listeners (e.g., DirectAdapter)
+		this.emit("update", formattedUpdates);
+
+		// Post message for browser extension
 		this.postMessage({
 			type: "SIGNALS_UPDATE",
 			payload: {
-				updates: updateInfoList.map(({ signal, ...info }) => {
-					const owners = this.getSignalOwners(signal);
-					return info.type === "value"
-						? {
-								...info,
-								newValue: deeplyRemoveFunctions(info.newValue),
-								prevValue: deeplyRemoveFunctions(info.prevValue),
-								signalType: "_fn" in signal ? "computed" : "signal",
-								signalName: this.getSignalName(signal),
-								signalId: this.getSignalId(signal),
-								componentNames: owners.length > 0 ? owners : undefined,
-							}
-						: {
-								...info,
-								signalType: "effect",
-								signalName: this.getSignalName(signal),
-								signalId: this.getSignalId(signal),
-								componentNames: owners.length > 0 ? owners : undefined,
-							};
-				}),
+				updates: formattedUpdates,
 			},
 			timestamp: Date.now(),
 		});
@@ -158,7 +183,9 @@ class DevToolsCommunicator {
 		});
 	}
 
-	public onUpdate(callback: (updateInfo: UpdateInfo[]) => void): () => void {
+	public onUpdate(
+		callback: (updates: FormattedSignalUpdate[]) => void
+	): () => void {
 		return this.addListener("update", callback);
 	}
 

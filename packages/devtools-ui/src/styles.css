@@ -40,8 +40,8 @@ body {
 
 .header-title h1 {
   font-size: 16px;
-  font-weight: 600;
-  color: #673ab7;
+  font-weight: 700;
+  color: #5e35b1;
 }
 
 .connection-status {
@@ -49,6 +49,8 @@ body {
   align-items: center;
   gap: 6px;
   font-size: 12px;
+  font-weight: 500;
+  color: #444;
 }
 
 .divider {
@@ -128,16 +130,30 @@ body {
   cursor: not-allowed;
 }
 
+.btn.active {
+  background: #673ab7;
+  border-color: #673ab7;
+  color: white;
+}
+
+.btn.active:hover {
+  background: #5e35b1;
+  border-color: #5e35b1;
+}
+
 /* Settings Panel */
 .settings-panel {
   position: absolute;
   top: 49px;
-  left: 0;
-  right: 0;
+  right: 12px;
+  left: auto;
+  width: 320px;
   background: white;
-  border-bottom: 1px solid #e0e0e0;
+  border: 1px solid #d0d0d0;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
   z-index: 1000;
-  max-height: 300px;
+  max-height: 400px;
   overflow-y: auto;
 }
 
@@ -193,29 +209,35 @@ body {
   border-bottom: 1px solid #e0e0e0;
   display: flex;
   flex-shrink: 0;
+  padding: 0 8px;
 }
 
 .tab {
-  padding: 12px 16px;
-  border: none;
+  padding: 10px 20px;
+  border: 1px solid transparent;
+  border-bottom: none;
   background: none;
   cursor: pointer;
-  border-bottom: 2px solid transparent;
   font-size: 13px;
   font-weight: 500;
-  color: #666;
+  color: #555;
   transition: all 0.2s;
+  margin-top: 4px;
+  border-radius: 6px 6px 0 0;
 }
 
 .tab:hover {
   color: #333;
-  background: #f8f9fa;
+  background: #f0f0f0;
 }
 
 .tab.active {
   color: #673ab7;
-  border-bottom-color: #673ab7;
-  background: #fff;
+  background: #f5f0ff;
+  border-color: #d0c0e8;
+  border-bottom: 2px solid #fff;
+  margin-bottom: -1px;
+  font-weight: 600;
 }
 
 /* Main Content */
@@ -334,22 +356,22 @@ body {
 
 .signal-name {
   font-weight: 600;
-  color: #673ab7;
+  color: #5e35b1;
 }
 
 .component-name {
-  font-weight: 400;
-  color: #4169E1;
+  font-weight: 500;
+  color: #1565c0;
   font-style: italic;
 }
 
 .update-time {
-  color: #999;
+  color: #757575;
   font-size: 11px;
 }
 
 .update-depth {
-  color: #666;
+  color: #555;
   font-size: 11px;
 }
 

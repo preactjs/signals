@@ -1,4 +1,4 @@
-import { signal, computed, effect, type Signal } from "@preact/signals";
+import { signal, computed } from "@preact/signals";
 import type {
 	DevToolsAdapter,
 	ConnectionStatus,
@@ -228,7 +228,7 @@ export function createUpdatesStore(
 	};
 
 	// Listen to adapter events
-	adapter.on("signalUpdate", signalUpdates => {
+	adapter.on("signalUpdate", (signalUpdates: SignalUpdate[]) => {
 		if (isPaused.value) return;
 
 		const updatesArray: Array<SignalUpdate | Divider> = [
@@ -285,7 +285,7 @@ export function createSettingsStore(adapter: DevToolsAdapter) {
 	};
 
 	// Listen to adapter events
-	adapter.on("configReceived", config => {
+	adapter.on("configReceived", (config: { settings?: Settings }) => {
 		if (config.settings) {
 			settings.value = config.settings;
 		}

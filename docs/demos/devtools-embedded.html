@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Embedded Signals DevTools Demo</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    
+    h1 {
+      color: #333;
+      margin-bottom: 20px;
+    }
+    
+    .demo-container {
+      display: flex;
+      gap: 20px;
+      max-width: 1600px;
+      margin: 0 auto;
+    }
+    
+    .app-section {
+      flex: 1;
+      background: white;
+      border-radius: 8px;
+      padding: 30px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .app-section h2 {
+      margin-top: 0;
+      color: #673ab7;
+    }
+    
+    .devtools-section {
+      flex: 1;
+      background: white;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      height: 700px;
+    }
+    
+    #devtools-container {
+      height: 100%;
+    }
+    
+    .counter-display {
+      font-size: 72px;
+      font-weight: bold;
+      color: #673ab7;
+      margin: 30px 0;
+      text-align: center;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
+      margin: 20px 0;
+    }
+
+    .stat-card {
+      padding: 15px;
+      background: #f5f5f5;
+      border-radius: 6px;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      text-transform: uppercase;
+      color: #666;
+      margin-bottom: 5px;
+    }
+
+    .stat-value {
+      font-size: 28px;
+      font-weight: bold;
+      color: #673ab7;
+    }
+    
+    .controls {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .controls button {
+      padding: 12px 24px;
+      font-size: 16px;
+      cursor: pointer;
+      border: none;
+      border-radius: 6px;
+      background: #673ab7;
+      color: white;
+      transition: all 0.2s;
+      font-weight: 500;
+    }
+    
+    .controls button:hover {
+      background: #5e35b1;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(103, 58, 183, 0.3);
+    }
+
+    .controls button:active {
+      transform: translateY(0);
+    }
+
+    .controls button.secondary {
+      background: #9575cd;
+    }
+
+    .controls button.secondary:hover {
+      background: #7e57c2;
+    }
+
+    .description {
+      color: #666;
+      line-height: 1.6;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>📊 Embedded Signals DevTools Demo</h1>
+  
+  <div class="demo-container">
+    <!-- Your Application -->
+    <div class="app-section">
+      <h2>Counter App</h2>
+      <p class="description">
+        This is a simple counter app using Preact Signals. 
+        Try clicking the buttons and watch the DevTools panel update in real-time!
+      </p>
+      
+      <div class="counter-display" id="counter-display">0</div>
+      
+      <div class="stats">
+        <div class="stat-card">
+          <div class="stat-label">Doubled</div>
+          <div class="stat-value" id="doubled-display">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Squared</div>
+          <div class="stat-value" id="squared-display">0</div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button id="increment">➕ Increment</button>
+        <button id="decrement">➖ Decrement</button>
+        <button id="add5" class="secondary">+5</button>
+        <button id="reset" class="secondary">🔄 Reset</button>
+      </div>
+    </div>
+    
+    <!-- Embedded DevTools -->
+    <div class="devtools-section">
+      <div id="devtools-container"></div>
+    </div>
+  </div>
+
+  <!-- Load your app with signals-debug -->
+  <script type="module">
+    // First, import and set up the debug package
+    import { signal, computed, effect } from "@preact/signals-core";
+    import "@preact/signals-debug";
+    
+    // Create some signals for the demo
+    const count = signal(0, { name: "count" });
+    const doubled = computed(() => count.value * 2, { name: "doubled" });
+    const squared = computed(() => count.value * count.value, { name: "squared" });
+    
+    // Update display using effects
+    effect(() => {
+      document.getElementById("counter-display").textContent = count.value;
+    });
+
+    effect(() => {
+      document.getElementById("doubled-display").textContent = doubled.value;
+    });
+
+    effect(() => {
+      document.getElementById("squared-display").textContent = squared.value;
+    });
+    
+    // Set up button handlers
+    document.getElementById("increment").addEventListener("click", () => {
+      count.value++;
+    });
+    
+    document.getElementById("decrement").addEventListener("click", () => {
+      count.value--;
+    });
+
+    document.getElementById("add5").addEventListener("click", () => {
+      count.value += 5;
+    });
+    
+    document.getElementById("reset").addEventListener("click", () => {
+      count.value = 0;
+    });
+    
+    // Now, mount the DevTools UI
+    import { mount } from "@preact/signals-devtools-ui";
+    import { createDirectAdapter } from "@preact/signals-devtools-adapter";
+    
+    const adapter = createDirectAdapter({
+      targetWindow: window,
+      pollInterval: 100,
+      maxWaitTime: 10000,
+    });
+    
+    mount({
+      adapter,
+      container: document.getElementById("devtools-container"),
+      initialTab: "updates",
+    }).then(() => {
+      console.log("✅ DevTools mounted successfully!");
+    }).catch((error) => {
+      console.error("❌ Failed to mount DevTools:", error);
+    });
+  </script>
+</body>
+</html>

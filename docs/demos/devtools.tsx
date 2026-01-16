@@ -1,6 +1,10 @@
 import { useSignal } from "@preact/signals";
 import { Show, For } from "@preact/signals/utils";
 import { computed, signal } from "@preact/signals-core";
+import { useEffect, useRef } from "preact/hooks";
+import { mount } from "@preact/signals-devtools-ui";
+import { createDirectAdapter } from "@preact/signals-devtools-adapter";
+import "@preact/signals-devtools-ui/styles";
 import "./devtools.css";
 
 type TodoModel = {
@@ -56,12 +60,39 @@ const todosModel = (() => {
 })();
 
 export default function DevToolsDemo() {
+	const devtoolsRef = useRef<HTMLDivElement>(null);
+
+	useEffect(() => {
+		if (!devtoolsRef.current) return;
+
+		const adapter = createDirectAdapter({
+			targetWindow: window,
+			pollInterval: 100,
+			maxWaitTime: 10000,
+		});
+
+		const unmountPromise = mount({
+			adapter,
+			container: devtoolsRef.current,
+			initialTab: "updates",
+		});
+
+		return () => {
+			unmountPromise.then((unmount: () => void) => unmount());
+		};
+	}, []);
+
 	return (
-		<div>
-			<h1>DevTools Demo</h1>
-			<main>
-				<TodosList />
-			</main>
+		<div class="devtools-demo-container">
+			<div class="app-section">
+				<h1>DevTools Demo</h1>
+				<main>
+					<TodosList />
+				</main>
+			</div>
+			<div class="devtools-section">
+				<div ref={devtoolsRef} class="devtools-panel"></div>
+			</div>
 		</div>
 	);
 }

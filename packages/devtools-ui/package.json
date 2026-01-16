@@ -47,13 +47,10 @@
     "prepublishOnly": "cd ../.. && pnpm build:devtools-ui"
   },
   "dependencies": {
-    "@preact/signals": "workspace:*",
     "@preact/signals-devtools-adapter": "workspace:*"
   },
-  "peerDependencies": {
-    "preact": ">=10.0.0"
-  },
   "devDependencies": {
+    "@preact/signals": "workspace:*",
     "preact": "^10.26.9"
   },
   "publishConfig": {

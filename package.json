@@ -8,7 +8,7 @@
     "build:core": "pnpm _build --cwd packages/core && pnpm postbuild:core",
     "build:debug": "pnpm _build --cwd packages/debug && pnpm postbuild:debug",
     "build:devtools-adapter": "pnpm _build --cwd packages/devtools-adapter && pnpm postbuild:devtools-adapter",
-    "_build:devtools-ui": "pnpm _build --cwd packages/devtools-ui --external \"preact,preact/hooks,@preact/signals,@preact/signals-devtools-adapter\" && pnpm postbuild:devtools-ui",
+    "_build:devtools-ui": "microbundle --raw --cwd packages/devtools-ui --external \"@preact/signals-devtools-adapter\" && pnpm postbuild:devtools-ui",
     "build:preact": "pnpm _build --cwd packages/preact && pnpm postbuild:preact",
     "build:preact-utils": "pnpm _build --cwd packages/preact/utils && pnpm postbuild:preact-utils",
     "build:react": "pnpm _build --cwd packages/react --external \"react,@preact/signals-react/runtime,@preact/signals-core\" && pnpm postbuild:react",

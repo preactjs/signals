@@ -11,7 +11,8 @@ export function UpdatesContainer() {
 	useSignalEffect(() => {
 		// Register scroll restoration
 		// When a new update is added we scroll to top
-		const tree = updatesStore.updateTree.value;
+		// Access the signal to subscribe to updates
+		updatesStore.updateTree.value;
 		if (updatesListRef.current) {
 			updatesListRef.current.scrollTop = 0;
 		}

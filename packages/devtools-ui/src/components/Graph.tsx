@@ -1,7 +1,7 @@
 import { useRef, useEffect } from "preact/hooks";
 import { useComputed, useSignal } from "@preact/signals";
 import type { GraphData, GraphLink, GraphNode } from "../types";
-import type { SignalUpdate, Divider } from "../context";
+import type { SignalUpdate } from "../context";
 import { getContext } from "../context";
 
 const copyToClipboard = (text: string) => {
