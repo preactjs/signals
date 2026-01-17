@@ -67,6 +67,18 @@ export interface AdapterEvents {
 	backgroundReady: (contentScriptConnected: boolean) => void;
 	/** Content script disconnected (browser extension specific) */
 	contentScriptDisconnected: () => void;
+	/** Component mounted */
+	componentMount: (info: {
+		componentName: string;
+		instanceCount: number;
+	}) => void;
+	/** Component unmounted */
+	componentUnmount: (info: {
+		componentName: string;
+		remainingInstances: number;
+	}) => void;
+	/** Component re-rendered due to signal change */
+	componentRender: (info: { componentName: string }) => void;
 }
 
 /**

@@ -494,20 +494,13 @@ try {
 	STORE_IDENTIFIER.f();
 }`;
 
+// Debug template passes component name to useSignals for devtools tracking
 const debugTryCatchTemplate = template.statements(
-	`var STORE_IDENTIFIER = HOOK_IDENTIFIER(HOOK_USAGE);
+	`var STORE_IDENTIFIER = HOOK_IDENTIFIER(HOOK_USAGE, COMPONENT_NAME);
 try {
-	if (window.__PREACT_SIGNALS_DEVTOOLS__) {
-		window.__PREACT_SIGNALS_DEVTOOLS__.enterComponent(
-			COMPONENT_NAME
-		);
-	}
 	BODY
 } finally {
 	STORE_IDENTIFIER.f();
-	if (window.__PREACT_SIGNALS_DEVTOOLS__) {
-		window.__PREACT_SIGNALS_DEVTOOLS__.exitComponent();
-	}
 }`,
 	{
 		placeholderWhitelist: new Set([
@@ -516,7 +509,6 @@ try {
 			"HOOK_IDENTIFIER",
 			"BODY",
 			"COMPONENT_NAME",
-			"STORE_IDENTIFIER",
 		]),
 		placeholderPattern: false,
 	}
@@ -533,6 +525,7 @@ function wrapInTryFinally(
 	const stopTrackingIdentifier = path.scope.generateUidIdentifier("effect");
 
 	if (isDebug) {
+		// Debug mode: pass component name to useSignals for devtools tracking
 		const statements = debugTryCatchTemplate({
 			COMPONENT_NAME: t.stringLiteral(componentName),
 			STORE_IDENTIFIER: stopTrackingIdentifier,
@@ -544,6 +537,7 @@ function wrapInTryFinally(
 		});
 		return t.blockStatement(statements);
 	} else {
+		// Non-debug mode: no component name passed
 		const statements = tryCatchTemplate({
 			STORE_IDENTIFIER: stopTrackingIdentifier,
 			HOOK_IDENTIFIER: get(state, getHookIdentifier)(),

@@ -1,4 +1,3 @@
-import { VNode } from "../../preact/src/internal";
 import { UpdateInfo } from "./internal";
 
 /** Formatted signal update for external consumers */
@@ -14,14 +13,21 @@ export interface FormattedSignalUpdate {
 	depth: number;
 }
 
+/** Component effect info for tracking component lifecycle */
+export interface ComponentEffectInfo {
+	componentName: string;
+	effectId: string;
+}
+
 // Communication layer for Chrome DevTools Extension
 export interface DevToolsMessage {
 	type:
 		| "SIGNALS_UPDATE"
 		| "SIGNALS_INIT"
 		| "SIGNALS_CONFIG"
-		| "ENTER_COMPONENT"
-		| "EXIT_COMPONENT";
+		| "COMPONENT_MOUNT"
+		| "COMPONENT_UNMOUNT"
+		| "COMPONENT_RENDER";
 	payload: any;
 	timestamp: number;
 }
@@ -34,28 +40,37 @@ export interface SignalsDevToolsAPI {
 	sendConfig: (config: any) => void;
 	sendUpdate: (updateInfo: UpdateInfo[]) => void;
 	isConnected: () => boolean;
-	enterComponent: (node: VNode | string) => void;
-	exitComponent: () => void;
+	/** Register a component's updater effect - called when effect is created */
+	registerComponentEffect: (effect: any, componentName: string) => void;
+	/** Unregister a component's updater effect - called when effect is disposed */
+	unregisterComponentEffect: (effect: any) => void;
+	/** Notify that a component is re-rendering due to signal change */
+	notifyComponentRender: (effect: any) => void;
+	/** Track signal ownership by the current rendering component */
 	trackSignalOwnership: (signal: any) => void;
-}
-
-function getComponentName(vnode: VNode | string): string {
-	let name;
-
-	if (typeof vnode === "string") {
-		return vnode;
-	}
-
-	if (typeof vnode.type === "string") {
-		name = vnode.type;
-	} else {
-		name = vnode.type.displayName || vnode.type.name || "Unknown";
-	}
-
-	if (name === "ReactiveTextNode" && vnode.__) {
-		return `${getComponentName(vnode.__)} > ${name}`;
-	}
-	return name;
+	/** Subscribe to component mount events */
+	onComponentMount?: (
+		callback: (info: { componentName: string; instanceCount: number }) => void
+	) => () => void;
+	/** Subscribe to component unmount events */
+	onComponentUnmount?: (
+		callback: (info: {
+			componentName: string;
+			remainingInstances: number;
+		}) => void
+	) => () => void;
+	/** Subscribe to component render events */
+	onComponentRender?: (
+		callback: (info: { componentName: string }) => void
+	) => () => void;
+	/** Set the currently rendering component for signal ownership tracking */
+	setCurrentRenderingComponent?: (effect: any) => void;
+	/** Clear the currently rendering component */
+	clearCurrentRenderingComponent?: () => void;
+	/** @deprecated Use registerComponentEffect instead */
+	enterComponent?: (node: any) => void;
+	/** @deprecated Use unregisterComponentEffect instead */
+	exitComponent?: () => void;
 }
 
 class DevToolsCommunicator {
@@ -63,8 +78,14 @@ class DevToolsCommunicator {
 	public isExtensionConnected = false;
 	public messageQueue: DevToolsMessage[] = [];
 	public readonly maxQueueSize = 100;
-	public componentName: string | null = null;
+	/** Map from effect to component name - tracks active component effects */
+	public componentEffects = new WeakMap<any, string>();
+	/** Map from component name to instance count - tracks how many instances are mounted */
+	public componentInstanceCounts = new Map<string, number>();
+	/** Map from signal to owning component names */
 	public signalOwnership = new WeakMap<any, Set<string>>();
+	/** Currently rendering component (from the current effect being tracked) */
+	public currentRenderingComponent: string | null = null;
 
 	constructor() {
 		this.setupCommunication();
@@ -205,26 +226,105 @@ class DevToolsCommunicator {
 		};
 	}
 
-	public enterComponent(node: VNode | string) {
-		this.componentName = getComponentName(node);
+	/** Register a component's updater effect */
+	public registerComponentEffect(effect: any, componentName: string) {
+		this.componentEffects.set(effect, componentName);
+
+		// Increment instance count
+		const count = this.componentInstanceCounts.get(componentName) || 0;
+		this.componentInstanceCounts.set(componentName, count + 1);
+
+		// Emit mount event
+		this.emit("componentMount", {
+			componentName,
+			effectId: this.getEffectId(effect),
+		});
+		this.postMessage({
+			type: "COMPONENT_MOUNT",
+			payload: { componentName, instanceCount: count + 1 },
+			timestamp: Date.now(),
+		});
 	}
 
-	public exitComponent() {
-		this.componentName = null;
+	/** Unregister a component's updater effect */
+	public unregisterComponentEffect(effect: any) {
+		const componentName = this.componentEffects.get(effect);
+		if (!componentName) return;
+
+		this.componentEffects.delete(effect);
+
+		// Decrement instance count
+		const count = (this.componentInstanceCounts.get(componentName) || 1) - 1;
+		if (count <= 0) {
+			this.componentInstanceCounts.delete(componentName);
+			// All instances unmounted - clean up signal ownership for this component
+			// Note: We can't easily clean WeakMap, but the graph will filter by active components
+		} else {
+			this.componentInstanceCounts.set(componentName, count);
+		}
+
+		// Emit unmount event
+		this.emit("componentUnmount", {
+			componentName,
+			effectId: this.getEffectId(effect),
+			remainingInstances: count,
+		});
+		this.postMessage({
+			type: "COMPONENT_UNMOUNT",
+			payload: { componentName, remainingInstances: count },
+			timestamp: Date.now(),
+		});
+	}
+
+	/** Notify that a component is re-rendering due to signal change */
+	public notifyComponentRender(effect: any) {
+		const componentName = this.componentEffects.get(effect);
+		if (!componentName) return;
+
+		this.emit("componentRender", {
+			componentName,
+			effectId: this.getEffectId(effect),
+		});
+		this.postMessage({
+			type: "COMPONENT_RENDER",
+			payload: { componentName },
+			timestamp: Date.now(),
+		});
+	}
+
+	/** Set the currently rendering component for signal ownership tracking */
+	public setCurrentRenderingComponent(effect: any) {
+		this.currentRenderingComponent = this.componentEffects.get(effect) || null;
+	}
+
+	/** Clear the currently rendering component */
+	public clearCurrentRenderingComponent() {
+		this.currentRenderingComponent = null;
 	}
 
 	public trackSignalOwnership(signal: any) {
-		if (this.componentName) {
+		if (this.currentRenderingComponent) {
 			if (!this.signalOwnership.has(signal)) {
 				this.signalOwnership.set(signal, new Set());
 			}
-			this.signalOwnership.get(signal)!.add(this.componentName);
+			this.signalOwnership.get(signal)!.add(this.currentRenderingComponent);
 		}
 	}
 
 	public getSignalOwners(signal: any): string[] {
 		const owners = this.signalOwnership.get(signal);
-		return owners ? Array.from(owners) : [];
+		if (!owners) return [];
+		// Filter to only return owners that still have mounted instances
+		return Array.from(owners).filter(name =>
+			this.componentInstanceCounts.has(name)
+		);
+	}
+
+	public getEffectId(effect: any): string {
+		if (!effect._debugEffectId) {
+			effect._debugEffectId = `effect_${Math.random().toString(36).substr(2, 9)}`;
+		}
+		return effect._debugEffectId;
 	}
 
 	public getSignalName(signal: any): string {
@@ -288,13 +388,37 @@ if (typeof window !== "undefined") {
 		sendConfig: config => getDevToolsCommunicator().sendConfig(config),
 		sendUpdate: updateInfo => getDevToolsCommunicator().sendUpdate(updateInfo),
 		isConnected: () => getDevToolsCommunicator().isConnected(),
+		registerComponentEffect: (effect, componentName) =>
+			getDevToolsCommunicator().registerComponentEffect(effect, componentName),
+		unregisterComponentEffect: effect =>
+			getDevToolsCommunicator().unregisterComponentEffect(effect),
+		notifyComponentRender: effect =>
+			getDevToolsCommunicator().notifyComponentRender(effect),
 		trackSignalOwnership: signal =>
 			getDevToolsCommunicator().trackSignalOwnership(signal),
+		// Component lifecycle event subscriptions
+		onComponentMount: callback =>
+			getDevToolsCommunicator().addListener("componentMount", callback),
+		onComponentUnmount: callback =>
+			getDevToolsCommunicator().addListener("componentUnmount", callback),
+		onComponentRender: callback =>
+			getDevToolsCommunicator().addListener("componentRender", callback),
+		// Set/clear current rendering component for signal ownership tracking
+		setCurrentRenderingComponent: effect =>
+			getDevToolsCommunicator().setCurrentRenderingComponent(effect),
+		clearCurrentRenderingComponent: () =>
+			getDevToolsCommunicator().clearCurrentRenderingComponent(),
+		// Deprecated methods for backwards compatibility
 		enterComponent: node => {
-			getDevToolsCommunicator().enterComponent(node);
+			// Legacy: set current component name directly for tracking
+			const name =
+				typeof node === "string"
+					? node
+					: node?.type?.displayName || node?.type?.name || "Unknown";
+			getDevToolsCommunicator().currentRenderingComponent = name;
 		},
 		exitComponent: () => {
-			getDevToolsCommunicator().exitComponent();
+			getDevToolsCommunicator().currentRenderingComponent = null;
 		},
 	};
 

@@ -13,6 +13,7 @@ const demos = {
 	Sum,
 	GlobalCounter,
 	DuelingCounters,
+	UnmountTest: lazy(() => import("./unmount-test")),
 	Devtools: lazy(() => import("./devtools")),
 	Nesting: lazy(() => import("./nesting")),
 	Animation: lazy(() => import("./animation")),

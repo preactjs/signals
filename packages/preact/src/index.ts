@@ -65,13 +65,37 @@ function setCurrentUpdater(updater?: Effect) {
 	finishUpdate = updater && updater._start();
 }
 
-function createUpdater(update: () => void) {
+function createUpdater(update: () => void, componentName?: string) {
 	let updater!: Effect;
 	effect(function (this: Effect) {
 		updater = this;
+		return () => {
+			// Cleanup on disposal
+			if (DEVTOOLS_ENABLED && componentName) {
+				window.__PREACT_SIGNALS_DEVTOOLS__.unregisterComponentEffect?.(updater);
+			}
+		};
 	});
 	updater._callback = update;
+
+	// Register with devtools if enabled
+	if (DEVTOOLS_ENABLED && componentName) {
+		window.__PREACT_SIGNALS_DEVTOOLS__.registerComponentEffect?.(
+			updater,
+			componentName
+		);
+	}
+
 	return updater;
+}
+
+/** Get the display name for a component */
+function getComponentName(vnode: VNode): string {
+	if (typeof vnode.type === "string") {
+		return vnode.type;
+	}
+	const type = vnode.type as any;
+	return type.displayName || type.name || "Unknown";
 }
 
 /** @todo This may be needed for complex prop value detection. */
@@ -175,10 +199,6 @@ Object.defineProperties(Signal.prototype, {
 
 /** Inject low-level property/attribute bindings for Signals into Preact's diff */
 hook(OptionsTypes.DIFF, (old, vnode) => {
-	if (DEVTOOLS_ENABLED && typeof vnode.type === "function") {
-		window.__PREACT_SIGNALS_DEVTOOLS__.exitComponent();
-	}
-
 	if (typeof vnode.type === "string") {
 		let signalProps: Record<string, any> | undefined;
 
@@ -200,10 +220,6 @@ hook(OptionsTypes.DIFF, (old, vnode) => {
 
 /** Set up Updater before rendering a component */
 hook(OptionsTypes.RENDER, (old, vnode) => {
-	if (DEVTOOLS_ENABLED && typeof vnode.type === "function") {
-		window.__PREACT_SIGNALS_DEVTOOLS__.enterComponent(vnode);
-	}
-
 	// Ignore the Fragment inserted by preact.createElement().
 	if (vnode.type !== Fragment) {
 		setCurrentUpdater();
@@ -216,15 +232,24 @@ hook(OptionsTypes.RENDER, (old, vnode) => {
 
 			updater = component._updater;
 			if (updater === undefined) {
+				const componentName = DEVTOOLS_ENABLED
+					? getComponentName(vnode)
+					: undefined;
 				component._updater = updater = createUpdater(() => {
 					component._updateFlags |= HAS_PENDING_UPDATE;
 					component.setState({});
-				});
+				}, componentName);
 			}
 		}
 
 		currentComponent = component;
 		setCurrentUpdater(updater);
+
+		// Set current rendering component for signal ownership tracking
+		// Use enterComponent with vnode directly (not effect-based lookup)
+		if (DEVTOOLS_ENABLED) {
+			window.__PREACT_SIGNALS_DEVTOOLS__.enterComponent?.(vnode);
+		}
 	}
 
 	old(vnode);
@@ -232,23 +257,23 @@ hook(OptionsTypes.RENDER, (old, vnode) => {
 
 /** Finish current updater if a component errors */
 hook(OptionsTypes.CATCH_ERROR, (old, error, vnode, oldVNode) => {
-	if (DEVTOOLS_ENABLED) {
-		window.__PREACT_SIGNALS_DEVTOOLS__.exitComponent();
-	}
-
 	setCurrentUpdater();
 	currentComponent = undefined;
+	// Clear current rendering component for signal ownership tracking
+	if (DEVTOOLS_ENABLED) {
+		window.__PREACT_SIGNALS_DEVTOOLS__.exitComponent?.();
+	}
 	old(error, vnode, oldVNode);
 });
 
 /** Finish current updater after rendering any VNode */
 hook(OptionsTypes.DIFFED, (old, vnode) => {
-	if (DEVTOOLS_ENABLED && typeof vnode.type === "function") {
-		window.__PREACT_SIGNALS_DEVTOOLS__.exitComponent();
-	}
-
 	setCurrentUpdater();
 	currentComponent = undefined;
+	// Clear current rendering component for signal ownership tracking
+	if (DEVTOOLS_ENABLED) {
+		window.__PREACT_SIGNALS_DEVTOOLS__.exitComponent?.();
+	}
 
 	let dom: Element;
 
@@ -346,6 +371,12 @@ hook(OptionsTypes.UNMOUNT, (old, vnode: VNode) => {
 		if (component) {
 			const updater = component._updater;
 			if (updater) {
+				// Notify devtools that this component's effect is being disposed
+				if (DEVTOOLS_ENABLED) {
+					window.__PREACT_SIGNALS_DEVTOOLS__.unregisterComponentEffect?.(
+						updater
+					);
+				}
 				component._updater = undefined;
 				updater._dispose();
 			}

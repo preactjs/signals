@@ -24,6 +24,10 @@ const ReactElemType = Symbol.for(
 	major >= 19 ? "react.transitional.element" : "react.element"
 );
 
+const DEVTOOLS_ENABLED =
+	typeof window !== "undefined" &&
+	!!(window as any).__PREACT_SIGNALS_DEVTOOLS__;
+
 export function wrapJsx<T>(jsx: T): T {
 	if (typeof jsx !== "function") return jsx;
 
@@ -90,6 +94,8 @@ export interface EffectStore {
 	 */
 	readonly _usage: EffectStoreUsage;
 	readonly effect: Effect;
+	/** Component name for devtools tracking */
+	readonly _componentName?: string;
 	subscribe(onStoreChange: () => void): () => void;
 	getSnapshot(): number;
 	/** startEffect - begin tracking signals used in this component */
@@ -140,28 +146,59 @@ function finishComponentEffect(
  * @param _usage An enum defining how this hook is used and whether it is
  * invoked in a component's body or hook body. See the comment on
  * `EffectStoreUsage` for more details.
+ * @param componentName Optional component name for devtools tracking
  */
-function createEffectStore(_usage: EffectStoreUsage): EffectStore {
+function createEffectStore(
+	_usage: EffectStoreUsage,
+	componentName?: string
+): EffectStore {
 	let effectInstance!: Effect;
 	let endEffect: (() => void) | undefined;
 	let version = 0;
 	let onChangeNotifyReact: (() => void) | undefined;
+	let isRegisteredWithDevtools = false;
 
 	let unsubscribe = effect(function (this: Effect) {
 		effectInstance = this;
 	});
 	effectInstance._callback = function () {
 		version = (version + 1) | 0;
+		// Notify devtools about component re-render due to signal change
+		if (DEVTOOLS_ENABLED && componentName && isRegisteredWithDevtools) {
+			(window as any).__PREACT_SIGNALS_DEVTOOLS__.notifyComponentRender?.(
+				effectInstance
+			);
+		}
 		if (onChangeNotifyReact) onChangeNotifyReact();
 	};
 
 	return {
 		_usage,
 		effect: effectInstance,
+		_componentName: componentName,
 		subscribe(onStoreChange) {
 			onChangeNotifyReact = onStoreChange;
 
+			// Register with devtools when component mounts
+			if (DEVTOOLS_ENABLED && componentName) {
+				(window as any).__PREACT_SIGNALS_DEVTOOLS__.registerComponentEffect?.(
+					effectInstance,
+					componentName
+				);
+				isRegisteredWithDevtools = true;
+			}
+
 			return function () {
+				// Unregister from devtools when component unmounts
+				if (DEVTOOLS_ENABLED && componentName && isRegisteredWithDevtools) {
+					(
+						window as any
+					).__PREACT_SIGNALS_DEVTOOLS__.unregisterComponentEffect?.(
+						effectInstance
+					);
+					isRegisteredWithDevtools = false;
+				}
+
 				/**
 				 * Rotate to next version when unsubscribing to ensure that components are re-run
 				 * when subscribing again.
@@ -333,9 +370,12 @@ const useIsomorphicLayoutEffect =
 /**
  * Custom hook to create the effect to track signals used during render and
  * subscribe to changes to rerender the component when the signals change.
+ * @param _usage Usage mode for the effect store
+ * @param componentName Optional component name for devtools tracking
  */
 export function _useSignalsImplementation(
-	_usage: EffectStoreUsage = UNMANAGED
+	_usage: EffectStoreUsage = UNMANAGED,
+	componentName?: string
 ): EffectStore {
 	ensureFinalCleanup();
 
@@ -344,7 +384,7 @@ export function _useSignalsImplementation(
 		if (typeof window === "undefined") {
 			storeRef.current = emptyEffectStore;
 		} else {
-			storeRef.current = createEffectStore(_usage);
+			storeRef.current = createEffectStore(_usage, componentName);
 		}
 	}
 
@@ -361,7 +401,7 @@ export function _useSignalsImplementation(
  * A wrapper component that renders a Signal's value directly as a Text node or JSX.
  */
 function SignalValue({ data }: { data: Signal }) {
-	const store = _useSignalsImplementation(1);
+	const store = _useSignalsImplementation(1, "SignalValue");
 	try {
 		return data.value;
 	} finally {
@@ -382,8 +422,11 @@ Object.defineProperties(Signal.prototype, {
 	ref: { configurable: true, value: null },
 });
 
-export function useSignals(usage?: EffectStoreUsage): EffectStore {
-	return _useSignalsImplementation(usage);
+export function useSignals(
+	usage?: EffectStoreUsage,
+	componentName?: string
+): EffectStore {
+	return _useSignalsImplementation(usage, componentName);
 }
 
 export function useSignal<T>(value: T, options?: SignalOptions<T>): Signal<T>;

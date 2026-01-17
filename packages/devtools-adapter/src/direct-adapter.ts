@@ -143,6 +143,34 @@ export class DirectAdapter extends BaseAdapter {
 		});
 		this.cleanupFns.push(initUnsubscribe);
 
+		// Subscribe to component lifecycle events
+		if (api.onComponentMount) {
+			const componentMountUnsub = api.onComponentMount(
+				(info: { componentName: string; instanceCount: number }) => {
+					this.emit("componentMount", info);
+				}
+			);
+			this.cleanupFns.push(componentMountUnsub);
+		}
+
+		if (api.onComponentUnmount) {
+			const componentUnmountUnsub = api.onComponentUnmount(
+				(info: { componentName: string; remainingInstances: number }) => {
+					this.emit("componentUnmount", info);
+				}
+			);
+			this.cleanupFns.push(componentUnmountUnsub);
+		}
+
+		if (api.onComponentRender) {
+			const componentRenderUnsub = api.onComponentRender(
+				(info: { componentName: string }) => {
+					this.emit("componentRender", info);
+				}
+			);
+			this.cleanupFns.push(componentRenderUnsub);
+		}
+
 		this.setSignalsAvailable(true);
 		this.setConnectionStatus({
 			status: "connected",

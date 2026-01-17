@@ -23,6 +23,9 @@ export abstract class BaseAdapter implements DevToolsAdapter {
 		connectionStatusChanged: new Set(),
 		backgroundReady: new Set(),
 		contentScriptDisconnected: new Set(),
+		componentMount: new Set(),
+		componentUnmount: new Set(),
+		componentRender: new Set(),
 	};
 
 	protected connectionStatus: ConnectionStatus = {
