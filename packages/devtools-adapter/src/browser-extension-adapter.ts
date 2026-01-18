@@ -1,5 +1,10 @@
 import { BaseAdapter } from "./base-adapter";
-import type { Settings, SignalUpdate, DebugConfig } from "./types";
+import type {
+	Settings,
+	SignalUpdate,
+	SignalDisposed,
+	DebugConfig,
+} from "./types";
 
 export interface BrowserExtensionAdapterOptions {
 	/**
@@ -89,6 +94,10 @@ export class BrowserExtensionAdapter extends BaseAdapter {
 				this.handleSignalUpdate(payload, timestamp);
 				break;
 
+			case "SIGNALS_DISPOSED":
+				this.handleSignalDisposed(payload);
+				break;
+
 			case "SIGNALS_INIT":
 				this.emit("signalInit");
 				break;
@@ -138,6 +147,15 @@ export class BrowserExtensionAdapter extends BaseAdapter {
 			? payload.updates
 			: [payload.updates];
 		this.emit("signalUpdate", updates);
+	}
+
+	private handleSignalDisposed(payload: {
+		disposals: SignalDisposed | SignalDisposed[];
+	}): void {
+		const disposals = Array.isArray(payload.disposals)
+			? payload.disposals
+			: [payload.disposals];
+		this.emit("signalDisposed", disposals);
 	}
 
 	private handleSignalsAvailability(payload: { available: boolean }): void {

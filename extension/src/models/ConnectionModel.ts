@@ -1,8 +1,6 @@
 import { signal, computed, effect } from "@preact/signals";
-import { ConnectionStatus, Divider, SignalUpdate } from "../types";
-import { updatesStore } from "./UpdatesModel";
 
-type Status = ConnectionStatus["status"];
+type Status = "connected" | "disconnected" | "connecting" | "warning";
 
 export const sendMessage = (message: any) => {
 	window.postMessage(message, "*");
