@@ -15,6 +15,7 @@ import {
 	version as reactVersion,
 } from "react";
 import { useSyncExternalStore } from "use-sync-external-store/shim/index.js";
+import type { SignalsDevToolsAPI } from "../../../debug/src/devtools";
 
 const [major] = reactVersion.split(".").map(Number);
 const Empty = [] as const;
@@ -423,4 +424,10 @@ export function useSignalEffect(
 			return callback.current();
 		}, options);
 	}, Empty);
+}
+
+declare global {
+	interface Window {
+		__PREACT_SIGNALS_DEVTOOLS__: SignalsDevToolsAPI;
+	}
 }
