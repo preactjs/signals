@@ -3,6 +3,7 @@
  */
 export type {
 	SignalUpdate,
+	SignalDisposed,
 	Settings,
 	ConnectionStatus,
 	ConnectionStatusType,

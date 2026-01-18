@@ -1,5 +1,5 @@
 import { BaseAdapter } from "./base-adapter";
-import type { Settings, SignalUpdate } from "./types";
+import type { Settings, SignalUpdate, SignalDisposed } from "./types";
 
 export interface PostMessageAdapterOptions {
 	/**
@@ -94,6 +94,11 @@ export class PostMessageAdapter extends BaseAdapter {
 				this.handleSignalUpdate(payload, timestamp);
 				break;
 
+			case "SIGNALS_DISPOSED":
+			case "SIGNALS_DISPOSED_FROM_PAGE":
+				this.handleSignalDisposed(payload);
+				break;
+
 			case "SIGNALS_INIT":
 			case "SIGNALS_INIT_FROM_PAGE":
 				this.emit("signalInit");
@@ -130,6 +135,27 @@ export class PostMessageAdapter extends BaseAdapter {
 		}
 
 		this.emit("signalUpdate", updates);
+	}
+
+	private handleSignalDisposed(
+		payload:
+			| { disposals?: SignalDisposed | SignalDisposed[] }
+			| SignalDisposed
+			| SignalDisposed[]
+	): void {
+		let disposals: SignalDisposed[];
+
+		if (payload && typeof payload === "object" && "disposals" in payload) {
+			disposals = Array.isArray(payload.disposals)
+				? payload.disposals
+				: [payload.disposals!];
+		} else if (Array.isArray(payload)) {
+			disposals = payload;
+		} else {
+			disposals = [payload as SignalDisposed];
+		}
+
+		this.emit("signalDisposed", disposals);
 	}
 
 	private handleSignalsAvailability(payload: { available: boolean }): void {

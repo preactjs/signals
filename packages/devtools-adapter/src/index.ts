@@ -9,6 +9,7 @@ export type {
 	ConnectionStatus,
 	ConnectionStatusType,
 	DebugConfig,
+	SignalDisposed,
 } from "./types";
 
 // Base adapter class

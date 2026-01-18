@@ -141,6 +141,18 @@ Signal.prototype._unsubscribe = function (node: Node) {
 				unsubscribe();
 				subscriptions.delete(this);
 			}
+
+			// Notify devtools that this signal is disposed (no more subscribers)
+			if (
+				typeof window !== "undefined" &&
+				(window as any).__PREACT_SIGNALS_DEVTOOLS__
+			) {
+				const signalType = "_fn" in this ? "computed" : "signal";
+				(window as any).__PREACT_SIGNALS_DEVTOOLS__.sendDisposal?.(
+					this,
+					signalType
+				);
+			}
 		}
 	}
 
@@ -221,6 +233,22 @@ Effect.prototype._callback = function (this: Effect) {
 	this._debugCallback!();
 
 	return originalEffectCallback.call(this);
+};
+
+// Patch Effect.prototype._dispose to emit disposal events
+const originalEffectDispose = Effect.prototype._dispose;
+Effect.prototype._dispose = function (this: Effect) {
+	// Notify devtools that this effect is being disposed
+	if (
+		debugEnabled &&
+		!internalEffects.has(this) &&
+		typeof window !== "undefined" &&
+		(window as any).__PREACT_SIGNALS_DEVTOOLS__
+	) {
+		(window as any).__PREACT_SIGNALS_DEVTOOLS__.sendDisposal?.(this, "effect");
+	}
+
+	return originalEffectDispose.call(this);
 };
 
 function flushUpdates() {

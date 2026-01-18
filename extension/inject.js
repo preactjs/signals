@@ -18,12 +18,27 @@
 					window.postMessage(
 						{
 							type: "SIGNALS_UPDATE_FROM_PAGE",
-							payload: updates,
+							payload: { updates },
 							timestamp: Date.now(),
 						},
 						window.location.origin
 					);
 				});
+
+				// Listen for signal disposals
+				let disposalUnsubscribe = () => {};
+				if (devtoolsAPI.onDisposal) {
+					disposalUnsubscribe = devtoolsAPI.onDisposal(disposals => {
+						window.postMessage(
+							{
+								type: "SIGNALS_DISPOSED",
+								payload: { disposals },
+								timestamp: Date.now(),
+							},
+							window.location.origin
+						);
+					});
+				}
 
 				// Listen for initialization
 				const initUnsubscribe = devtoolsAPI.onInit(() => {
@@ -39,6 +54,7 @@
 				// Store cleanup functions
 				window.__PREACT_SIGNALS_DEVTOOLS_CLEANUP__ = () => {
 					updateUnsubscribe();
+					disposalUnsubscribe();
 					initUnsubscribe();
 				};
 

@@ -53,8 +53,18 @@ if (!window.__PREACT_SIGNALS_CONTENT_SCRIPT_INJECTED__) {
 
 			switch (type) {
 				case "SIGNALS_UPDATE":
+				case "SIGNALS_UPDATE_FROM_PAGE":
 					forwardToDevTools({
 						type: "SIGNALS_UPDATE",
+						payload: payload,
+						timestamp: event.data.timestamp,
+					});
+					break;
+
+				case "SIGNALS_DISPOSED":
+				case "SIGNALS_DISPOSED_FROM_PAGE":
+					forwardToDevTools({
+						type: "SIGNALS_DISPOSED",
 						payload: payload,
 						timestamp: event.data.timestamp,
 					});

@@ -12,12 +12,22 @@ export interface FormattedSignalUpdate {
 	depth: number;
 }
 
+/** Formatted signal disposal event for external consumers */
+export interface FormattedSignalDisposed {
+	type: "disposed";
+	signalType: "signal" | "computed" | "effect";
+	signalName: string;
+	signalId: string;
+	timestamp: number;
+}
+
 // Communication layer for Chrome DevTools Extension
 export interface DevToolsMessage {
 	type:
 		| "SIGNALS_UPDATE"
 		| "SIGNALS_INIT"
 		| "SIGNALS_CONFIG"
+		| "SIGNALS_DISPOSED"
 		| "ENTER_COMPONENT"
 		| "EXIT_COMPONENT";
 	payload: any;
@@ -28,9 +38,16 @@ export interface SignalsDevToolsAPI {
 	onUpdate: (
 		callback: (updates: FormattedSignalUpdate[]) => void
 	) => () => void;
+	onDisposal: (
+		callback: (disposals: FormattedSignalDisposed[]) => void
+	) => () => void;
 	onInit: (callback: () => void) => () => void;
 	sendConfig: (config: any) => void;
 	sendUpdate: (updateInfo: UpdateInfo[]) => void;
+	sendDisposal: (
+		signal: any,
+		signalType: "signal" | "computed" | "effect"
+	) => void;
 	isConnected: () => boolean;
 }
 
@@ -201,6 +218,37 @@ class DevToolsCommunicator {
 	public isConnected(): boolean {
 		return this.isExtensionConnected;
 	}
+
+	public sendDisposal(
+		signal: any,
+		signalType: "signal" | "computed" | "effect"
+	) {
+		const disposal: FormattedSignalDisposed = {
+			type: "disposed",
+			signalType,
+			signalName: this.getSignalName(signal),
+			signalId: this.getSignalId(signal),
+			timestamp: Date.now(),
+		};
+
+		// Emit for direct listeners (e.g., DirectAdapter)
+		this.emit("disposal", [disposal]);
+
+		// Post message for browser extension
+		this.postMessage({
+			type: "SIGNALS_DISPOSED",
+			payload: {
+				disposals: [disposal],
+			},
+			timestamp: Date.now(),
+		});
+	}
+
+	public onDisposal(
+		callback: (disposals: FormattedSignalDisposed[]) => void
+	): () => void {
+		return this.addListener("disposal", callback);
+	}
 }
 
 function deeplyRemoveFunctions(obj: any): any {
@@ -235,9 +283,12 @@ export function getDevToolsCommunicator(): DevToolsCommunicator {
 if (typeof window !== "undefined") {
 	const api: SignalsDevToolsAPI = {
 		onUpdate: callback => getDevToolsCommunicator().onUpdate(callback),
+		onDisposal: callback => getDevToolsCommunicator().onDisposal(callback),
 		onInit: callback => getDevToolsCommunicator().onInit(callback),
 		sendConfig: config => getDevToolsCommunicator().sendConfig(config),
 		sendUpdate: updateInfo => getDevToolsCommunicator().sendUpdate(updateInfo),
+		sendDisposal: (signal, signalType) =>
+			getDevToolsCommunicator().sendDisposal(signal, signalType),
 		isConnected: () => getDevToolsCommunicator().isConnected(),
 	};
 

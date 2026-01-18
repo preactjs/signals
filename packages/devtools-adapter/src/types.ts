@@ -15,6 +15,17 @@ export interface SignalUpdate {
 }
 
 /**
+ * Represents a signal disposal event from the debug system
+ */
+export interface SignalDisposed {
+	type: "disposed";
+	signalType: "signal" | "computed" | "effect";
+	signalName: string;
+	signalId: string;
+	timestamp: number;
+}
+
+/**
  * Settings that can be configured for the debug system
  */
 export interface Settings {
@@ -54,6 +65,8 @@ export interface DebugConfig {
 export interface AdapterEvents {
 	/** Signal updates received from the debug system */
 	signalUpdate: (updates: SignalUpdate[]) => void;
+	/** Signal disposal events received from the debug system */
+	signalDisposed: (disposals: SignalDisposed[]) => void;
 	/** Initialization signal from the debug system */
 	signalInit: () => void;
 	/** Signals availability changed */

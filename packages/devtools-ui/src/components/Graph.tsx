@@ -17,8 +17,9 @@ const copyToClipboard = (text: string) => {
 };
 
 export function GraphVisualization() {
-	const { updatesStore } = getContext();
+	const { updatesStore, settingsStore } = getContext();
 	const updates = updatesStore.updates;
+	const disposedSignalIds = updatesStore.disposedSignalIds;
 	const svgRef = useRef<SVGSVGElement>(null);
 	const containerRef = useRef<HTMLDivElement>(null);
 	const exportMenuRef = useRef<HTMLDivElement>(null);
@@ -51,6 +52,9 @@ export function GraphVisualization() {
 	// Build graph data from updates signal using a computed
 	const graphData = useComputed<GraphData>(() => {
 		const rawUpdates = updates.value;
+		const disposed = disposedSignalIds.value;
+		const showDisposed = settingsStore.showDisposedSignals;
+
 		if (!rawUpdates || rawUpdates.length === 0)
 			return { nodes: [], links: [], components: [] };
 
@@ -64,6 +68,10 @@ export function GraphVisualization() {
 
 		for (const update of signalUpdates) {
 			if (!update.signalId) continue;
+
+			// Skip disposed signals unless showDisposed is enabled
+			if (!showDisposed && disposed.has(update.signalId)) continue;
+
 			const type: "signal" | "computed" | "effect" = update.signalType;
 			const currentDepth = update.depth || 0;
 
@@ -79,6 +87,11 @@ export function GraphVisualization() {
 			}
 
 			if (update.subscribedTo) {
+				// Also skip links to/from disposed signals
+				const sourceDisposed =
+					!showDisposed && disposed.has(update.subscribedTo);
+				if (sourceDisposed) continue;
+
 				const linkKey = `${update.subscribedTo}->${update.signalId}`;
 				if (!links.has(linkKey)) {
 					links.set(linkKey, {

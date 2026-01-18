@@ -4,6 +4,7 @@ import type {
 	ConnectionStatus,
 	ConnectionStatusType,
 	Settings,
+	SignalDisposed,
 } from "@preact/signals-devtools-adapter";
 
 export interface DevToolsContext {
@@ -142,6 +143,7 @@ export function createUpdatesStore(
 ) {
 	const updates = signal<(SignalUpdate | Divider)[]>([]);
 	const isPaused = signal<boolean>(false);
+	const disposedSignalIds = signal<Set<string>>(new Set());
 
 	const addUpdate = (
 		update: SignalUpdate | Divider | Array<SignalUpdate | Divider>
@@ -157,6 +159,17 @@ export function createUpdatesStore(
 			...updates.value,
 			...(Array.isArray(update) ? update : [update]),
 		];
+	};
+
+	const addDisposal = (disposal: SignalDisposed | SignalDisposed[]) => {
+		const disposals = Array.isArray(disposal) ? disposal : [disposal];
+		const newDisposed = new Set(disposedSignalIds.value);
+		for (const d of disposals) {
+			if (d.signalId) {
+				newDisposed.add(d.signalId);
+			}
+		}
+		disposedSignalIds.value = newDisposed;
 	};
 
 	const hasUpdates = computed(() => updates.value.length > 0);
@@ -224,6 +237,7 @@ export function createUpdatesStore(
 
 	const clearUpdates = () => {
 		updates.value = [];
+		disposedSignalIds.value = new Set();
 	};
 
 	// Listen to adapter events
@@ -236,6 +250,12 @@ export function createUpdatesStore(
 		updatesArray.push({ type: "divider" });
 
 		addUpdate(updatesArray);
+	});
+
+	// Listen to disposal events
+	adapter.on("signalDisposed", (disposals: SignalDisposed[]) => {
+		if (isPaused.value) return;
+		addDisposal(disposals);
 	});
 
 	const collapsedUpdateTree = computed(() => {
@@ -252,6 +272,7 @@ export function createUpdatesStore(
 		collapsedUpdateTree,
 		totalUpdates: computed(() => Object.keys(updateTree.value).length),
 		signalCounts,
+		disposedSignalIds,
 		addUpdate,
 		clearUpdates,
 		hasUpdates,
@@ -268,6 +289,7 @@ export function createSettingsStore(adapter: DevToolsAdapter) {
 	});
 
 	const showSettings = signal<boolean>(false);
+	const showDisposedSignals = signal<boolean>(false);
 
 	const applySettings = (newSettings: Settings) => {
 		settings.value = newSettings;
@@ -281,6 +303,10 @@ export function createSettingsStore(adapter: DevToolsAdapter) {
 
 	const hideSettings = () => {
 		showSettings.value = false;
+	};
+
+	const toggleShowDisposedSignals = () => {
+		showDisposedSignals.value = !showDisposedSignals.value;
 	};
 
 	// Listen to adapter events
@@ -297,12 +323,16 @@ export function createSettingsStore(adapter: DevToolsAdapter) {
 		get showSettings() {
 			return showSettings.value;
 		},
+		get showDisposedSignals() {
+			return showDisposedSignals.value;
+		},
 		set settings(newSettings: Settings) {
 			settings.value = newSettings;
 		},
 		applySettings,
 		toggleSettings,
 		hideSettings,
+		toggleShowDisposedSignals,
 	};
 }
 

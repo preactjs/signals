@@ -17,6 +17,7 @@ type EventMap = {
 export abstract class BaseAdapter implements DevToolsAdapter {
 	protected listeners: EventMap = {
 		signalUpdate: new Set(),
+		signalDisposed: new Set(),
 		signalInit: new Set(),
 		signalsAvailable: new Set(),
 		configReceived: new Set(),

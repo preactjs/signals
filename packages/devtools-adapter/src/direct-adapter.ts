@@ -1,5 +1,5 @@
 import { BaseAdapter } from "./base-adapter";
-import type { Settings, SignalUpdate } from "./types";
+import type { Settings, SignalUpdate, SignalDisposed } from "./types";
 
 export interface DirectAdapterOptions {
 	/**
@@ -136,6 +136,16 @@ export class DirectAdapter extends BaseAdapter {
 			this.emit("signalUpdate", updates);
 		});
 		this.cleanupFns.push(updateUnsubscribe);
+
+		// Subscribe to disposal events
+		if (api.onDisposal) {
+			const disposalUnsubscribe = api.onDisposal(
+				(disposals: SignalDisposed[]) => {
+					this.emit("signalDisposed", disposals);
+				}
+			);
+			this.cleanupFns.push(disposalUnsubscribe);
+		}
 
 		// Subscribe to init events
 		const initUnsubscribe = api.onInit(() => {
