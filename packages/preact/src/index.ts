@@ -238,8 +238,32 @@ hook(OptionsTypes.CATCH_ERROR, (old, error, vnode, oldVNode) => {
 
 	setCurrentUpdater();
 	currentComponent = undefined;
+
+	// If this is a suspense (promise thrown), dispose the updater to prevent
+	// signal updates from triggering setState on suspended components.
+	if (error && typeof error.then === "function" && vnode) {
+		removeUpdater(vnode);
+	}
+
 	old(error, vnode, oldVNode);
 });
+
+const removeUpdater = (vnode: VNode) => {
+	let component = vnode.__c;
+	if (component) {
+		const updater = component._updater;
+		if (updater) {
+			component._updater = undefined;
+			updater._dispose();
+		}
+	}
+
+	if (vnode.__k) {
+		for (let child of vnode.__k) {
+			if (child) removeUpdater(child);
+		}
+	}
+};
 
 /** Finish current updater after rendering any VNode */
 hook(OptionsTypes.DIFFED, (old, vnode) => {

@@ -31,6 +31,7 @@ export interface AugmentedComponent extends Component<any, any> {
 }
 
 export interface VNode<P = any> extends preact.VNode<P> {
+	__k: Array<VNode | null> | null;
 	/** The component instance for this VNode */
 	__c: AugmentedComponent;
 	/** The parent VNode */
