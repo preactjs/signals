@@ -100,6 +100,23 @@ export function SettingsPanel() {
 					/>
 				</div>
 
+				<h3>Graph Settings</h3>
+
+				<div className="setting-group">
+					<label>
+						<input
+							type="checkbox"
+							checked={settingsStore.showDisposedSignals}
+							onChange={() => settingsStore.toggleShowDisposedSignals()}
+						/>
+						Show disposed signals in graph
+					</label>
+					<p className="setting-description">
+						When enabled, signals and effects that have been disposed will still
+						be shown in the graph view.
+					</p>
+				</div>
+
 				<div className="settings-actions">
 					<Button onClick={handleApply} variant="primary">
 						Apply
