@@ -194,10 +194,8 @@ function bubbleUpToBaseSignal(
 	return null;
 }
 
-const originalEffectCallback = Effect.prototype._callback;
-Effect.prototype._callback = function (this: Effect) {
-	if (!debugEnabled || internalEffects.has(this))
-		return originalEffectCallback.call(this);
+Effect.prototype._debugCallback = function (this: Effect) {
+	if (!debugEnabled || internalEffects.has(this)) return;
 
 	if ("_sources" in this) {
 		const baseSignal = bubbleUpToBaseSignal(this as any);
@@ -216,6 +214,14 @@ Effect.prototype._callback = function (this: Effect) {
 			updateInfoMap.set(baseSignal.signal, updateInfoList);
 		}
 	}
+};
+
+const originalEffectCallback = Effect.prototype._callback;
+Effect.prototype._callback = function (this: Effect) {
+	if (!debugEnabled || internalEffects.has(this))
+		return originalEffectCallback.call(this);
+
+	this._debugCallback!();
 
 	return originalEffectCallback.call(this);
 };

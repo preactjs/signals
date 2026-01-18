@@ -24,6 +24,9 @@ const ReactElemType = Symbol.for(
 	major >= 19 ? "react.transitional.element" : "react.element"
 );
 
+const DEVTOOLS_ENABLED =
+	typeof window !== "undefined" && !!window.__PREACT_SIGNALS_DEVTOOLS__;
+
 export function wrapJsx<T>(jsx: T): T {
 	if (typeof jsx !== "function") return jsx;
 
@@ -46,6 +49,7 @@ const symDispose: unique symbol =
 
 interface Effect {
 	_sources: object | undefined;
+	_debugCallback?: () => void;
 	_start(): () => void;
 	_callback(): void;
 	_dispose(): void;
@@ -152,6 +156,9 @@ function createEffectStore(_usage: EffectStoreUsage): EffectStore {
 	});
 	effectInstance._callback = function () {
 		version = (version + 1) | 0;
+		if (DEVTOOLS_ENABLED) {
+			effectInstance._debugCallback?.call(effectInstance);
+		}
 		if (onChangeNotifyReact) onChangeNotifyReact();
 	};
 

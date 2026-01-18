@@ -65,11 +65,14 @@ function setCurrentUpdater(updater?: Effect) {
 	finishUpdate = updater && updater._start();
 }
 
-function createUpdater(update: () => void) {
+function createUpdater(update: () => void, name: string) {
 	let updater!: Effect;
-	effect(function (this: Effect) {
-		updater = this;
-	});
+	effect(
+		function (this: Effect) {
+			updater = this;
+		},
+		{ name }
+	);
 	updater._callback = update;
 	return updater;
 }
@@ -208,7 +211,7 @@ hook(OptionsTypes.RENDER, (old, vnode) => {
 	if (vnode.type !== Fragment) {
 		setCurrentUpdater();
 
-		let updater;
+		let updater: Effect | undefined;
 
 		let component = vnode.__c;
 		if (component) {
@@ -216,10 +219,16 @@ hook(OptionsTypes.RENDER, (old, vnode) => {
 
 			updater = component._updater;
 			if (updater === undefined) {
-				component._updater = updater = createUpdater(() => {
-					component._updateFlags |= HAS_PENDING_UPDATE;
-					component.setState({});
-				});
+				component._updater = updater = createUpdater(
+					() => {
+						if (DEVTOOLS_ENABLED) updater!._debugCallback?.call(updater);
+						component._updateFlags |= HAS_PENDING_UPDATE;
+						component.setState({});
+					},
+					typeof vnode.type === "function"
+						? vnode.type.displayName || vnode.type.name
+						: ""
+				);
 			}
 		}
 
