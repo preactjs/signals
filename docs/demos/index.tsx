@@ -17,6 +17,7 @@ const demos = {
 	Nesting: lazy(() => import("./nesting")),
 	Animation: lazy(() => import("./animation")),
 	Bench: lazy(() => import("./bench")),
+	Unmount: lazy(() => import("./Unmount")),
 };
 
 function Demos() {
