@@ -35,20 +35,6 @@ export default function UnmountTestDemo() {
 	return (
 		<div class="devtools-demo-container">
 			<div class="app-section">
-				<h1>Component Unmount Test</h1>
-				<p>
-					This demo tests that when 2 components of the same type are mounted:
-				</p>
-				<ol>
-					<li>Both are tracked as owners of the shared signal</li>
-					<li>
-						When one unmounts, the signal still shows the remaining component
-					</li>
-					<li>
-						When both unmount, the signal no longer shows any component owners
-					</li>
-				</ol>
-
 				<div class="controls">
 					<h2>Controls</h2>
 					<button onClick={() => (sharedCounter.value += 1)}>
@@ -92,27 +78,6 @@ export default function UnmountTestDemo() {
 							show any component owners.
 						</p>
 					)}
-				</div>
-
-				<div class="instructions">
-					<h2>Testing Instructions</h2>
-					<ol>
-						<li>Open the DevTools panel (or embedded devtools below)</li>
-						<li>
-							Click "Increment Counter" and verify both Counter components are
-							shown as owners in the graph
-						</li>
-						<li>Click "Hide First Counter" to unmount it</li>
-						<li>
-							Click "Increment Counter" again - only the second Counter should
-							be shown as owner
-						</li>
-						<li>Click "Hide Second Counter" to unmount it</li>
-						<li>
-							Click "Increment Counter" - no component should be shown as owner
-							of the signal
-						</li>
-					</ol>
 				</div>
 			</div>
 			<div class="devtools-section">
