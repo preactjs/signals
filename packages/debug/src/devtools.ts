@@ -1,4 +1,3 @@
-import { VNode } from "../../preact/src/internal";
 import { UpdateInfo } from "./internal";
 
 /** Formatted signal update for external consumers */
@@ -7,7 +6,6 @@ export interface FormattedSignalUpdate {
 	signalType: "signal" | "computed" | "effect";
 	signalName: string;
 	signalId: string;
-	componentNames?: string[];
 	prevValue?: any;
 	newValue?: any;
 	timestamp: number;
@@ -34,28 +32,6 @@ export interface SignalsDevToolsAPI {
 	sendConfig: (config: any) => void;
 	sendUpdate: (updateInfo: UpdateInfo[]) => void;
 	isConnected: () => boolean;
-	enterComponent: (node: VNode | string) => void;
-	exitComponent: () => void;
-	trackSignalOwnership: (signal: any) => void;
-}
-
-function getComponentName(vnode: VNode | string): string {
-	let name;
-
-	if (typeof vnode === "string") {
-		return vnode;
-	}
-
-	if (typeof vnode.type === "string") {
-		name = vnode.type;
-	} else {
-		name = vnode.type.displayName || vnode.type.name || "Unknown";
-	}
-
-	if (name === "ReactiveTextNode" && vnode.__) {
-		return `${getComponentName(vnode.__)} > ${name}`;
-	}
-	return name;
 }
 
 class DevToolsCommunicator {
@@ -138,7 +114,6 @@ class DevToolsCommunicator {
 
 	public sendUpdate(updateInfoList: UpdateInfo[]) {
 		const formattedUpdates = updateInfoList.map(({ signal, ...info }) => {
-			const owners = this.getSignalOwners(signal);
 			return info.type === "value"
 				? {
 						...info,
@@ -150,7 +125,6 @@ class DevToolsCommunicator {
 							| "computed",
 						signalName: this.getSignalName(signal),
 						signalId: this.getSignalId(signal),
-						componentNames: owners.length > 0 ? owners : undefined,
 					}
 				: {
 						...info,
@@ -158,7 +132,6 @@ class DevToolsCommunicator {
 						signalType: "effect" as const,
 						signalName: this.getSignalName(signal),
 						signalId: this.getSignalId(signal),
-						componentNames: owners.length > 0 ? owners : undefined,
 					};
 		});
 
@@ -203,28 +176,6 @@ class DevToolsCommunicator {
 		return () => {
 			this.listeners.get(eventType)?.delete(callback);
 		};
-	}
-
-	public enterComponent(node: VNode | string) {
-		this.componentName = getComponentName(node);
-	}
-
-	public exitComponent() {
-		this.componentName = null;
-	}
-
-	public trackSignalOwnership(signal: any) {
-		if (this.componentName) {
-			if (!this.signalOwnership.has(signal)) {
-				this.signalOwnership.set(signal, new Set());
-			}
-			this.signalOwnership.get(signal)!.add(this.componentName);
-		}
-	}
-
-	public getSignalOwners(signal: any): string[] {
-		const owners = this.signalOwnership.get(signal);
-		return owners ? Array.from(owners) : [];
 	}
 
 	public getSignalName(signal: any): string {
@@ -288,14 +239,6 @@ if (typeof window !== "undefined") {
 		sendConfig: config => getDevToolsCommunicator().sendConfig(config),
 		sendUpdate: updateInfo => getDevToolsCommunicator().sendUpdate(updateInfo),
 		isConnected: () => getDevToolsCommunicator().isConnected(),
-		trackSignalOwnership: signal =>
-			getDevToolsCommunicator().trackSignalOwnership(signal),
-		enterComponent: node => {
-			getDevToolsCommunicator().enterComponent(node);
-		},
-		exitComponent: () => {
-			getDevToolsCommunicator().exitComponent();
-		},
 	};
 
 	// Expose API globally for the Chrome extension to use

@@ -62,8 +62,6 @@ export function GraphVisualization() {
 			update => update.type !== "divider"
 		) as SignalUpdate[];
 
-		const componentNodes = new Set<string>();
-
 		for (const update of signalUpdates) {
 			if (!update.signalId) continue;
 			const type: "signal" | "computed" | "effect" = update.signalType;
@@ -87,34 +85,6 @@ export function GraphVisualization() {
 						source: update.subscribedTo,
 						target: update.signalId,
 					});
-				}
-			}
-
-			// Create component nodes for each component that will rerender
-			if (update.componentNames && update.componentNames.length > 0) {
-				for (const componentName of update.componentNames) {
-					const componentId = `component:${componentName}`;
-					componentNodes.add(componentId);
-
-					if (!nodes.has(componentId)) {
-						nodes.set(componentId, {
-							id: componentId,
-							name: componentName,
-							type: "component",
-							x: 0,
-							y: 0,
-							depth: currentDepth + 1,
-						});
-					}
-
-					// Create link from signal to component rerender
-					const rerenderLinkKey = `${update.signalId}->${componentId}`;
-					if (!links.has(rerenderLinkKey)) {
-						links.set(rerenderLinkKey, {
-							source: update.signalId,
-							target: componentId,
-						});
-					}
 				}
 			}
 		}

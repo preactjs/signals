@@ -3,6 +3,7 @@ import { Signal } from "@preact/signals-core";
 import type { SignalsDevToolsAPI } from "../../debug/src/devtools";
 
 export interface Effect {
+	_debugCallback?: () => void;
 	_sources: object | undefined;
 	_start(): () => void;
 	_notify: () => void;

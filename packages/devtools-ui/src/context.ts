@@ -67,7 +67,6 @@ export interface SignalUpdate {
 	signalType: "signal" | "computed" | "effect";
 	signalName: string;
 	signalId?: string;
-	componentNames: string[];
 	prevValue?: any;
 	newValue?: any;
 	timestamp?: number;

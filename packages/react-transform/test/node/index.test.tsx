@@ -802,16 +802,6 @@ describe("React Signals Babel Transform", () => {
 	describe("signal naming", () => {
 		const DEBUG_OPTIONS = { mode: "auto", experimental: { debug: true } };
 
-		const PREAMBLE = `if (window.__PREACT_SIGNALS_DEVTOOLS__) {
-	window.__PREACT_SIGNALS_DEVTOOLS__.enterComponent(
-		"MyComponent:Component.js"
-	);
-}`;
-
-		const POSTAMBLE = `	if (window.__PREACT_SIGNALS_DEVTOOLS__) {
-	window.__PREACT_SIGNALS_DEVTOOLS__.exitComponent();
-}`;
-
 		const runDebugTest = (
 			inputCode: string,
 			expectedOutput: string,
@@ -835,7 +825,6 @@ describe("React Signals Babel Transform", () => {
 				function MyComponent() {
 					var _effect = _useSignals(1);
 					try {
-					    ${PREAMBLE}
 						const count = signal(0, {
 							name: "count (Component.js:3)",
 						});
@@ -845,7 +834,6 @@ describe("React Signals Babel Transform", () => {
 						return <div>{double.value}</div>;
 					} finally {
 						_effect.f();
-						${POSTAMBLE}
 					}
 				}
 			`;
@@ -867,7 +855,6 @@ describe("React Signals Babel Transform", () => {
 				function MyComponent() {
 					var _effect = _useSignals(1);
 					try {
-					    ${PREAMBLE}
 						const count = useSignal(0, {
 							name: "count (Component.js:3)",
 						});
@@ -877,7 +864,6 @@ describe("React Signals Babel Transform", () => {
 						return <div>{count.value} {message.value}</div>;
 					} finally {
 						_effect.f();
-						${POSTAMBLE}
 					}
 				}
 			`;
@@ -899,7 +885,6 @@ describe("React Signals Babel Transform", () => {
 				function MyComponent() {
 					var _effect = _useSignals(1);
 					try {
-					    ${PREAMBLE}
 						const count = signal(0, {
 							name: "myCounter",
 						});
@@ -910,7 +895,6 @@ describe("React Signals Babel Transform", () => {
 						return <div>{count.value}</div>;
 					} finally {
 						_effect.f();
-						${POSTAMBLE}
 					}
 				}
 			`;
@@ -931,14 +915,12 @@ describe("React Signals Babel Transform", () => {
 				function MyComponent() {
 					var _effect = _useSignals(1);
 					try {
-					    ${PREAMBLE}
 						const count = useSignal(undefined, {
 							name: "count (Component.js:3)",
 						});
 						return <div>{count.value}</div>;
 					} finally {
 						_effect.f();
-						${POSTAMBLE}
 					}
 				}
 			`;

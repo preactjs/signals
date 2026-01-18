@@ -15,6 +15,7 @@ import {
 	version as reactVersion,
 } from "react";
 import { useSyncExternalStore } from "use-sync-external-store/shim/index.js";
+import type { SignalsDevToolsAPI } from "../../../debug/src/devtools";
 
 const [major] = reactVersion.split(".").map(Number);
 const Empty = [] as const;
@@ -23,6 +24,9 @@ const Empty = [] as const;
 const ReactElemType = Symbol.for(
 	major >= 19 ? "react.transitional.element" : "react.element"
 );
+
+const DEVTOOLS_ENABLED =
+	typeof window !== "undefined" && !!window.__PREACT_SIGNALS_DEVTOOLS__;
 
 export function wrapJsx<T>(jsx: T): T {
 	if (typeof jsx !== "function") return jsx;
@@ -46,6 +50,7 @@ const symDispose: unique symbol =
 
 interface Effect {
 	_sources: object | undefined;
+	_debugCallback?: () => void;
 	_start(): () => void;
 	_callback(): void;
 	_dispose(): void;
@@ -152,6 +157,9 @@ function createEffectStore(_usage: EffectStoreUsage): EffectStore {
 	});
 	effectInstance._callback = function () {
 		version = (version + 1) | 0;
+		if (DEVTOOLS_ENABLED) {
+			effectInstance._debugCallback?.call(effectInstance);
+		}
 		if (onChangeNotifyReact) onChangeNotifyReact();
 	};
 
@@ -416,4 +424,10 @@ export function useSignalEffect(
 			return callback.current();
 		}, options);
 	}, Empty);
+}
+
+declare global {
+	interface Window {
+		__PREACT_SIGNALS_DEVTOOLS__: SignalsDevToolsAPI;
+	}
 }
