@@ -84,7 +84,11 @@ export class PostMessageAdapter extends BaseAdapter {
 
 	private handleMessage(event: MessageEvent): void {
 		// Validate origin
-		if (event.origin !== this.sourceOrigin) return;
+		if (
+			event.origin !== this.sourceOrigin ||
+			event.source !== this.targetWindow
+		)
+			return;
 
 		const { type, payload, timestamp } = event.data;
 

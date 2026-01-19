@@ -126,6 +126,29 @@ Computed.prototype._refresh = function () {
 	return result;
 };
 
+const originalComputedUnsubscribe = Computed.prototype._unsubscribe;
+Computed.prototype._unsubscribe = function (node: Node) {
+	const result = originalComputedUnsubscribe.call(this, node);
+
+	// When a computed signal loses all subscribers, it unsubscribes from its sources
+	// Check if this computed is now completely disconnected (no targets)
+	if (this._targets === undefined) {
+		// Notify devtools that this computed is disposed (no more subscribers)
+		if (
+			debugEnabled &&
+			typeof window !== "undefined" &&
+			(window as any).__PREACT_SIGNALS_DEVTOOLS__
+		) {
+			(window as any).__PREACT_SIGNALS_DEVTOOLS__.sendDisposal?.(
+				this,
+				"computed"
+			);
+		}
+	}
+
+	return result;
+};
+
 Signal.prototype._unsubscribe = function (node: Node) {
 	const tracker = trackers.get(this) || 0;
 	if (tracker > 0) {
@@ -143,14 +166,15 @@ Signal.prototype._unsubscribe = function (node: Node) {
 			}
 
 			// Notify devtools that this signal is disposed (no more subscribers)
+			// Only for plain signals - computed signals have their own disposal handler
 			if (
+				!("_fn" in this) &&
 				typeof window !== "undefined" &&
 				(window as any).__PREACT_SIGNALS_DEVTOOLS__
 			) {
-				const signalType = "_fn" in this ? "computed" : "signal";
 				(window as any).__PREACT_SIGNALS_DEVTOOLS__.sendDisposal?.(
 					this,
-					signalType
+					"signal"
 				);
 			}
 		}
