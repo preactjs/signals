@@ -791,6 +791,7 @@ declare class Effect {
 	_sources?: Node;
 	_nextBatchedEffect?: Effect;
 	_flags: number;
+	_debugCallback?: () => void;
 	name?: string;
 
 	constructor(fn: EffectFn, options?: EffectOptions);

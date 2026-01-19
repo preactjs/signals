@@ -6,13 +6,23 @@ export interface SignalUpdate {
 	signalType: "signal" | "computed" | "effect";
 	signalName: string;
 	signalId?: string;
-	componentNames: string[];
 	prevValue?: any;
 	newValue?: any;
 	timestamp?: number;
 	receivedAt: number;
 	depth?: number;
 	subscribedTo?: string;
+}
+
+/**
+ * Represents a signal disposal event from the debug system
+ */
+export interface SignalDisposed {
+	type: "disposed";
+	signalType: "signal" | "computed" | "effect";
+	signalName: string;
+	signalId: string;
+	timestamp: number;
 }
 
 /**
@@ -55,6 +65,8 @@ export interface DebugConfig {
 export interface AdapterEvents {
 	/** Signal updates received from the debug system */
 	signalUpdate: (updates: SignalUpdate[]) => void;
+	/** Signal disposal events received from the debug system */
+	signalDisposed: (disposals: SignalDisposed[]) => void;
 	/** Initialization signal from the debug system */
 	signalInit: () => void;
 	/** Signals availability changed */

@@ -1,4 +1,3 @@
-import { VNode } from "../../preact/src/internal";
 import { UpdateInfo } from "./internal";
 
 /** Formatted signal update for external consumers */
@@ -7,11 +6,19 @@ export interface FormattedSignalUpdate {
 	signalType: "signal" | "computed" | "effect";
 	signalName: string;
 	signalId: string;
-	componentNames?: string[];
 	prevValue?: any;
 	newValue?: any;
 	timestamp: number;
 	depth: number;
+}
+
+/** Formatted signal disposal event for external consumers */
+export interface FormattedSignalDisposed {
+	type: "disposed";
+	signalType: "signal" | "computed" | "effect";
+	signalName: string;
+	signalId: string;
+	timestamp: number;
 }
 
 // Communication layer for Chrome DevTools Extension
@@ -20,6 +27,7 @@ export interface DevToolsMessage {
 		| "SIGNALS_UPDATE"
 		| "SIGNALS_INIT"
 		| "SIGNALS_CONFIG"
+		| "SIGNALS_DISPOSED"
 		| "ENTER_COMPONENT"
 		| "EXIT_COMPONENT";
 	payload: any;
@@ -30,32 +38,17 @@ export interface SignalsDevToolsAPI {
 	onUpdate: (
 		callback: (updates: FormattedSignalUpdate[]) => void
 	) => () => void;
+	onDisposal: (
+		callback: (disposals: FormattedSignalDisposed[]) => void
+	) => () => void;
 	onInit: (callback: () => void) => () => void;
 	sendConfig: (config: any) => void;
 	sendUpdate: (updateInfo: UpdateInfo[]) => void;
+	sendDisposal: (
+		signal: any,
+		signalType: "signal" | "computed" | "effect"
+	) => void;
 	isConnected: () => boolean;
-	enterComponent: (node: VNode | string) => void;
-	exitComponent: () => void;
-	trackSignalOwnership: (signal: any) => void;
-}
-
-function getComponentName(vnode: VNode | string): string {
-	let name;
-
-	if (typeof vnode === "string") {
-		return vnode;
-	}
-
-	if (typeof vnode.type === "string") {
-		name = vnode.type;
-	} else {
-		name = vnode.type.displayName || vnode.type.name || "Unknown";
-	}
-
-	if (name === "ReactiveTextNode" && vnode.__) {
-		return `${getComponentName(vnode.__)} > ${name}`;
-	}
-	return name;
 }
 
 class DevToolsCommunicator {
@@ -138,7 +131,6 @@ class DevToolsCommunicator {
 
 	public sendUpdate(updateInfoList: UpdateInfo[]) {
 		const formattedUpdates = updateInfoList.map(({ signal, ...info }) => {
-			const owners = this.getSignalOwners(signal);
 			return info.type === "value"
 				? {
 						...info,
@@ -150,7 +142,6 @@ class DevToolsCommunicator {
 							| "computed",
 						signalName: this.getSignalName(signal),
 						signalId: this.getSignalId(signal),
-						componentNames: owners.length > 0 ? owners : undefined,
 					}
 				: {
 						...info,
@@ -158,7 +149,6 @@ class DevToolsCommunicator {
 						signalType: "effect" as const,
 						signalName: this.getSignalName(signal),
 						signalId: this.getSignalId(signal),
-						componentNames: owners.length > 0 ? owners : undefined,
 					};
 		});
 
@@ -205,28 +195,6 @@ class DevToolsCommunicator {
 		};
 	}
 
-	public enterComponent(node: VNode | string) {
-		this.componentName = getComponentName(node);
-	}
-
-	public exitComponent() {
-		this.componentName = null;
-	}
-
-	public trackSignalOwnership(signal: any) {
-		if (this.componentName) {
-			if (!this.signalOwnership.has(signal)) {
-				this.signalOwnership.set(signal, new Set());
-			}
-			this.signalOwnership.get(signal)!.add(this.componentName);
-		}
-	}
-
-	public getSignalOwners(signal: any): string[] {
-		const owners = this.signalOwnership.get(signal);
-		return owners ? Array.from(owners) : [];
-	}
-
 	public getSignalName(signal: any): string {
 		// Try to get a meaningful name for the signal
 		if (signal.displayName) return signal.displayName;
@@ -249,6 +217,37 @@ class DevToolsCommunicator {
 
 	public isConnected(): boolean {
 		return this.isExtensionConnected;
+	}
+
+	public sendDisposal(
+		signal: any,
+		signalType: "signal" | "computed" | "effect"
+	) {
+		const disposal: FormattedSignalDisposed = {
+			type: "disposed",
+			signalType,
+			signalName: this.getSignalName(signal),
+			signalId: this.getSignalId(signal),
+			timestamp: Date.now(),
+		};
+
+		// Emit for direct listeners (e.g., DirectAdapter)
+		this.emit("disposal", [disposal]);
+
+		// Post message for browser extension
+		this.postMessage({
+			type: "SIGNALS_DISPOSED",
+			payload: {
+				disposals: [disposal],
+			},
+			timestamp: Date.now(),
+		});
+	}
+
+	public onDisposal(
+		callback: (disposals: FormattedSignalDisposed[]) => void
+	): () => void {
+		return this.addListener("disposal", callback);
 	}
 }
 
@@ -284,18 +283,13 @@ export function getDevToolsCommunicator(): DevToolsCommunicator {
 if (typeof window !== "undefined") {
 	const api: SignalsDevToolsAPI = {
 		onUpdate: callback => getDevToolsCommunicator().onUpdate(callback),
+		onDisposal: callback => getDevToolsCommunicator().onDisposal(callback),
 		onInit: callback => getDevToolsCommunicator().onInit(callback),
 		sendConfig: config => getDevToolsCommunicator().sendConfig(config),
 		sendUpdate: updateInfo => getDevToolsCommunicator().sendUpdate(updateInfo),
+		sendDisposal: (signal, signalType) =>
+			getDevToolsCommunicator().sendDisposal(signal, signalType),
 		isConnected: () => getDevToolsCommunicator().isConnected(),
-		trackSignalOwnership: signal =>
-			getDevToolsCommunicator().trackSignalOwnership(signal),
-		enterComponent: node => {
-			getDevToolsCommunicator().enterComponent(node);
-		},
-		exitComponent: () => {
-			getDevToolsCommunicator().exitComponent();
-		},
 	};
 
 	// Expose API globally for the Chrome extension to use

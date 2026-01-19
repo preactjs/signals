@@ -52,9 +52,6 @@ const originalUnsubscribe = Signal.prototype._unsubscribe;
 Signal.prototype._subscribe = function (node: Node) {
 	if (initializing) return originalSubscribe.call(this, node);
 
-	// Track signal ownership when subscribing
-	window.__PREACT_SIGNALS_DEVTOOLS__?.trackSignalOwnership?.(this);
-
 	const tracker = trackers.get(this) || 0;
 	trackers.set(this, tracker + 1);
 
@@ -144,6 +141,18 @@ Signal.prototype._unsubscribe = function (node: Node) {
 				unsubscribe();
 				subscriptions.delete(this);
 			}
+
+			// Notify devtools that this signal is disposed (no more subscribers)
+			if (
+				typeof window !== "undefined" &&
+				(window as any).__PREACT_SIGNALS_DEVTOOLS__
+			) {
+				const signalType = "_fn" in this ? "computed" : "signal";
+				(window as any).__PREACT_SIGNALS_DEVTOOLS__.sendDisposal?.(
+					this,
+					signalType
+				);
+			}
 		}
 	}
 
@@ -169,35 +178,33 @@ function bubbleUpToBaseSignal(
 		return null;
 	}
 
-	if (
-		inflightUpdates.has(node._sources?._source as Signal) &&
-		!hasUpdateEntry(node._sources?._source as Signal)
-	) {
-		return { signal: node._sources?._source as Signal, depth };
-	}
+	// Get the head of the sources linked list
+	let sourceNode = node._sources;
 
-	while (node._sources?._nextSource) {
-		node = node._sources?._nextSource as any;
-		if (
-			"_source" in node &&
-			inflightUpdates.has(node._source as Signal) &&
-			!hasUpdateEntry(node._source as Signal)
-		) {
-			return { signal: node._source as Signal, depth };
+	// Iterate through all sources in the linked list
+	while (sourceNode) {
+		const source = sourceNode._source as Signal;
+		if (inflightUpdates.has(source) && !hasUpdateEntry(source)) {
+			return { signal: source, depth };
 		}
+		sourceNode = sourceNode._nextSource;
 	}
 
-	if (node._sources?._source) {
-		return bubbleUpToBaseSignal(node._sources?._source as any, depth + 1);
+	// If no direct source found, recurse into all sources to find the inflight update
+	sourceNode = node._sources;
+	while (sourceNode) {
+		const result = bubbleUpToBaseSignal(sourceNode._source as any, depth + 1);
+		if (result) {
+			return result;
+		}
+		sourceNode = sourceNode._nextSource;
 	}
 
 	return null;
 }
 
-const originalEffectCallback = Effect.prototype._callback;
-Effect.prototype._callback = function (this: Effect) {
-	if (!debugEnabled || internalEffects.has(this))
-		return originalEffectCallback.call(this);
+Effect.prototype._debugCallback = function (this: Effect) {
+	if (!debugEnabled || internalEffects.has(this)) return;
 
 	if ("_sources" in this) {
 		const baseSignal = bubbleUpToBaseSignal(this as any);
@@ -216,8 +223,32 @@ Effect.prototype._callback = function (this: Effect) {
 			updateInfoMap.set(baseSignal.signal, updateInfoList);
 		}
 	}
+};
+
+const originalEffectCallback = Effect.prototype._callback;
+Effect.prototype._callback = function (this: Effect) {
+	if (!debugEnabled || internalEffects.has(this))
+		return originalEffectCallback.call(this);
+
+	this._debugCallback!();
 
 	return originalEffectCallback.call(this);
+};
+
+// Patch Effect.prototype._dispose to emit disposal events
+const originalEffectDispose = Effect.prototype._dispose;
+Effect.prototype._dispose = function (this: Effect) {
+	// Notify devtools that this effect is being disposed
+	if (
+		debugEnabled &&
+		!internalEffects.has(this) &&
+		typeof window !== "undefined" &&
+		(window as any).__PREACT_SIGNALS_DEVTOOLS__
+	) {
+		(window as any).__PREACT_SIGNALS_DEVTOOLS__.sendDisposal?.(this, "effect");
+	}
+
+	return originalEffectDispose.call(this);
 };
 
 function flushUpdates() {

@@ -494,66 +494,23 @@ try {
 	STORE_IDENTIFIER.f();
 }`;
 
-const debugTryCatchTemplate = template.statements(
-	`var STORE_IDENTIFIER = HOOK_IDENTIFIER(HOOK_USAGE);
-try {
-	if (window.__PREACT_SIGNALS_DEVTOOLS__) {
-		window.__PREACT_SIGNALS_DEVTOOLS__.enterComponent(
-			COMPONENT_NAME
-		);
-	}
-	BODY
-} finally {
-	STORE_IDENTIFIER.f();
-	if (window.__PREACT_SIGNALS_DEVTOOLS__) {
-		window.__PREACT_SIGNALS_DEVTOOLS__.exitComponent();
-	}
-}`,
-	{
-		placeholderWhitelist: new Set([
-			"STORE_IDENTIFIER",
-			"HOOK_USAGE",
-			"HOOK_IDENTIFIER",
-			"BODY",
-			"COMPONENT_NAME",
-			"STORE_IDENTIFIER",
-		]),
-		placeholderPattern: false,
-	}
-);
-
 function wrapInTryFinally(
 	t: typeof BabelTypes,
 	path: NodePath<FunctionLike>,
 	state: PluginPass,
-	hookUsage: HookUsage,
-	componentName: string,
-	isDebug: boolean
+	hookUsage: HookUsage
 ): BabelTypes.BlockStatement {
 	const stopTrackingIdentifier = path.scope.generateUidIdentifier("effect");
 
-	if (isDebug) {
-		const statements = debugTryCatchTemplate({
-			COMPONENT_NAME: t.stringLiteral(componentName),
-			STORE_IDENTIFIER: stopTrackingIdentifier,
-			HOOK_IDENTIFIER: get(state, getHookIdentifier)(),
-			HOOK_USAGE: hookUsage,
-			BODY: t.isBlockStatement(path.node.body)
-				? path.node.body.body
-				: t.returnStatement(path.node.body),
-		});
-		return t.blockStatement(statements);
-	} else {
-		const statements = tryCatchTemplate({
-			STORE_IDENTIFIER: stopTrackingIdentifier,
-			HOOK_IDENTIFIER: get(state, getHookIdentifier)(),
-			HOOK_USAGE: hookUsage,
-			BODY: t.isBlockStatement(path.node.body)
-				? path.node.body.body
-				: t.returnStatement(path.node.body),
-		});
-		return t.blockStatement(statements);
-	}
+	const statements = tryCatchTemplate({
+		STORE_IDENTIFIER: stopTrackingIdentifier,
+		HOOK_IDENTIFIER: get(state, getHookIdentifier)(),
+		HOOK_USAGE: hookUsage,
+		BODY: t.isBlockStatement(path.node.body)
+			? path.node.body.body
+			: t.returnStatement(path.node.body),
+	});
+	return t.blockStatement(statements);
 }
 
 function prependUseSignals<T extends FunctionLike>(
@@ -596,14 +553,7 @@ function transformFunction(
 
 	let newBody: BabelTypes.BlockStatement;
 	if (hookUsage !== UNMANAGED) {
-		newBody = wrapInTryFinally(
-			t,
-			path,
-			state,
-			hookUsage,
-			`${functionName || "Unknown"}:${basename(filename)}`,
-			isComponent && !!options.experimental?.debug
-		);
+		newBody = wrapInTryFinally(t, path, state, hookUsage);
 	} else {
 		newBody = prependUseSignals(t, path, state);
 	}
