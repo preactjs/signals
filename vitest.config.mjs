@@ -1,4 +1,5 @@
 import { defineConfig } from 'vitest/config';
+import { playwright } from '@vitest/browser-playwright'
 import { manglePlugin } from './scripts/mangle-plugin.mjs';
 import { createEsbuildPlugin } from './scripts/transform-plugin.mjs';
 import path from 'node:path';
@@ -104,6 +105,9 @@ export default defineConfig({
 			},
 			{
 				extends: true,
+				optimizeDeps: {
+					include: ['preact/jsx-dev-runtime']
+				},
 				test: {
 					include: ['./packages/**/test/browser/**/*.test.tsx'],
 					exclude: [
@@ -111,7 +115,7 @@ export default defineConfig({
 						'**/node_modules/**'
 					],
 					browser: {
-						provider: 'playwright',
+						provider: playwright(),
 						enabled: true,
 						screenshotFailures: false,
 						headless: true,
