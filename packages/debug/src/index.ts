@@ -364,4 +364,10 @@ function endUpdateGroup() {
 /* eslint-enable no-console */
 
 // Export extension utilities
-export type { ExtensionConfig } from "./extension-bridge";
+export interface ExtensionConfig {
+	enabled?: boolean;
+	grouped?: boolean;
+	spacing?: number;
+	maxUpdatesPerSecond?: number;
+	filterPatterns?: string[];
+}
