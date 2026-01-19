@@ -351,4 +351,184 @@ describe("Signal Debug", () => {
 		expect(spyC).not.toHaveBeenCalled();
 		expect(d.value).to.equal("aa");
 	});
+
+	describe("bubbleUpToBaseSignal - Multiple Sources", () => {
+		it("should trace back to base signal through second source in linked list", async () => {
+			// This test verifies that when an effect depends on multiple signals,
+			// the debug tracing can find inflight updates through any source,
+			// not just the first one in the linked list.
+			//
+			// Effect structure:
+			//   showFirst  sharedCounter
+			//       \        /
+			//        \      /
+			//      effectWithMultipleSources
+			//
+			const sharedCounter = signal(0, { name: "sharedCounter" });
+			const showFirst = signal(true, { name: "showFirst" });
+
+			// This effect reads showFirst first, then sharedCounter
+			// So in the linked list, sharedCounter will NOT be first
+			const effectSpy = vi.fn();
+			effect(
+				() => {
+					showFirst.value; // First dependency
+					sharedCounter.value; // Second dependency - this is what we update
+					effectSpy();
+				},
+				{ name: "multiSourceEffect" }
+			);
+
+			effectSpy.mockClear();
+			consoleSpy.mockClear();
+			groupSpy.mockClear();
+			groupCollapsedSpy.mockClear();
+
+			// Now update sharedCounter - the bubbleUpToBaseSignal should find it
+			// even though it's the second source in the effect's dependency list
+			sharedCounter.value = 1;
+
+			await new Promise(resolve => setTimeout(resolve, 0));
+
+			// The effect should have been triggered
+			expect(effectSpy).toHaveBeenCalledOnce();
+
+			// Debug logging should show the connection from sharedCounter to the effect
+			expect(groupSpy).toHaveBeenCalledWith("🎯 Signal Update: sharedCounter");
+			expect(groupCollapsedSpy).toHaveBeenCalledWith(
+				"  ↪️ Triggered effect: multiSourceEffect"
+			);
+		});
+
+		it("should trace back to base signal through third or later source", async () => {
+			// Test with even more sources to ensure the fix handles arbitrary positions
+			const sig1 = signal("a", { name: "sig1" });
+			const sig2 = signal("b", { name: "sig2" });
+			const sig3 = signal("c", { name: "sig3" });
+			const sig4 = signal("d", { name: "sig4" });
+
+			const effectSpy = vi.fn();
+			effect(
+				() => {
+					// Read in order: sig1, sig2, sig3, sig4
+					sig1.value;
+					sig2.value;
+					sig3.value;
+					sig4.value;
+					effectSpy();
+				},
+				{ name: "manySourcesEffect" }
+			);
+
+			effectSpy.mockClear();
+			groupSpy.mockClear();
+			groupCollapsedSpy.mockClear();
+
+			// Update the last signal in the dependency list
+			sig4.value = "d2";
+
+			await new Promise(resolve => setTimeout(resolve, 0));
+
+			expect(effectSpy).toHaveBeenCalledOnce();
+			expect(groupSpy).toHaveBeenCalledWith("🎯 Signal Update: sig4");
+			expect(groupCollapsedSpy).toHaveBeenCalledWith(
+				"  ↪️ Triggered effect: manySourcesEffect"
+			);
+		});
+
+		it("should trace through computed with multiple sources to find correct base signal", async () => {
+			// Test that the recursive search also handles multiple sources correctly
+			//
+			//   count1   count2
+			//      \      /
+			//       \    /
+			//        sum (computed)
+			//         |
+			//       effect
+			//
+			const count1 = signal(0, { name: "count1" });
+			const count2 = signal(0, { name: "count2" });
+			const sum = computed(() => count1.value + count2.value, { name: "sum" });
+
+			const effectSpy = vi.fn();
+			effect(
+				() => {
+					sum.value;
+					effectSpy();
+				},
+				{ name: "sumEffect" }
+			);
+
+			effectSpy.mockClear();
+			groupSpy.mockClear();
+			groupCollapsedSpy.mockClear();
+
+			// Update count2 (not the first source of sum)
+			count2.value = 5;
+
+			await new Promise(resolve => setTimeout(resolve, 0));
+
+			expect(effectSpy).toHaveBeenCalledOnce();
+			expect(groupSpy).toHaveBeenCalledWith("🎯 Signal Update: count2");
+			expect(groupCollapsedSpy).toHaveBeenCalledWith(
+				"  ↪️ Triggered update: sum"
+			);
+			expect(groupCollapsedSpy).toHaveBeenCalledWith(
+				"    ↪️ Triggered effect: sumEffect"
+			);
+		});
+
+		it("should trace through nested computeds with multiple sources", async () => {
+			// More complex dependency graph:
+			//
+			//     a       b
+			//      \     /
+			//       \   /
+			//       comp1 (a + b)
+			//          \
+			//     c     \
+			//      \     \
+			//       \     \
+			//        comp2 (c + comp1)
+			//          |
+			//        effect
+			//
+			const a = signal(1, { name: "a" });
+			const b = signal(2, { name: "b" });
+			const c = signal(3, { name: "c" });
+
+			const comp1 = computed(() => a.value + b.value, { name: "comp1" });
+			const comp2 = computed(() => c.value + comp1.value, { name: "comp2" });
+
+			const effectSpy = vi.fn();
+			effect(
+				() => {
+					comp2.value;
+					effectSpy();
+				},
+				{ name: "nestedEffect" }
+			);
+
+			effectSpy.mockClear();
+			groupSpy.mockClear();
+			groupCollapsedSpy.mockClear();
+
+			// Update b (second source of comp1, which is second source of comp2)
+			b.value = 10;
+
+			await new Promise(resolve => setTimeout(resolve, 0));
+
+			expect(effectSpy).toHaveBeenCalledOnce();
+			expect(groupSpy).toHaveBeenCalledWith("🎯 Signal Update: b");
+			expect(groupCollapsedSpy).toHaveBeenCalledWith(
+				"  ↪️ Triggered update: comp1"
+			);
+			expect(groupCollapsedSpy).toHaveBeenCalledWith(
+				"    ↪️ Triggered update: comp2"
+			);
+			expect(groupCollapsedSpy).toHaveBeenCalledWith(
+				"      ↪️ Triggered effect: nestedEffect"
+			);
+		});
+	});
 });
