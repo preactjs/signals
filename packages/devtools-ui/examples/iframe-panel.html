@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Signals DevTools - Iframe Demo</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+      overflow: hidden;
+    }
+    #devtools-container {
+      height: 100%;
+    }
+  </style>
+  <link rel="stylesheet" href="../dist/styles.css">
+</head>
+<body>
+  <div id="devtools-container"></div>
+
+  <script type="module">
+    import { mount } from "@preact/signals-devtools-ui";
+    import { createPostMessageAdapter } from "@preact/signals-devtools-adapter";
+    
+    // Get the parent window origin from query params or default
+    const params = new URLSearchParams(window.location.search);
+    const parentOrigin = params.get("origin") || window.location.origin;
+    
+    // Create adapter that communicates with the parent window
+    const adapter = createPostMessageAdapter({
+      sourceWindow: window,
+      sourceOrigin: parentOrigin,
+      targetWindow: window.parent,
+      targetOrigin: parentOrigin,
+    });
+    
+    // Mount the DevTools UI
+    mount({
+      adapter,
+      container: document.getElementById("devtools-container"),
+      hideHeader: params.get("hideHeader") === "true",
+    }).then(() => {
+      console.log("Iframe DevTools mounted!");
+      
+      // Notify parent that we're ready
+      window.parent.postMessage({ type: "DEVTOOLS_IFRAME_READY" }, parentOrigin);
+    });
+  </script>
+</body>
+</html>

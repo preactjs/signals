@@ -1,9 +1,11 @@
 import { useSignal, useSignalEffect } from "@preact/signals";
 import { Button } from "./Button";
-import { Settings } from "../types";
-import { settingsStore } from "../models/SettingsModel";
+import type { Settings } from "@preact/signals-devtools-adapter";
+import { getContext } from "../context";
 
 export function SettingsPanel() {
+	const { settingsStore } = getContext();
+
 	const onCancel = settingsStore.hideSettings;
 	const onApply = settingsStore.applySettings;
 	const settings = settingsStore.settings;
@@ -96,6 +98,23 @@ export function SettingsPanel() {
 							})
 						}
 					/>
+				</div>
+
+				<h3>Graph Settings</h3>
+
+				<div className="setting-group">
+					<label>
+						<input
+							type="checkbox"
+							checked={settingsStore.showDisposedSignals}
+							onChange={() => settingsStore.toggleShowDisposedSignals()}
+						/>
+						Show disposed signals in graph
+					</label>
+					<p className="setting-description">
+						When enabled, signals and effects that have been disposed will still
+						be shown in the graph view.
+					</p>
 				</div>
 
 				<div className="settings-actions">

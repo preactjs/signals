@@ -2,6 +2,7 @@ import { useSignal } from "@preact/signals";
 import { Show, For } from "@preact/signals/utils";
 import { computed, signal } from "@preact/signals-core";
 import "./devtools.css";
+import { EmbeddedDevTools } from "./EmbeddedDevtools";
 
 type TodoModel = {
 	id: number;
@@ -57,11 +58,14 @@ const todosModel = (() => {
 
 export default function DevToolsDemo() {
 	return (
-		<div>
-			<h1>DevTools Demo</h1>
-			<main>
-				<TodosList />
-			</main>
+		<div class="devtools-demo-container">
+			<div class="app-section">
+				<h1>DevTools Demo</h1>
+				<main style="display: flex; gap: 20px;">
+					<TodosList />
+					<EmbeddedDevTools />
+				</main>
+			</div>
 		</div>
 	);
 }

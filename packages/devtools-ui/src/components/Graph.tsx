@@ -1,14 +1,8 @@
 import { useRef, useEffect } from "preact/hooks";
-import { Signal, computed, useComputed, useSignal } from "@preact/signals";
-import {
-	Divider,
-	GraphData,
-	GraphLink,
-	GraphNode,
-	ComponentGroup,
-	SignalUpdate,
-} from "../types";
-import { updatesStore } from "../models/UpdatesModel";
+import { useComputed, useSignal } from "@preact/signals";
+import type { GraphData, GraphLink, GraphNode } from "../types";
+import type { SignalUpdate } from "../context";
+import { getContext } from "../context";
 
 const copyToClipboard = (text: string) => {
 	const copyEl = document.createElement("textarea");
@@ -23,7 +17,9 @@ const copyToClipboard = (text: string) => {
 };
 
 export function GraphVisualization() {
+	const { updatesStore, settingsStore } = getContext();
 	const updates = updatesStore.updates;
+	const disposedSignalIds = updatesStore.disposedSignalIds;
 	const svgRef = useRef<SVGSVGElement>(null);
 	const containerRef = useRef<HTMLDivElement>(null);
 	const exportMenuRef = useRef<HTMLDivElement>(null);
@@ -35,6 +31,8 @@ export function GraphVisualization() {
 	const startPan = useSignal({ x: 0, y: 0 });
 	const showExportMenu = useSignal(false);
 	const toastText = useSignal<string>();
+	const hoveredNode = useSignal<GraphNode | null>(null);
+	const tooltipPos = useSignal({ x: 0, y: 0 });
 
 	useEffect(() => {
 		const handleClickOutside = (e: MouseEvent) => {
@@ -56,6 +54,9 @@ export function GraphVisualization() {
 	// Build graph data from updates signal using a computed
 	const graphData = useComputed<GraphData>(() => {
 		const rawUpdates = updates.value;
+		const disposed = disposedSignalIds.value;
+		const showDisposed = settingsStore.showDisposedSignals;
+
 		if (!rawUpdates || rawUpdates.length === 0)
 			return { nodes: [], links: [], components: [] };
 
@@ -67,10 +68,12 @@ export function GraphVisualization() {
 			update => update.type !== "divider"
 		) as SignalUpdate[];
 
-		const componentNodes = new Set<string>();
-
 		for (const update of signalUpdates) {
 			if (!update.signalId) continue;
+
+			// Skip disposed signals unless showDisposed is enabled
+			if (!showDisposed && disposed.has(update.signalId)) continue;
+
 			const type: "signal" | "computed" | "effect" = update.signalType;
 			const currentDepth = update.depth || 0;
 
@@ -86,6 +89,11 @@ export function GraphVisualization() {
 			}
 
 			if (update.subscribedTo) {
+				// Also skip links to/from disposed signals
+				const sourceDisposed =
+					!showDisposed && disposed.has(update.subscribedTo);
+				if (sourceDisposed) continue;
+
 				const linkKey = `${update.subscribedTo}->${update.signalId}`;
 				if (!links.has(linkKey)) {
 					links.set(linkKey, {
@@ -94,40 +102,12 @@ export function GraphVisualization() {
 					});
 				}
 			}
-
-			// Create component nodes for each component that will rerender
-			if (update.componentNames && update.componentNames.length > 0) {
-				for (const componentName of update.componentNames) {
-					const componentId = `component:${componentName}`;
-					componentNodes.add(componentId);
-
-					if (!nodes.has(componentId)) {
-						nodes.set(componentId, {
-							id: componentId,
-							name: componentName,
-							type: "component",
-							x: 0,
-							y: 0,
-							depth: currentDepth + 1, // Components are one level deeper than the signal that triggers them
-						});
-					}
-
-					// Create link from signal to component rerender
-					const rerenderLinkKey = `${update.signalId}->${componentId}`;
-					if (!links.has(rerenderLinkKey)) {
-						links.set(rerenderLinkKey, {
-							source: update.signalId,
-							target: componentId,
-						});
-					}
-				}
-			}
 		}
 
 		// Simple depth-based layout
 		const allNodes = Array.from(nodes.values());
-		const nodeSpacing = 120; // More spacing between nodes
-		const depthSpacing = 250; // Distance between depth levels
+		const nodeSpacing = 120;
+		const depthSpacing = 250;
 		const startX = 100;
 		const startY = 80;
 
@@ -144,7 +124,7 @@ export function GraphVisualization() {
 		const maxDepth = Math.max(...allNodes.map(n => n.depth));
 		nodesByDepth.forEach((depthNodes, depth) => {
 			const depthHeight = (depthNodes.length - 1) * nodeSpacing;
-			const depthStartY = startY + maxDepth * 100 - depthHeight / 2; // Center this depth level
+			const depthStartY = startY + maxDepth * 100 - depthHeight / 2;
 
 			depthNodes.forEach((node, index) => {
 				node.x = startX + depth * depthSpacing;
@@ -152,18 +132,16 @@ export function GraphVisualization() {
 			});
 		});
 
-		const components: ComponentGroup[] = []; // Remove component grouping for now
-
 		return {
 			nodes: allNodes,
 			links: Array.from(links.values()),
-			components,
+			components: [],
 		};
 	});
 
 	// Mouse event handlers for panning
 	const handleMouseDown = (e: MouseEvent) => {
-		if (e.button !== 0) return; // Only left mouse button
+		if (e.button !== 0) return;
 		isPanning.value = true;
 		startPan.value = {
 			x: e.clientX - panOffset.value.x,
@@ -189,16 +167,14 @@ export function GraphVisualization() {
 		const container = containerRef.current;
 		if (!container) return;
 
-		// Get mouse position relative to container
 		const rect = container.getBoundingClientRect();
 		const mouseX = e.clientX - rect.left;
 		const mouseY = e.clientY - rect.top;
 
-		// Calculate zoom change
-		const delta = e.deltaY > 0 ? 0.9 : 1.1;
+		// Smoother zoom: smaller delta for less aggressive scrolling
+		const delta = e.deltaY > 0 ? 0.96 : 1.04;
 		const newZoom = Math.min(Math.max(0.1, zoom.value * delta), 5);
 
-		// Adjust pan offset to zoom towards mouse cursor
 		const zoomRatio = newZoom / zoom.value;
 		panOffset.value = {
 			x: mouseX - (mouseX - panOffset.value.x) * zoomRatio,
@@ -219,6 +195,44 @@ export function GraphVisualization() {
 
 	const mermaidIdPattern = /[^a-zA-Z0-9]/g;
 	const computeMermaidId = (id: string) => id.replace(mermaidIdPattern, "_");
+
+	// Calculate node radius based on name length
+	const getNodeRadius = (node: GraphNode) => {
+		if (node.type === "component") return 50;
+		const baseRadius = 30;
+		const charWidth = 6.5; // Approximate width per character
+		const padding = 16;
+		const textWidth = node.name.length * charWidth + padding;
+		return Math.max(baseRadius, Math.min(textWidth / 2, 70));
+	};
+
+	// Handle node hover for tooltip
+	const handleNodeMouseEnter = (node: GraphNode, e: MouseEvent) => {
+		hoveredNode.value = node;
+		const container = containerRef.current;
+		if (container) {
+			const rect = container.getBoundingClientRect();
+			tooltipPos.value = {
+				x: e.clientX - rect.left,
+				y: e.clientY - rect.top,
+			};
+		}
+	};
+
+	const handleNodeMouseMove = (e: MouseEvent) => {
+		const container = containerRef.current;
+		if (container && hoveredNode.value) {
+			const rect = container.getBoundingClientRect();
+			tooltipPos.value = {
+				x: e.clientX - rect.left,
+				y: e.clientY - rect.top,
+			};
+		}
+	};
+
+	const handleNodeMouseLeave = () => {
+		hoveredNode.value = null;
+	};
 
 	const showToast = (text: string) => {
 		toastText.value = text;
@@ -283,7 +297,6 @@ export function GraphVisualization() {
 		);
 	}
 
-	// Calculate SVG dimensions based on nodes
 	const svgWidth = Math.max(800, ...graphData.value.nodes.map(n => n.x + 100));
 	const svgHeight = Math.max(600, ...graphData.value.nodes.map(n => n.y + 100));
 
@@ -306,24 +319,22 @@ export function GraphVisualization() {
 					height={svgHeight}
 					viewBox={`0 0 ${svgWidth} ${svgHeight}`}
 				>
-					{/* Arrow marker definition */}
 					<defs>
 						<marker
 							id="arrowhead"
-							markerWidth="10"
-							markerHeight="7"
-							refX="9"
-							refY="3.5"
+							markerWidth="8"
+							markerHeight="6"
+							refX="7"
+							refY="3"
 							orient="auto"
 						>
-							<polygon points="0 0, 10 3.5, 0 7" fill="#666" />
+							<polygon points="0 0, 8 3, 0 6" fill="#94a3b8" />
 						</marker>
 					</defs>
 
 					<g
 						transform={`translate(${panOffset.value.x}, ${panOffset.value.y}) scale(${zoom.value})`}
 					>
-						{/* Links */}
 						<g className="links">
 							{graphData.value.links.map((link, index) => {
 								const sourceNode = graphData.value.nodes.find(
@@ -335,14 +346,15 @@ export function GraphVisualization() {
 
 								if (!sourceNode || !targetNode) return null;
 
-								// Use curved paths for better visual flow
-								const sourceX = sourceNode.x + 25;
+								const sourceRadius = getNodeRadius(sourceNode);
+								const targetRadius = getNodeRadius(targetNode);
+								const sourceX = sourceNode.x + sourceRadius;
 								const sourceY = sourceNode.y;
-								const targetX = targetNode.x - 25;
+								const targetX = targetNode.x - targetRadius - 8; // Extra space for arrow
 								const targetY = targetNode.y;
 
-								const midX = sourceX + (targetX - sourceX) * 0.6;
-								const pathData = `M ${sourceX} ${sourceY} Q ${midX} ${sourceY} ${targetX} ${targetY}`;
+								const midX = sourceX + (targetX - sourceX) * 0.5;
+								const pathData = `M ${sourceX} ${sourceY} C ${midX} ${sourceY}, ${midX} ${targetY}, ${targetX} ${targetY}`;
 
 								return (
 									<path
@@ -350,62 +362,58 @@ export function GraphVisualization() {
 										className="graph-link"
 										d={pathData}
 										fill="none"
-										stroke="#666"
-										strokeWidth="2"
 										markerEnd="url(#arrowhead)"
 									/>
 								);
 							})}
 						</g>
 
-						{/* Nodes */}
 						<g className="nodes">
 							{graphData.value.nodes.map(node => {
-								const radius = node.type === "component" ? 40 : 30;
-								// For circles, use a smaller character limit to fit within the circle with padding
-								const maxChars = node.type === "component" ? 10 : 7;
+								const radius = getNodeRadius(node);
+								// Calculate max chars based on radius
+								const maxChars = Math.floor((radius * 2 - 16) / 6.5);
 								const displayName =
 									node.name.length > maxChars
-										? node.name.slice(0, maxChars) + "..."
+										? node.name.slice(0, maxChars - 1) + "…"
 										: node.name;
-								const isTextTruncated = node.name.length > maxChars;
+								const isHovered = hoveredNode.value?.id === node.id;
 
 								return (
-									<g key={node.id} className="graph-node-group">
+									<g
+										key={node.id}
+										className={`graph-node-group ${isHovered ? "hovered" : ""}`}
+										onMouseEnter={(e: MouseEvent) =>
+											handleNodeMouseEnter(node, e)
+										}
+										onMouseMove={handleNodeMouseMove}
+										onMouseLeave={handleNodeMouseLeave}
+									>
 										{node.type === "component" ? (
-											// Rectangular shape for components
 											<rect
 												className={`graph-node ${node.type}`}
 												x={node.x - radius}
-												y={node.y - 22}
+												y={node.y - 24}
 												width={radius * 2}
-												height={44}
-												rx="10"
-											>
-												{isTextTruncated && <title>{node.name}</title>}
-											</rect>
+												height={48}
+												rx="12"
+											/>
 										) : (
-											// Circular shape for signals/computed/effects
 											<circle
 												className={`graph-node ${node.type}`}
 												cx={node.x}
 												cy={node.y}
 												r={radius}
-											>
-												{isTextTruncated && <title>{node.name}</title>}
-											</circle>
+											/>
 										)}
 										<text
 											className="graph-text"
 											x={node.x}
-											y={node.y + 4}
+											y={node.y}
 											textAnchor="middle"
-											dominantBaseline="middle"
-											fontSize="12"
-											fontWeight="500"
+											dominantBaseline="central"
 										>
 											{displayName}
-											{isTextTruncated && <title>{node.name}</title>}
 										</text>
 									</g>
 								);
@@ -414,7 +422,6 @@ export function GraphVisualization() {
 					</g>
 				</svg>
 
-				{/* Control buttons */}
 				<div className="graph-controls">
 					<button
 						className="graph-reset-button"
@@ -449,14 +456,34 @@ export function GraphVisualization() {
 							</div>
 						)}
 					</div>
+
+					<div className="graph-zoom-indicator" title="Zoom level">
+						{Math.round(zoom.value * 100)}%
+					</div>
 				</div>
 
-				{/* Toast notification */}
 				{toastText.value && (
 					<div className="graph-toast">{toastText.value}</div>
 				)}
 
-				{/* Legend */}
+				{hoveredNode.value && (
+					<div
+						className="graph-tooltip"
+						style={{
+							left: tooltipPos.value.x + 12,
+							top: tooltipPos.value.y - 8,
+						}}
+					>
+						<div className="tooltip-header">
+							<span className={`tooltip-type ${hoveredNode.value.type}`}>
+								{hoveredNode.value.type}
+							</span>
+						</div>
+						<div className="tooltip-name">{hoveredNode.value.name}</div>
+						<div className="tooltip-id">ID: {hoveredNode.value.id}</div>
+					</div>
+				)}
+
 				<div className="graph-legend">
 					<div className="legend-item">
 						<div

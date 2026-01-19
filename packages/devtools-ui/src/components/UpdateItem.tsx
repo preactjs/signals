@@ -1,4 +1,4 @@
-import { SignalUpdate } from "../types";
+import type { SignalUpdate } from "../context";
 
 interface UpdateItemProps {
 	update: SignalUpdate;
@@ -38,17 +38,6 @@ export function UpdateItem({ update, count, firstUpdate }: UpdateItemProps) {
 					<span className="signal-name">
 						↪️ {update.signalName}
 						{countLabel}
-						{update.componentNames && update.componentNames.length > 0 && (
-							<ul class="component-list">
-								<span class="component-name-header">Rerendered</span>
-								{update.componentNames?.map((componentName, i) => (
-									<li key={componentName} class="component-name">
-										{componentName}
-										{i < update.componentNames!.length - 1 ? ", " : ""}
-									</li>
-								))}
-							</ul>
-						)}
 					</span>
 					<span className="update-time">{time}</span>
 				</div>
@@ -81,17 +70,6 @@ export function UpdateItem({ update, count, firstUpdate }: UpdateItemProps) {
 				<span class="value-arrow">→</span>
 				<span class="value-new">{newValue}</span>
 			</div>
-			{update.componentNames && update.componentNames.length > 0 && (
-				<ul class="component-list">
-					<span class="component-name-header">Rerendered</span>
-					{update.componentNames?.map((componentName, i) => (
-						<li key={componentName} class="component-name">
-							{componentName}
-							{i < update.componentNames!.length - 1 ? ", " : ""}
-						</li>
-					))}
-				</ul>
-			)}
 		</div>
 	);
 }
