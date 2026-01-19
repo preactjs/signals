@@ -178,26 +178,26 @@ function bubbleUpToBaseSignal(
 		return null;
 	}
 
-	if (
-		inflightUpdates.has(node._sources?._source as Signal) &&
-		!hasUpdateEntry(node._sources?._source as Signal)
-	) {
-		return { signal: node._sources?._source as Signal, depth };
-	}
+	// Get the head of the sources linked list
+	let sourceNode = node._sources;
 
-	while (node._sources?._nextSource) {
-		node = node._sources?._nextSource as any;
-		if (
-			"_source" in node &&
-			inflightUpdates.has(node._source as Signal) &&
-			!hasUpdateEntry(node._source as Signal)
-		) {
-			return { signal: node._source as Signal, depth };
+	// Iterate through all sources in the linked list
+	while (sourceNode) {
+		const source = sourceNode._source as Signal;
+		if (inflightUpdates.has(source) && !hasUpdateEntry(source)) {
+			return { signal: source, depth };
 		}
+		sourceNode = sourceNode._nextSource;
 	}
 
-	if (node._sources?._source) {
-		return bubbleUpToBaseSignal(node._sources?._source as any, depth + 1);
+	// If no direct source found, recurse into all sources to find the inflight update
+	sourceNode = node._sources;
+	while (sourceNode) {
+		const result = bubbleUpToBaseSignal(sourceNode._source as any, depth + 1);
+		if (result) {
+			return result;
+		}
+		sourceNode = sourceNode._nextSource;
 	}
 
 	return null;
