@@ -1,5 +1,22 @@
 # @preact/signals-debug
 
+## 1.1.0
+
+### Minor Changes
+
+- [#815](https://github.com/preactjs/signals/pull/815) [`53e802a`](https://github.com/preactjs/signals/commit/53e802ad8d9d70b6e4635729892307ea15cbd32f) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Add support for in-process messaging
+
+- [#819](https://github.com/preactjs/signals/pull/819) [`8a8b0d1`](https://github.com/preactjs/signals/commit/8a8b0d109d324a5764289674e580e693683de04d) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Remove the need for enter/exit component and track the effects normally
+
+### Patch Changes
+
+- [#826](https://github.com/preactjs/signals/pull/826) [`08384be`](https://github.com/preactjs/signals/commit/08384be2d4133582d6c95c11ca890ef79a17ba57) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Fix circular references
+
+- [#827](https://github.com/preactjs/signals/pull/827) [`f17889b`](https://github.com/preactjs/signals/commit/f17889b6d46448205d9485b8d5e691fbe05cd404) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Add mangle entry for \_debugCallback
+
+- Updated dependencies [[`f17889b`](https://github.com/preactjs/signals/commit/f17889b6d46448205d9485b8d5e691fbe05cd404)]:
+  - @preact/signals-core@1.12.2
+
 ## 1.0.3
 
 ### Patch Changes

@@ -1,5 +1,16 @@
 # @preact/signals-react-transform
 
+## 0.7.0
+
+### Minor Changes
+
+- [#819](https://github.com/preactjs/signals/pull/819) [`8a8b0d1`](https://github.com/preactjs/signals/commit/8a8b0d109d324a5764289674e580e693683de04d) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Remove the need for enter/exit component and track the effects normally
+
+### Patch Changes
+
+- Updated dependencies [[`f17889b`](https://github.com/preactjs/signals/commit/f17889b6d46448205d9485b8d5e691fbe05cd404)]:
+  - @preact/signals-react@3.6.2
+
 ## 0.6.0
 
 ### Minor Changes
