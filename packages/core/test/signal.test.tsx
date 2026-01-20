@@ -9,6 +9,7 @@ import {
 	untracked,
 	ReadonlySignal,
 	ModelConstructor,
+	ModelFactory,
 } from "@preact/signals-core";
 
 describe("signal", () => {
@@ -2950,6 +2951,53 @@ describe("createModel", () => {
 			expect(model.count.value).to.equal(10);
 			model.increment();
 			expect(model.count.value).to.equal(15);
+		});
+
+		it("allows building custom createModel functions that enforces specific arguments", () => {
+			// Demonstrate how to build a custom createModel function
+			// that enforces specific arguments to be passed to the
+			// model factory.
+
+			interface UserContext {
+				userId: string;
+			}
+			type UserContextModelFactory<
+				TModel,
+				TFactoryArgs extends any[] = [],
+			> = ModelFactory<TModel, [UserContext, ...TFactoryArgs]>;
+
+			type UserContextModelConstructor<
+				TModel,
+				TFactoryArgs extends any[] = [],
+			> = ModelConstructor<TModel, [UserContext, ...TFactoryArgs]>;
+
+			type CreateUserModel = <TModel, TFactoryArgs extends any[]>(
+				factory: UserContextModelFactory<TModel, TFactoryArgs>
+			) => UserContextModelConstructor<TModel, TFactoryArgs>;
+
+			const createUserContextModel: CreateUserModel = createModel;
+
+			interface UserModel {
+				userId: ReadonlySignal<string>;
+				setUserId(id: string): void;
+			}
+
+			const UserModel: UserContextModelConstructor<UserModel> =
+				createUserContextModel((context: UserContext) => {
+					const userId = signal(context.userId);
+					return {
+						userId,
+						setUserId(id: string) {
+							userId.value = id;
+						},
+					};
+				});
+
+			const userModel = new UserModel({ userId: "user_1" });
+			expect(userModel.userId.value).to.equal("user_1");
+
+			userModel.setUserId("user_2");
+			expect(userModel.userId.value).to.equal("user_2");
 		});
 	});
 });
