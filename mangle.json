@@ -5,11 +5,7 @@
   },
   "minify": {
     "mangle": {
-      "reserved": [
-        "useSignal",
-        "useComputed",
-        "useSignalEffect"
-      ],
+      "reserved": ["useSignal", "useComputed", "useSignalEffect"],
       "keep_classnames": true,
       "properties": {
         "regex": "^_[^_]",
@@ -59,6 +55,7 @@
       "$_sources": "s",
       "$_notify": "N",
       "core: Signal+Node+Computed+Effect": "",
+      "$_debugCallback": "y",
       "$_flags": "f",
       "$_version": "i",
       "$_subscribe": "S",
