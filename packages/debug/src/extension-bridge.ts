@@ -4,6 +4,7 @@ class ExtensionBridge {
 	private config: ExtensionConfig = {
 		enabled: true,
 		grouped: true,
+		consoleLogging: true,
 		spacing: 0,
 		maxUpdatesPerSecond: 60,
 		filterPatterns: [],
