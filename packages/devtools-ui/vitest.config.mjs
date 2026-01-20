@@ -1,4 +1,5 @@
 import { defineConfig } from 'vitest/config';
+import { playwright } from '@vitest/browser-playwright';
 
 export default defineConfig({
 	optimizeDeps: {
@@ -7,7 +8,7 @@ export default defineConfig({
 	test: {
 		include: ['./test/browser/**/*.test.tsx'],
 		browser: {
-			provider: 'playwright',
+			provider: playwright(),
 			enabled: true,
 			screenshotFailures: false,
 			headless: true,

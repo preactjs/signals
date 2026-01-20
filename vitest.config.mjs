@@ -105,9 +105,6 @@ export default defineConfig({
 			},
 			{
 				extends: true,
-				optimizeDeps: {
-					include: ['preact/jsx-dev-runtime']
-				},
 				test: {
 					include: ['./packages/**/test/browser/**/*.test.tsx'],
 					exclude: [
