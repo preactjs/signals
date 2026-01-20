@@ -135,7 +135,9 @@ const TodosViewModel: ModelConstructor<TodosViewModel> = createModel(() => {
 		filter.value = newFilter;
 	};
 
-	const debugData = computed(() => JSON.stringify({todosModel, filter, filteredTodos}));
+	const debugData = computed(() => {
+		return JSON.stringify({todosModel, filter, filteredTodos}, null, 2);
+	});
 
 	return {
 		// Expose the nested business model
