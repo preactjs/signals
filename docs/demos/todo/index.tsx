@@ -144,6 +144,8 @@ const TodosViewModel: ModelConstructor<TodosViewModel> = createModel(() => {
 		filter,
 		filteredTodos,
 		setFilter,
+		// For debugging purposes in this demo
+		debugData,
 	};
 });
 
