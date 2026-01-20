@@ -93,7 +93,18 @@
   },
   "prettier": {
     "arrowParens": "avoid",
-    "trailingComma": "es5"
+    "trailingComma": "es5",
+    "overrides": [
+      {
+        "files": [
+          "package.json",
+          "mangle.json"
+        ],
+        "options": {
+          "parser": "json-stringify"
+        }
+      }
+    ]
   },
   "pnpm": {
     "patchedDependencies": {
