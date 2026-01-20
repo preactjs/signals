@@ -16,7 +16,7 @@ export type {
 export interface GraphNode {
 	id: string;
 	name: string;
-	type: "signal" | "computed" | "effect" | "component";
+	type: "signal" | "computed" | "effect";
 	x: number;
 	y: number;
 	depth: number;
@@ -27,20 +27,9 @@ export interface GraphLink {
 	target: string;
 }
 
-export interface ComponentGroup {
-	id: string;
-	name: string;
-	x: number;
-	y: number;
-	width: number;
-	height: number;
-	nodes: GraphNode[];
-}
-
 export interface GraphData {
 	nodes: GraphNode[];
 	links: GraphLink[];
-	components: ComponentGroup[];
 }
 
 export type Divider = { type: "divider" };

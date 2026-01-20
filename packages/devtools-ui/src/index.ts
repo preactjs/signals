@@ -23,7 +23,7 @@ export {
 } from "./context";
 
 // Types
-export type { GraphNode, GraphLink, GraphData, ComponentGroup } from "./types";
+export type { GraphNode, GraphLink, GraphData } from "./types";
 
 // Components for custom compositions
 export {

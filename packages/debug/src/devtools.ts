@@ -27,9 +27,7 @@ export interface DevToolsMessage {
 		| "SIGNALS_UPDATE"
 		| "SIGNALS_INIT"
 		| "SIGNALS_CONFIG"
-		| "SIGNALS_DISPOSED"
-		| "ENTER_COMPONENT"
-		| "EXIT_COMPONENT";
+		| "SIGNALS_DISPOSED";
 	payload: any;
 	timestamp: number;
 }
@@ -56,7 +54,6 @@ class DevToolsCommunicator {
 	public isExtensionConnected = false;
 	public messageQueue: DevToolsMessage[] = [];
 	public readonly maxQueueSize = 100;
-	public componentName: string | null = null;
 	public signalOwnership = new WeakMap<any, Set<string>>();
 
 	constructor() {
