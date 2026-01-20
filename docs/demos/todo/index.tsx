@@ -17,6 +17,8 @@ interface Todo {
 	completed: boolean;
 }
 
+let nextId = 0;
+
 interface TodosModel {
 	todos: ReadonlySignal<Todo[]>;
 	completedCount: ReadonlySignal<number>;
@@ -49,7 +51,7 @@ const TodosModel: ModelConstructor<TodosModel> = createModel(() => {
 			todos.value = [
 				...todos.value,
 				{
-					id: Date.now(),
+					id: ++nextId,
 					text: text.trim(),
 					completed: false,
 				},
@@ -132,6 +134,8 @@ const TodosViewModel: ModelConstructor<TodosViewModel> = createModel(() => {
 	const setFilter = (newFilter: "all" | "active" | "completed") => {
 		filter.value = newFilter;
 	};
+
+	const debugData = computed(() => JSON.stringify({todosModel, filter, filteredTodos}));
 
 	return {
 		// Expose the nested business model
@@ -253,6 +257,8 @@ export default function TodoMVC() {
 					))}
 				</div>
 			</div>
+
+			<pre class="todo-debug">{viewModel.debugData}</pre>
 		</div>
 	);
 }
