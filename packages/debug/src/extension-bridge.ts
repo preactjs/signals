@@ -1,21 +1,5 @@
-import { setDebugOptions } from ".";
+import { setDebugOptions, ExtensionConfig } from ".";
 import { getDevToolsCommunicator } from "./devtools";
-
-/**
- * Chrome Extension Bridge
- *
- * This module provides utilities to help Chrome extensions integrate
- * with the Preact Signals debug system.
- */
-
-export interface ExtensionConfig {
-	enabled?: boolean;
-	grouped?: boolean;
-	spacing?: number;
-	maxUpdatesPerSecond?: number;
-	filterPatterns?: string[];
-}
-
 class ExtensionBridge {
 	private config: ExtensionConfig = {
 		enabled: true,

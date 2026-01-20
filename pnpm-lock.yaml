@@ -239,9 +239,27 @@ importers:
       '@preact/signals':
         specifier: workspace:*
         version: link:../preact
+      '@types/node':
+        specifier: ^18.19.103
+        version: 18.19.103
+      '@vitest/browser':
+        specifier: ^3.2.4
+        version: 3.2.4(playwright@1.53.1)(vite@6.3.5(@types/node@18.19.103))(vitest@3.2.4)
+      playwright:
+        specifier: ^1.53.1
+        version: 1.53.1
       preact:
         specifier: ^10.26.9
         version: 10.27.2
+      typescript:
+        specifier: ~5.8.3
+        version: 5.8.3
+      vite:
+        specifier: ^6.3.5
+        version: 6.3.5(@types/node@18.19.103)
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.4(@types/debug@4.1.12)(@types/node@18.19.103)(@vitest/browser@3.2.4)
 
   packages/preact:
     dependencies:

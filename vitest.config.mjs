@@ -105,7 +105,7 @@ export default defineConfig({
 			{
 				extends: true,
 				test: {
-					include: ['./packages/**/test/browser/**/*.test.tsx'],
+					include: ['./packages/{!devtools-ui}/test/browser/**/*.test.tsx'],
 					browser: {
 						provider: 'playwright',
 						enabled: true,
