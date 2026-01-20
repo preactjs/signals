@@ -940,7 +940,7 @@ export type Model<TModel> = ValidateModel<TModel> & Disposable;
 
 export type ModelFactory<TModel, TFactoryArgs extends any[] = []> = (
 	...args: TFactoryArgs
-) => TModel;
+) => ValidateModel<TModel>;
 export type ModelConstructor<TModel, TFactoryArgs extends any[] = []> = new (
 	...args: TFactoryArgs
 ) => Model<TModel>;
@@ -994,7 +994,7 @@ function startCapturingEffects(): () => Effect[] | undefined {
 }
 
 function createModel<TModel, TFactoryArgs extends any[] = []>(
-	modelFactory: ModelFactory<ValidateModel<TModel>, TFactoryArgs>
+	modelFactory: ModelFactory<TModel, TFactoryArgs>
 ): ModelConstructor<TModel, TFactoryArgs> {
 	return function SignalModel(...args: TFactoryArgs): Model<TModel> {
 		let modelEffects: Effect[] | undefined;
