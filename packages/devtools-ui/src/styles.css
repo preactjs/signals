@@ -434,7 +434,7 @@ body {
 .graph-content {
   flex: 1;
   position: relative;
-  background: 
+  background:
     linear-gradient(90deg, #e5e7eb 1px, transparent 1px),
     linear-gradient(180deg, #e5e7eb 1px, transparent 1px),
     #f8fafc;

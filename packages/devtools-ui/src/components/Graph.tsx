@@ -57,8 +57,7 @@ export function GraphVisualization() {
 		const disposed = disposedSignalIds.value;
 		const showDisposed = settingsStore.showDisposedSignals;
 
-		if (!rawUpdates || rawUpdates.length === 0)
-			return { nodes: [], links: [], components: [] };
+		if (!rawUpdates || rawUpdates.length === 0) return { nodes: [], links: [] };
 
 		const nodes = new Map<string, GraphNode>();
 		const links = new Map<string, GraphLink>();
@@ -135,7 +134,6 @@ export function GraphVisualization() {
 		return {
 			nodes: allNodes,
 			links: Array.from(links.values()),
-			components: [],
 		};
 	});
 
@@ -198,7 +196,6 @@ export function GraphVisualization() {
 
 	// Calculate node radius based on name length
 	const getNodeRadius = (node: GraphNode) => {
-		if (node.type === "component") return 50;
 		const baseRadius = 30;
 		const charWidth = 6.5; // Approximate width per character
 		const padding = 16;
@@ -259,9 +256,6 @@ export function GraphVisualization() {
 					break;
 				case "effect":
 					lines.push(`  ${id}([${name}])`);
-					break;
-				case "component":
-					lines.push(`  ${id}[${name}]`);
 					break;
 			}
 		});
@@ -389,23 +383,12 @@ export function GraphVisualization() {
 										onMouseMove={handleNodeMouseMove}
 										onMouseLeave={handleNodeMouseLeave}
 									>
-										{node.type === "component" ? (
-											<rect
-												className={`graph-node ${node.type}`}
-												x={node.x - radius}
-												y={node.y - 24}
-												width={radius * 2}
-												height={48}
-												rx="12"
-											/>
-										) : (
-											<circle
-												className={`graph-node ${node.type}`}
-												cx={node.x}
-												cy={node.y}
-												r={radius}
-											/>
-										)}
+										<circle
+											className={`graph-node ${node.type}`}
+											cx={node.x}
+											cy={node.y}
+											r={radius}
+										/>
 										<text
 											className="graph-text"
 											x={node.x}
@@ -505,13 +488,6 @@ export function GraphVisualization() {
 							style={{ backgroundColor: "#4caf50" }}
 						></div>
 						<span>Effect</span>
-					</div>
-					<div className="legend-item">
-						<div
-							className="legend-color"
-							style={{ backgroundColor: "#9c27b0" }}
-						></div>
-						<span>Component</span>
 					</div>
 				</div>
 			</div>
