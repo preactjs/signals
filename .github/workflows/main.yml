@@ -38,7 +38,7 @@ jobs:
         run: pnpm lint
 
       - name: Tests
-        run: pnpm test
+        run: pnpm test && pnpm test:devtools-ui
 
       - name: Test production build
         run: pnpm test:minify

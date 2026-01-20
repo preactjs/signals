@@ -34,6 +34,7 @@
     "test:prod": "pnpm test:vitest:prod",
     "test:vitest": "cross-env COVERAGE=true vitest run",
     "test:vitest:prod": "cross-env COVERAGE=true MINIFY=true vitest run",
+    "test:devtools-ui": "pnpm --filter @preact/signals-devtools-ui test",
     "docs:start": "cd docs && pnpm start",
     "docs:build": "cd docs && pnpm build",
     "docs:preview": "cd docs && pnpm preview",

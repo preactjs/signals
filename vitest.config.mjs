@@ -103,12 +103,9 @@ export default defineConfig({
 				}
 			},
 			{
-				optimizeDeps: {
-					include: ["preact/jsx-dev-runtime"],
-				},
 				extends: true,
 				test: {
-					include: ['./packages/**/test/browser/**/*.test.tsx'],
+					include: ['./packages/{!devtools-ui}/test/browser/**/*.test.tsx'],
 					browser: {
 						provider: 'playwright',
 						enabled: true,
