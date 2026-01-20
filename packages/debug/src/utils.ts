@@ -10,7 +10,21 @@ export function getSignalName(signal: Signal | Effect): string {
 
 export function formatValue(value: any): string {
 	try {
-		return typeof value === "object" ? JSON.stringify(value) : String(value);
+		if (typeof value !== "object" || value === null) {
+			return String(value);
+		}
+
+		// Handle circular references with a replacer function
+		const seen = new WeakSet();
+		return JSON.stringify(value, (key, val) => {
+			if (typeof val === "object" && val !== null) {
+				if (seen.has(val)) {
+					return "[Circular]";
+				}
+				seen.add(val);
+			}
+			return val;
+		});
 	} catch {
 		return "(unstringifiable value)";
 	}
