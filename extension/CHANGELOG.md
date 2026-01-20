@@ -1,5 +1,19 @@
 # preact-signals-devtools
 
+## 1.1.0
+
+### Minor Changes
+
+- [#810](https://github.com/preactjs/signals/pull/810) [`5aac56f`](https://github.com/preactjs/signals/commit/5aac56f1ffee0203928549f30327c30f8c35d0b6) Thanks [@43081j](https://github.com/43081j)! - Automatically fold child updates and show first/last value.
+
+### Patch Changes
+
+- Updated dependencies [[`53e802a`](https://github.com/preactjs/signals/commit/53e802ad8d9d70b6e4635729892307ea15cbd32f), [`8a8b0d1`](https://github.com/preactjs/signals/commit/8a8b0d109d324a5764289674e580e693683de04d), [`f17889b`](https://github.com/preactjs/signals/commit/f17889b6d46448205d9485b8d5e691fbe05cd404)]:
+  - @preact/signals-devtools-adapter@0.1.0
+  - @preact/signals-devtools-ui@0.1.0
+  - @preact/signals@2.6.0
+  - @preact/signals-core@1.12.2
+
 ## 1.0.7
 
 ### Patch Changes
