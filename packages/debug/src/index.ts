@@ -5,6 +5,10 @@ import { UpdateInfo, Node, Computed as ComputedType } from "./internal";
 import { getExtensionBridge } from "./extension-bridge";
 import "./devtools"; // Initialize DevTools integration
 
+// Initialize the ExtensionBridge immediately so it can receive CONFIGURE_DEBUG messages
+// from embedded devtools-ui even before any signals are created
+getExtensionBridge();
+
 const inflightUpdates = new Set<Signal | Effect>();
 const updateInfoMap = new WeakMap<Signal | Effect, UpdateInfo[]>();
 const trackers = new WeakMap<Signal | Effect, number>();
@@ -65,7 +69,12 @@ Signal.prototype._subscribe = function (node: Node) {
 		initializing = true;
 		let internalEffect: Effect | undefined;
 		const unsubscribe = effect(function (this: Effect) {
-			internalEffect = this;
+			// Capture the effect reference on first run and add to internalEffects
+			// to prevent it from being treated as a user effect
+			if (!internalEffect) {
+				internalEffect = this;
+				internalEffects.add(this);
+			}
 			const newValue = sig.value;
 			const prevValue = signalValues.get(sig);
 
@@ -319,6 +328,10 @@ function logUpdate(info: UpdateInfo, prevDepth: number) {
 	const name = getSignalName(signal);
 
 	if (type === "effect") {
+		if (prevDepth === depth) {
+			endUpdateGroup();
+		}
+
 		if (isGrouped)
 			console.groupCollapsed(
 				`${" ".repeat(depth * 2)}↪️ Triggered effect: ${name}`
