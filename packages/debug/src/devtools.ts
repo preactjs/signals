@@ -251,19 +251,23 @@ class DevToolsCommunicator {
 	}
 }
 
-function deeplyRemoveFunctions(obj: any): any {
+function deeplyRemoveFunctions(obj: any, visited = new WeakSet()): any {
 	if (obj === null || obj === undefined) return obj;
 	if (typeof obj === "function") return "[Function]";
 	if (typeof obj !== "object") return obj;
 
+	// Handle circular references
+	if (visited.has(obj)) return "[Circular]";
+	visited.add(obj);
+
 	if (Array.isArray(obj)) {
-		return obj.map(deeplyRemoveFunctions);
+		return obj.map(item => deeplyRemoveFunctions(item, visited));
 	}
 
 	const result: any = {};
 	for (const key in obj) {
 		if (Object.prototype.hasOwnProperty.call(obj, key)) {
-			result[key] = deeplyRemoveFunctions(obj[key]);
+			result[key] = deeplyRemoveFunctions(obj[key], visited);
 		}
 	}
 	return result;
