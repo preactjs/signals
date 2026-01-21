@@ -1,5 +1,11 @@
 # @preact/signals-debug
 
+## 1.1.1
+
+### Patch Changes
+
+- [#833](https://github.com/preactjs/signals/pull/833) [`f5357b8`](https://github.com/preactjs/signals/commit/f5357b80ff9c241033b3168d96a5352dbc8e48b7) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Mangle `_debugId` properly so production targets the same variable
+
 ## 1.1.0
 
 ### Minor Changes
