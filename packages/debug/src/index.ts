@@ -45,16 +45,6 @@ function trackDependency(target: Signal | Effect, source: Signal | Effect) {
 	signalDependencies.get(target)?.add(sourceId);
 }
 
-let scheduled = false;
-function scheduleFlush() {
-	if (!scheduled) {
-		scheduled = true;
-		queueMicrotask(() => {
-			flushUpdates();
-			scheduled = false;
-		});
-	}
-}
 // Store original methods
 const originalSubscribe = Signal.prototype._subscribe;
 const originalUnsubscribe = Signal.prototype._unsubscribe;
@@ -132,6 +122,7 @@ Computed.prototype._refresh = function () {
 			depth: baseSignal.depth,
 			type: "value",
 			subscribedTo: getSignalId(baseSignal.signal),
+			allDependencies: getAllCurrentDependencies(this as any),
 		});
 		updateInfoMap.set(baseSignal.signal, updateInfoList);
 	}
@@ -207,6 +198,30 @@ function hasUpdateEntry(signal: Signal) {
 	return false;
 }
 
+/**
+ * Get all current dependencies for a computed or effect by walking the _sources linked list.
+ * This provides the complete picture of what signals a computed/effect depends on,
+ * not just the one that triggered an update.
+ */
+function getAllCurrentDependencies(
+	node: ComputedType | Effect
+): string[] | undefined {
+	if (!("_sources" in node)) {
+		return undefined;
+	}
+
+	const dependencies: string[] = [];
+	let sourceNode = (node as ComputedType)._sources;
+
+	while (sourceNode) {
+		const source = sourceNode._source as Signal;
+		dependencies.push(getSignalId(source));
+		sourceNode = sourceNode._nextSource;
+	}
+
+	return dependencies.length > 0 ? dependencies : undefined;
+}
+
 function bubbleUpToBaseSignal(
 	node: ComputedType,
 	depth = 1
@@ -256,6 +271,7 @@ Effect.prototype._debugCallback = function (this: Effect) {
 				depth: baseSignal.depth,
 				type: "effect",
 				subscribedTo: getSignalId(baseSignal.signal),
+				allDependencies: getAllCurrentDependencies(this as any),
 			});
 			updateInfoMap.set(baseSignal.signal, updateInfoList);
 		}
@@ -287,6 +303,17 @@ Effect.prototype._dispose = function (this: Effect) {
 
 	return originalEffectDispose.call(this);
 };
+
+let scheduled = false;
+function scheduleFlush() {
+	if (!scheduled) {
+		scheduled = true;
+		queueMicrotask(() => {
+			flushUpdates();
+			scheduled = false;
+		});
+	}
+}
 
 function flushUpdates() {
 	const signals = Array.from(inflightUpdates);

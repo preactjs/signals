@@ -74,6 +74,8 @@ export interface SignalUpdate {
 	receivedAt: number;
 	depth?: number;
 	subscribedTo?: string;
+	/** All signal IDs this computed/effect currently depends on */
+	allDependencies?: string[];
 }
 
 export type Divider = { type: "divider" };
