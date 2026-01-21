@@ -44,7 +44,7 @@
     "README.md"
   ],
   "scripts": {
-    "prepublishOnly": "cd ../.. && pnpm _build:devtools-ui",
+    "prepublishOnly": "cd ../.. && pnpm build",
     "test": "vitest run"
   },
   "dependencies": {
