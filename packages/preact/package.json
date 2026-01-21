@@ -63,6 +63,7 @@
     "preact-render-to-string": "^5.2.5"
   },
   "publishConfig": {
+    "access": "public",
     "provenance": true
   }
 }

@@ -79,6 +79,7 @@
     "react-router-dom": "^6.9.0"
   },
   "publishConfig": {
+    "access": "public",
     "provenance": true
   }
 }
