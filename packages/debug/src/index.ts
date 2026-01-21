@@ -210,16 +210,23 @@ function getAllCurrentDependencies(
 		return undefined;
 	}
 
-	const dependencies: string[] = [];
+	const dependencies: Set<string> = new Set();
 	let sourceNode = (node as ComputedType)._sources;
 
 	while (sourceNode) {
 		const source = sourceNode._source as Signal;
-		dependencies.push(getSignalId(source));
+		dependencies.add(getSignalId(source));
+		sourceNode = sourceNode._prevSource;
+	}
+
+	sourceNode = (node as ComputedType)._sources;
+	while (sourceNode) {
+		const source = sourceNode._source as Signal;
+		dependencies.add(getSignalId(source));
 		sourceNode = sourceNode._nextSource;
 	}
 
-	return dependencies.length > 0 ? dependencies : undefined;
+	return dependencies.size > 0 ? Array.from(dependencies) : undefined;
 }
 
 function bubbleUpToBaseSignal(
