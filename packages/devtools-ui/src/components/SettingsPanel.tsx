@@ -2,14 +2,14 @@ import { useSignal, useSignalEffect } from "@preact/signals";
 import { Button } from "./Button";
 import type { Settings } from "@preact/signals-devtools-adapter";
 import { getContext } from "../context";
+import { useRef } from "preact/hooks";
 
 export function SettingsPanel() {
 	const { settingsStore } = getContext();
+	const popover = useRef<HTMLDivElement>(null);
 
-	const onCancel = settingsStore.hideSettings;
 	const onApply = settingsStore.applySettings;
 	const settings = settingsStore.settings;
-	const isVisible = settingsStore.showSettings;
 
 	const localSettings = useSignal<Settings>(settings);
 
@@ -21,12 +21,18 @@ export function SettingsPanel() {
 		onApply(localSettings.value);
 	};
 
-	if (!isVisible) {
-		return null;
-	}
+	const onCancel = () => {
+		// @ts-expect-error
+		popover.current?.hide();
+	};
 
 	return (
-		<div className="settings-panel">
+		<div
+			ref={popover}
+			popover="auto"
+			id="settings-panel-popover"
+			className="settings-panel"
+		>
 			<div className="settings-content">
 				<h3>Debug Configuration</h3>
 

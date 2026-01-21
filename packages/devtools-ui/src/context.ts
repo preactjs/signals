@@ -288,21 +288,11 @@ export function createSettingsStore(adapter: DevToolsAdapter) {
 		filterPatterns: [],
 	});
 
-	const showSettings = signal<boolean>(false);
 	const showDisposedSignals = signal<boolean>(false);
 
 	const applySettings = (newSettings: Settings) => {
 		settings.value = newSettings;
 		adapter.sendConfig(newSettings);
-		showSettings.value = false;
-	};
-
-	const toggleSettings = () => {
-		showSettings.value = !showSettings.value;
-	};
-
-	const hideSettings = () => {
-		showSettings.value = false;
 	};
 
 	const toggleShowDisposedSignals = () => {
@@ -320,9 +310,6 @@ export function createSettingsStore(adapter: DevToolsAdapter) {
 		get settings() {
 			return settings.value;
 		},
-		get showSettings() {
-			return showSettings.value;
-		},
 		get showDisposedSignals() {
 			return showDisposedSignals.value;
 		},
@@ -330,8 +317,6 @@ export function createSettingsStore(adapter: DevToolsAdapter) {
 			settings.value = newSettings;
 		},
 		applySettings,
-		toggleSettings,
-		hideSettings,
 		toggleShowDisposedSignals,
 	};
 }
