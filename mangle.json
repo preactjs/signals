@@ -29,6 +29,7 @@
     "cname": 6,
     "props": {
       "core: Node": "",
+      "$_debugId": "a",
       "$_watched": "W",
       "$_unwatched": "Z",
       "$_source": "S",
