@@ -16,6 +16,8 @@ const Item = (props: any) => {
 		: props.children;
 };
 
+Item.displayName = "Item";
+
 export function Show<T = boolean>(props: ShowProps<T>): JSX.Element | null {
 	useSignals();
 	const value =
@@ -23,6 +25,8 @@ export function Show<T = boolean>(props: ShowProps<T>): JSX.Element | null {
 	if (!value) return (props.fallback as JSX.Element) || null;
 	return <Item v={value} children={props.children} />;
 }
+
+Show.displayName = "Show";
 
 interface ForProps<T> {
 	each:
@@ -64,6 +68,8 @@ export function For<T>(props: ForProps<T>): JSX.Element | null {
 
 	return createElement(Fragment, { children: items });
 }
+
+For.displayName = "For";
 
 export function useLiveSignal<T>(value: T): Signal<T> {
 	const s = useSignal(value);
