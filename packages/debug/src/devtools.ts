@@ -202,9 +202,6 @@ class DevToolsCommunicator {
 	}
 
 	public getSignalId(signal: any): string {
-		// Create a unique identifier for the signal
-		if (signal._id) return signal._id;
-
 		// Fallback to creating an ID based on the signal reference
 		if (!signal._debugId) {
 			signal._debugId = `signal_${Math.random().toString(36).substr(2, 9)}`;
