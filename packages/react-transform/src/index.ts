@@ -37,6 +37,7 @@ type HookUsage =
 
 const logger = {
 	verbose: debug("signals:react-transform:verbose"),
+	fnSearch: debug("signals:react-transform:fn-search"),
 	transformed: debug("signals:react-transform:transformed"),
 	skipped: debug("signals:react-transform:skipped"),
 };
@@ -79,16 +80,22 @@ function findParentComponentOrHook(
 ): NodePath<FunctionLike> | null {
 	const parentFunctionScope = path.scope.getFunctionParent();
 	if (!parentFunctionScope) {
+		logger.fnSearch("No higher function scope found in %s", filename);
 		return null;
 	}
 
 	const parentFunctionPath = parentFunctionScope.path as NodePath<FunctionLike>;
 	const fnName = getFunctionName(parentFunctionPath, filename);
+	logger.fnSearch('Checking parent function "%s" in %s', fnName, filename);
+
 	if (isComponentName(fnName) || isCustomHookName(fnName)) {
+		logger.fnSearch('Found parent function "%s" in %s', fnName, filename);
 		return parentFunctionPath;
 	} else if (isCustomHookCallback(parentFunctionPath)) {
+		logger.fnSearch('Function "%s" is a hook callback arg, stopping', fnName);
 		return null;
 	} else if (!parentFunctionPath.parentPath) {
+		logger.fnSearch('Function "%s" has no parent, stopping', fnName, filename);
 		return null;
 	}
 
