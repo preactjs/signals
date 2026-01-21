@@ -574,80 +574,6 @@ describe("@preact/signals-devtools-ui", () => {
 		});
 	});
 
-	describe("SettingsPanel", () => {
-		beforeEach(() => {
-			initDevTools(mockAdapter);
-		});
-
-		it("should not render when not visible", () => {
-			render(<SettingsPanel />, scratch);
-
-			const settingsPanel = scratch.querySelector(".settings-panel");
-			expect(settingsPanel).to.be.null;
-		});
-
-		it("should render when settings are visible", () => {
-			const context = getContext();
-			context.settingsStore.toggleSettings();
-
-			render(<SettingsPanel />, scratch);
-
-			const settingsPanel = scratch.querySelector(".settings-panel");
-			expect(settingsPanel).to.not.be.null;
-		});
-
-		it("should have enable debug updates checkbox", () => {
-			const context = getContext();
-			context.settingsStore.toggleSettings();
-
-			render(<SettingsPanel />, scratch);
-
-			const checkboxes = scratch.querySelectorAll('input[type="checkbox"]');
-			expect(checkboxes.length).to.be.greaterThan(0);
-		});
-
-		it("should have max updates per second input", () => {
-			const context = getContext();
-			context.settingsStore.toggleSettings();
-
-			render(<SettingsPanel />, scratch);
-
-			const numberInput = scratch.querySelector('input[type="number"]');
-			expect(numberInput).to.not.be.null;
-		});
-
-		it("should have Apply and Cancel buttons", () => {
-			const context = getContext();
-			context.settingsStore.toggleSettings();
-
-			render(<SettingsPanel />, scratch);
-
-			const buttons = scratch.querySelectorAll("button");
-			const buttonTexts = Array.from(buttons).map(b => b.textContent);
-
-			expect(buttonTexts).to.include("Apply");
-			expect(buttonTexts).to.include("Cancel");
-		});
-
-		it("should close when Cancel is clicked", () => {
-			const context = getContext();
-			context.settingsStore.toggleSettings();
-
-			render(<SettingsPanel />, scratch);
-
-			const cancelButton = Array.from(scratch.querySelectorAll("button")).find(
-				b => b.textContent === "Cancel"
-			) as HTMLButtonElement;
-			cancelButton.click();
-
-			// Re-render to check state
-			render(<SettingsPanel />, scratch);
-
-			const settingsPanel = scratch.querySelector(".settings-panel");
-			expect(settingsPanel).to.be.null;
-		});
-	});
-
 	describe("UpdatesContainer", () => {
 		beforeEach(() => {
 			initDevTools(mockAdapter);
@@ -979,30 +905,6 @@ describe("@preact/signals-devtools-ui", () => {
 			expect(context.settingsStore.settings.maxUpdatesPerSecond).to.equal(60);
 		});
 
-		it("should toggle settings visibility", () => {
-			initDevTools(mockAdapter);
-			const context = getContext();
-
-			expect(context.settingsStore.showSettings).to.be.false;
-
-			context.settingsStore.toggleSettings();
-			expect(context.settingsStore.showSettings).to.be.true;
-
-			context.settingsStore.toggleSettings();
-			expect(context.settingsStore.showSettings).to.be.false;
-		});
-
-		it("should hide settings", () => {
-			initDevTools(mockAdapter);
-			const context = getContext();
-
-			context.settingsStore.toggleSettings();
-			expect(context.settingsStore.showSettings).to.be.true;
-
-			context.settingsStore.hideSettings();
-			expect(context.settingsStore.showSettings).to.be.false;
-		});
-
 		it("should apply settings and call sendConfig", () => {
 			initDevTools(mockAdapter);
 			const context = getContext();
@@ -1014,13 +916,11 @@ describe("@preact/signals-devtools-ui", () => {
 				filterPatterns: ["test"],
 			};
 
-			context.settingsStore.toggleSettings();
 			context.settingsStore.applySettings(newSettings);
 
 			expect(mockAdapter.sendConfig).toHaveBeenCalledWith(newSettings);
 			expect(context.settingsStore.settings.enabled).to.be.false;
 			expect(context.settingsStore.settings.maxUpdatesPerSecond).to.equal(30);
-			expect(context.settingsStore.showSettings).to.be.false;
 		});
 
 		it("should update settings on configReceived event", () => {

@@ -3,9 +3,8 @@ import { Button } from "./Button";
 import { getContext } from "../context";
 
 export function Header() {
-	const { connectionStore, updatesStore, settingsStore } = getContext();
+	const { connectionStore, updatesStore } = getContext();
 
-	const onToggleSettings = settingsStore.toggleSettings;
 	const onTogglePause = () => {
 		updatesStore.isPaused.value = !updatesStore.isPaused.value;
 	};
@@ -30,9 +29,7 @@ export function Header() {
 						{updatesStore.isPaused.value ? "Resume" : "Pause"}
 					</Button>
 				)}
-				{onToggleSettings && (
-					<Button onClick={onToggleSettings}>Settings</Button>
-				)}
+				<Button popovertarget="settings-panel-popover">Settings</Button>
 			</div>
 		</header>
 	);
