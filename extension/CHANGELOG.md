@@ -1,5 +1,13 @@
 # preact-signals-devtools
 
+## 1.1.2
+
+### Patch Changes
+
+- Updated dependencies [[`ac5032e`](https://github.com/preactjs/signals/commit/ac5032e63000cdb0bf84e20a1b44c161788a1607)]:
+  - @preact/signals@2.6.1
+  - @preact/signals-devtools-ui@0.1.1
+
 ## 1.1.1
 
 ### Patch Changes
