@@ -15,6 +15,8 @@ const Item = (props: any) => {
 		: props.children;
 };
 
+Item.displayName = "Item";
+
 export function Show<T = boolean>(
 	props: ShowProps<T>
 ): ComponentChildren | null {
@@ -23,6 +25,8 @@ export function Show<T = boolean>(
 	if (!value) return props.fallback || null;
 	return <Item v={value} children={props.children} />;
 }
+
+Show.displayName = "Show";
 
 interface ForProps<T> {
 	each:
@@ -61,6 +65,8 @@ export function For<T>(props: ForProps<T>): ComponentChildren | null {
 
 	return createElement(Fragment, null, items);
 }
+
+For.displayName = "For";
 
 export function useLiveSignal<T>(value: T): Signal<T> {
 	const s = useSignal(value);
