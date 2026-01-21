@@ -1,5 +1,16 @@
 # @preact/signals-react-transform
 
+## 0.8.0
+
+### Minor Changes
+
+- [#839](https://github.com/preactjs/signals/pull/839) [`18969fa`](https://github.com/preactjs/signals/commit/18969fada30397f537828af9e839acc7348f9684) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Add `componentName` to `useSignals` for debugging
+
+### Patch Changes
+
+- Updated dependencies [[`ac5032e`](https://github.com/preactjs/signals/commit/ac5032e63000cdb0bf84e20a1b44c161788a1607), [`18969fa`](https://github.com/preactjs/signals/commit/18969fada30397f537828af9e839acc7348f9684)]:
+  - @preact/signals-react@3.7.0
+
 ## 0.7.0
 
 ### Minor Changes
