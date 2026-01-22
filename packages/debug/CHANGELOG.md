@@ -1,5 +1,11 @@
 # @preact/signals-debug
 
+## 1.2.1
+
+### Patch Changes
+
+- [`54094d5`](https://github.com/preactjs/signals/commit/54094d53be8a3dce2a327288aff85324001edfa3) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Format react/preact components in the debug logging https://github.com/preactjs/signals/pull/844
+
 ## 1.2.0
 
 ### Minor Changes
