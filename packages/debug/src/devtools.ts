@@ -128,6 +128,13 @@ class DevToolsCommunicator {
 	}
 
 	public sendUpdate(updateInfoList: UpdateInfo[]) {
+		// Check if there are any listeners or if the extension is connected
+		const hasListeners =
+			this.listeners.has("update") && this.listeners.get("update")!.size > 0;
+		if (!hasListeners && !this.isExtensionConnected) {
+			return; // No adapters registered, skip processing
+		}
+
 		const formattedUpdates = updateInfoList.map(({ signal, ...info }) => {
 			return info.type === "value"
 				? {
@@ -151,16 +158,20 @@ class DevToolsCommunicator {
 		});
 
 		// Emit for direct listeners (e.g., DirectAdapter)
-		this.emit("update", formattedUpdates);
+		if (hasListeners) {
+			this.emit("update", formattedUpdates);
+		}
 
 		// Post message for browser extension
-		this.postMessage({
-			type: "SIGNALS_UPDATE",
-			payload: {
-				updates: formattedUpdates,
-			},
-			timestamp: Date.now(),
-		});
+		if (this.isExtensionConnected) {
+			this.postMessage({
+				type: "SIGNALS_UPDATE",
+				payload: {
+					updates: formattedUpdates,
+				},
+				timestamp: Date.now(),
+			});
+		}
 	}
 
 	public sendConfig(config: any) {
@@ -237,27 +248,61 @@ class DevToolsCommunicator {
 	}
 }
 
-function deeplyRemoveFunctions(obj: any, visited = new WeakSet()): any {
+const MAX_DEPTH = 5;
+const MAX_KEYS = 50;
+const MAX_ARRAY_LENGTH = 100;
+
+function deeplyRemoveFunctions(
+	obj: any,
+	visited: WeakSet<object> | null = null,
+	depth = 0
+): any {
+	// Fast path for primitives - no WeakSet needed
 	if (obj === null || obj === undefined) return obj;
-	if (typeof obj === "function") return "[Function]";
-	if (typeof obj !== "object") return obj;
+
+	const type = typeof obj;
+	if (type === "function") return "[Function]";
 	if (typeof obj === "bigint") return obj.toString();
 	if (obj instanceof Date) return obj.toISOString();
+	if (type !== "object") return obj;
+
+	// Depth check before any object processing
+	if (depth > MAX_DEPTH) return "[Max Depth Reached]";
+
+	// Lazy initialization of visited set only when we have objects
+	if (visited === null) {
+		visited = new WeakSet();
+	}
 
 	// Handle circular references
 	if (visited.has(obj)) return "[Circular]";
 	visited.add(obj);
 
-	if (Array.isArray(obj)) {
-		return obj.map(item => deeplyRemoveFunctions(item, visited));
-	}
+	let result: any;
 
-	const result: any = {};
-	for (const key in obj) {
-		if (Object.prototype.hasOwnProperty.call(obj, key)) {
-			result[key] = deeplyRemoveFunctions(obj[key], visited);
+	if (Array.isArray(obj)) {
+		// Limit array processing for very large arrays
+		const len = Math.min(obj.length, MAX_ARRAY_LENGTH);
+		result = new Array(len);
+		for (let i = 0; i < len; i++) {
+			result[i] = deeplyRemoveFunctions(obj[i], visited, depth + 1);
+		}
+		if (obj.length > MAX_ARRAY_LENGTH) {
+			result.push(`[...${obj.length - MAX_ARRAY_LENGTH} more items]`);
+		}
+	} else {
+		result = {};
+		const keys = Object.keys(obj);
+		const keyCount = Math.min(keys.length, MAX_KEYS);
+		for (let i = 0; i < keyCount; i++) {
+			const key = keys[i];
+			result[key] = deeplyRemoveFunctions(obj[key], visited, depth + 1);
+		}
+		if (keys.length > MAX_KEYS) {
+			result["..."] = `[${keys.length - MAX_KEYS} more keys]`;
 		}
 	}
+
 	return result;
 }
 

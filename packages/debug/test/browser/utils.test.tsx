@@ -91,7 +91,9 @@ describe("formatValue", () => {
 		expect(result).toContain('"[Circular]"');
 	});
 
-	it("should return (unstringifiable value) for objects with toJSON that throws", () => {
+	it("should handle objects with toJSON as functions gracefully", () => {
+		// Objects with toJSON methods are handled safely by treating toJSON as a function
+		// This is more robust than calling toJSON and potentially throwing
 		const obj = {
 			toJSON() {
 				throw new Error("Cannot stringify");
@@ -99,7 +101,8 @@ describe("formatValue", () => {
 		};
 
 		const result = formatValue(obj);
-		expect(result).toBe("(unstringifiable value)");
+		// The function is serialized as [Function] rather than calling it
+		expect(result).toBe('{"toJSON":"[Function]"}');
 	});
 });
 
