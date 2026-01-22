@@ -64,9 +64,10 @@
     "@changesets/cli": "^2.27.1",
     "@preact/signals-react-transform": "workspace:*",
     "@types/babel__traverse": "^7.18.5",
-    "@types/node": "^18.19.103",
-    "@vitest/browser": "^3.2.4",
-    "@vitest/coverage-v8": "^3.2.4",
+    "@types/node": "^20.0.0",
+    "@vitest/browser": "^4.0.17",
+    "@vitest/browser-playwright": "^4.0.17",
+    "@vitest/coverage-v8": "^4.0.17",
     "babel-plugin-istanbul": "^6.1.1",
     "babel-plugin-transform-rename-properties": "^0.1.0",
     "buffer": "^6.0.3",
@@ -83,7 +84,7 @@
     "prettier": "^3.6.2",
     "shx": "^0.3.4",
     "typescript": "~5.8.3",
-    "vitest": "^3.2.4",
+    "vitest": "^4.0.17",
     "vite": "^6.3.5"
   },
   "lint-staged": {

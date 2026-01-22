@@ -1,5 +1,11 @@
 # @preact/signals
 
+## 2.6.1
+
+### Patch Changes
+
+- [#836](https://github.com/preactjs/signals/pull/836) [`ac5032e`](https://github.com/preactjs/signals/commit/ac5032e63000cdb0bf84e20a1b44c161788a1607) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Ensure that the `For` and `Show` component have display-names
+
 ## 2.6.0
 
 ### Minor Changes
