@@ -1,14 +1,16 @@
 import { describe, it, expect } from "vitest";
-
-// We need to import and test the deeplyRemoveFunctions function
-// Since it's not exported, we'll test it through the public API
-// But for unit testing, let's create a test version
+import { isReactOrPreactElement, formatReactElement } from "../../src/utils";
 
 // Test version of deeplyRemoveFunctions to test circular reference handling
 function deeplyRemoveFunctions(obj: any, visited = new WeakSet()): any {
 	if (obj === null || obj === undefined) return obj;
 	if (typeof obj === "function") return "[Function]";
 	if (typeof obj !== "object") return obj;
+
+	// Early bail for React/Preact elements - format them concisely
+	if (isReactOrPreactElement(obj)) {
+		return formatReactElement(obj);
+	}
 
 	// Handle circular references
 	if (visited.has(obj)) return "[Circular]";
@@ -209,5 +211,121 @@ describe("deeplyRemoveFunctions", () => {
 			},
 			self: "[Circular]",
 		});
+	});
+});
+
+describe("React/Preact element formatting", () => {
+	it("should format DOM element", () => {
+		const element = {
+			$$typeof: Symbol.for("react.element"),
+			type: "div",
+			props: { className: "test" },
+			key: null,
+		};
+		const result = deeplyRemoveFunctions(element);
+		expect(result).toBe("<div {...} />");
+	});
+
+	it("should format named function component", () => {
+		function MyComponent() {
+			return null;
+		}
+		const element = {
+			$$typeof: Symbol.for("react.element"),
+			type: MyComponent,
+			props: { value: 42 },
+			key: null,
+		};
+		const result = deeplyRemoveFunctions(element);
+		expect(result).toBe("<MyComponent {...} />");
+	});
+
+	it("should format component with displayName", () => {
+		const Component = () => null;
+		Component.displayName = "CustomName";
+		const element = {
+			$$typeof: Symbol.for("react.element"),
+			type: Component,
+			props: {},
+			key: null,
+		};
+		const result = deeplyRemoveFunctions(element);
+		expect(result).toBe("<CustomName />");
+	});
+
+	it("should format element without props", () => {
+		const element = {
+			$$typeof: Symbol.for("react.element"),
+			type: "span",
+			props: {},
+			key: null,
+		};
+		const result = deeplyRemoveFunctions(element);
+		expect(result).toBe("<span />");
+	});
+
+	it("should format nested elements in objects", () => {
+		const element = {
+			$$typeof: Symbol.for("react.element"),
+			type: "div",
+			props: { id: "test" },
+			key: null,
+		};
+		const result = deeplyRemoveFunctions({ child: element, value: 42 });
+		expect(result).toEqual({ child: "<div {...} />", value: 42 });
+	});
+
+	it("should format Preact elements (duck-typed)", () => {
+		const element = {
+			type: "button",
+			props: { onClick: () => {} },
+			key: null,
+		};
+		const result = deeplyRemoveFunctions(element);
+		expect(result).toBe("<button {...} />");
+	});
+
+	it("should format React 19 transitional elements", () => {
+		const element = {
+			$$typeof: Symbol.for("react.transitional.element"),
+			type: "section",
+			props: { className: "wrapper" },
+			key: null,
+		};
+		const result = deeplyRemoveFunctions(element);
+		expect(result).toBe("<section {...} />");
+	});
+
+	it("should format anonymous function component", () => {
+		// Create a truly anonymous function (not inferred from property name)
+		const anonymousFn = (
+			() => () =>
+				null
+		)();
+		const element = {
+			$$typeof: Symbol.for("react.element"),
+			type: anonymousFn,
+			props: { data: "test" },
+			key: null,
+		};
+		const result = deeplyRemoveFunctions(element);
+		expect(result).toBe("<Component {...} />");
+	});
+
+	it("should format elements in arrays", () => {
+		const element1 = {
+			$$typeof: Symbol.for("react.element"),
+			type: "li",
+			props: { key: 1 },
+			key: "1",
+		};
+		const element2 = {
+			$$typeof: Symbol.for("react.element"),
+			type: "li",
+			props: { key: 2 },
+			key: "2",
+		};
+		const result = deeplyRemoveFunctions([element1, element2]);
+		expect(result).toEqual(["<li {...} />", "<li {...} />"]);
 	});
 });

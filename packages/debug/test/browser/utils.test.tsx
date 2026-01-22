@@ -104,6 +104,81 @@ describe("formatValue", () => {
 		// The function is serialized as [Function] rather than calling it
 		expect(result).toBe('{"toJSON":"[Function]"}');
 	});
+
+	it("should format React DOM element", () => {
+		const element = {
+			$$typeof: Symbol.for("react.element"),
+			type: "div",
+			props: { className: "test" },
+			key: null,
+		};
+		expect(formatValue(element)).toBe("<div {...} />");
+	});
+
+	it("should format React function component element", () => {
+		function MyComponent() {
+			return null;
+		}
+		const element = {
+			$$typeof: Symbol.for("react.element"),
+			type: MyComponent,
+			props: { value: 42 },
+			key: null,
+		};
+		expect(formatValue(element)).toBe("<MyComponent {...} />");
+	});
+
+	it("should format element with displayName", () => {
+		const Component = () => null;
+		Component.displayName = "CustomName";
+		const element = {
+			$$typeof: Symbol.for("react.element"),
+			type: Component,
+			props: {},
+			key: null,
+		};
+		expect(formatValue(element)).toBe("<CustomName />");
+	});
+
+	it("should format element without props", () => {
+		const element = {
+			$$typeof: Symbol.for("react.element"),
+			type: "span",
+			props: {},
+			key: null,
+		};
+		expect(formatValue(element)).toBe("<span />");
+	});
+
+	it("should format nested elements in objects", () => {
+		const element = {
+			$$typeof: Symbol.for("react.element"),
+			type: "div",
+			props: { id: "test" },
+			key: null,
+		};
+		const result = formatValue({ child: element, value: 42 });
+		expect(result).toBe('{"child":"<div {...} />","value":42}');
+	});
+
+	it("should format Preact elements (duck-typed)", () => {
+		const element = {
+			type: "button",
+			props: { onClick: () => {} },
+			key: null,
+		};
+		expect(formatValue(element)).toBe("<button {...} />");
+	});
+
+	it("should format React 19 transitional elements", () => {
+		const element = {
+			$$typeof: Symbol.for("react.transitional.element"),
+			type: "section",
+			props: { className: "wrapper" },
+			key: null,
+		};
+		expect(formatValue(element)).toBe("<section {...} />");
+	});
 });
 
 describe("getSignalName", () => {
