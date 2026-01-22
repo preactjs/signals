@@ -1,34 +1,138 @@
 import { Effect, Signal } from "@preact/signals-core";
 
-export function getSignalName(signal: Signal | Effect): string {
-	const name = signal.name;
-	if (name === "sub") {
-		return `${(signal as Effect)._sources?._source.name}-subscribe`;
-	}
-	return name || "(anonymous signal)";
+export function getSignalName(signal: any, isEffect: boolean): string {
+	// Try to get a meaningful name for the signal
+	if (signal.displayName) return signal.displayName;
+	if (signal.name)
+		return signal.name === "sub"
+			? `${(signal as Effect)._sources?._source.name}-subscribe`
+			: signal.name;
+	if (signal._fn && signal._fn.name) return signal._fn.name;
+	if (isEffect) return "effect";
+	const signalType = "_fn" in signal ? "computed" : "signal";
+	return `(anonymous ${signalType})`;
 }
 
-export function formatValue(value: any): string {
-	try {
-		if (typeof value !== "object" || value === null) {
-			return String(value);
+const MAX_STRING_LENGTH = 1000;
+const MAX_FORMAT_DEPTH = 5;
+const MAX_FORMAT_KEYS = 30;
+const MAX_FORMAT_ARRAY_LENGTH = 50;
+
+// Cache for recently formatted values
+const formatCache = new WeakMap<object, string>();
+
+export function formatValue(value: any, depth = 0): string {
+	// Fast path for primitives - most common case
+	if (value === null) return "null";
+	if (value === undefined) return "undefined";
+
+	const type = typeof value;
+	if (type === "string") {
+		// Truncate very long strings
+		return value.length > MAX_STRING_LENGTH
+			? value.slice(0, MAX_STRING_LENGTH) + "..."
+			: value;
+	}
+	if (type === "number" || type === "boolean") return String(value);
+	if (type === "function") return "[Function]";
+	if (type === "symbol") return value.toString();
+	if (type === "bigint") return value.toString() + "n";
+
+	// Object handling with caching
+	if (type === "object") {
+		// Check cache first
+		const cached = formatCache.get(value);
+		if (cached !== undefined) {
+			return cached;
 		}
 
-		// Handle circular references with a replacer function
+		const result = formatObjectValue(value);
+
+		// Cache the result
+		formatCache.set(value, result);
+		return result;
+	}
+
+	return String(value);
+}
+
+function formatObjectValue(value: any): string {
+	try {
+		// Fast path for common types
+		if (value instanceof Date) {
+			return value.toISOString();
+		}
+		if (value instanceof RegExp) {
+			return value.toString();
+		}
+		if (value instanceof Error) {
+			return `${value.name}: ${value.message}`;
+		}
+
+		// For arrays and objects, use optimized custom serialization
+		// This avoids the overhead of JSON.stringify's replacer function
 		const seen = new WeakSet();
-		return JSON.stringify(value, (key, val) => {
-			if (typeof val === "bigint") {
-				return val.toString();
-			}
-			if (typeof val === "object" && val !== null) {
-				if (seen.has(val)) {
-					return "[Circular]";
-				}
-				seen.add(val);
-			}
-			return val;
-		});
+		return fastStringify(value, seen, 0);
 	} catch {
 		return "(unstringifiable value)";
 	}
+}
+
+function fastStringify(
+	value: any,
+	seen: WeakSet<object>,
+	depth: number
+): string {
+	if (value === null) return "null";
+	if (value === undefined) return "undefined";
+
+	const type = typeof value;
+	if (type === "bigint") return value.toString();
+	if (type === "string") return JSON.stringify(value); // Use JSON for proper escaping
+	if (type === "number" || type === "boolean") return String(value);
+	if (type === "function") return '"[Function]"';
+
+	if (type !== "object") return String(value);
+
+	if (depth > MAX_FORMAT_DEPTH) return '"[Max Depth]"';
+
+	if (seen.has(value)) return '"[Circular]"';
+	seen.add(value);
+
+	if (Array.isArray(value)) {
+		if (value.length === 0) return "[]";
+		const len = Math.min(value.length, MAX_FORMAT_ARRAY_LENGTH);
+		const parts: string[] = new Array(len);
+		for (let i = 0; i < len; i++) {
+			parts[i] = fastStringify(value[i], seen, depth + 1);
+		}
+		if (value.length > MAX_FORMAT_ARRAY_LENGTH) {
+			parts.push(`"...${value.length - MAX_FORMAT_ARRAY_LENGTH} more"`);
+		}
+		return "[" + parts.join(",") + "]";
+	}
+
+	// Handle plain objects
+	const keys = Object.keys(value);
+	if (keys.length === 0) return "{}";
+
+	const keyCount = Math.min(keys.length, MAX_FORMAT_KEYS);
+	const parts: string[] = new Array(keyCount);
+	for (let i = 0; i < keyCount; i++) {
+		const key = keys[i];
+		parts[i] =
+			JSON.stringify(key) + ":" + fastStringify(value[key], seen, depth + 1);
+	}
+	if (keys.length > MAX_FORMAT_KEYS) {
+		parts.push(`"...":"${keys.length - MAX_FORMAT_KEYS} more keys"`);
+	}
+	return "{" + parts.join(",") + "}";
+}
+
+export function getSignalId(signal: Signal | Effect): string {
+	if (!(signal as any)._debugId) {
+		(signal as any)._debugId =
+			`signal_${Math.random().toString(36).substring(2, 9)}`;
+	}
+	return (signal as any)._debugId;
 }
