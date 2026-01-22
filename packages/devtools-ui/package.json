@@ -44,7 +44,7 @@
     "README.md"
   ],
   "scripts": {
-    "prepublishOnly": "cd ../.. && pnpm build",
+    "prepublishOnly": "cd ../.. && sleep 60 && pnpm build:devtools-adapter && pnpm build:preact && pnpm _build:devtools-ui",
     "test": "vitest run"
   },
   "dependencies": {
