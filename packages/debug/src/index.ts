@@ -49,6 +49,16 @@ function trackDependency(target: Signal | Effect, source: Signal | Effect) {
 	signalDependencies.get(target)?.add(sourceId);
 }
 
+let scheduled = false;
+function scheduleFlush() {
+	if (!scheduled) {
+		scheduled = true;
+		queueMicrotask(() => {
+			flushUpdates();
+			scheduled = false;
+		});
+	}
+}
 // Store original methods
 const originalSubscribe = Signal.prototype._subscribe;
 const originalUnsubscribe = Signal.prototype._unsubscribe;
@@ -93,9 +103,7 @@ Signal.prototype._subscribe = function (node: Node) {
 						type: "value",
 					},
 				]);
-				queueMicrotask(() => {
-					flushUpdates();
-				});
+				scheduleFlush();
 			}
 		});
 		initializing = false;
