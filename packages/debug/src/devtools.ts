@@ -1,5 +1,10 @@
 import { UpdateInfo } from "./internal";
-import { getSignalId, getSignalName } from "./utils";
+import {
+	getSignalId,
+	getSignalName,
+	isReactOrPreactElement,
+	formatReactElement,
+} from "./utils";
 
 /** Formatted signal update for external consumers */
 export interface FormattedSignalUpdate {
@@ -265,6 +270,11 @@ function deeplyRemoveFunctions(
 	if (typeof obj === "bigint") return obj.toString();
 	if (obj instanceof Date) return obj.toISOString();
 	if (type !== "object") return obj;
+
+	// Early bail for React/Preact elements - format them concisely
+	if (isReactOrPreactElement(obj)) {
+		return formatReactElement(obj);
+	}
 
 	// Depth check before any object processing
 	if (depth > MAX_DEPTH) return "[Max Depth Reached]";

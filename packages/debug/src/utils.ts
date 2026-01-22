@@ -21,6 +21,46 @@ const MAX_FORMAT_ARRAY_LENGTH = 50;
 // Cache for recently formatted values
 const formatCache = new WeakMap<object, string>();
 
+export function isReactOrPreactElement(obj: any): boolean {
+	if (obj === null || typeof obj !== "object") return false;
+
+	// Check for React/Preact element markers
+	const typeofSymbol = obj.$$typeof;
+	if (typeofSymbol) {
+		// React 17+, React 19, Preact
+		return (
+			typeofSymbol === Symbol.for("react.element") ||
+			typeofSymbol === Symbol.for("react.transitional.element")
+		);
+	}
+
+	// Fallback: duck-type check for Preact elements without $$typeof
+	return (
+		"type" in obj &&
+		"props" in obj &&
+		"key" in obj &&
+		(typeof obj.type === "string" || typeof obj.type === "function")
+	);
+}
+
+export function formatReactElement(obj: any): string {
+	const type = obj.type;
+	let typeName: string;
+
+	if (typeof type === "string") {
+		// DOM element like 'div', 'span'
+		typeName = type;
+	} else if (typeof type === "function") {
+		// Component - use displayName, name, or fallback
+		typeName = type.displayName || type.name || "Component";
+	} else {
+		typeName = "Unknown";
+	}
+
+	const hasProps = obj.props && Object.keys(obj.props).length > 0;
+	return hasProps ? `<${typeName} {...} />` : `<${typeName} />`;
+}
+
 export function formatValue(value: any, depth = 0): string {
 	// Fast path for primitives - most common case
 	if (value === null) return "null";
@@ -69,6 +109,11 @@ function formatObjectValue(value: any): string {
 			return `${value.name}: ${value.message}`;
 		}
 
+		// Early bail for React/Preact elements - format them concisely
+		if (isReactOrPreactElement(value)) {
+			return formatReactElement(value);
+		}
+
 		// For arrays and objects, use optimized custom serialization
 		// This avoids the overhead of JSON.stringify's replacer function
 		const seen = new WeakSet();
@@ -93,6 +138,11 @@ function fastStringify(
 	if (type === "function") return '"[Function]"';
 
 	if (type !== "object") return String(value);
+
+	// Early bail for React/Preact elements - format them concisely
+	if (isReactOrPreactElement(value)) {
+		return JSON.stringify(formatReactElement(value));
+	}
 
 	if (depth > MAX_FORMAT_DEPTH) return '"[Max Depth]"';
 
