@@ -1,5 +1,16 @@
 # @preact/signals-devtools-ui
 
+## 0.2.0
+
+### Minor Changes
+
+- [#828](https://github.com/preactjs/signals/pull/828) [`030e428`](https://github.com/preactjs/signals/commit/030e428cb0427b955c5dc38aea56550fda2c58bb) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Allow for disabling console.log debugging from devtools
+
+### Patch Changes
+
+- Updated dependencies [[`030e428`](https://github.com/preactjs/signals/commit/030e428cb0427b955c5dc38aea56550fda2c58bb)]:
+  - @preact/signals-devtools-adapter@0.2.0
+
 ## 0.1.1
 
 ### Patch Changes
