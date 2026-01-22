@@ -284,6 +284,7 @@ export function createSettingsStore(adapter: DevToolsAdapter) {
 	const settings = signal<Settings>({
 		enabled: true,
 		grouped: true,
+		consoleLogging: true,
 		maxUpdatesPerSecond: 60,
 		filterPatterns: [],
 	});

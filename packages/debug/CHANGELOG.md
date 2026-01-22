@@ -1,5 +1,11 @@
 # @preact/signals-debug
 
+## 1.1.2
+
+### Patch Changes
+
+- [#840](https://github.com/preactjs/signals/pull/840) [`5b295dd`](https://github.com/preactjs/signals/commit/5b295ddb0bfd3d9b2d8a6a14a0ba7e9f53987879) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Serialize date and bigint values correctly
+
 ## 1.1.1
 
 ### Patch Changes

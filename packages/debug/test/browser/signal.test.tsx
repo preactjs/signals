@@ -1,4 +1,4 @@
-/// <reference types="@vitest/browser/providers/playwright" />
+/// <reference types="@vitest/browser-playwright" />
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { cdp } from "@vitest/browser/context";
 import {
@@ -296,6 +296,7 @@ describe("Signal Debug", () => {
 		const s = signal(0);
 		const cdpSession = cdp();
 
+		// @ts-expect-error
 		await cdpSession.send("HeapProfiler.enable");
 
 		let ref: WeakRef<ReadonlySignal>;
@@ -309,8 +310,10 @@ describe("Signal Debug", () => {
 		})();
 
 		dispose();
+		// @ts-expect-error
 		await cdpSession.send("HeapProfiler.collectGarbage");
 		await new Promise(resolve => setTimeout(resolve, 0));
+		// @ts-expect-error
 		await cdpSession.send("HeapProfiler.collectGarbage");
 		expect(ref.deref()).to.be.undefined;
 	});

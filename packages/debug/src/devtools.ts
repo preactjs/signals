@@ -241,6 +241,8 @@ function deeplyRemoveFunctions(obj: any, visited = new WeakSet()): any {
 	if (obj === null || obj === undefined) return obj;
 	if (typeof obj === "function") return "[Function]";
 	if (typeof obj !== "object") return obj;
+	if (typeof obj === "bigint") return obj.toString();
+	if (obj instanceof Date) return obj.toISOString();
 
 	// Handle circular references
 	if (visited.has(obj)) return "[Circular]";

@@ -69,6 +69,26 @@ export function SettingsPanel() {
 				</div>
 
 				<div className="setting-group">
+					<label>
+						<input
+							type="checkbox"
+							checked={localSettings.value.consoleLogging}
+							onChange={e =>
+								(localSettings.value = {
+									...localSettings.value,
+									consoleLogging: (e.target as HTMLInputElement).checked,
+								})
+							}
+						/>
+						Enable console logging
+					</label>
+					<p className="setting-description">
+						When disabled, signal updates will not be logged to the browser
+						console.
+					</p>
+				</div>
+
+				<div className="setting-group">
 					<label htmlFor="maxUpdatesInput">Max updates per second:</label>
 					<input
 						type="number"

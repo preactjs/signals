@@ -823,7 +823,7 @@ describe("React Signals Babel Transform", () => {
 			const expectedOutput = `
 				import { useSignals as _useSignals } from "@preact/signals-react/runtime";
 				function MyComponent() {
-					var _effect = _useSignals(1);
+					var _effect = _useSignals(1, "MyComponent");
 					try {
 						const count = signal(0, {
 							name: "count (Component.js:3)",
@@ -853,7 +853,7 @@ describe("React Signals Babel Transform", () => {
 			const expectedOutput = `
 				import { useSignals as _useSignals } from "@preact/signals-react/runtime";
 				function MyComponent() {
-					var _effect = _useSignals(1);
+					var _effect = _useSignals(1, "MyComponent");
 					try {
 						const count = useSignal(0, {
 							name: "count (Component.js:3)",
@@ -883,7 +883,7 @@ describe("React Signals Babel Transform", () => {
 			const expectedOutput = `
 				import { useSignals as _useSignals } from "@preact/signals-react/runtime";
 				function MyComponent() {
-					var _effect = _useSignals(1);
+					var _effect = _useSignals(1, "MyComponent");
 					try {
 						const count = signal(0, {
 							name: "myCounter",
@@ -913,7 +913,7 @@ describe("React Signals Babel Transform", () => {
 			const expectedOutput = `
 				import { useSignals as _useSignals } from "@preact/signals-react/runtime";
 				function MyComponent() {
-					var _effect = _useSignals(1);
+					var _effect = _useSignals(1, "MyComponent");
 					try {
 						const count = useSignal(undefined, {
 							name: "count (Component.js:3)",

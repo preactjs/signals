@@ -52,13 +52,13 @@
   },
   "devDependencies": {
     "@preact/signals": "workspace:*",
-    "@types/node": "^18.19.103",
-    "@vitest/browser": "^3.2.4",
+    "@types/node": "^20.0.0",
+    "@vitest/browser": "^4.0.0",
     "playwright": "^1.53.1",
     "preact": "^10.26.9",
     "typescript": "~5.8.3",
-    "vite": "^6.3.5",
-    "vitest": "^3.2.4"
+    "vite": "^7.0.0",
+    "vitest": "^4.0.17"
   },
   "publishConfig": {
     "provenance": true

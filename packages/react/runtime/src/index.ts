@@ -146,15 +146,21 @@ function finishComponentEffect(
  * invoked in a component's body or hook body. See the comment on
  * `EffectStoreUsage` for more details.
  */
-function createEffectStore(_usage: EffectStoreUsage): EffectStore {
+function createEffectStore(
+	_usage: EffectStoreUsage,
+	componentName?: string
+): EffectStore {
 	let effectInstance!: Effect;
 	let endEffect: (() => void) | undefined;
 	let version = 0;
 	let onChangeNotifyReact: (() => void) | undefined;
 
-	let unsubscribe = effect(function (this: Effect) {
-		effectInstance = this;
-	});
+	let unsubscribe = effect(
+		function (this: Effect) {
+			effectInstance = this;
+		},
+		{ name: componentName || "Component" }
+	);
 	effectInstance._callback = function () {
 		version = (version + 1) | 0;
 		if (DEVTOOLS_ENABLED) {
@@ -343,7 +349,8 @@ const useIsomorphicLayoutEffect =
  * subscribe to changes to rerender the component when the signals change.
  */
 export function _useSignalsImplementation(
-	_usage: EffectStoreUsage = UNMANAGED
+	_usage: EffectStoreUsage = UNMANAGED,
+	componentName?: string
 ): EffectStore {
 	ensureFinalCleanup();
 
@@ -352,7 +359,7 @@ export function _useSignalsImplementation(
 		if (typeof window === "undefined") {
 			storeRef.current = emptyEffectStore;
 		} else {
-			storeRef.current = createEffectStore(_usage);
+			storeRef.current = createEffectStore(_usage, componentName);
 		}
 	}
 
@@ -390,8 +397,11 @@ Object.defineProperties(Signal.prototype, {
 	ref: { configurable: true, value: null },
 });
 
-export function useSignals(usage?: EffectStoreUsage): EffectStore {
-	return _useSignalsImplementation(usage);
+export function useSignals(
+	usage?: EffectStoreUsage,
+	componentName?: string
+): EffectStore {
+	return _useSignalsImplementation(usage, componentName);
 }
 
 export function useSignal<T>(value: T, options?: SignalOptions<T>): Signal<T>;

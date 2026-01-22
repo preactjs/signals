@@ -487,7 +487,7 @@ function hasValuePropertyInPattern(pattern: BabelTypes.ObjectPattern): boolean {
 	return false;
 }
 
-const tryCatchTemplate = template.statements`var STORE_IDENTIFIER = HOOK_IDENTIFIER(HOOK_USAGE);
+const tryCatchTemplate = template.statements`var STORE_IDENTIFIER = HOOK_CALL;
 try {
 	BODY
 } finally {
@@ -498,14 +498,22 @@ function wrapInTryFinally(
 	t: typeof BabelTypes,
 	path: NodePath<FunctionLike>,
 	state: PluginPass,
-	hookUsage: HookUsage
+	hookUsage: HookUsage,
+	options: PluginOptions,
+	functionName: string | null
 ): BabelTypes.BlockStatement {
 	const stopTrackingIdentifier = path.scope.generateUidIdentifier("effect");
 
+	// Build the useSignals call with optional component name
+	const args: BabelTypes.Expression[] = [t.numericLiteral(parseInt(hookUsage))];
+	if (options.experimental?.debug && functionName) {
+		args.push(t.stringLiteral(functionName));
+	}
+	const hookCall = t.callExpression(get(state, getHookIdentifier)(), args);
+
 	const statements = tryCatchTemplate({
 		STORE_IDENTIFIER: stopTrackingIdentifier,
-		HOOK_IDENTIFIER: get(state, getHookIdentifier)(),
-		HOOK_USAGE: hookUsage,
+		HOOK_CALL: hookCall,
 		BODY: t.isBlockStatement(path.node.body)
 			? path.node.body.body
 			: t.returnStatement(path.node.body),
@@ -516,11 +524,21 @@ function wrapInTryFinally(
 function prependUseSignals<T extends FunctionLike>(
 	t: typeof BabelTypes,
 	path: NodePath<T>,
-	state: PluginPass
+	state: PluginPass,
+	options: PluginOptions,
+	functionName: string | null
 ): BabelTypes.BlockStatement {
+	const args: BabelTypes.Expression[] = [];
+	if (options.experimental?.debug && functionName) {
+		// useSignals(usage, componentName)
+		// When debug is enabled, we need to pass undefined for usage and the component name
+		args.push(t.identifier("undefined"));
+		args.push(t.stringLiteral(functionName));
+	}
+
 	const body = t.blockStatement([
 		t.expressionStatement(
-			t.callExpression(get(state, getHookIdentifier)(), [])
+			t.callExpression(get(state, getHookIdentifier)(), args)
 		),
 	]);
 	if (t.isBlockStatement(path.node.body)) {
@@ -553,9 +571,16 @@ function transformFunction(
 
 	let newBody: BabelTypes.BlockStatement;
 	if (hookUsage !== UNMANAGED) {
-		newBody = wrapInTryFinally(t, path, state, hookUsage);
+		newBody = wrapInTryFinally(
+			t,
+			path,
+			state,
+			hookUsage,
+			options,
+			functionName
+		);
 	} else {
-		newBody = prependUseSignals(t, path, state);
+		newBody = prependUseSignals(t, path, state, options, functionName);
 	}
 
 	setData(path, alreadyTransformed, true);

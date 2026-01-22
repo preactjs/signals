@@ -31,6 +31,7 @@ export interface SignalDisposed {
 export interface Settings {
 	enabled: boolean;
 	grouped: boolean;
+	consoleLogging: boolean;
 	maxUpdatesPerSecond: number;
 	filterPatterns: string[];
 }
