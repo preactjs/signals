@@ -1,6 +1,6 @@
 {
   "name": "@preact/signals-devtools-adapter",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "license": "MIT",
   "description": "Communication adapters for @preact/signals-devtools-ui",
   "keywords": [
