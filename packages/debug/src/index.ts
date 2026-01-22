@@ -1,6 +1,6 @@
 /* eslint-disable no-console */
 import { Signal, Effect, Computed, effect } from "@preact/signals-core";
-import { formatValue, getSignalName } from "./utils";
+import { formatValue, getSignalId, getSignalName } from "./utils";
 import { UpdateInfo, Node, Computed as ComputedType } from "./internal";
 import { getExtensionBridge } from "./extension-bridge";
 import "./devtools"; // Initialize DevTools integration
@@ -31,14 +31,6 @@ let isGrouped = true,
 	debugEnabled = true,
 	initializing = false,
 	spacing = 0;
-
-function getSignalId(signal: Signal | Effect): string {
-	if (!(signal as any)._debugId) {
-		(signal as any)._debugId =
-			`signal_${Math.random().toString(36).substr(2, 9)}`;
-	}
-	return (signal as any)._debugId;
-}
 
 function trackDependency(target: Signal | Effect, source: Signal | Effect) {
 	const sourceId = getSignalId(source);
@@ -304,7 +296,10 @@ function flushUpdates() {
 		if (typeof window !== "undefined" && !bridge.shouldThrottleUpdate()) {
 			// Filter updates based on signal names
 			const filteredUpdates = updateInfoList.filter(updateInfo => {
-				const signalName = getSignalName(updateInfo.signal);
+				const signalName = getSignalName(
+					updateInfo.signal,
+					updateInfo.type === "effect"
+				);
 				return bridge.matchesFilter(signalName);
 			});
 
@@ -333,7 +328,7 @@ function logUpdate(info: UpdateInfo, prevDepth: number) {
 	if (!debugEnabled) return;
 
 	const { signal, type, depth } = info;
-	const name = getSignalName(signal);
+	const name = getSignalName(signal, type === "effect");
 
 	if (type === "effect") {
 		if (prevDepth === depth) {

@@ -1,4 +1,5 @@
 import { UpdateInfo } from "./internal";
+import { getSignalId, getSignalName } from "./utils";
 
 /** Formatted signal update for external consumers */
 export interface FormattedSignalUpdate {
@@ -137,14 +138,14 @@ class DevToolsCommunicator {
 						signalType: ("_fn" in signal ? "computed" : "signal") as
 							| "signal"
 							| "computed",
-						signalName: this.getSignalName(signal),
+						signalName: this.getSignalName(signal, false),
 						signalId: this.getSignalId(signal),
 					}
 				: {
 						...info,
 						type: "effect" as const,
 						signalType: "effect" as const,
-						signalName: this.getSignalName(signal),
+						signalName: this.getSignalName(signal, true),
 						signalId: this.getSignalId(signal),
 					};
 		});
@@ -192,21 +193,12 @@ class DevToolsCommunicator {
 		};
 	}
 
-	public getSignalName(signal: any): string {
-		// Try to get a meaningful name for the signal
-		if (signal.displayName) return signal.displayName;
-		if (signal.name) return signal.name;
-		if (signal._fn && signal._fn.name) return signal._fn.name;
-		if ("_fn" in signal) return "Computed";
-		return "Signal";
+	public getSignalName(signal: any, isEffect: boolean): string {
+		return getSignalName(signal, isEffect);
 	}
 
 	public getSignalId(signal: any): string {
-		// Fallback to creating an ID based on the signal reference
-		if (!signal._debugId) {
-			signal._debugId = `signal_${Math.random().toString(36).substr(2, 9)}`;
-		}
-		return signal._debugId;
+		return getSignalId(signal);
 	}
 
 	public isConnected(): boolean {
@@ -220,7 +212,7 @@ class DevToolsCommunicator {
 		const disposal: FormattedSignalDisposed = {
 			type: "disposed",
 			signalType,
-			signalName: this.getSignalName(signal),
+			signalName: this.getSignalName(signal, signalType === "effect"),
 			signalId: this.getSignalId(signal),
 			timestamp: Date.now(),
 		};

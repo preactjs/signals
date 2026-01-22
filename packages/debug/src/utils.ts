@@ -1,11 +1,16 @@
 import { Effect, Signal } from "@preact/signals-core";
 
-export function getSignalName(signal: Signal | Effect): string {
-	const name = signal.name;
-	if (name === "sub") {
-		return `${(signal as Effect)._sources?._source.name}-subscribe`;
-	}
-	return name || "(anonymous signal)";
+export function getSignalName(signal: any, isEffect: boolean): string {
+	// Try to get a meaningful name for the signal
+	if (signal.displayName) return signal.displayName;
+	if (signal.name)
+		return signal.name === "sub"
+			? `${(signal as Effect)._sources?._source.name}-subscribe`
+			: signal.name;
+	if (signal._fn && signal._fn.name) return signal._fn.name;
+	if (isEffect) return "effect";
+	const signalType = "_fn" in signal ? "computed" : "signal";
+	return `(anonymous ${signalType})`;
 }
 
 export function formatValue(value: any): string {
@@ -28,4 +33,12 @@ export function formatValue(value: any): string {
 	} catch {
 		return "(unstringifiable value)";
 	}
+}
+
+export function getSignalId(signal: Signal | Effect): string {
+	if (!(signal as any)._debugId) {
+		(signal as any)._debugId =
+			`signal_${Math.random().toString(36).substring(2, 9)}`;
+	}
+	return (signal as any)._debugId;
 }
