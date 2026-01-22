@@ -20,15 +20,19 @@ const signalDependencies = new WeakMap<Signal | Effect, Set<string>>(); // Track
 export function setDebugOptions(options: {
 	grouped?: boolean;
 	enabled?: boolean;
+	consoleLogging?: boolean;
 	spacing?: number;
 }) {
 	if (typeof options.grouped === "boolean") isGrouped = options.grouped;
 	if (typeof options.enabled === "boolean") debugEnabled = options.enabled;
+	if (typeof options.consoleLogging === "boolean")
+		consoleLoggingEnabled = options.consoleLogging;
 	if (typeof options.spacing === "number") spacing = options.spacing;
 }
 
 let isGrouped = true,
 	debugEnabled = true,
+	consoleLoggingEnabled = true,
 	initializing = false,
 	spacing = 0;
 
@@ -322,7 +326,7 @@ function flushUpdates() {
 
 /* eslint-disable no-console */
 function logUpdate(info: UpdateInfo, prevDepth: number) {
-	if (!debugEnabled) return;
+	if (!debugEnabled || !consoleLoggingEnabled) return;
 
 	const { signal, type, depth } = info;
 	const name = getSignalName(signal);
@@ -370,7 +374,7 @@ function logUpdate(info: UpdateInfo, prevDepth: number) {
 }
 
 function endUpdateGroup() {
-	if (debugEnabled && isGrouped) {
+	if (debugEnabled && consoleLoggingEnabled && isGrouped) {
 		console.groupEnd();
 	}
 }
@@ -381,6 +385,7 @@ export interface ExtensionConfig {
 	enabled?: boolean;
 	grouped?: boolean;
 	spacing?: number;
+	consoleLogging?: boolean;
 	maxUpdatesPerSecond?: number;
 	filterPatterns?: string[];
 }
