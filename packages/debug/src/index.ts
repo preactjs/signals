@@ -198,35 +198,44 @@ function hasUpdateEntry(signal: Signal) {
 	return false;
 }
 
+export interface DependencyInfo {
+	id: string;
+	name: string;
+	type: "signal" | "computed";
+}
+
 /**
  * Get all current dependencies for a computed or effect by walking the _sources linked list.
  * This provides the complete picture of what signals a computed/effect depends on,
  * not just the one that triggered an update.
+ *
+ * Returns rich dependency info (id, name, type) so the devtools can render
+ * dependency nodes even if they haven't had their own updates.
  */
 function getAllCurrentDependencies(
 	node: ComputedType | Effect
-): string[] | undefined {
+): DependencyInfo[] | undefined {
 	if (!("_sources" in node)) {
 		return undefined;
 	}
 
-	const dependencies: Set<string> = new Set();
+	const dependencies = new Map<string, DependencyInfo>();
 	let sourceNode = (node as ComputedType)._sources;
 
 	while (sourceNode) {
 		const source = sourceNode._source as Signal;
-		dependencies.add(getSignalId(source));
-		sourceNode = sourceNode._prevSource;
-	}
-
-	sourceNode = (node as ComputedType)._sources;
-	while (sourceNode) {
-		const source = sourceNode._source as Signal;
-		dependencies.add(getSignalId(source));
+		const id = getSignalId(source);
+		if (!dependencies.has(id)) {
+			dependencies.set(id, {
+				id,
+				name: getSignalName(source, false),
+				type: "_fn" in source ? "computed" : "signal",
+			});
+		}
 		sourceNode = sourceNode._nextSource;
 	}
 
-	return dependencies.size > 0 ? Array.from(dependencies) : undefined;
+	return dependencies.size > 0 ? Array.from(dependencies.values()) : undefined;
 }
 
 function bubbleUpToBaseSignal(

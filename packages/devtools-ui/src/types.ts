@@ -4,6 +4,7 @@
 export type {
 	SignalUpdate,
 	SignalDisposed,
+	DependencyInfo,
 	Settings,
 	ConnectionStatus,
 	ConnectionStatusType,

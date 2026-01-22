@@ -1,4 +1,13 @@
 /**
+ * Rich dependency information for a signal/computed
+ */
+export interface DependencyInfo {
+	id: string;
+	name: string;
+	type: "signal" | "computed";
+}
+
+/**
  * Represents a signal update event from the debug system
  */
 export interface SignalUpdate {
@@ -12,8 +21,8 @@ export interface SignalUpdate {
 	receivedAt: number;
 	depth?: number;
 	subscribedTo?: string;
-	/** All signal IDs this computed/effect currently depends on */
-	allDependencies?: string[];
+	/** All dependencies this computed/effect currently depends on (with rich info) */
+	allDependencies?: DependencyInfo[];
 }
 
 /**

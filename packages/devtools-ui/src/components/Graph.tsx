@@ -89,16 +89,30 @@ export function GraphVisualization() {
 
 			// Process all dependencies to show complete dependency graph
 			// This ensures we see all edges, not just the one that triggered the update
+			// It also creates nodes for dependencies that haven't had their own updates
 			if (update.allDependencies && update.allDependencies.length > 0) {
-				for (const depId of update.allDependencies) {
+				for (const dep of update.allDependencies) {
 					// Skip links to/from disposed signals
-					const sourceDisposed = !showDisposed && disposed.has(depId);
+					const sourceDisposed = !showDisposed && disposed.has(dep.id);
 					if (sourceDisposed) continue;
 
-					const linkKey = `${depId}->${update.signalId}`;
+					// Create node for the dependency if it doesn't exist
+					// This allows showing dependencies in the graph even if they haven't updated
+					if (!nodes.has(dep.id)) {
+						nodes.set(dep.id, {
+							id: dep.id,
+							name: dep.name,
+							type: dep.type,
+							x: 0,
+							y: 0,
+							depth: 0, // Base dependencies are at depth 0
+						});
+					}
+
+					const linkKey = `${dep.id}->${update.signalId}`;
 					if (!links.has(linkKey)) {
 						links.set(linkKey, {
-							source: depId,
+							source: dep.id,
 							target: update.signalId,
 						});
 					}
