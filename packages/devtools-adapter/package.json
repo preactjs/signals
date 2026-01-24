@@ -46,6 +46,7 @@
     "prepublishOnly": "cd ../.. && pnpm build:devtools-adapter"
   },
   "publishConfig": {
+    "access": "public",
     "provenance": true
   }
 }

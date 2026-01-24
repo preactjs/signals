@@ -65,6 +65,7 @@
     "prettier": "^2.7.1"
   },
   "publishConfig": {
+    "access": "public",
     "provenance": true
   }
 }
