@@ -22,7 +22,7 @@ export interface DependencyInfo {
 	type: "signal" | "computed";
 }
 
-export type UpdateInfo = ValueUpdate | EffectUpdate;
+export type UpdateInfo = ValueUpdate | EffectUpdate | ComponentUpdate;
 
 export interface ValueUpdate {
 	type: "value";
@@ -42,4 +42,13 @@ interface EffectUpdate {
 	depth: number;
 	subscribedTo?: string; // signalId of the signal this effect is subscribed to
 	allDependencies?: DependencyInfo[]; // All dependencies this effect depends on
+}
+
+interface ComponentUpdate {
+	type: "component";
+	timestamp: number;
+	signal: Effect;
+	depth: number;
+	subscribedTo?: string; // signalId of the signal this component is subscribed to
+	allDependencies?: DependencyInfo[]; // All dependencies this component depends on
 }

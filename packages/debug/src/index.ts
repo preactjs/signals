@@ -228,7 +228,7 @@ function getAllCurrentDependencies(
 		if (!dependencies.has(id)) {
 			dependencies.set(id, {
 				id,
-				name: getSignalName(source, false),
+				name: getSignalName(source, 'value'),
 				type: "_fn" in source ? "computed" : "signal",
 			});
 		}
@@ -285,7 +285,7 @@ Effect.prototype._debugCallback = function (this: Effect) {
 				signal: this,
 				timestamp: Date.now(),
 				depth: baseSignal.depth,
-				type: "effect",
+				type: "component",
 				subscribedTo: getSignalId(baseSignal.signal),
 				allDependencies: getAllCurrentDependencies(this as any),
 			});
@@ -299,7 +299,23 @@ Effect.prototype._callback = function (this: Effect) {
 	if (!debugEnabled || internalEffects.has(this))
 		return originalEffectCallback.call(this);
 
-	this._debugCallback!();
+	if ("_sources" in this) {
+		const baseSignal = bubbleUpToBaseSignal(this as any);
+		if (baseSignal) {
+			// Track dependency
+			trackDependency(this, baseSignal.signal);
+
+			const updateInfoList = updateInfoMap.get(baseSignal.signal) || [];
+			updateInfoList.push({
+				signal: this,
+				timestamp: Date.now(),
+				depth: baseSignal.depth,
+				type: "effect",
+				subscribedTo: getSignalId(baseSignal.signal),
+			});
+			updateInfoMap.set(baseSignal.signal, updateInfoList);
+		}
+	}
 
 	return originalEffectCallback.call(this);
 };
@@ -343,10 +359,7 @@ function flushUpdates() {
 		if (typeof window !== "undefined" && !bridge.shouldThrottleUpdate()) {
 			// Filter updates based on signal names
 			const filteredUpdates = updateInfoList.filter(updateInfo => {
-				const signalName = getSignalName(
-					updateInfo.signal,
-					updateInfo.type === "effect"
-				);
+				const signalName = getSignalName(updateInfo.signal, updateInfo.type);
 				return bridge.matchesFilter(signalName);
 			});
 
@@ -375,18 +388,20 @@ function logUpdate(info: UpdateInfo, prevDepth: number) {
 	if (!debugEnabled || !consoleLoggingEnabled) return;
 
 	const { signal, type, depth } = info;
-	const name = getSignalName(signal, type === "effect");
+	const name = getSignalName(signal, type);
 
-	if (type === "effect") {
+	console.log(info);
+	if (type === "effect" || type === "component") {
 		if (prevDepth === depth) {
 			endUpdateGroup();
 		}
 
+		const copy = type === "effect" ? "effect" : "component render";
 		if (isGrouped)
 			console.groupCollapsed(
-				`${" ".repeat(depth * 2)}↪️ Triggered effect: ${name}`
+				`${" ".repeat(depth * 2)}↪️ Triggered ${copy}: ${name}`
 			);
-		else console.log(`${" ".repeat(depth * 2)}↪️ Triggered effect: ${name}`);
+		else console.log(`${" ".repeat(depth * 2)}↪️ Triggered ${copy}: ${name}`);
 		return;
 	}
 
