@@ -16,6 +16,9 @@ export interface FormattedSignalUpdate {
 	newValue?: any;
 	timestamp: number;
 	depth: number;
+	subscribedTo?: string;
+	/** All signal IDs this computed/effect currently depends on */
+	allDependencies?: string[];
 }
 
 /** Formatted signal disposal event for external consumers */

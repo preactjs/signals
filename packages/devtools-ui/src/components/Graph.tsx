@@ -87,7 +87,24 @@ export function GraphVisualization() {
 				});
 			}
 
-			if (update.subscribedTo) {
+			// Process all dependencies to show complete dependency graph
+			// This ensures we see all edges, not just the one that triggered the update
+			if (update.allDependencies && update.allDependencies.length > 0) {
+				for (const depId of update.allDependencies) {
+					// Skip links to/from disposed signals
+					const sourceDisposed = !showDisposed && disposed.has(depId);
+					if (sourceDisposed) continue;
+
+					const linkKey = `${depId}->${update.signalId}`;
+					if (!links.has(linkKey)) {
+						links.set(linkKey, {
+							source: depId,
+							target: update.signalId,
+						});
+					}
+				}
+			} else if (update.subscribedTo) {
+				// Fallback to subscribedTo for backward compatibility
 				// Also skip links to/from disposed signals
 				const sourceDisposed =
 					!showDisposed && disposed.has(update.subscribedTo);

@@ -23,7 +23,7 @@ export function DevToolsPanel({
 	const activeTab = useSignal<"updates" | "graph">(initialTab);
 
 	return (
-		<div id="app" className="signals-devtools">
+		<div className="signals-devtools">
 			{!hideHeader && <Header />}
 
 			<SettingsPanel />
