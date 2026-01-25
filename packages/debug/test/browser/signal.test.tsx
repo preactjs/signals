@@ -571,6 +571,95 @@ describe("Signal Debug", () => {
 			expect(sumUpdate.allDependencies.length).toBe(2);
 		});
 
+		it("should include rich dependency info with id, name, and type", async () => {
+			const count1 = signal(0, { name: "count1" });
+			const doubled = computed(() => count1.value * 2, { name: "doubled" });
+			const sum = computed(() => count1.value + doubled.value, { name: "sum" });
+			sum.subscribe(() => {});
+
+			// Capture updates sent to devtools
+			const updates: any[] = [];
+			const unsubscribe = window.__PREACT_SIGNALS_DEVTOOLS__.onUpdate(
+				newUpdates => {
+					updates.push(...newUpdates);
+				}
+			);
+
+			// Update the base signal
+			count1.value = 5;
+
+			await new Promise(resolve => setTimeout(resolve, 0));
+			unsubscribe();
+
+			// Find the update for the 'sum' computed
+			const sumUpdate = updates.find(u => u.signalName === "sum");
+			expect(sumUpdate).toBeDefined();
+			expect(sumUpdate.allDependencies).toBeDefined();
+			expect(sumUpdate.allDependencies).toHaveLength(2);
+
+			// Each dependency should have id, name, and type
+			for (const dep of sumUpdate.allDependencies) {
+				expect(dep).toHaveProperty("id");
+				expect(dep).toHaveProperty("name");
+				expect(dep).toHaveProperty("type");
+				expect(typeof dep.id).toBe("string");
+				expect(typeof dep.name).toBe("string");
+				expect(["signal", "computed"]).toContain(dep.type);
+			}
+
+			// Check that we have one signal dependency (count1) and one computed dependency (doubled)
+			const signalDep = sumUpdate.allDependencies.find(
+				(d: any) => d.type === "signal"
+			);
+			const computedDep = sumUpdate.allDependencies.find(
+				(d: any) => d.type === "computed"
+			);
+			expect(signalDep).toBeDefined();
+			expect(computedDep).toBeDefined();
+			expect(signalDep.name).toBe("count1");
+			expect(computedDep.name).toBe("doubled");
+		});
+
+		it("should provide dependency names for graph rendering without updates", async () => {
+			// This test verifies that the rich dependency info enables the graph
+			// to show dependencies even if they haven't had their own updates.
+			// Previously only signal IDs were sent, which wasn't enough to render nodes.
+			const base1 = signal(0, { name: "base1" });
+			const base2 = signal(0, { name: "base2" });
+			const combined = computed(() => base1.value + base2.value, {
+				name: "combined",
+			});
+			combined.subscribe(() => {});
+
+			// Capture updates sent to devtools
+			const updates: any[] = [];
+			const unsubscribe = window.__PREACT_SIGNALS_DEVTOOLS__.onUpdate(
+				newUpdates => {
+					updates.push(...newUpdates);
+				}
+			);
+
+			// Only update base1 - base2 never sends an update
+			base1.value = 5;
+
+			await new Promise(resolve => setTimeout(resolve, 0));
+			unsubscribe();
+
+			// Find the update for 'combined'
+			const combinedUpdate = updates.find(u => u.signalName === "combined");
+			expect(combinedUpdate).toBeDefined();
+			expect(combinedUpdate.allDependencies).toBeDefined();
+			expect(combinedUpdate.allDependencies).toHaveLength(2);
+
+			// Both dependencies should have names, even base2 which never updated
+			const base2Dep = combinedUpdate.allDependencies.find(
+				(d: any) => d.name === "base2"
+			);
+			expect(base2Dep).toBeDefined();
+			expect(base2Dep.type).toBe("signal");
+			expect(base2Dep.id).toBeDefined();
+		});
+
 		it("should include all dependencies for an effect with multiple sources", async () => {
 			const sig1 = signal("a", { name: "sig1" });
 			const sig2 = signal("b", { name: "sig2" });

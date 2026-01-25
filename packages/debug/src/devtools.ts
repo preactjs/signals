@@ -1,4 +1,4 @@
-import { UpdateInfo } from "./internal";
+import { UpdateInfo, DependencyInfo } from "./internal";
 import {
 	getSignalId,
 	getSignalName,
@@ -17,8 +17,8 @@ export interface FormattedSignalUpdate {
 	timestamp: number;
 	depth: number;
 	subscribedTo?: string;
-	/** All signal IDs this computed/effect currently depends on */
-	allDependencies?: string[];
+	/** All dependencies this computed/effect currently depends on (with rich info) */
+	allDependencies?: DependencyInfo[];
 }
 
 /** Formatted signal disposal event for external consumers */
