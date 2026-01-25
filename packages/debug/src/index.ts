@@ -312,6 +312,7 @@ Effect.prototype._callback = function (this: Effect) {
 				depth: baseSignal.depth,
 				type: "effect",
 				subscribedTo: getSignalId(baseSignal.signal),
+				allDependencies: getAllCurrentDependencies(this as any),
 			});
 			updateInfoMap.set(baseSignal.signal, updateInfoList);
 		}
