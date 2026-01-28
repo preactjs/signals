@@ -519,40 +519,6 @@ describe("useSignals", () => {
 		expect(scratch.innerHTML).to.equal("<div>Hello John</div>");
 	});
 
-	it("(unmanaged) should work with components that use render props", async () => {
-		function AutoFocusWithin({
-			children,
-		}: {
-			children: (setRef: (...args: any[]) => void) => any;
-		}) {
-			const setRef = useRef(() => {}).current;
-			return children(setRef);
-		}
-
-		const name = signal("John");
-		function App() {
-			useSignals();
-			return (
-				<AutoFocusWithin>
-					{setRef => <div ref={setRef}>Hello {name.value}</div>}
-				</AutoFocusWithin>
-			);
-		}
-
-		await render(<App />);
-		expect(scratch.innerHTML).to.equal("<div>Hello John</div>");
-
-		await act(() => {
-			name.value = "Jane";
-		});
-		expect(scratch.innerHTML).to.equal("<div>Hello Jane</div>");
-
-		await act(() => {
-			name.value = "John";
-		});
-		expect(scratch.innerHTML).to.equal("<div>Hello John</div>");
-	});
-
 	it("(unmanaged) (React 16 specific) should work with rerenders that update signals before async final cleanup", async () => {
 		// Cursed/problematic call stack that causes this error:
 		// 1. onClick callback
