@@ -4,9 +4,12 @@ import {
 	computed,
 	effect,
 	batch,
+	createModel,
 	Signal,
 	untracked,
 	ReadonlySignal,
+	ModelConstructor,
+	ModelFactory,
 } from "@preact/signals-core";
 
 describe("signal", () => {
@@ -2226,5 +2229,775 @@ describe("untracked", () => {
 		c.value;
 		expect(spy).toHaveBeenCalledOnce();
 		expect(c.value).to.equal(3);
+	});
+});
+
+describe("createModel", () => {
+	it("should create a model with signals and actions", () => {
+		const CounterModel = createModel(() => ({
+			count: signal(0),
+			increment() {
+				this.count.value += 1;
+			},
+		}));
+
+		const counter = new CounterModel();
+		expect(counter.count.value).to.equal(0);
+
+		counter.increment();
+		expect(counter.count.value).to.equal(1);
+	});
+
+	it("should create a model with computed properties", () => {
+		const CounterModel = createModel(() => {
+			const count = signal(0);
+			const double = computed(() => count.value * 2);
+			const quadruple = computed(() => double.value * 2);
+			return {
+				count,
+				double,
+				quadruple,
+				increment() {
+					count.value += 1;
+				},
+			};
+		});
+
+		const counter = new CounterModel();
+		expect(counter.count.value).to.equal(0);
+		expect(counter.double.value).to.equal(0);
+		expect(counter.quadruple.value).to.equal(0);
+
+		counter.increment();
+		expect(counter.count.value).to.equal(1);
+		expect(counter.double.value).to.equal(2);
+		expect(counter.quadruple.value).to.equal(4);
+	});
+
+	it("should accept factory arguments", () => {
+		const CounterModel = createModel((initialCount: number) => {
+			const count = signal(initialCount);
+			const increment = () => ++count.value;
+			return { count, increment };
+		});
+
+		const model = new CounterModel(5);
+		expect(model.count.value).to.equal(5);
+
+		model.increment();
+		expect(model.count.value).to.equal(6);
+	});
+
+	it("should accept multiple factory arguments", () => {
+		const CounterModel = createModel((initialCount: number, step: number) => {
+			const count = signal(initialCount);
+			const increment = () => (count.value += step);
+			return { count, increment };
+		});
+
+		const model = new CounterModel(5, 2);
+		expect(model.count.value).to.equal(5);
+
+		model.increment();
+		expect(model.count.value).to.equal(7);
+	});
+
+	it("should allow actions to receive parameters", () => {
+		const CounterModel = createModel(() => {
+			const count = signal(0);
+			const add = (value: number) => {
+				count.value += value;
+			};
+			return { count, add };
+		});
+
+		const model = new CounterModel();
+		expect(model.count.value).to.equal(0);
+
+		model.add(5);
+		expect(model.count.value).to.equal(5);
+	});
+
+	it("should allow actions to return values", async () => {
+		const CounterModel = createModel(() => {
+			const count = signal(0);
+			const incrementAsync = async () => count.value++;
+			return { count, incrementAsync };
+		});
+
+		const model = new CounterModel();
+		expect(model.count.value).to.equal(0);
+
+		await model.incrementAsync();
+		expect(model.count.value).to.equal(1);
+	});
+
+	it("should bind 'this' correctly in actions", () => {
+		const CounterModel = createModel(() => ({
+			count: signal(0),
+			increment() {
+				this.count.value++;
+			},
+		}));
+
+		const counter = new CounterModel();
+		expect(counter.count.value).to.equal(0);
+
+		counter.increment();
+		expect(counter.count.value).to.equal(1);
+	});
+
+	it("should automatically batch signal updates within actions", () => {
+		let effectRunCount = 0;
+		const TestModel = createModel(() => {
+			const count1 = signal(0);
+			const count2 = signal(0);
+
+			effect(() => {
+				count1.value;
+				count2.value;
+				effectRunCount++;
+			});
+
+			return {
+				count1,
+				count2,
+				incrementBoth() {
+					count1.value += 1;
+					count2.value += 1;
+				},
+			};
+		});
+
+		const model = new TestModel();
+		expect(effectRunCount).to.equal(1);
+
+		// Without batching, this would trigger the effect twice
+		model.incrementBoth();
+		expect(effectRunCount).to.equal(2); // Should only run once due to batching
+		expect(model.count1.value).to.equal(1);
+		expect(model.count2.value).to.equal(1);
+	});
+
+	it("should run effects defined in the model", () => {
+		let effect1RunCount = 0;
+		let effect2RunCount = 0;
+		const ModelWithEffect = createModel(() => {
+			const count = signal(0);
+			effect(() => {
+				count.value;
+				effect1RunCount++;
+			});
+			effect(() => {
+				count.value;
+				effect2RunCount++;
+			});
+
+			return { count };
+		});
+
+		const model = new ModelWithEffect();
+		expect(effect1RunCount).to.equal(1);
+		expect(effect2RunCount).to.equal(1);
+
+		model.count.value = 1;
+		expect(effect1RunCount).to.equal(2);
+		expect(effect2RunCount).to.equal(2);
+	});
+
+	it("should call effect's cleanup functions when the model is disposed", () => {
+		let effect1RunCount = 0;
+		let effect2RunCount = 0;
+
+		let effect1Cleanup = vi.fn();
+		let effect2Cleanup = vi.fn();
+
+		const ModelWithEffect = createModel(() => {
+			const count = signal(0);
+			effect(() => {
+				count.value;
+				effect1RunCount++;
+				return effect1Cleanup;
+			});
+			effect(() => {
+				count.value;
+				effect2RunCount++;
+				return effect2Cleanup;
+			});
+
+			return { count };
+		});
+
+		const model = new ModelWithEffect();
+		expect(effect1RunCount).to.equal(1);
+		expect(effect2RunCount).to.equal(1);
+		expect(effect1Cleanup).not.toHaveBeenCalled();
+		expect(effect2Cleanup).not.toHaveBeenCalled();
+
+		model.count.value = 1;
+		expect(effect1RunCount).to.equal(2);
+		expect(effect2RunCount).to.equal(2);
+		expect(effect1Cleanup).toHaveBeenCalledTimes(1);
+		expect(effect2Cleanup).toHaveBeenCalledTimes(1);
+
+		model[Symbol.dispose]();
+		expect(effect1Cleanup).toHaveBeenCalledTimes(2);
+		expect(effect2Cleanup).toHaveBeenCalledTimes(2);
+
+		model.count.value = 2;
+		expect(effect1RunCount).to.equal(2);
+		expect(effect2RunCount).to.equal(2);
+		expect(effect1Cleanup).toHaveBeenCalledTimes(2);
+		expect(effect2Cleanup).toHaveBeenCalledTimes(2);
+	});
+
+	it("should call correctly cleanup effects without signals but with a cleanup fn", () => {
+		let effectWithSignalRunCount = 0;
+		const effectWithSignalCleanup = vi.fn();
+
+		let noSignalEffectRunCount = 0;
+		const noSignalEffectCleanup = vi.fn();
+
+		const CountModel = createModel(() => {
+			const count = signal(0);
+			effect(() => {
+				count.value;
+				effectWithSignalRunCount++;
+				return effectWithSignalCleanup;
+			});
+			effect(() => {
+				noSignalEffectRunCount++;
+				return noSignalEffectCleanup;
+			});
+			return { count };
+		});
+
+		// These assertions demonstrate that an effect with no signal usage is
+		// only run once at start and cleanup is called once on model dispose.
+		// This is comparable in React to a `useEffect(() => {}, [])`.
+		const model = new CountModel();
+		expect(effectWithSignalRunCount).to.equal(1);
+		expect(effectWithSignalCleanup).not.toHaveBeenCalled();
+		expect(noSignalEffectRunCount).to.equal(1);
+		expect(noSignalEffectCleanup).not.toHaveBeenCalled();
+
+		model.count.value++;
+		expect(effectWithSignalRunCount).to.equal(2);
+		expect(effectWithSignalCleanup).toHaveBeenCalledTimes(1);
+		expect(noSignalEffectRunCount).to.equal(1);
+		expect(noSignalEffectCleanup).not.toHaveBeenCalled();
+
+		model[Symbol.dispose]();
+		expect(effectWithSignalCleanup).toHaveBeenCalledTimes(2);
+		expect(noSignalEffectCleanup).toHaveBeenCalledTimes(1);
+	});
+
+	it("should allow multiple disposal calls without errors", () => {
+		let effectRunCount = 0;
+		const cleanup = vi.fn();
+
+		const TestModel = createModel(() => {
+			const count = signal(0);
+			effect(() => {
+				count.value;
+				effectRunCount++;
+				return cleanup;
+			});
+			return { count };
+		});
+
+		const model = new TestModel();
+		expect(effectRunCount).to.equal(1);
+
+		model[Symbol.dispose]();
+		expect(cleanup).toHaveBeenCalledTimes(1);
+
+		// Second disposal should not throw
+		expect(() => model[Symbol.dispose]()).not.to.throw();
+		expect(cleanup).toHaveBeenCalledTimes(1); // Cleanup should not be called again
+	});
+
+	it("allows creating mutliple instances of the same model", () => {
+		const CounterModel = createModel(() => ({
+			count: signal(0),
+			increment() {
+				this.count.value += 1;
+			},
+		}));
+
+		const counter1 = new CounterModel();
+		const counter2 = new CounterModel();
+
+		expect(counter1.count.value).to.equal(0);
+		expect(counter2.count.value).to.equal(0);
+
+		counter1.increment();
+		expect(counter1.count.value).to.equal(1);
+		expect(counter2.count.value).to.equal(0);
+
+		counter2.increment();
+		counter2.increment();
+		expect(counter1.count.value).to.equal(1);
+		expect(counter2.count.value).to.equal(2);
+	});
+
+	it("should allow multiple types of actions on a single model", async () => {
+		const MultiActionModel = createModel(() => ({
+			count: signal(0),
+			increment(): void {
+				this.count.value += 1;
+			},
+			add(value: number): void {
+				this.count.value += value;
+			},
+			addThenMultiply(add: number, multiple: number): void {
+				this.count.value = (this.count.value + add) * multiple;
+			},
+			async incrementAsync(): Promise<void> {
+				this.count.value += 1;
+			},
+			log(message: string): void {},
+		}));
+
+		const model = new MultiActionModel();
+		expect(model.count.value).to.equal(0);
+
+		model.increment();
+		expect(model.count.value).to.equal(1);
+
+		model.add(5);
+		expect(model.count.value).to.equal(6);
+
+		model.addThenMultiply(4, 2);
+		expect(model.count.value).to.equal(20);
+
+		await model.incrementAsync();
+		expect(model.count.value).to.equal(21);
+
+		expect(() => model.log("Hello")).not.to.throw();
+	});
+
+	it("should handle errors thrown during model factory execution", () => {
+		let effectRan = false;
+		const ErrorModel = createModel(() => {
+			const count = signal(0);
+			effect(() => {
+				count.value;
+				effectRan = true;
+			});
+
+			throw new Error("Factory error");
+		});
+
+		expect(() => new ErrorModel()).to.throw("Factory error");
+		expect(effectRan).to.equal(true); // Effect runs before error is thrown
+	});
+
+	describe("model composition", () => {
+		it("allows instantiating a model within another model", () => {
+			const InnerModel = createModel(() => ({
+				count: signal(10),
+				double() {
+					this.count.value *= 2;
+				},
+			}));
+
+			const OuterModel = createModel(() => {
+				const inner = new InnerModel();
+				return {
+					inner,
+					incrementInner() {
+						this.inner.count.value += 1;
+					},
+				};
+			});
+
+			const outer = new OuterModel();
+			expect(outer.inner.count.value).to.equal(10);
+
+			outer.incrementInner();
+			expect(outer.inner.count.value).to.equal(11);
+
+			outer.inner.double();
+			expect(outer.inner.count.value).to.equal(22);
+		});
+
+		it("supports deep nesting (3+ levels)", () => {
+			const Level3Model = createModel(() => ({
+				value: signal(1),
+			}));
+
+			const Level2Model = createModel(() => ({
+				level3: new Level3Model(),
+				multiplier: signal(2),
+			}));
+
+			const Level1Model = createModel(() => ({
+				level2: new Level2Model(),
+				offset: signal(10),
+			}));
+
+			const model = new Level1Model();
+			expect(model.level2.level3.value.value).to.equal(1);
+			expect(model.level2.multiplier.value).to.equal(2);
+			expect(model.offset.value).to.equal(10);
+
+			model.level2.level3.value.value = 5;
+			expect(model.level2.level3.value.value).to.equal(5);
+		});
+
+		it("captures and disposes effects at all nesting levels", () => {
+			let level1EffectRunCount = 0;
+			let level2EffectRunCount = 0;
+			let level3EffectRunCount = 0;
+
+			const level1Cleanup = vi.fn();
+			const level2Cleanup = vi.fn();
+			const level3Cleanup = vi.fn();
+
+			const Level3Model = createModel(() => {
+				const count = signal(0);
+				effect(() => {
+					count.value;
+					level3EffectRunCount++;
+					return level3Cleanup;
+				});
+				return { count };
+			});
+
+			const Level2Model = createModel(() => {
+				const level3 = new Level3Model();
+				effect(() => {
+					level3.count.value;
+					level2EffectRunCount++;
+					return level2Cleanup;
+				});
+				return { level3 };
+			});
+
+			const Level1Model = createModel(() => {
+				const level2 = new Level2Model();
+				effect(() => {
+					level2.level3.count.value;
+					level1EffectRunCount++;
+					return level1Cleanup;
+				});
+				return { level2 };
+			});
+
+			const model = new Level1Model();
+			expect(level1EffectRunCount).to.equal(1);
+			expect(level2EffectRunCount).to.equal(1);
+			expect(level3EffectRunCount).to.equal(1);
+
+			model.level2.level3.count.value = 1;
+			expect(level1EffectRunCount).to.equal(2);
+			expect(level2EffectRunCount).to.equal(2);
+			expect(level3EffectRunCount).to.equal(2);
+
+			model[Symbol.dispose]();
+			expect(level1Cleanup).toHaveBeenCalledTimes(2);
+			expect(level2Cleanup).toHaveBeenCalledTimes(2);
+			expect(level3Cleanup).toHaveBeenCalledTimes(2);
+
+			// Effects should not run after disposal
+			model.level2.level3.count.value = 2;
+			expect(level1EffectRunCount).to.equal(2);
+			expect(level2EffectRunCount).to.equal(2);
+			expect(level3EffectRunCount).to.equal(2);
+		});
+
+		it("disposes of models created within other models and spread onto returned model", () => {
+			let innerEffectRunCount = 0;
+			const innerEffectCleanup = vi.fn();
+
+			const InnerModel = createModel(() => {
+				const count = signal(0);
+				effect(() => {
+					innerEffectRunCount++;
+					return innerEffectCleanup;
+				});
+				return { count };
+			});
+
+			const OuterModel = createModel(() => {
+				const inner = new InnerModel();
+				return {
+					...inner,
+					increment() {
+						inner.count.value += 1;
+					},
+				};
+			});
+
+			const outer = new OuterModel();
+			expect(innerEffectRunCount).to.equal(1);
+			expect(innerEffectCleanup).not.toHaveBeenCalled();
+
+			outer.increment();
+			expect(outer.count.value).to.equal(1);
+
+			outer[Symbol.dispose]();
+			expect(innerEffectCleanup).toHaveBeenCalledTimes(1);
+
+			outer.count.value = 2;
+			expect(innerEffectRunCount).to.equal(1);
+			expect(innerEffectCleanup).toHaveBeenCalledTimes(1);
+		});
+
+		it("should handle errors thrown during nested model factory execution", () => {
+			const InnerModel = createModel(() => {
+				effect(() => {});
+				throw new Error(`InnerModel error`);
+			});
+
+			const OuterModel = createModel(() => {
+				effect(() => {});
+				return { inner: new InnerModel() };
+			});
+
+			expect(() => new OuterModel()).to.throw("InnerModel error");
+		});
+	});
+
+	describe("Typescript Types", () => {
+		it("validates only allowed types are contained without models", () => {
+			// @ts-expect-error Should fail cuz count isn't a signal
+			createModel(() => ({ count: 0 }));
+			// @ts-expect-error Should fail cuz count in nested object isn't a signal
+			createModel(() => ({ counter: { count: 0 } }));
+			// @ts-expect-error Should fail cuz count in nested object isn't a signal
+			createModel(() => ({ count: signal(0), double: { count: 0 } }));
+		});
+
+		it("fail if trying to access non-existing property on model", () => {
+			const CounterModel = createModel(() => ({
+				count: signal(0),
+				increment() {
+					this.count.value++;
+				},
+			}));
+
+			const counter = new CounterModel();
+			// @ts-expect-error Should fail cuz decrement does not exist in model interface
+			expect(() => (counter.does_not_exit.value += 1)).to.throw();
+			// @ts-expect-error Should fail cuz decrement does not exist in model interface
+			expect(() => counter.decrement()).to.throw();
+		});
+
+		it("fail if model implementation does not match inferred type", () => {
+			interface CounterModel {
+				count: ReadonlySignal<number>;
+				increment(): void;
+			}
+
+			// @ts-expect-error Should fail cuz increment is missing in implementation
+			createModel<CounterModel, []>(() => {
+				const count = signal(0);
+				return {
+					count,
+					// Missing increment method
+				};
+			});
+		});
+
+		it("createModel type params should validate various TFactoryArgs values", () => {
+			interface CounterModel {
+				count: ReadonlySignal<number>;
+				increment(): void;
+			}
+
+			// Empty
+			const EmptyArgModel = createModel<CounterModel>(() => {
+				const count = signal(0);
+				return {
+					count,
+					increment() {
+						count.value++;
+					},
+				};
+			});
+
+			let model = new EmptyArgModel();
+			expect(model.count.value).to.equal(0);
+
+			// Single argument in an array
+			const SingleArgModel = createModel<CounterModel, [number]>(initial => {
+				const count = signal(initial);
+				return {
+					count,
+					increment() {
+						count.value++;
+					},
+				};
+			});
+
+			model = new SingleArgModel(1);
+			expect(model.count.value).to.equal(1);
+
+			// Multiple arguments in an array
+			const MultiArgModel = createModel<CounterModel, [number, number]>(
+				(initial, step) => {
+					const count = signal(initial);
+					return {
+						count,
+						increment() {
+							count.value += step;
+						},
+					};
+				}
+			);
+
+			model = new MultiArgModel(5, 2);
+			expect(model.count.value).to.equal(5);
+
+			// Named optional arguments
+			// [number, number?] also allowed
+			const NamedMultiArgModel = createModel<
+				CounterModel,
+				[initial: number, step?: number]
+			>((initial, step = 1) => {
+				const count = signal(initial);
+				return {
+					count,
+					increment() {
+						count.value += step;
+					},
+				};
+			});
+
+			model = new NamedMultiArgModel(10);
+			expect(model.count.value).to.equal(10);
+			model.increment();
+			expect(model.count.value).to.equal(11);
+
+			model = new NamedMultiArgModel(10, 5);
+			expect(model.count.value).to.equal(10);
+			model.increment();
+			expect(model.count.value).to.equal(15);
+		});
+
+		it("ModelConstructor type params should validate various TFactoryArgs values", () => {
+			interface CounterModel {
+				count: ReadonlySignal<number>;
+				increment(): void;
+			}
+
+			// Empty
+			const EmptyArgModel: ModelConstructor<CounterModel> = createModel(() => {
+				const count = signal(0);
+				return {
+					count,
+					increment() {
+						count.value++;
+					},
+				};
+			});
+
+			let model = new EmptyArgModel();
+			expect(model.count.value).to.equal(0);
+
+			// Single argument in an array
+			const SingleArgModel: ModelConstructor<CounterModel, [number]> =
+				createModel(initial => {
+					const count = signal(initial);
+					return {
+						count,
+						increment() {
+							count.value++;
+						},
+					};
+				});
+
+			model = new SingleArgModel(1);
+			expect(model.count.value).to.equal(1);
+
+			// Multiple arguments in an array
+			const MultiArgModel: ModelConstructor<CounterModel, [number, number]> =
+				createModel((initial, step) => {
+					const count = signal(initial);
+					return {
+						count,
+						increment() {
+							count.value += step;
+						},
+					};
+				});
+
+			model = new MultiArgModel(5, 2);
+			expect(model.count.value).to.equal(5);
+
+			// Named optional arguments
+			// [number, number?] also allowed
+			const NamedMultiArgModel: ModelConstructor<
+				CounterModel,
+				[initial: number, step?: number]
+			> = createModel((initial, step = 1) => {
+				const count = signal(initial);
+				return {
+					count,
+					increment() {
+						count.value += step;
+					},
+				};
+			});
+
+			model = new NamedMultiArgModel(10);
+			expect(model.count.value).to.equal(10);
+			model.increment();
+			expect(model.count.value).to.equal(11);
+
+			model = new NamedMultiArgModel(10, 5);
+			expect(model.count.value).to.equal(10);
+			model.increment();
+			expect(model.count.value).to.equal(15);
+		});
+
+		it("allows building custom createModel functions that enforces specific arguments", () => {
+			// Demonstrate how to build a custom createModel function
+			// that enforces specific arguments to be passed to the
+			// model factory.
+
+			interface UserContext {
+				userId: string;
+			}
+			type UserContextModelFactory<
+				TModel,
+				TFactoryArgs extends any[] = [],
+			> = ModelFactory<TModel, [UserContext, ...TFactoryArgs]>;
+
+			type UserContextModelConstructor<
+				TModel,
+				TFactoryArgs extends any[] = [],
+			> = ModelConstructor<TModel, [UserContext, ...TFactoryArgs]>;
+
+			type CreateUserModel = <TModel, TFactoryArgs extends any[]>(
+				factory: UserContextModelFactory<TModel, TFactoryArgs>
+			) => UserContextModelConstructor<TModel, TFactoryArgs>;
+
+			const createUserContextModel: CreateUserModel = createModel;
+
+			interface UserModel {
+				userId: ReadonlySignal<string>;
+				setUserId(id: string): void;
+			}
+
+			const UserModel: UserContextModelConstructor<UserModel> =
+				createUserContextModel((context: UserContext) => {
+					const userId = signal(context.userId);
+					return {
+						userId,
+						setUserId(id: string) {
+							userId.value = id;
+						},
+					};
+				});
+
+			const userModel = new UserModel({ userId: "user_1" });
+			expect(userModel.userId.value).to.equal("user_1");
+
+			userModel.setUserId("user_2");
+			expect(userModel.userId.value).to.equal("user_2");
+		});
 	});
 });
