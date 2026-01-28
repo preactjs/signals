@@ -232,7 +232,7 @@ function getFunctionName(
 
 	const nameFromParent = getFunctionNameFromParent(path.parentPath);
 	if (nameFromParent === DefaultExportSymbol) {
-		fnName = filename ?? null;
+		fnName = basename(filename) ?? null;
 	} else {
 		fnName = nameFromParent;
 	}
@@ -596,8 +596,7 @@ function transformFunction(
 	options: PluginOptions,
 	path: NodePath<FunctionLike>,
 	functionName: string | null,
-	state: PluginPass,
-	filename: string
+	state: PluginPass
 ) {
 	const isHook = isCustomHookName(functionName);
 	const isComponent = isComponentName(functionName);
@@ -853,18 +852,11 @@ export default function signalsTransform(
 		exit(path, state) {
 			if (getNodeData(path, alreadyTransformed) === true) return false;
 
-			const functionName = getFunctionName(path, basename(this.filename));
+			const functionName = getFunctionName(path, this.filename);
 			const isComponentLike =
 				!getNodeData(path, alreadyTransformed) && isComponentName(functionName);
 			if (shouldTransform(path, functionName, state.opts)) {
-				transformFunction(
-					t,
-					state.opts,
-					path,
-					functionName,
-					state,
-					this.filename || ""
-				);
+				transformFunction(t, state.opts, path, functionName, state);
 				log(true, path, functionName, this.filename);
 			} else if (isComponentLike) {
 				log(false, path, functionName, this.filename);
