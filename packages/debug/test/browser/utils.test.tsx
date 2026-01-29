@@ -184,12 +184,12 @@ describe("formatValue", () => {
 describe("getSignalName", () => {
 	it("should return signal name if present", () => {
 		const sig = signal(0, { name: "counter" });
-		expect(getSignalName(sig, false)).toBe("counter");
+		expect(getSignalName(sig, "value")).toBe("counter");
 	});
 
 	it("should return (anonymous signal) for unnamed signals", () => {
 		const sig = signal(0);
-		expect(getSignalName(sig, false)).toBe("(anonymous signal)");
+		expect(getSignalName(sig, "value")).toBe("(anonymous signal)");
 	});
 
 	it("should return computed name if present", () => {

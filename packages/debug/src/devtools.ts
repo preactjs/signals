@@ -212,8 +212,8 @@ class DevToolsCommunicator {
 		};
 	}
 
-	public getSignalName(signal: any, isEffect: boolean): string {
-		return getSignalName(signal, isEffect);
+	public getSignalName(signal: any, type: any): string {
+		return getSignalName(signal, type);
 	}
 
 	public getSignalId(signal: any): string {
@@ -231,7 +231,10 @@ class DevToolsCommunicator {
 		const disposal: FormattedSignalDisposed = {
 			type: "disposed",
 			signalType,
-			signalName: this.getSignalName(signal, signalType === "effect"),
+			signalName: this.getSignalName(
+				signal,
+				signalType === "signal" ? "value" : signalType
+			),
 			signalId: this.getSignalId(signal),
 			timestamp: Date.now(),
 		};
