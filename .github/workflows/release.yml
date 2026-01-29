@@ -29,15 +29,17 @@ jobs:
           node-version: 18
           cache: pnpm
 
+      - name: Update npm
+        run: npm install -g npm@latest
+
       - name: Install dependencies
         run: pnpm install
 
       - name: Create Release Pull Request
-        uses: changesets/action@v1
+        uses: changesets/action@v1.5.3
         with:
           version: pnpm run version
           publish: pnpm changeset publish
           title: Version Packages 1.x.x
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
