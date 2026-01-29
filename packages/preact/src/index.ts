@@ -302,6 +302,9 @@ Component.prototype.shouldComponentUpdate = function (
 	props,
 	state
 ) {
+	// Suspended vnodes should always update:
+	if (this.__R) return true;
+
 	// @todo: Once preactjs/preact#3671 lands, this could just use `currentUpdater`:
 	const updater = this._updater;
 	const hasSignals = updater && updater._sources !== undefined;
