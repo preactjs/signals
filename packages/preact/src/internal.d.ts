@@ -21,6 +21,8 @@ export interface AugmentedElement extends HTMLElement {
 }
 
 export interface AugmentedComponent extends Component<any, any> {
+	// onResolve --> Preact indicator for suspended subtrees
+	__R?: boolean;
 	//  hasScuFromHooks
 	// Preact 10.12 - Preact 10.25
 	u?: boolean;
