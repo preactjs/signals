@@ -2,15 +2,14 @@
 // slow down debugging. So I'm moving them to a separate file bundled separately
 // and included directly by Karma so that test files don't need to bundle them.\
 
+import { transform } from "@babel/standalone";
 import transformEsm from "@babel/plugin-transform-modules-commonjs";
 import syntaxJsx from "@babel/plugin-syntax-jsx";
 import transformReactJsx from "@babel/plugin-transform-react-jsx";
-import { transform } from "@babel/standalone";
-// @ts-expect-error
-import signalsTransform from "@preact/signals-react-transform";
 import explicitResourceManagement from "@babel/plugin-transform-explicit-resource-management";
+import signalsTransform from "@preact/signals-react-transform";
 
-globalThis.transformSignalCode = function transformSignalCode(code, options) {
+export function transformSignalCode(code: string, options?: any): string {
 	const signalsPluginConfig = [signalsTransform];
 	if (options) {
 		signalsPluginConfig.push(options);
@@ -27,4 +26,4 @@ globalThis.transformSignalCode = function transformSignalCode(code, options) {
 	});
 
 	return result?.code || "";
-};
+}

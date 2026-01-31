@@ -14,7 +14,7 @@ import {
 	getConsoleErrorSpy,
 } from "../../../react/test/shared/utils";
 import { describe, beforeEach, afterEach, expect, it } from "vitest";
-import "../../../../test/browser/babel.js";
+import { transformSignalCode } from "./transformSignalCode";
 
 const customSource = "useSignals-custom-source";
 const modules: Record<string, any> = {
@@ -33,7 +33,10 @@ function testRequire(name: string) {
 	}
 }
 
-async function createComponent(code: string, options?: PluginOptions) {
+async function createComponent(
+	code: string,
+	options?: PluginOptions
+): Promise<any> {
 	const cjsCode = transformSignalCode(code, options);
 	// console.log(cjsCode); // Useful when debugging tests.
 
