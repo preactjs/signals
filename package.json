@@ -41,7 +41,7 @@
     "ci:build": "pnpm build && pnpm docs:build",
     "ci:test": "pnpm lint && pnpm test",
     "prepare": "husky install && playwright install chromium",
-    "format": "prettier --ignore-path .gitignore --write '**/*.{js,jsx,ts,tsx,yml,json,md}'",
+    "format": "prettier --write .",
     "version": "pnpm changeset version && pnpm i --lockfile-only"
   },
   "authors": [
@@ -88,7 +88,7 @@
     "vite": "^6.3.5"
   },
   "lint-staged": {
-    "**/*.{js,jsx,ts,tsx,yml,json,md}": [
+    "**/*.{js,mjs,jsx,ts,tsx,yml,yaml,json,md,html,css}": [
       "prettier --write"
     ]
   },
@@ -120,6 +120,6 @@
   },
   "packageManager": "pnpm@10.7.0",
   "volta": {
-    "node": "18.18.0"
+    "node": "24.13.0"
   }
 }
