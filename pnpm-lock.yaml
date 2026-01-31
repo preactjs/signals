@@ -304,9 +304,6 @@ importers:
       '@types/debug':
         specifier: ^4.1.12
         version: 4.1.12
-      '@types/prettier':
-        specifier: ^2.7.3
-        version: 2.7.3
       assert:
         specifier: ^2.0.0
         version: 2.0.0
@@ -317,8 +314,8 @@ importers:
         specifier: ^0.12.7
         version: 0.12.7
       prettier:
-        specifier: ^2.7.1
-        version: 2.7.1
+        specifier: ^3.0.0
+        version: 3.6.2
 
   packages/preact/utils:
     dependencies:
@@ -396,9 +393,6 @@ importers:
       '@types/debug':
         specifier: ^4.1.12
         version: 4.1.12
-      '@types/prettier':
-        specifier: ^2.7.3
-        version: 2.7.3
       '@types/react':
         specifier: ^18.0.18
         version: 18.0.18
@@ -418,8 +412,8 @@ importers:
         specifier: ^0.12.7
         version: 0.12.7
       prettier:
-        specifier: ^2.7.1
-        version: 2.7.1
+        specifier: ^3.0.0
+        version: 3.6.2
       react:
         specifier: ^18.2.0
         version: 18.2.0
@@ -1864,9 +1858,6 @@ packages:
 
   '@types/parse-json@4.0.0':
     resolution: {integrity: sha512-//oorEZjL6sbPcKUaCdIGlIUeH26mgzimjBB77G6XRgnDl/L5wOnpyBGRe/Mmf5CVW3PwEBE1NjiMZ/ssFh4wA==}
-
-  '@types/prettier@2.7.3':
-    resolution: {integrity: sha512-+68kP9yzs4LMp7VNh8gdzMSPZFL44MLGqiHWvttYJe+6qnuVr4Ek9wSBQoveqY/r+LwjCcU29kNVkidwim+kYA==}
 
   '@types/prop-types@15.7.5':
     resolution: {integrity: sha512-JCB8C6SnDoQf0cNycqd/35A7MjcnK+ZTqE7judS6o7utxUCg6imJg3QK2qzHKszlTjcj2cn+NwMB2i96ubpj7w==}
@@ -7440,8 +7431,6 @@ snapshots:
   '@types/normalize-package-data@2.4.1': {}
 
   '@types/parse-json@4.0.0': {}
-
-  '@types/prettier@2.7.3': {}
 
   '@types/prop-types@15.7.5': {}
 

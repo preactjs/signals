@@ -136,7 +136,7 @@ const TodosViewModel: ModelConstructor<TodosViewModel> = createModel(() => {
 	};
 
 	const debugData = computed(() => {
-		return JSON.stringify({todosModel, filter, filteredTodos}, null, 2);
+		return JSON.stringify({ todosModel, filter, filteredTodos }, null, 2);
 	});
 
 	return {

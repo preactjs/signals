@@ -25,7 +25,7 @@ function transformCode(
 	return result?.code || "";
 }
 
-function runTest(
+async function runTest(
 	input: string,
 	expected: string,
 	options: PluginOptions = { enabled: true },
@@ -33,22 +33,22 @@ function runTest(
 	cjs?: boolean
 ) {
 	const output = transformCode(input, options, filename, cjs);
-	expect(format(output)).to.equal(format(expected));
+	expect(await format(output)).to.equal(await format(expected));
 }
 
 describe("Preact Signals Babel Transform", () => {
 	describe("signal naming", () => {
 		const DEBUG_OPTIONS = { enabled: true };
 
-		const runDebugTest = (
+		const runDebugTest = async (
 			inputCode: string,
 			expectedOutput: string,
 			fileName: string
 		) => {
-			runTest(inputCode, expectedOutput, DEBUG_OPTIONS, fileName);
+			await runTest(inputCode, expectedOutput, DEBUG_OPTIONS, fileName);
 		};
 
-		it("injects names for signal calls", () => {
+		it("injects names for signal calls", async () => {
 			const inputCode = `
 				function MyComponent() {
 					const count = signal(0);
@@ -69,10 +69,10 @@ describe("Preact Signals Babel Transform", () => {
 				}
 			`;
 
-			runDebugTest(inputCode, expectedOutput, "Component.js");
+			await runDebugTest(inputCode, expectedOutput, "Component.js");
 		});
 
-		it("injects names for useSignal calls", () => {
+		it("injects names for useSignal calls", async () => {
 			const inputCode = `
 				function MyComponent() {
 					const count = useSignal(0);
@@ -93,10 +93,10 @@ describe("Preact Signals Babel Transform", () => {
 				}
 			`;
 
-			runDebugTest(inputCode, expectedOutput, "Component.js");
+			await runDebugTest(inputCode, expectedOutput, "Component.js");
 		});
 
-		it("doesn't inject names when already provided", () => {
+		it("doesn't inject names when already provided", async () => {
 			const inputCode = `
 				function MyComponent() {
 					const count = signal(0, { name: "myCounter" });
@@ -118,10 +118,10 @@ describe("Preact Signals Babel Transform", () => {
 				}
 			`;
 
-			runDebugTest(inputCode, expectedOutput, "Component.js");
+			await runDebugTest(inputCode, expectedOutput, "Component.js");
 		});
 
-		it("handles signals with no initial value", () => {
+		it("handles signals with no initial value", async () => {
 			const inputCode = `
 				function MyComponent() {
 					const count = useSignal();
@@ -138,7 +138,7 @@ describe("Preact Signals Babel Transform", () => {
 				}
 			`;
 
-			runDebugTest(inputCode, expectedOutput, "Component.js");
+			await runDebugTest(inputCode, expectedOutput, "Component.js");
 		});
 	});
 });
