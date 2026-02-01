@@ -40,24 +40,42 @@ function getVariableNameFromDeclarator(
 ): string | null {
 	// Walk up the AST to find a variable declarator or object property
 	let currentPath: NodePath | null = path;
+	let propertyName: string | null = null;
+
 	while (currentPath) {
-		// Check for object property first (e.g., { count: signal(0) })
+		// Check for object property (e.g., { count: signal(0) })
 		if (
 			currentPath.isObjectProperty() &&
 			currentPath.node.key.type === "Identifier"
 		) {
-			return currentPath.node.key.name;
+			// Save the property name and continue looking for a model
+			propertyName = currentPath.node.key.name;
 		}
 		// Check for variable declarator (e.g., const count = signal(0))
 		if (
 			currentPath.isVariableDeclarator() &&
 			currentPath.node.id.type === "Identifier"
 		) {
+			// If we found a property name earlier, check if this is a createModel call
+			if (propertyName) {
+				const init = currentPath.get("init");
+				if (
+					init.isCallExpression() &&
+					init.get("callee").isIdentifier() &&
+					(init.get("callee").node as BabelTypes.Identifier).name ===
+						"createModel"
+				) {
+					// Return "ModelName.propertyName"
+					return `${currentPath.node.id.name}.${propertyName}`;
+				}
+				// Not inside a createModel, just return the property name
+				return propertyName;
+			}
 			return currentPath.node.id.name;
 		}
 		currentPath = currentPath.parentPath;
 	}
-	return null;
+	return propertyName;
 }
 
 function hasNameInOptions(

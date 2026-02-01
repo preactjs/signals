@@ -162,7 +162,7 @@ describe("Preact Signals Babel Transform", () => {
 			const expectedOutput = `
 				const CounterModel = createModel(() => ({
 					count: signal(0, {
-						name: "count (Component.js:3)",
+						name: "CounterModel.count (Component.js:3)",
 					}),
 				}), {
 					name: "CounterModel (Component.js:2)",
@@ -192,7 +192,7 @@ describe("Preact Signals Babel Transform", () => {
 			const expectedOutput = `
 				const CounterModel = createModel(() => ({
 					count: signal(0, {
-						name: "count (Component.js:3)",
+						name: "CounterModel.count (Component.js:3)",
 					}),
 				}), {
 					name: "MyCounter",
@@ -209,6 +209,32 @@ describe("Preact Signals Babel Transform", () => {
 				const increment = action(() => count.value++, {
 					someOption: true,
 					name: "increment (Component.js:2)",
+				});
+			`;
+			await runDebugTest(inputCode, expectedOutput, "Component.js");
+		});
+
+		it("includes model name for signals, computed, and actions inside createModel", async () => {
+			const inputCode = `
+				const CounterModel = createModel(() => ({
+					count: signal(0),
+					double: computed(() => count.value * 2),
+					increment: action(() => count.value++),
+				}));
+			`;
+			const expectedOutput = `
+				const CounterModel = createModel(() => ({
+					count: signal(0, {
+						name: "CounterModel.count (Component.js:3)",
+					}),
+					double: computed(() => count.value * 2, {
+						name: "CounterModel.double (Component.js:4)",
+					}),
+					increment: action(() => count.value++, {
+						name: "CounterModel.increment (Component.js:5)",
+					}),
+				}), {
+					name: "CounterModel (Component.js:2)",
 				});
 			`;
 			await runDebugTest(inputCode, expectedOutput, "Component.js");
