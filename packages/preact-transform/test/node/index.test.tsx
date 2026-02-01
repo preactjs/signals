@@ -140,5 +140,78 @@ describe("Preact Signals Babel Transform", () => {
 
 			await runDebugTest(inputCode, expectedOutput, "Component.js");
 		});
+
+		it("injects names for action calls", async () => {
+			const inputCode = `
+				const increment = action(() => count.value++);
+			`;
+			const expectedOutput = `
+				const increment = action(() => count.value++, {
+					name: "increment (Component.js:2)",
+				});
+			`;
+			await runDebugTest(inputCode, expectedOutput, "Component.js");
+		});
+
+		it("injects names for createModel calls", async () => {
+			const inputCode = `
+				const CounterModel = createModel(() => ({
+					count: signal(0),
+				}));
+			`;
+			const expectedOutput = `
+				const CounterModel = createModel(() => ({
+					count: signal(0, {
+						name: "count (Component.js:3)",
+					}),
+				}), {
+					name: "CounterModel (Component.js:2)",
+				});
+			`;
+			await runDebugTest(inputCode, expectedOutput, "Component.js");
+		});
+
+		it("doesn't inject names for action when already provided", async () => {
+			const inputCode = `
+				const increment = action(() => count.value++, { name: "customIncrement" });
+			`;
+			const expectedOutput = `
+				const increment = action(() => count.value++, {
+					name: "customIncrement",
+				});
+			`;
+			await runDebugTest(inputCode, expectedOutput, "Component.js");
+		});
+
+		it("doesn't inject names for createModel when already provided", async () => {
+			const inputCode = `
+				const CounterModel = createModel(() => ({
+					count: signal(0),
+				}), { name: "MyCounter" });
+			`;
+			const expectedOutput = `
+				const CounterModel = createModel(() => ({
+					count: signal(0, {
+						name: "count (Component.js:3)",
+					}),
+				}), {
+					name: "MyCounter",
+				});
+			`;
+			await runDebugTest(inputCode, expectedOutput, "Component.js");
+		});
+
+		it("merges name into existing action options", async () => {
+			const inputCode = `
+				const increment = action(() => count.value++, { someOption: true });
+			`;
+			const expectedOutput = `
+				const increment = action(() => count.value++, {
+					someOption: true,
+					name: "increment (Component.js:2)",
+				});
+			`;
+			await runDebugTest(inputCode, expectedOutput, "Component.js");
+		});
 	});
 });

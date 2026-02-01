@@ -16,17 +16,19 @@ function basename(filename: string | undefined): string | undefined {
 	return filename?.split(/[\\/]/).pop();
 }
 
-function isSignalCall(path: NodePath<BabelTypes.CallExpression>): boolean {
+function isNameableCall(path: NodePath<BabelTypes.CallExpression>): boolean {
 	const callee = path.get("callee");
 
-	// Check direct function calls like signal(), computed(), useSignal(), useComputed()
+	// Check direct function calls like signal(), computed(), useSignal(), useComputed(), action(), createModel()
 	if (callee.isIdentifier()) {
 		const name = callee.node.name;
 		return (
 			name === "signal" ||
 			name === "computed" ||
 			name === "useSignal" ||
-			name === "useComputed"
+			name === "useComputed" ||
+			name === "action" ||
+			name === "createModel"
 		);
 	}
 
@@ -36,9 +38,17 @@ function isSignalCall(path: NodePath<BabelTypes.CallExpression>): boolean {
 function getVariableNameFromDeclarator(
 	path: NodePath<BabelTypes.CallExpression>
 ): string | null {
-	// Walk up the AST to find a variable declarator
+	// Walk up the AST to find a variable declarator or object property
 	let currentPath: NodePath | null = path;
 	while (currentPath) {
+		// Check for object property first (e.g., { count: signal(0) })
+		if (
+			currentPath.isObjectProperty() &&
+			currentPath.node.key.type === "Identifier"
+		) {
+			return currentPath.node.key.name;
+		}
+		// Check for variable declarator (e.g., const count = signal(0))
 		if (
 			currentPath.isVariableDeclarator() &&
 			currentPath.node.id.type === "Identifier"
@@ -139,7 +149,7 @@ export default function signalsTransform(
 		visitor: {
 			CallExpression(path, state) {
 				// Handle signal naming
-				if (isEnabled && isSignalCall(path)) {
+				if (isEnabled && isNameableCall(path)) {
 					const args = path.get("arguments");
 
 					// Only inject name if it doesn't already have one
