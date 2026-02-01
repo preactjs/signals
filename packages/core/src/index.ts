@@ -1034,9 +1034,10 @@ function createModel<TModel, TFactoryArgs extends any[] = []>(
 		for (const key in model) {
 			// @ts-expect-error TypeScript can't infer that model[key] is a valid here
 			if (typeof model[key] === "function") {
+				const actionName = options?.name ? `${options.name}.${key}` : key;
 				// @ts-expect-error TypeScript can't infer that model[key] is a valid function
 				// to pass to action here
-				model[key] = action(model[key]);
+				model[key] = action(model[key], { name: actionName });
 			}
 		}
 
