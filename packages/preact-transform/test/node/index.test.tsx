@@ -239,5 +239,37 @@ describe("Preact Signals Babel Transform", () => {
 			`;
 			await runDebugTest(inputCode, expectedOutput, "Component.js");
 		});
+
+		it("includes model name for variables declared inside createModel with block body", async () => {
+			const inputCode = `
+				const CounterModel = createModel(() => {
+					const count = signal(0);
+					const double = computed(() => count.value * 2);
+					const increment = action(() => count.value++);
+					return { count, double, increment };
+				});
+			`;
+			const expectedOutput = `
+				const CounterModel = createModel(() => {
+					const count = signal(0, {
+						name: "CounterModel.count (Component.js:3)",
+					});
+					const double = computed(() => count.value * 2, {
+						name: "CounterModel.double (Component.js:4)",
+					});
+					const increment = action(() => count.value++, {
+						name: "CounterModel.increment (Component.js:5)",
+					});
+					return {
+						count,
+						double,
+						increment,
+					};
+				}, {
+					name: "CounterModel (Component.js:2)",
+				});
+			`;
+			await runDebugTest(inputCode, expectedOutput, "Component.js");
+		});
 	});
 });
