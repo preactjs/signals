@@ -11,6 +11,11 @@
   "linked": [],
   "access": "public",
   "baseBranch": "main",
-  "updateInternalDependencies": "patch",
+  "updateInternalDependencies": "minor",
+  "bumpVersionsWithWorkspaceProtocolOnly": true,
+  "___experimentalUnsafeOptions_WILL_CHANGE_IN_PATCH": {
+    "onlyUpdatePeerDependentsWhenOutOfRange": true,
+    "updateInternalDependents": "out-of-range"
+  },
   "ignore": ["@preact/signals-utils"]
 }
