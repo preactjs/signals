@@ -375,41 +375,51 @@ function flushUpdates() {
 		}
 
 		let prevDepth = -1;
+		let openGroups = 0;
+		let prevOpenedGroup = false;
 		for (const updateInfo of updateInfoList) {
-			logUpdate(updateInfo, prevDepth);
+			const openedGroup = logUpdate(updateInfo, prevDepth, prevOpenedGroup);
+			if (openedGroup) {
+				openGroups++;
+			}
 			prevDepth = updateInfo.depth;
+			prevOpenedGroup = openedGroup;
 		}
 		updateInfoMap.delete(signal);
-		new Array(prevDepth + 1).fill(0).map(endUpdateGroup);
+		new Array(openGroups).fill(0).map(endUpdateGroup);
 	}
 }
 
 /* eslint-disable no-console */
-function logUpdate(info: UpdateInfo, prevDepth: number) {
-	if (!debugEnabled || !consoleLoggingEnabled) return;
+function logUpdate(
+	info: UpdateInfo,
+	prevDepth: number,
+	prevOpenedGroup: boolean
+): boolean {
+	if (!debugEnabled || !consoleLoggingEnabled) return false;
 
 	const { signal, type, depth } = info;
 	const name = getSignalName(signal, type);
 
+	// Effects can't have descendants, so we use a normal log instead of a group
 	if (type === "effect" || type === "component") {
-		if (prevDepth === depth) {
+		const copy = type === "effect" ? "effect" : "component render";
+		// Only close the previous group if the previous item opened one and we're at the same depth
+		if (isGrouped && prevDepth === depth && prevOpenedGroup) {
 			endUpdateGroup();
 		}
 
-		const copy = type === "effect" ? "effect" : "component render";
-		if (isGrouped)
-			console.groupCollapsed(
-				`${" ".repeat(depth * 2)}↪️ Triggered ${copy}: ${name}`
-			);
-		else console.log(`${" ".repeat(depth * 2)}↪️ Triggered ${copy}: ${name}`);
-		return;
+		console.log(`${" ".repeat(depth * 2)}↪️ Triggered ${copy}: ${name}`);
+		// Return false to indicate we didn't open a group
+		return false;
 	}
 
 	const formattedPrev = formatValue(info.prevValue);
 	const formattedNew = formatValue(info.newValue);
 
 	if (isGrouped) {
-		if (prevDepth === depth) {
+		// Only close the previous group if the previous item opened one and we're at the same depth
+		if (prevDepth === depth && prevOpenedGroup) {
 			endUpdateGroup();
 		}
 
@@ -427,10 +437,13 @@ function logUpdate(info: UpdateInfo, prevDepth: number) {
 		if ("_fn" in signal) {
 			console.log(`${" ".repeat(depth * spacing)}Type: Computed`);
 		}
+		// Return true to indicate we opened a group
+		return true;
 	} else {
 		console.log(
 			`${depth === 0 ? "🎯" : "↪️"} ${name}: ${formattedPrev} → ${formattedNew}`
 		);
+		return false;
 	}
 }
 
