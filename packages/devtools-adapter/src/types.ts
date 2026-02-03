@@ -11,8 +11,8 @@ export interface DependencyInfo {
  * Represents a signal update event from the debug system
  */
 export interface SignalUpdate {
-	type: "update" | "effect";
-	signalType: "signal" | "computed" | "effect";
+	type: "update" | "effect" | "component";
+	signalType: "signal" | "computed" | "effect" | "component";
 	signalName: string;
 	signalId?: string;
 	prevValue?: any;
@@ -30,7 +30,7 @@ export interface SignalUpdate {
  */
 export interface SignalDisposed {
 	type: "disposed";
-	signalType: "signal" | "computed" | "effect";
+	signalType: "signal" | "computed" | "effect" | "component";
 	signalName: string;
 	signalId: string;
 	timestamp: number;

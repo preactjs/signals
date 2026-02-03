@@ -31,14 +31,17 @@ export function UpdateItem({ update, count, firstUpdate }: UpdateItemProps) {
 		</span>
 	);
 
-	if (update.type === "effect") {
+	if (update.type === "effect" || update.type === "component") {
+		const icon = update.type === "component" ? "🔄" : "↪️";
+		const label = update.type === "component" ? "Component render" : "Effect";
 		return (
 			<div className={`update-item ${update.type}`}>
 				<div className="update-header">
 					<span className="signal-name">
-						↪️ {update.signalName}
+						{icon} {update.signalName}
 						{countLabel}
 					</span>
+					<span className="update-type-badge">{label}</span>
 					<span className="update-time">{time}</span>
 				</div>
 			</div>
