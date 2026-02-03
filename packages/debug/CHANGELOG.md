@@ -1,5 +1,11 @@
 # @preact/signals-debug
 
+## 1.3.0
+
+### Minor Changes
+
+- [#837](https://github.com/preactjs/signals/pull/837) [`0e0625d`](https://github.com/preactjs/signals/commit/0e0625d12f9a7a7770d2e24c63d5cff7cb422c25) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Ensure all component/effect dependencies are always visualized in the Graph
+
 ## 1.2.1
 
 ### Patch Changes

@@ -48,7 +48,7 @@ export default defineConfig(env => ({
 					let name = chunk.name;
 					if (chunk.facadeModuleId) {
 						const p = posix.normalize(chunk.facadeModuleId);
-						const m = p.match(/([^/]+)(?:\/index)?\.[^/]+$/);
+						const m = p.match(/([^/\\]+)(?:[\/\\]index)?\.[^/\\]+$/);
 						if (m) name = m[1];
 					}
 					return `${name}-[hash].js`;

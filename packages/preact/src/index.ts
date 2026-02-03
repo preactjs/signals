@@ -1,10 +1,14 @@
 import { options, Component, isValidElement, Fragment } from "preact";
-import { useRef, useMemo, useEffect, useState } from "preact/hooks";
+import { useRef, useMemo, useEffect } from "preact/hooks";
 import {
 	signal,
 	computed,
 	batch,
 	effect,
+	action,
+	createModel,
+	type Model,
+	type ModelConstructor,
 	Signal,
 	type ReadonlySignal,
 	untracked,
@@ -26,6 +30,10 @@ export {
 	computed,
 	batch,
 	effect,
+	action,
+	type Model,
+	type ModelConstructor,
+	createModel,
 	Signal,
 	type ReadonlySignal,
 	untracked,
@@ -363,6 +371,9 @@ Component.prototype.shouldComponentUpdate = function (
 	props,
 	state
 ) {
+	// Suspended vnodes should always update:
+	if (this.__R) return true;
+
 	// @todo: Once preactjs/preact#3671 lands, this could just use `currentUpdater`:
 	const updater = this._updater;
 	const hasSignals = updater && updater._sources !== undefined;
@@ -402,9 +413,10 @@ Component.prototype.shouldComponentUpdate = function (
 export function useSignal<T>(value: T, options?: SignalOptions<T>): Signal<T>;
 export function useSignal<T = undefined>(): Signal<T | undefined>;
 export function useSignal<T>(value?: T, options?: SignalOptions<T>) {
-	return useState(() =>
-		signal<T | undefined>(value, options as SignalOptions)
-	)[0];
+	return useMemo(
+		() => signal<T | undefined>(value, options as SignalOptions),
+		[]
+	);
 }
 
 export function useComputed<T>(compute: () => T, options?: SignalOptions<T>) {

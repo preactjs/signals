@@ -7,7 +7,8 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   font-size: 13px;
   line-height: 1.4;
   color: #333;
@@ -54,10 +55,10 @@ body {
 }
 
 .divider {
-	width: 100%;
-	height: 2px;
-	background: #e0e0e0;
-	margin: 8px 0;
+  width: 100%;
+  height: 2px;
+  background: #e0e0e0;
+  margin: 8px 0;
 }
 
 .status-indicator {
@@ -86,8 +87,13 @@ body {
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }
 
 .header-controls {
@@ -151,7 +157,7 @@ body {
   background: white;
   border: 1px solid #d0d0d0;
   border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
   z-index: 1000;
   max-height: 400px;
   overflow-y: auto;
@@ -316,15 +322,15 @@ body {
 }
 
 .component-name-header {
-	margin-right: 8px;
+  margin-right: 8px;
 }
 
 .component-list {
-	list-style: none;
-	display: flex;
-	padding: 0;
-	margin: 0;
-	font-family: monospace;
+  list-style: none;
+  display: flex;
+  padding: 0;
+  margin: 0;
+  font-family: monospace;
   background: #f8f9fa;
   padding: 4px 6px;
   border-radius: 3px;
@@ -464,14 +470,14 @@ body {
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   transition: all 0.2s;
 }
 
 .graph-reset-button:hover,
 .graph-export-button:hover {
   background: #f5f5f5;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
 .graph-reset-button:active,
@@ -492,7 +498,7 @@ body {
   background: white;
   border: 1px solid #e0e0e0;
   border-radius: 4px;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
   overflow: hidden;
   min-width: 180px;
 }
@@ -527,11 +533,11 @@ body {
   transition: all 0.2s;
   stroke: #fff;
   stroke-width: 2;
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
 }
 
 .graph-node:hover {
-  filter: brightness(1.1) drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+  filter: brightness(1.1) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
 }
 
 .graph-node.signal {
@@ -569,7 +575,7 @@ body {
   font-size: 12px;
   font-weight: 500;
   pointer-events: none;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 .graph-legend {
@@ -581,7 +587,7 @@ body {
   border-radius: 4px;
   padding: 12px;
   font-size: 12px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .legend-item {
@@ -634,7 +640,7 @@ body {
   border-radius: 4px;
   font-size: 13px;
   font-weight: 500;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   z-index: 1000;
   animation: slideInFade 0.3s ease-out;
 }

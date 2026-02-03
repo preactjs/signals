@@ -1,5 +1,11 @@
 # @preact/signals
 
+## 2.6.2
+
+### Patch Changes
+
+- [#858](https://github.com/preactjs/signals/pull/858) [`e4bbb66`](https://github.com/preactjs/signals/commit/e4bbb66e3592343894ff880922ea1176742e3a13) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Fix issue where unmounted vnodes could update with signals
+
 ## 2.6.1
 
 ### Patch Changes
