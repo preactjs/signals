@@ -320,6 +320,30 @@ body {
   border-left: 4px solid #ff9800;
 }
 
+.update-item.component {
+  border-left: 4px solid #4caf50;
+  background-color: #f8fff8;
+}
+
+.update-type-badge {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: #e0e0e0;
+  color: #666;
+  margin-left: 8px;
+}
+
+.update-item.component .update-type-badge {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.update-item.effect .update-type-badge {
+  background: #fff3e0;
+  color: #e65100;
+}
+
 .component-name-header {
   margin-right: 8px;
 }
