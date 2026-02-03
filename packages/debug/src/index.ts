@@ -391,7 +391,6 @@ function logUpdate(info: UpdateInfo, prevDepth: number) {
 	const { signal, type, depth } = info;
 	const name = getSignalName(signal, type);
 
-	console.log(info);
 	if (type === "effect" || type === "component") {
 		if (prevDepth === depth) {
 			endUpdateGroup();
