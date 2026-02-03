@@ -1,6 +1,9 @@
 import { Effect, Signal } from "@preact/signals-core";
 
-export function getSignalName(signal: any, isEffect: boolean): string {
+export function getSignalName(
+	signal: any,
+	type: "component" | "effect" | "value"
+): string {
 	// Try to get a meaningful name for the signal
 	if (signal.displayName) return signal.displayName;
 	if (signal.name)
@@ -8,7 +11,7 @@ export function getSignalName(signal: any, isEffect: boolean): string {
 			? `${(signal as Effect)._sources?._source.name}-subscribe`
 			: signal.name;
 	if (signal._fn && signal._fn.name) return signal._fn.name;
-	if (isEffect) return "effect";
+	if (type === "effect" || type === "component") return type;
 	const signalType = "_fn" in signal ? "computed" : "signal";
 	return `(anonymous ${signalType})`;
 }

@@ -212,7 +212,8 @@ export function GraphVisualization() {
 			if (!update.signalId) continue;
 			if (!showDisposed && disposed.has(update.signalId)) continue;
 
-			const type: "signal" | "computed" | "effect" = update.signalType;
+			const type: "signal" | "computed" | "effect" | "component" =
+				update.signalType;
 
 			if (!nodes.has(update.signalId)) {
 				nodes.set(update.signalId, {
@@ -423,6 +424,9 @@ export function GraphVisualization() {
 					break;
 				case "effect":
 					lines.push(`  ${id}([${name}])`);
+					break;
+				case "component":
+					lines.push(`  ${id}{{${name}}}`);
 					break;
 			}
 		});
@@ -654,6 +658,13 @@ export function GraphVisualization() {
 							style={{ backgroundColor: "#4caf50" }}
 						></div>
 						<span>Effect</span>
+					</div>
+					<div className="legend-item">
+						<div
+							className="legend-color"
+							style={{ backgroundColor: "#9c27b0" }}
+						></div>
+						<span>Component</span>
 					</div>
 				</div>
 			</div>

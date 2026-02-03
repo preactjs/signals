@@ -65,8 +65,8 @@ export function createConnectionStore(adapter: DevToolsAdapter) {
 }
 
 export interface SignalUpdate {
-	type: "update" | "effect";
-	signalType: "signal" | "computed" | "effect";
+	type: "update" | "effect" | "component";
+	signalType: "signal" | "computed" | "effect" | "component";
 	signalName: string;
 	signalId?: string;
 	prevValue?: any;
