@@ -84,8 +84,8 @@
     "prettier": "^3.6.2",
     "shx": "^0.3.4",
     "typescript": "~5.8.3",
-    "vitest": "^4.0.17",
-    "vite": "^6.3.5"
+    "vite": "^6.3.5",
+    "vitest": "^4.0.17"
   },
   "lint-staged": {
     "**/*.{js,mjs,jsx,ts,tsx,yml,yaml,json,md,html,css}": [

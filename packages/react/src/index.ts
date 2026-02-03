@@ -24,6 +24,7 @@ import {
 	useSignal,
 	useComputed,
 	useSignalEffect,
+	useModel,
 } from "@preact/signals-react/runtime";
 
 export {
@@ -40,6 +41,7 @@ export {
 	useSignal,
 	useComputed,
 	useSignalEffect,
+	useModel,
 	untracked,
 };
 

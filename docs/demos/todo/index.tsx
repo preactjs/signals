@@ -1,4 +1,3 @@
-import { useEffect, useState } from "preact/hooks";
 import {
 	createModel,
 	signal,
@@ -7,7 +6,8 @@ import {
 	Model,
 	ModelConstructor,
 	ReadonlySignal,
-} from "@preact/signals-core";
+	useModel,
+} from "@preact/signals";
 import { For, Show } from "@preact/signals/utils";
 import "./style.css";
 
@@ -92,6 +92,7 @@ interface TodosViewModel {
 	filter: ReadonlySignal<"all" | "active" | "completed">;
 	filteredTodos: ReadonlySignal<Todo[]>;
 	setFilter: (newFilter: "all" | "active" | "completed") => void;
+	debugData: ReadonlySignal<string>;
 }
 
 // View model - manages UI state and filtering, composes the business model
@@ -150,12 +151,6 @@ const TodosViewModel: ModelConstructor<TodosViewModel> = createModel(() => {
 		debugData,
 	};
 });
-
-function useModel<TModel>(constructModel: () => Model<TModel>): Model<TModel> {
-	const model = useState(() => constructModel())[0];
-	useEffect(() => () => model[Symbol.dispose]());
-	return model;
-}
 
 function FilterButton({
 	filterType,
