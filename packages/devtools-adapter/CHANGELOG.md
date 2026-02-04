@@ -1,5 +1,11 @@
 # @preact/signals-devtools-adapter
 
+## 0.4.0
+
+### Minor Changes
+
+- [#866](https://github.com/preactjs/signals/pull/866) [`00ba858`](https://github.com/preactjs/signals/commit/00ba858365c135049400607d2f3f380756c96c5d) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Add special case in devtools-ui for component updates
+
 ## 0.3.0
 
 ### Minor Changes
