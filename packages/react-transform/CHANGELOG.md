@@ -1,5 +1,31 @@
 # @preact/signals-react-transform
 
+## 0.8.1
+
+### Patch Changes
+
+- [#814](https://github.com/preactjs/signals/pull/814) [`a5d0a6e`](https://github.com/preactjs/signals/commit/a5d0a6e74684a91cbe2354b60f3da3d862e1198b) Thanks [@andrewiggins](https://github.com/andrewiggins)! - Fix JSX detection leaking to non-component functions in the same scope
+
+  Previously, when a component containing JSX was defined inside another function, the JSX detection could incorrectly "leak" to sibling functions or the parent function, causing non-components to be transformed. This was especially problematic in test files where components are defined inside `it()` or `describe()` blocks.
+
+  ```js
+  describe("suite", () => {
+  	it("test", () => {
+  		// This arrow function was incorrectly transformed because
+  		// Counter's JSX detection leaked to sibling functions
+  		const CountModel = () => signal.value;
+  		function Counter() {
+  			return <div>Hello</div>;
+  		}
+  	});
+  });
+  ```
+
+  The transform now correctly scopes JSX and signal usage detection to only the containing component or custom hook function.
+
+- Updated dependencies [[`5794b04`](https://github.com/preactjs/signals/commit/5794b0418ef6a04810ade08e2a8237c66e61ed4b)]:
+  - @preact/signals-react@3.8.0
+
 ## 0.8.0
 
 ### Minor Changes
