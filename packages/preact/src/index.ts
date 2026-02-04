@@ -504,7 +504,7 @@ export function useModel<TModel>(
 		| InternalModelConstructor<TModel, []>
 		| (() => Model<TModel>);
 
-	const [inst] = useState(() => (factory as InternalFactory)());
+	const inst = useMemo(() => (factory as InternalFactory)(), []);
 	useEffect(() => inst[Symbol.dispose], [inst]);
 	return inst;
 }
