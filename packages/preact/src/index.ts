@@ -44,7 +44,17 @@ let finishUpdate: (() => void) | undefined;
 
 function setCurrentUpdater(updater?: Effect) {
 	// end tracking for the current update:
-	if (finishUpdate) finishUpdate();
+	if (finishUpdate) {
+		const comp = currentComponent;
+		// Clear finishUpdate before calling it. This prevents nested synchronous
+		// renders from trying to call the same finish function again.
+		// finishUpdate() may trigger endBatch, which can run effects that call
+		// render(), leading to re-entrancy.
+		const finish = finishUpdate;
+		finishUpdate = undefined;
+		finish();
+		currentComponent = comp;
+	}
 	// start tracking the new update:
 	finishUpdate = updater && updater._start();
 }
@@ -151,8 +161,6 @@ hook(OptionsTypes.DIFF, (old, vnode) => {
 
 /** Set up Updater before rendering a component */
 hook(OptionsTypes.RENDER, (old, vnode) => {
-	setCurrentUpdater();
-
 	let updater;
 
 	let component = vnode.__c;

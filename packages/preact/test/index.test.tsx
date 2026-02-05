@@ -6,6 +6,7 @@ import {
 	signal,
 	useSignal,
 } from "@preact/signals";
+import { effect } from "@preact/signals-core";
 import type { ReadonlySignal } from "@preact/signals";
 import { createElement, createRef, render, createContext } from "preact";
 import type { ComponentChildren, FunctionComponent } from "preact";
@@ -640,6 +641,44 @@ describe("@preact/signals", () => {
 				update("bar");
 			});
 			expect(scratch.innerHTML).to.equal("<p>bar baz</p>");
+		});
+	});
+
+	describe("nested synchronous renders", () => {
+		it("should not throw out-of-order effect when nested render occurs", () => {
+			const otherContainer = document.createElement("div");
+			const localScratch = document.createElement("div");
+			const trigger = signal(0);
+			let renderCount = 0;
+
+			function PortalContent() {
+				return <span>portal</span>;
+			}
+
+			const dispose = effect(() => {
+				trigger.value; // subscribe
+				render(<PortalContent />, otherContainer);
+			});
+
+			function TestComponent() {
+				renderCount++;
+				const val = trigger.value;
+
+				const comp = useComputed(() => `render-${renderCount}-val-${val}`);
+
+				if (renderCount === 1) {
+					trigger.value = 1;
+				}
+
+				return <div>{comp.value}</div>;
+			}
+
+			expect(() => {
+				render(<TestComponent />, localScratch);
+				dispose();
+				render(null, otherContainer);
+				render(null, localScratch);
+			}).to.not.throw();
 		});
 	});
 
