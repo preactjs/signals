@@ -1,5 +1,53 @@
 # @preact/signals
 
+## 2.7.0
+
+### Minor Changes
+
+- [#861](https://github.com/preactjs/signals/pull/861) [`5794b04`](https://github.com/preactjs/signals/commit/5794b0418ef6a04810ade08e2a8237c66e61ed4b) Thanks [@andrewiggins](https://github.com/andrewiggins)! - Add `useModel` hook for using Models in components
+
+  The new `useModel` hook provides a convenient way to use Models (created with `createModel`) within React and Preact components. It handles:
+  - Creating the model instance lazily on first render
+  - Maintaining the same instance across re-renders
+  - Automatically disposing the model when the component unmounts
+
+  ```jsx
+  import { createModel, signal } from "@preact/signals-core";
+  import { useModel } from "@preact/signals-react"; // or "@preact/signals"
+
+  const CountModel = createModel(() => ({
+  	count: signal(0),
+  	increment() {
+  		this.count.value++;
+  	},
+  }));
+
+  function Counter() {
+  	const model = useModel(CountModel);
+  	return <button onClick={() => model.increment()}>{model.count}</button>;
+  }
+  ```
+
+  For models that require constructor arguments, wrap in a factory function:
+
+  ```jsx
+  const CountModel = createModel((initialCount: number) => ({
+    count: signal(initialCount),
+  }));
+
+  function Counter() {
+    const model = useModel(() => new CountModel(5));
+    return <div>{model.count}</div>;
+  }
+  ```
+
+### Patch Changes
+
+- [#865](https://github.com/preactjs/signals/pull/865) [`4872968`](https://github.com/preactjs/signals/commit/48729680775b593d3bc1d3c7c778e99fdf91c41a) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Revert https://github.com/preactjs/signals/pull/728 - this might entail work in prefresh but currently the presence of `uesState` makes every sCU bail
+
+- Updated dependencies [[`19ac39b`](https://github.com/preactjs/signals/commit/19ac39bb4a7a3273090753a50a58efb717f5553d)]:
+  - @preact/signals-core@1.13.0
+
 ## 2.6.2
 
 ### Patch Changes

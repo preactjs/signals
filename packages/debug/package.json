@@ -1,6 +1,6 @@
 {
   "name": "@preact/signals-debug",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "license": "MIT",
   "description": "Debugging tools for @preact/signals",
   "keywords": [],
@@ -41,7 +41,7 @@
     "prepublishOnly": "cd ../.. && pnpm build:debug"
   },
   "devDependencies": {
-    "@preact/signals-core": "workspace:^1.12.2"
+    "@preact/signals-core": "workspace:^1.13.0"
   },
   "peerDependencies": {
     "@preact/signals-core": ">=1.12.2"

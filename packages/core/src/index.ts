@@ -971,6 +971,9 @@ export type ModelConstructor<TModel, TFactoryArgs extends any[] = []> = new (
  * this internal interface that extends the public interface but also
  * allows calling without `new`.
  *
+ * This pattern is used by the Preact & React adapters to make instantiating
+ * a model or a function that returns a model easier.
+ *
  * @internal
  */
 interface InternalModelConstructor<TModel, TFactoryArgs extends any[]>
