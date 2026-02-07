@@ -304,6 +304,7 @@ body {
   flex: 1;
   overflow-y: auto;
   padding: 8px;
+  min-height: 200px;
 }
 
 /* Update Items */
@@ -748,6 +749,7 @@ body {
 }
 
 .graph-empty {
+  padding: 32px 0;
   display: flex;
   align-items: center;
   justify-content: center;
