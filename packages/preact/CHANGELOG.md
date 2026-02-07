@@ -1,5 +1,11 @@
 # @preact/signals
 
+## 1.3.4
+
+### Patch Changes
+
+- [#869](https://github.com/preactjs/signals/pull/869) [`27157f5`](https://github.com/preactjs/signals/commit/27157f53fd66dff85df181cf9a744db0035c704b) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Prevent scheduled effects from highjacking the execution-context
+
 ## 1.3.3
 
 ### Patch Changes
