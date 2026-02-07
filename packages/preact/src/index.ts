@@ -44,7 +44,11 @@ let finishUpdate: (() => void) | undefined;
 
 function setCurrentUpdater(updater?: Effect) {
 	// end tracking for the current update:
-	if (finishUpdate) finishUpdate();
+	if (finishUpdate) {
+		const finish = finishUpdate;
+		finishUpdate = undefined;
+		finish();
+	}
 	// start tracking the new update:
 	finishUpdate = updater && updater._start();
 }
@@ -151,6 +155,7 @@ hook(OptionsTypes.DIFF, (old, vnode) => {
 
 /** Set up Updater before rendering a component */
 hook(OptionsTypes.RENDER, (old, vnode) => {
+	old(vnode);
 	setCurrentUpdater();
 
 	let updater;
@@ -170,7 +175,6 @@ hook(OptionsTypes.RENDER, (old, vnode) => {
 
 	currentComponent = component;
 	setCurrentUpdater(updater);
-	old(vnode);
 });
 
 /** Finish current updater if a component errors */
