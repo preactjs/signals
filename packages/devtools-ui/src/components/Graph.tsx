@@ -493,7 +493,7 @@ export function GraphVisualization() {
 							refY="3"
 							orient="auto"
 						>
-							<polygon points="0 0, 8 3, 0 6" fill="#94a3b8" />
+							<polygon points="0 0, 8 3, 0 6" className="graph-arrowhead" />
 						</marker>
 					</defs>
 
@@ -639,31 +639,19 @@ export function GraphVisualization() {
 
 				<div className="graph-legend">
 					<div className="legend-item">
-						<div
-							className="legend-color"
-							style={{ backgroundColor: "#2196f3" }}
-						></div>
+						<div className="legend-color signal"></div>
 						<span>Signal</span>
 					</div>
 					<div className="legend-item">
-						<div
-							className="legend-color"
-							style={{ backgroundColor: "#ff9800" }}
-						></div>
+						<div className="legend-color computed"></div>
 						<span>Computed</span>
 					</div>
 					<div className="legend-item">
-						<div
-							className="legend-color"
-							style={{ backgroundColor: "#4caf50" }}
-						></div>
+						<div className="legend-color effect"></div>
 						<span>Effect</span>
 					</div>
 					<div className="legend-item">
-						<div
-							className="legend-color"
-							style={{ backgroundColor: "#9c27b0" }}
-						></div>
+						<div className="legend-color component"></div>
 						<span>Component</span>
 					</div>
 				</div>
