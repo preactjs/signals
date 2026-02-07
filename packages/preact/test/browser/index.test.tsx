@@ -837,6 +837,111 @@ describe("@preact/signals", () => {
 			expect(scratch.innerHTML).to.equal("<div>updated bar</div>");
 		});
 
+		it("should not have a stale currentComponent when a signal effect triggers a synchronous render", () => {
+			const scratch2 = document.createElement("div");
+			const sig = signal("foo");
+			let setState: (v: string) => void;
+
+			function Inner({ state }: { state: string }) {
+				return <p>{state}</p>;
+			}
+
+			function App() {
+				const [state, _setState] = useState("initial");
+				setState = _setState;
+
+				// useSignalEffect wraps useEffect, so the outer useEffect
+				// gets flushed during options._render. When it fires, it
+				// creates a signal effect() that immediately invokes the
+				// callback, doing a synchronous render to another root.
+				useSignalEffect(() => {
+					render(<Inner state={sig.value} />, scratch2);
+				});
+
+				// This causes a crash because currentComponent._updateFlags is gone
+				useComputed(() => {});
+
+				return (
+					<div>
+						{state} {sig.value}
+					</div>
+				);
+			}
+
+			render(<App />, scratch);
+			expect(scratch.innerHTML).to.equal("<div>initial foo</div>");
+
+			act(() => {
+				setState!("updated");
+			});
+			expect(scratch.innerHTML).to.equal("<div>updated foo</div>");
+			expect(scratch2.innerHTML).to.equal("<p>foo</p>");
+
+			act(() => {
+				sig.value = "bar";
+			});
+			expect(scratch.innerHTML).to.equal("<div>updated bar</div>");
+		});
+
+		it("should not have a stale currentComponent when an already-setup signal effect fires during render", () => {
+			const scratch2 = document.createElement("div");
+			const sig = signal("foo");
+			const dep = signal(0);
+			let setState: (v: string) => void;
+
+			function Inner() {
+				return <p>{dep.value}</p>;
+			}
+
+			function App() {
+				const [state, _setState] = useState("initial");
+				setState = _setState;
+
+				// Signal effect is set up on mount and tracks dep.
+				// When dep changes synchronously during a render flush,
+				// this fires immediately, doing a synchronous render.
+				useSignalEffect(() => {
+					dep.value;
+					render(<Inner />, scratch2);
+				});
+
+				// Regular useEffect that bumps dep on mount.
+				// When flushed during options._render (from a state-driven
+				// re-render), it changes dep, which fires the signal effect.
+				useEffect(() => {
+					dep.value = dep.peek() + 1;
+				}, []);
+
+				useComputed(() => {});
+
+				return (
+					<div>
+						{state} {sig.value}
+					</div>
+				);
+			}
+
+			render(<App />, scratch);
+			expect(scratch.innerHTML).to.equal("<div>initial foo</div>");
+
+			// The useSignalEffect's useEffect and the regular useEffect
+			// are both pending. When options._render flushes them:
+			// 1. useSignalEffect's useEffect fires → creates effect() →
+			//    immediately runs, reads dep (0), does sync render
+			// 2. useEffect fires → dep.value = 1 → signal effect fires
+			//    synchronously → sync render again → corrupts currentComponent
+			// 3. App renders → useComputed accesses stale currentComponent
+			act(() => {
+				setState!("updated");
+			});
+			expect(scratch.innerHTML).to.equal("<div>updated foo</div>");
+
+			act(() => {
+				sig.value = "bar";
+			});
+			expect(scratch.innerHTML).to.equal("<div>updated bar</div>");
+		});
+
 		it("signals should not stop context from propagating", () => {
 			const ctx = createContext({ test: "should-not-exist" });
 			let update: any;
