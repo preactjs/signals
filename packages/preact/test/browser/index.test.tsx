@@ -791,6 +791,52 @@ describe("@preact/signals", () => {
 	});
 
 	describe("hooks mixed with signals", () => {
+		it("should not have a stale currentComponent when an effect triggers a synchronous render", () => {
+			const scratch2 = document.createElement("div");
+			const sig = signal("foo");
+			let setState: (v: string) => void;
+
+			function Inner() {
+				return <p>{sig.value}</p>;
+			}
+
+			function App() {
+				const [state, _setState] = useState("initial");
+				setState = _setState;
+
+				useEffect(() => {
+					render(<Inner />, scratch2);
+				}, []);
+
+				// This causes a crash because currentComponent._updateFlags is gone
+				useComputed(() => {});
+
+				return (
+					<div>
+						{state} {sig.value}
+					</div>
+				);
+			}
+
+			render(<App />, scratch);
+			expect(scratch.innerHTML).to.equal("<div>initial foo</div>");
+
+			// Update state — triggers a re-render.
+			// options._render will flush the pending effect which calls
+			// render(<Inner />, scratch2). This synchronous render overwrites
+			// currentComponent via the nested RENDER/DIFFED hooks.
+			act(() => {
+				setState!("updated");
+			});
+			expect(scratch.innerHTML).to.equal("<div>updated foo</div>");
+			expect(scratch2.innerHTML).to.equal("<p>foo</p>");
+
+			act(() => {
+				sig.value = "bar";
+			});
+			expect(scratch.innerHTML).to.equal("<div>updated bar</div>");
+		});
+
 		it("signals should not stop context from propagating", () => {
 			const ctx = createContext({ test: "should-not-exist" });
 			let update: any;
