@@ -534,4 +534,264 @@ describe("Signal Debug", () => {
 			);
 		});
 	});
+
+	describe("allDependencies - Complete Dependency Tracking", () => {
+		it("should include all dependencies for a computed with multiple sources", async () => {
+			const count1 = signal(0, { name: "count1" });
+			const count2 = signal(0, { name: "count2" });
+			const sum = computed(() => count1.value + count2.value, { name: "sum" });
+			sum.subscribe(() => {});
+
+			// Capture updates sent to devtools
+			const updates: any[] = [];
+			const unsubscribe = window.__PREACT_SIGNALS_DEVTOOLS__.onUpdate(
+				newUpdates => {
+					updates.push(...newUpdates);
+				}
+			);
+
+			// Update one signal
+			count1.value = 5;
+
+			await new Promise(resolve => setTimeout(resolve, 0));
+			unsubscribe();
+
+			// Find the update for the 'sum' computed
+			const sumUpdate = updates.find(u => u.signalName === "sum");
+			expect(sumUpdate).toBeDefined();
+			expect(sumUpdate.allDependencies).toBeDefined();
+			expect(sumUpdate.allDependencies).toHaveLength(2);
+
+			// Find the signal IDs for count1 and count2
+			const count1Update = updates.find(u => u.signalName === "count1");
+			expect(count1Update).toBeDefined();
+
+			// allDependencies should include both count1 and count2
+			// We can verify by checking that there are 2 dependencies
+			expect(sumUpdate.allDependencies.length).toBe(2);
+		});
+
+		it("should include rich dependency info with id, name, and type", async () => {
+			const count1 = signal(0, { name: "count1" });
+			const doubled = computed(() => count1.value * 2, { name: "doubled" });
+			const sum = computed(() => count1.value + doubled.value, { name: "sum" });
+			sum.subscribe(() => {});
+
+			// Capture updates sent to devtools
+			const updates: any[] = [];
+			const unsubscribe = window.__PREACT_SIGNALS_DEVTOOLS__.onUpdate(
+				newUpdates => {
+					updates.push(...newUpdates);
+				}
+			);
+
+			// Update the base signal
+			count1.value = 5;
+
+			await new Promise(resolve => setTimeout(resolve, 0));
+			unsubscribe();
+
+			// Find the update for the 'sum' computed
+			const sumUpdate = updates.find(u => u.signalName === "sum");
+			expect(sumUpdate).toBeDefined();
+			expect(sumUpdate.allDependencies).toBeDefined();
+			expect(sumUpdate.allDependencies).toHaveLength(2);
+
+			// Each dependency should have id, name, and type
+			for (const dep of sumUpdate.allDependencies) {
+				expect(dep).toHaveProperty("id");
+				expect(dep).toHaveProperty("name");
+				expect(dep).toHaveProperty("type");
+				expect(typeof dep.id).toBe("string");
+				expect(typeof dep.name).toBe("string");
+				expect(["signal", "computed"]).toContain(dep.type);
+			}
+
+			// Check that we have one signal dependency (count1) and one computed dependency (doubled)
+			const signalDep = sumUpdate.allDependencies.find(
+				(d: any) => d.type === "signal"
+			);
+			const computedDep = sumUpdate.allDependencies.find(
+				(d: any) => d.type === "computed"
+			);
+			expect(signalDep).toBeDefined();
+			expect(computedDep).toBeDefined();
+			expect(signalDep.name).toBe("count1");
+			expect(computedDep.name).toBe("doubled");
+		});
+
+		it("should provide dependency names for graph rendering without updates", async () => {
+			// This test verifies that the rich dependency info enables the graph
+			// to show dependencies even if they haven't had their own updates.
+			// Previously only signal IDs were sent, which wasn't enough to render nodes.
+			const base1 = signal(0, { name: "base1" });
+			const base2 = signal(0, { name: "base2" });
+			const combined = computed(() => base1.value + base2.value, {
+				name: "combined",
+			});
+			combined.subscribe(() => {});
+
+			// Capture updates sent to devtools
+			const updates: any[] = [];
+			const unsubscribe = window.__PREACT_SIGNALS_DEVTOOLS__.onUpdate(
+				newUpdates => {
+					updates.push(...newUpdates);
+				}
+			);
+
+			// Only update base1 - base2 never sends an update
+			base1.value = 5;
+
+			await new Promise(resolve => setTimeout(resolve, 0));
+			unsubscribe();
+
+			// Find the update for 'combined'
+			const combinedUpdate = updates.find(u => u.signalName === "combined");
+			expect(combinedUpdate).toBeDefined();
+			expect(combinedUpdate.allDependencies).toBeDefined();
+			expect(combinedUpdate.allDependencies).toHaveLength(2);
+
+			// Both dependencies should have names, even base2 which never updated
+			const base2Dep = combinedUpdate.allDependencies.find(
+				(d: any) => d.name === "base2"
+			);
+			expect(base2Dep).toBeDefined();
+			expect(base2Dep.type).toBe("signal");
+			expect(base2Dep.id).toBeDefined();
+		});
+
+		it("should include all dependencies for an effect with multiple sources", async () => {
+			const sig1 = signal("a", { name: "sig1" });
+			const sig2 = signal("b", { name: "sig2" });
+			const sig3 = signal("c", { name: "sig3" });
+
+			effect(
+				() => {
+					sig1.value;
+					sig2.value;
+					sig3.value;
+				},
+				{ name: "multiEffect" }
+			);
+
+			// Capture updates sent to devtools
+			const updates: any[] = [];
+			const unsubscribe = window.__PREACT_SIGNALS_DEVTOOLS__.onUpdate(
+				newUpdates => {
+					updates.push(...newUpdates);
+				}
+			);
+
+			// Update one signal
+			sig2.value = "b2";
+
+			await new Promise(resolve => setTimeout(resolve, 0));
+			unsubscribe();
+
+			// Find the update for the 'multiEffect'
+			const effectUpdate = updates.find(u => u.signalName === "multiEffect");
+			expect(effectUpdate).toBeDefined();
+			expect(effectUpdate.allDependencies).toBeDefined();
+			expect(effectUpdate.allDependencies).toHaveLength(3);
+		});
+
+		it("should show nested computed dependencies correctly", async () => {
+			const base = signal(1, { name: "base" });
+			const doubled = computed(() => base.value * 2, { name: "doubled" });
+			const quadrupled = computed(() => doubled.value * 2, {
+				name: "quadrupled",
+			});
+			quadrupled.subscribe(() => {});
+
+			// Capture updates sent to devtools
+			const updates: any[] = [];
+			const unsubscribe = window.__PREACT_SIGNALS_DEVTOOLS__.onUpdate(
+				newUpdates => {
+					updates.push(...newUpdates);
+				}
+			);
+
+			// Update the base signal
+			base.value = 2;
+
+			await new Promise(resolve => setTimeout(resolve, 0));
+			unsubscribe();
+
+			// Find the updates
+			const doubledUpdate = updates.find(u => u.signalName === "doubled");
+			const quadrupledUpdate = updates.find(u => u.signalName === "quadrupled");
+
+			expect(doubledUpdate).toBeDefined();
+			expect(doubledUpdate.allDependencies).toBeDefined();
+			// doubled depends only on base
+			expect(doubledUpdate.allDependencies).toHaveLength(1);
+
+			expect(quadrupledUpdate).toBeDefined();
+			expect(quadrupledUpdate.allDependencies).toBeDefined();
+			// quadrupled depends only on doubled
+			expect(quadrupledUpdate.allDependencies).toHaveLength(1);
+		});
+
+		it("should not include allDependencies for plain signals", async () => {
+			const count = signal(0, { name: "plainSignal" });
+			count.subscribe(() => {});
+
+			// Capture updates sent to devtools
+			const updates: any[] = [];
+			const unsubscribe = window.__PREACT_SIGNALS_DEVTOOLS__.onUpdate(
+				newUpdates => {
+					updates.push(...newUpdates);
+				}
+			);
+
+			// Update the signal
+			count.value = 1;
+
+			await new Promise(resolve => setTimeout(resolve, 0));
+			unsubscribe();
+
+			// Find the update for the plain signal
+			const signalUpdate = updates.find(u => u.signalName === "plainSignal");
+			expect(signalUpdate).toBeDefined();
+			// Plain signals don't have dependencies, so allDependencies should be undefined
+			expect(signalUpdate.allDependencies).toBeUndefined();
+		});
+
+		it("should preserve all dependencies even when triggered by just one", async () => {
+			// This is the key test for the feature - when a computed depends on
+			// multiple signals but only one triggers an update, allDependencies
+			// should still include ALL dependencies, not just the triggering one
+			const todo1Done = signal(false, { name: "todo-1-done" });
+			const todo2Done = signal(true, { name: "todo-2-done" }); // Start true so one toggle flips the result
+			const allDone = computed(() => todo1Done.value && todo2Done.value, {
+				name: "all-done",
+			});
+			allDone.subscribe(() => {});
+
+			// Capture updates sent to devtools
+			const updates: any[] = [];
+			const unsubscribe = window.__PREACT_SIGNALS_DEVTOOLS__.onUpdate(
+				newUpdates => {
+					updates.push(...newUpdates);
+				}
+			);
+
+			// Only update todo1Done - but allDependencies should show BOTH
+			// This changes allDone from false to true
+			todo1Done.value = true;
+
+			await new Promise(resolve => setTimeout(resolve, 0));
+			unsubscribe();
+
+			// Find the update for allDone
+			const allDoneUpdate = updates.find(u => u.signalName === "all-done");
+			expect(allDoneUpdate).toBeDefined();
+			expect(allDoneUpdate.allDependencies).toBeDefined();
+			// Should have BOTH dependencies, not just the one that triggered
+			expect(allDoneUpdate.allDependencies).toHaveLength(2);
+
+			// subscribedTo should only show the triggering signal
+			expect(allDoneUpdate.subscribedTo).toBeDefined();
+		});
+	});
 });

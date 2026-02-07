@@ -1,4 +1,4 @@
-import { UpdateInfo } from "./internal";
+import { UpdateInfo, DependencyInfo } from "./internal";
 import {
 	getSignalId,
 	getSignalName,
@@ -8,20 +8,23 @@ import {
 
 /** Formatted signal update for external consumers */
 export interface FormattedSignalUpdate {
-	type: "update" | "effect";
-	signalType: "signal" | "computed" | "effect";
+	type: "update" | "effect" | "component";
+	signalType: "signal" | "computed" | "effect" | "component";
 	signalName: string;
 	signalId: string;
 	prevValue?: any;
 	newValue?: any;
 	timestamp: number;
 	depth: number;
+	subscribedTo?: string;
+	/** All dependencies this computed/effect currently depends on (with rich info) */
+	allDependencies?: DependencyInfo[];
 }
 
 /** Formatted signal disposal event for external consumers */
 export interface FormattedSignalDisposed {
 	type: "disposed";
-	signalType: "signal" | "computed" | "effect";
+	signalType: "signal" | "computed" | "effect" | "component";
 	signalName: string;
 	signalId: string;
 	timestamp: number;
@@ -141,25 +144,35 @@ class DevToolsCommunicator {
 		}
 
 		const formattedUpdates = updateInfoList.map(({ signal, ...info }) => {
-			return info.type === "value"
-				? {
-						...info,
-						type: "update" as const,
-						newValue: deeplyRemoveFunctions(info.newValue),
-						prevValue: deeplyRemoveFunctions(info.prevValue),
-						signalType: ("_fn" in signal ? "computed" : "signal") as
-							| "signal"
-							| "computed",
-						signalName: this.getSignalName(signal, false),
-						signalId: this.getSignalId(signal),
-					}
-				: {
-						...info,
-						type: "effect" as const,
-						signalType: "effect" as const,
-						signalName: this.getSignalName(signal, true),
-						signalId: this.getSignalId(signal),
-					};
+			if (info.type === "value") {
+				return {
+					...info,
+					type: "update" as const,
+					newValue: deeplyRemoveFunctions(info.newValue),
+					prevValue: deeplyRemoveFunctions(info.prevValue),
+					signalType: ("_fn" in signal ? "computed" : "signal") as
+						| "signal"
+						| "computed",
+					signalName: this.getSignalName(signal, "value"),
+					signalId: this.getSignalId(signal),
+				};
+			} else if (info.type === "component") {
+				return {
+					...info,
+					type: "component" as const,
+					signalType: "component" as const,
+					signalName: this.getSignalName(signal, "component"),
+					signalId: this.getSignalId(signal),
+				};
+			} else {
+				return {
+					...info,
+					type: "effect" as const,
+					signalType: "effect" as const,
+					signalName: this.getSignalName(signal, "effect"),
+					signalId: this.getSignalId(signal),
+				};
+			}
 		});
 
 		// Emit for direct listeners (e.g., DirectAdapter)
@@ -209,8 +222,8 @@ class DevToolsCommunicator {
 		};
 	}
 
-	public getSignalName(signal: any, isEffect: boolean): string {
-		return getSignalName(signal, isEffect);
+	public getSignalName(signal: any, type: any): string {
+		return getSignalName(signal, type);
 	}
 
 	public getSignalId(signal: any): string {
@@ -228,7 +241,10 @@ class DevToolsCommunicator {
 		const disposal: FormattedSignalDisposed = {
 			type: "disposed",
 			signalType,
-			signalName: this.getSignalName(signal, signalType === "effect"),
+			signalName: this.getSignalName(
+				signal,
+				signalType === "signal" ? "value" : signalType
+			),
 			signalId: this.getSignalId(signal),
 			timestamp: Date.now(),
 		};

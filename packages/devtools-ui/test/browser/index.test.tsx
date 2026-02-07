@@ -16,10 +16,12 @@ import { SettingsPanel } from "../../src/components/SettingsPanel";
 import { StatusIndicator } from "../../src/components/StatusIndicator";
 import { UpdateItem } from "../../src/components/UpdateItem";
 import { UpdatesContainer } from "../../src/components/UpdatesContainer";
+import { GraphVisualization } from "../../src/components/Graph";
 import type {
 	DevToolsAdapter,
 	Settings,
 	ConnectionStatus,
+	DependencyInfo,
 } from "@preact/signals-devtools-adapter";
 
 /**
@@ -948,6 +950,178 @@ describe("@preact/signals-devtools-ui", () => {
 
 			context.settingsStore.toggleShowDisposedSignals();
 			expect(context.settingsStore.showDisposedSignals).to.be.true;
+		});
+	});
+
+	describe("GraphVisualization - Dependency Node Creation", () => {
+		beforeEach(() => {
+			initDevTools(mockAdapter);
+		});
+
+		it("should render empty state when no updates", () => {
+			render(<GraphVisualization />, scratch);
+
+			const emptyState = scratch.querySelector(".graph-empty");
+			expect(emptyState).to.not.be.null;
+			expect(emptyState!.textContent).to.contain("No Signal Dependencies");
+		});
+
+		it("should create nodes from allDependencies even if dependency never updated", () => {
+			initDevTools(mockAdapter);
+			const context = getContext();
+
+			// Simulate an update where a computed depends on signals that never sent updates themselves
+			// This tests the key feature: allDependencies with rich info allows graph to show
+			// dependencies that haven't had their own updates
+			const updateWithDependencies = {
+				type: "update" as const,
+				signalType: "computed" as const,
+				signalName: "sum",
+				signalId: "computed-sum-1",
+				prevValue: 0,
+				newValue: 10,
+				receivedAt: Date.now(),
+				depth: 1,
+				subscribedTo: "signal-a-1",
+				// Rich dependency info - these signals never sent updates themselves
+				allDependencies: [
+					{ id: "signal-a-1", name: "signalA", type: "signal" as const },
+					{ id: "signal-b-1", name: "signalB", type: "signal" as const },
+				] as DependencyInfo[],
+			};
+
+			// Add the update to the store
+			mockAdapter._emit("signalUpdate", [updateWithDependencies]);
+
+			render(<GraphVisualization />, scratch);
+
+			// The graph should now show all three nodes:
+			// - sum (the computed that updated)
+			// - signalA (dependency that never updated, but included in allDependencies)
+			// - signalB (dependency that never updated, but included in allDependencies)
+			const nodes = scratch.querySelectorAll(".graph-node");
+			expect(nodes.length).to.equal(3);
+
+			// Check that nodes have correct names rendered
+			const nodeTexts = scratch.querySelectorAll(".graph-text");
+			const textContents = Array.from(nodeTexts).map(t => t.textContent);
+			expect(textContents).to.include("sum");
+			expect(textContents).to.include("signalA");
+			expect(textContents).to.include("signalB");
+		});
+
+		it("should create nodes with correct types from allDependencies", () => {
+			initDevTools(mockAdapter);
+			const context = getContext();
+
+			// Test with mixed dependency types (signal and computed)
+			const updateWithMixedDeps = {
+				type: "update" as const,
+				signalType: "computed" as const,
+				signalName: "result",
+				signalId: "computed-result-1",
+				prevValue: 0,
+				newValue: 15,
+				receivedAt: Date.now(),
+				depth: 2,
+				allDependencies: [
+					{ id: "signal-base-1", name: "base", type: "signal" as const },
+					{
+						id: "computed-doubled-1",
+						name: "doubled",
+						type: "computed" as const,
+					},
+				] as DependencyInfo[],
+			};
+
+			mockAdapter._emit("signalUpdate", [updateWithMixedDeps]);
+
+			render(<GraphVisualization />, scratch);
+
+			// Check that nodes have correct CSS classes for their types
+			const signalNode = scratch.querySelector(".graph-node.signal");
+			const computedNodes = scratch.querySelectorAll(".graph-node.computed");
+
+			expect(signalNode).to.not.be.null;
+			// Should have 2 computed nodes: 'doubled' from deps and 'result' from the update
+			expect(computedNodes.length).to.equal(2);
+		});
+
+		it("should create links from allDependencies to the updating node", () => {
+			initDevTools(mockAdapter);
+
+			const updateWithDeps = {
+				type: "update" as const,
+				signalType: "computed" as const,
+				signalName: "total",
+				signalId: "computed-total-1",
+				prevValue: 0,
+				newValue: 100,
+				receivedAt: Date.now(),
+				depth: 1,
+				allDependencies: [
+					{ id: "signal-x-1", name: "x", type: "signal" as const },
+					{ id: "signal-y-1", name: "y", type: "signal" as const },
+				] as DependencyInfo[],
+			};
+
+			mockAdapter._emit("signalUpdate", [updateWithDeps]);
+
+			render(<GraphVisualization />, scratch);
+
+			// Should have links from both dependencies to the computed
+			const links = scratch.querySelectorAll(".graph-link");
+			expect(links.length).to.equal(2);
+		});
+
+		it("should not duplicate nodes when dependency appears in multiple updates", () => {
+			initDevTools(mockAdapter);
+
+			// First update
+			const update1 = {
+				type: "update" as const,
+				signalType: "computed" as const,
+				signalName: "doubledA",
+				signalId: "computed-doubled-a-1",
+				prevValue: 0,
+				newValue: 10,
+				receivedAt: Date.now(),
+				depth: 1,
+				allDependencies: [
+					{ id: "signal-shared-1", name: "shared", type: "signal" as const },
+				] as DependencyInfo[],
+			};
+
+			// Second update that also depends on the same signal
+			const update2 = {
+				type: "update" as const,
+				signalType: "computed" as const,
+				signalName: "doubledB",
+				signalId: "computed-doubled-b-1",
+				prevValue: 0,
+				newValue: 20,
+				receivedAt: Date.now() + 1,
+				depth: 1,
+				allDependencies: [
+					{ id: "signal-shared-1", name: "shared", type: "signal" as const },
+				] as DependencyInfo[],
+			};
+
+			mockAdapter._emit("signalUpdate", [update1, update2]);
+
+			render(<GraphVisualization />, scratch);
+
+			// Should have exactly 3 nodes: shared, doubledA, doubledB
+			// The 'shared' signal should not be duplicated
+			const nodes = scratch.querySelectorAll(".graph-node");
+			expect(nodes.length).to.equal(3);
+
+			// Check that shared appears exactly once in the graph text
+			const nodeTexts = scratch.querySelectorAll(".graph-text");
+			const sharedCount = Array.from(nodeTexts).filter(
+				t => t.textContent === "shared"
+			).length;
+			expect(sharedCount).to.equal(1);
 		});
 	});
 });

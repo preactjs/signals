@@ -5,6 +5,7 @@ import type {
 	ConnectionStatusType,
 	Settings,
 	SignalDisposed,
+	DependencyInfo,
 } from "@preact/signals-devtools-adapter";
 
 export interface DevToolsContext {
@@ -64,8 +65,8 @@ export function createConnectionStore(adapter: DevToolsAdapter) {
 }
 
 export interface SignalUpdate {
-	type: "update" | "effect";
-	signalType: "signal" | "computed" | "effect";
+	type: "update" | "effect" | "component";
+	signalType: "signal" | "computed" | "effect" | "component";
 	signalName: string;
 	signalId?: string;
 	prevValue?: any;
@@ -74,6 +75,8 @@ export interface SignalUpdate {
 	receivedAt: number;
 	depth?: number;
 	subscribedTo?: string;
+	/** All dependencies this computed/effect currently depends on (with rich info) */
+	allDependencies?: DependencyInfo[];
 }
 
 export type Divider = { type: "divider" };

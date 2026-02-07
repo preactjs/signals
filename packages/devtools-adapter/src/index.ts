@@ -5,6 +5,7 @@ export type {
 	AdapterFactory,
 	Unsubscribe,
 	SignalUpdate,
+	DependencyInfo,
 	Settings,
 	ConnectionStatus,
 	ConnectionStatusType,

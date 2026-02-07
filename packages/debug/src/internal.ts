@@ -16,7 +16,13 @@ export type Node = {
 	_rollbackNode?: Node;
 };
 
-export type UpdateInfo = ValueUpdate | EffectUpdate;
+export interface DependencyInfo {
+	id: string;
+	name: string;
+	type: "signal" | "computed";
+}
+
+export type UpdateInfo = ValueUpdate | EffectUpdate | ComponentUpdate;
 
 export interface ValueUpdate {
 	type: "value";
@@ -25,7 +31,8 @@ export interface ValueUpdate {
 	newValue: any;
 	timestamp: number;
 	depth: number;
-	subscribedTo?: string; // signalId of the signal this signal is subscribed to
+	subscribedTo?: string; // signalId of the signal this effect is subscribed to
+	allDependencies?: DependencyInfo[]; // All dependencies this computed depends on
 }
 
 interface EffectUpdate {
@@ -34,4 +41,14 @@ interface EffectUpdate {
 	signal: Effect;
 	depth: number;
 	subscribedTo?: string; // signalId of the signal this effect is subscribed to
+	allDependencies?: DependencyInfo[]; // All dependencies this effect depends on
+}
+
+interface ComponentUpdate {
+	type: "component";
+	timestamp: number;
+	signal: Effect;
+	depth: number;
+	subscribedTo?: string; // signalId of the signal this component is subscribed to
+	allDependencies?: DependencyInfo[]; // All dependencies this component depends on
 }

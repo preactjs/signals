@@ -24,7 +24,6 @@ export function GraphVisualization() {
 	const containerRef = useRef<HTMLDivElement>(null);
 	const exportMenuRef = useRef<HTMLDivElement>(null);
 
-	// Pan and zoom state using signals
 	const panOffset = useSignal({ x: 0, y: 0 });
 	const zoom = useSignal(1);
 	const isPanning = useSignal(false);
@@ -51,7 +50,150 @@ export function GraphVisualization() {
 		};
 	}, []);
 
-	// Build graph data from updates signal using a computed
+	// Improved topological sort with proper layering
+	const computeNodeLayers = (
+		nodes: Map<string, GraphNode>,
+		links: GraphLink[]
+	): Map<string, number> => {
+		const layers = new Map<string, number>();
+		const adjacency = new Map<string, Set<string>>();
+		const inDegree = new Map<string, number>();
+
+		// Initialize adjacency list and in-degrees
+		nodes.forEach((_, id) => {
+			adjacency.set(id, new Set());
+			inDegree.set(id, 0);
+		});
+
+		// Build adjacency list and calculate in-degrees
+		links.forEach(link => {
+			adjacency.get(link.source)?.add(link.target);
+			inDegree.set(link.target, (inDegree.get(link.target) || 0) + 1);
+		});
+
+		// BFS-based layering (Kahn's algorithm with layers)
+		const queue: string[] = [];
+
+		// Start with nodes that have no dependencies (in-degree = 0)
+		nodes.forEach((_, id) => {
+			if (inDegree.get(id) === 0) {
+				queue.push(id);
+				layers.set(id, 0);
+			}
+		});
+
+		while (queue.length > 0) {
+			const nodeId = queue.shift()!;
+			const currentLayer = layers.get(nodeId)!;
+
+			// Process all nodes that depend on this node
+			adjacency.get(nodeId)?.forEach(targetId => {
+				// Update target's layer to be at least one more than current
+				const targetLayer = layers.get(targetId) ?? 0;
+				layers.set(targetId, Math.max(targetLayer, currentLayer + 1));
+
+				// Decrease in-degree and add to queue if all dependencies processed
+				const newInDegree = (inDegree.get(targetId) || 0) - 1;
+				inDegree.set(targetId, newInDegree);
+
+				if (newInDegree === 0) {
+					queue.push(targetId);
+				}
+			});
+		}
+
+		return layers;
+	};
+
+	// Reduce edge crossings within layers using barycenter heuristic
+	const minimizeCrossings = (
+		nodesByLayer: Map<number, GraphNode[]>,
+		links: GraphLink[]
+	): void => {
+		const layers = Array.from(nodesByLayer.keys()).sort((a, b) => a - b);
+
+		// Build adjacency maps for quick lookup
+		const targets = new Map<string, string[]>();
+		const sources = new Map<string, string[]>();
+
+		links.forEach(link => {
+			if (!targets.has(link.source)) targets.set(link.source, []);
+			if (!sources.has(link.target)) sources.set(link.target, []);
+			targets.get(link.source)!.push(link.target);
+			sources.get(link.target)!.push(link.source);
+		});
+
+		// Create position maps for quick lookup
+		const nodePositions = new Map<string, number>();
+
+		// Multiple passes to reduce crossings
+		for (let pass = 0; pass < 4; pass++) {
+			// Forward pass: order based on predecessors
+			for (let i = 0; i < layers.length; i++) {
+				const layer = layers[i];
+				const nodes = nodesByLayer.get(layer)!;
+
+				// Update position map for current layer
+				nodes.forEach((node, idx) => {
+					nodePositions.set(node.id, idx);
+				});
+
+				if (i === 0) continue; // Skip first layer
+
+				// Calculate barycenter for each node based on predecessors
+				const barycenters = nodes.map(node => {
+					const preds = sources.get(node.id) || [];
+					if (preds.length === 0) return 0;
+
+					const sum = preds.reduce((acc, predId) => {
+						return acc + (nodePositions.get(predId) ?? 0);
+					}, 0);
+					return sum / preds.length;
+				});
+
+				// Sort nodes by barycenter
+				const sorted = nodes
+					.map((node, idx) => ({ node, barycenter: barycenters[idx] }))
+					.sort((a, b) => a.barycenter - b.barycenter)
+					.map(item => item.node);
+
+				nodesByLayer.set(layer, sorted);
+			}
+
+			// Backward pass: order based on successors
+			for (let i = layers.length - 1; i >= 0; i--) {
+				const layer = layers[i];
+				const nodes = nodesByLayer.get(layer)!;
+
+				// Update position map for current layer
+				nodes.forEach((node, idx) => {
+					nodePositions.set(node.id, idx);
+				});
+
+				if (i === layers.length - 1) continue; // Skip last layer
+
+				// Calculate barycenter for each node based on successors
+				const barycenters = nodes.map(node => {
+					const succs = targets.get(node.id) || [];
+					if (succs.length === 0) return 0;
+
+					const sum = succs.reduce((acc, succId) => {
+						return acc + (nodePositions.get(succId) ?? 0);
+					}, 0);
+					return sum / succs.length;
+				});
+
+				// Sort nodes by barycenter
+				const sorted = nodes
+					.map((node, idx) => ({ node, barycenter: barycenters[idx] }))
+					.sort((a, b) => a.barycenter - b.barycenter)
+					.map(item => item.node);
+
+				nodesByLayer.set(layer, sorted);
+			}
+		}
+	};
+
 	const graphData = useComputed<GraphData>(() => {
 		const rawUpdates = updates.value;
 		const disposed = disposedSignalIds.value;
@@ -62,19 +204,16 @@ export function GraphVisualization() {
 		const nodes = new Map<string, GraphNode>();
 		const links = new Map<string, GraphLink>();
 
-		// Process updates to build graph structure
 		const signalUpdates = rawUpdates.filter(
 			update => update.type !== "divider"
 		) as SignalUpdate[];
 
 		for (const update of signalUpdates) {
 			if (!update.signalId) continue;
-
-			// Skip disposed signals unless showDisposed is enabled
 			if (!showDisposed && disposed.has(update.signalId)) continue;
 
-			const type: "signal" | "computed" | "effect" = update.signalType;
-			const currentDepth = update.depth || 0;
+			const type: "signal" | "computed" | "effect" | "component" =
+				update.signalType;
 
 			if (!nodes.has(update.signalId)) {
 				nodes.set(update.signalId, {
@@ -83,12 +222,35 @@ export function GraphVisualization() {
 					type,
 					x: 0,
 					y: 0,
-					depth: currentDepth,
+					depth: 0, // Will be recalculated
 				});
 			}
 
-			if (update.subscribedTo) {
-				// Also skip links to/from disposed signals
+			if (update.allDependencies && update.allDependencies.length > 0) {
+				for (const dep of update.allDependencies) {
+					const sourceDisposed = !showDisposed && disposed.has(dep.id);
+					if (sourceDisposed) continue;
+
+					if (!nodes.has(dep.id)) {
+						nodes.set(dep.id, {
+							id: dep.id,
+							name: dep.name,
+							type: dep.type,
+							x: 0,
+							y: 0,
+							depth: 0,
+						});
+					}
+
+					const linkKey = `${dep.id}->${update.signalId}`;
+					if (!links.has(linkKey)) {
+						links.set(linkKey, {
+							source: dep.id,
+							target: update.signalId,
+						});
+					}
+				}
+			} else if (update.subscribedTo) {
 				const sourceDisposed =
 					!showDisposed && disposed.has(update.subscribedTo);
 				if (sourceDisposed) continue;
@@ -103,41 +265,50 @@ export function GraphVisualization() {
 			}
 		}
 
-		// Simple depth-based layout
-		const allNodes = Array.from(nodes.values());
+		const allLinks = Array.from(links.values());
+
+		// Compute proper layers using topological sort
+		const nodeLayers = computeNodeLayers(nodes, allLinks);
+
+		// Update node depths based on computed layers
+		nodes.forEach((node, id) => {
+			node.depth = nodeLayers.get(id) ?? 0;
+		});
+
+		// Group nodes by layer
+		const nodesByLayer = new Map<number, GraphNode[]>();
+		nodes.forEach(node => {
+			if (!nodesByLayer.has(node.depth)) {
+				nodesByLayer.set(node.depth, []);
+			}
+			nodesByLayer.get(node.depth)!.push(node);
+		});
+
+		// Minimize edge crossings
+		minimizeCrossings(nodesByLayer, allLinks);
+
+		// Layout nodes with proper spacing
 		const nodeSpacing = 120;
-		const depthSpacing = 250;
+		const layerSpacing = 250;
 		const startX = 100;
 		const startY = 80;
 
-		// Group nodes by depth
-		const nodesByDepth = new Map<number, GraphNode[]>();
-		allNodes.forEach(node => {
-			if (!nodesByDepth.has(node.depth)) {
-				nodesByDepth.set(node.depth, []);
-			}
-			nodesByDepth.get(node.depth)!.push(node);
-		});
+		nodesByLayer.forEach((layerNodes, layer) => {
+			const layerHeight = (layerNodes.length - 1) * nodeSpacing;
+			const layerStartY = startY - layerHeight / 2;
 
-		// Layout nodes by depth, centering each depth level vertically
-		const maxDepth = Math.max(...allNodes.map(n => n.depth));
-		nodesByDepth.forEach((depthNodes, depth) => {
-			const depthHeight = (depthNodes.length - 1) * nodeSpacing;
-			const depthStartY = startY + maxDepth * 100 - depthHeight / 2;
-
-			depthNodes.forEach((node, index) => {
-				node.x = startX + depth * depthSpacing;
-				node.y = depthStartY + index * nodeSpacing;
+			layerNodes.forEach((node, index) => {
+				node.x = startX + layer * layerSpacing;
+				node.y = layerStartY + index * nodeSpacing + nodesByLayer.size * 50;
 			});
 		});
 
 		return {
-			nodes: allNodes,
-			links: Array.from(links.values()),
+			nodes: Array.from(nodes.values()),
+			links: allLinks,
 		};
 	});
 
-	// Mouse event handlers for panning
 	const handleMouseDown = (e: MouseEvent) => {
 		if (e.button !== 0) return;
 		isPanning.value = true;
@@ -169,7 +340,6 @@ export function GraphVisualization() {
 		const mouseX = e.clientX - rect.left;
 		const mouseY = e.clientY - rect.top;
 
-		// Smoother zoom: smaller delta for less aggressive scrolling
 		const delta = e.deltaY > 0 ? 0.96 : 1.04;
 		const newZoom = Math.min(Math.max(0.1, zoom.value * delta), 5);
 
@@ -194,16 +364,14 @@ export function GraphVisualization() {
 	const mermaidIdPattern = /[^a-zA-Z0-9]/g;
 	const computeMermaidId = (id: string) => id.replace(mermaidIdPattern, "_");
 
-	// Calculate node radius based on name length
 	const getNodeRadius = (node: GraphNode) => {
 		const baseRadius = 30;
-		const charWidth = 6.5; // Approximate width per character
+		const charWidth = 6.5;
 		const padding = 16;
 		const textWidth = node.name.length * charWidth + padding;
 		return Math.max(baseRadius, Math.min(textWidth / 2, 70));
 	};
 
-	// Handle node hover for tooltip
 	const handleNodeMouseEnter = (node: GraphNode, e: MouseEvent) => {
 		hoveredNode.value = node;
 		const container = containerRef.current;
@@ -256,6 +424,9 @@ export function GraphVisualization() {
 					break;
 				case "effect":
 					lines.push(`  ${id}([${name}])`);
+					break;
+				case "component":
+					lines.push(`  ${id}{{${name}}}`);
 					break;
 			}
 		});
@@ -344,7 +515,7 @@ export function GraphVisualization() {
 								const targetRadius = getNodeRadius(targetNode);
 								const sourceX = sourceNode.x + sourceRadius;
 								const sourceY = sourceNode.y;
-								const targetX = targetNode.x - targetRadius - 8; // Extra space for arrow
+								const targetX = targetNode.x - targetRadius - 8;
 								const targetY = targetNode.y;
 
 								const midX = sourceX + (targetX - sourceX) * 0.5;
@@ -365,7 +536,6 @@ export function GraphVisualization() {
 						<g className="nodes">
 							{graphData.value.nodes.map(node => {
 								const radius = getNodeRadius(node);
-								// Calculate max chars based on radius
 								const maxChars = Math.floor((radius * 2 - 16) / 6.5);
 								const displayName =
 									node.name.length > maxChars
@@ -488,6 +658,13 @@ export function GraphVisualization() {
 							style={{ backgroundColor: "#4caf50" }}
 						></div>
 						<span>Effect</span>
+					</div>
+					<div className="legend-item">
+						<div
+							className="legend-color"
+							style={{ backgroundColor: "#9c27b0" }}
+						></div>
+						<span>Component</span>
 					</div>
 				</div>
 			</div>

@@ -1,6 +1,6 @@
 {
   "name": "@preact/signals-devtools-ui",
-  "version": "0.2.0",
+  "version": "0.4.0",
   "license": "MIT",
   "description": "DevTools UI components for @preact/signals",
   "keywords": [
@@ -44,7 +44,7 @@
     "README.md"
   ],
   "scripts": {
-    "prepublishOnly": "cd ../.. && pnpm build",
+    "prepublishOnly": "cd ../.. && sleep 60 && pnpm build:core && pnpm build:devtools-adapter && pnpm build:preact && pnpm _build:devtools-ui",
     "test": "vitest run"
   },
   "dependencies": {
@@ -61,6 +61,7 @@
     "vitest": "^4.0.17"
   },
   "publishConfig": {
+    "access": "public",
     "provenance": true
   }
 }

@@ -7,7 +7,7 @@ import {
 	template,
 } from "@babel/core";
 import { isModule, addNamed } from "@babel/helper-module-imports";
-import type { Scope, VisitNodeObject } from "@babel/traverse";
+import type { VisitNodeObject } from "@babel/traverse";
 import debug from "debug";
 
 interface PluginArgs {
@@ -36,6 +36,8 @@ type HookUsage =
 	| typeof MANAGED_HOOK;
 
 const logger = {
+	verbose: debug("signals:react-transform:verbose"),
+	fnSearch: debug("signals:react-transform:fn-search"),
 	transformed: debug("signals:react-transform:transformed"),
 	skipped: debug("signals:react-transform:skipped"),
 };
@@ -45,57 +47,75 @@ const get = (pass: PluginPass, name: any) =>
 const set = (pass: PluginPass, name: string, v: any) =>
 	pass.set(`${dataNamespace}/${name}`, v);
 
-interface DataContainer {
-	getData(name: string): any;
-	setData(name: string, value: any): void;
-}
-const setData = (node: DataContainer, name: string, value: any) =>
+const setNodeData = (node: NodePath<unknown>, name: string, value: any) =>
 	node.setData(`${dataNamespace}/${name}`, value);
-const getData = (node: DataContainer, name: string) =>
+const getNodeData = (node: NodePath<unknown>, name: string) =>
 	node.getData(`${dataNamespace}/${name}`);
 
-function getComponentFunctionDeclaration(
+/**
+ * Returns the containing component or hook function path. Examples:
+ * ```
+ * function App() {               <- returns this path
+ *   <div>{signal.value}</div>    <- starting from this
+ * }
+ *
+ * function useCustomHook() {     <- returns this path
+ *   <div>{signal.value}</div>    <- starting from this
+ * }
+ * ```
+ *
+ * It will return `null` if the function is passed as a parameter
+ * to a custom hook function. Example:
+ * ```
+ * function Component() {
+ *   useCustomHook(() => {
+ *     <div>{signal.value}</div>    <- returns null
+ *   });
+ * }
+ * ```
+ */
+function findParentComponentOrHook(
 	path: NodePath,
-	filename: string | undefined,
-	prev?: Scope
-): Scope | null {
-	const functionScope = path.scope.getFunctionParent();
-
-	if (functionScope) {
-		const parent = functionScope.path.parent;
-		let functionName = getFunctionName(functionScope.path as any);
-		if (functionName === DefaultExportSymbol) {
-			functionName = filename || null;
-		}
-		if (isComponentFunction(functionScope.path as any, functionName)) {
-			return functionScope;
-		} else if (
-			parent.type === "CallExpression" &&
-			parent.callee.type === "Identifier" &&
-			parent.callee.name.startsWith("use") &&
-			parent.callee.name[3] === parent.callee.name[3].toUpperCase()
-		) {
-			return null;
-		}
-		return getComponentFunctionDeclaration(
-			functionScope.parent.path,
-			filename,
-			functionScope
-		);
-	} else {
-		return prev || null;
+	filename: string | undefined
+): NodePath<FunctionLike> | null {
+	const parentFunctionScope = path.scope.getFunctionParent();
+	if (!parentFunctionScope) {
+		logger.fnSearch("No higher function scope found in %s", filename);
+		return null;
 	}
+
+	const parentFunctionPath = parentFunctionScope.path as NodePath<FunctionLike>;
+	const fnName = getFunctionName(parentFunctionPath, filename);
+	logger.fnSearch('Checking parent function "%s" in %s', fnName, filename);
+
+	if (isComponentName(fnName) || isCustomHookName(fnName)) {
+		logger.fnSearch('Found parent function "%s" in %s', fnName, filename);
+		return parentFunctionPath;
+	} else if (isCustomHookCallback(parentFunctionPath)) {
+		logger.fnSearch('Function "%s" is a hook callback arg, stopping', fnName);
+		return null;
+	} else if (!parentFunctionPath.parentPath) {
+		logger.fnSearch('Function "%s" has no parent, stopping', fnName, filename);
+		return null;
+	}
+
+	return findParentComponentOrHook(parentFunctionPath.parentPath, filename);
 }
 
-function setOnFunctionScope(
+function setOnParentComponentOrHook(
 	path: NodePath,
 	key: string,
 	value: any,
 	filename: string | undefined
 ) {
-	const functionScope = getComponentFunctionDeclaration(path, filename);
-	if (functionScope) {
-		setData(functionScope, key, value);
+	const parentFn = findParentComponentOrHook(path, filename);
+	if (parentFn) {
+		if (logger.verbose.enabled) {
+			const fnName = getFunctionName(parentFn, filename);
+			logger.verbose(`Setting "${key}" on "${fnName}" to "${value}"`);
+		}
+
+		setNodeData(parentFn, key, value);
 	}
 }
 
@@ -202,14 +222,22 @@ function getFunctionNameFromParent(
 
 /* Determine the name of a function */
 function getFunctionName(
-	path: NodePath<FunctionLike>
-): string | typeof DefaultExportSymbol | null {
-	let nodeName = getFunctionNodeName(path.node);
-	if (nodeName) {
-		return nodeName;
+	path: NodePath<FunctionLike>,
+	filename: string | undefined
+): string | null {
+	let fnName: string | null = getFunctionNodeName(path.node);
+	if (fnName) {
+		return fnName;
 	}
 
-	return getFunctionNameFromParent(path.parentPath);
+	const nameFromParent = getFunctionNameFromParent(path.parentPath);
+	if (nameFromParent === DefaultExportSymbol) {
+		fnName = basename(filename) ?? null;
+	} else {
+		fnName = nameFromParent;
+	}
+
+	return fnName;
 }
 
 function isComponentName(name: string | null): boolean {
@@ -217,6 +245,16 @@ function isComponentName(name: string | null): boolean {
 }
 function isCustomHookName(name: string | null): boolean {
 	return name?.match(/^use[A-Z]/) != null;
+}
+
+/** Returns if the given function path is a parameter passed to a custom hook function */
+function isCustomHookCallback(path: NodePath<FunctionLike>): boolean {
+	const parent = path.parent;
+	return (
+		parent.type === "CallExpression" &&
+		parent.callee.type === "Identifier" &&
+		isCustomHookName(parent.callee.name)
+	);
 }
 
 function hasLeadingComment(path: NodePath, comment: RegExp): boolean {
@@ -286,21 +324,23 @@ function isOptedOutOfSignalTracking(path: NodePath | null): boolean {
 	}
 }
 
-function isComponentFunction(
-	path: NodePath<FunctionLike>,
-	functionName: string | null
-): boolean {
-	return (
-		getData(path.scope, containsJSX) === true && // Function contains JSX
-		isComponentName(functionName) // Function name indicates it's a component
-	);
-}
-
 function shouldTransform(
 	path: NodePath<FunctionLike>,
 	functionName: string | null,
 	options: PluginOptions
 ): boolean {
+	// This function should only be called after a function's body has been parsed
+	// and containsJSX and maybeUsesSignal could be set
+	function isComponentFunction(
+		path: NodePath<FunctionLike>,
+		functionName: string | null
+	): boolean {
+		return (
+			getNodeData(path, containsJSX) === true && // Function contains JSX
+			isComponentName(functionName) // Function name indicates it's a component
+		);
+	}
+
 	// Opt-out takes first precedence
 	if (isOptedOutOfSignalTracking(path)) return false;
 	// Opt-in opts in to transformation regardless of mode
@@ -312,7 +352,7 @@ function shouldTransform(
 
 	if (options.mode == null || options.mode === "auto") {
 		return (
-			getData(path.scope, maybeUsesSignal) === true && // Function appears to use signals;
+			getNodeData(path, maybeUsesSignal) === true && // Function appears to use signals;
 			(isComponentFunction(path, functionName) ||
 				isCustomHookName(functionName))
 		);
@@ -556,8 +596,7 @@ function transformFunction(
 	options: PluginOptions,
 	path: NodePath<FunctionLike>,
 	functionName: string | null,
-	state: PluginPass,
-	filename: string
+	state: PluginPass
 ) {
 	const isHook = isCustomHookName(functionName);
 	const isComponent = isComponentName(functionName);
@@ -583,7 +622,7 @@ function transformFunction(
 		newBody = prependUseSignals(t, path, state, options, functionName);
 	}
 
-	setData(path, alreadyTransformed, true);
+	setNodeData(path, alreadyTransformed, true);
 	path.get("body").replaceWith(newBody);
 }
 
@@ -725,6 +764,10 @@ function detectJSXAlternativeImports(
 		},
 	});
 
+	logger.verbose("Using JSX alternatives: %o", {
+		identifiers: Array.from(jsxIdentifierSet),
+		objects: Array.from(jsxObjectMap.entries()),
+	});
 	set(state, jsxIdentifiers, jsxIdentifierSet);
 	set(state, jsxObjects, jsxObjectMap);
 }
@@ -790,17 +833,10 @@ function log(
 		logger.transformed(`${functionName} (${relativePath}:${lineNum})`);
 	} else {
 		logger.skipped(`${functionName} (${relativePath}:${lineNum}) %o`, {
-			hasSignals: getData(path.scope, maybeUsesSignal) ?? false,
-			hasJSX: getData(path.scope, containsJSX) ?? false,
+			hasSignals: getNodeData(path, maybeUsesSignal) ?? false,
+			hasJSX: getNodeData(path, containsJSX) ?? false,
 		});
 	}
-}
-
-function isComponentLike(
-	path: NodePath<FunctionLike>,
-	functionName: string | null
-): boolean {
-	return !getData(path, alreadyTransformed) && isComponentName(functionName);
 }
 
 export default function signalsTransform(
@@ -814,24 +850,15 @@ export default function signalsTransform(
 	// babel pass with plugins on components twice.
 	const visitFunction: VisitNodeObject<PluginPass, FunctionLike> = {
 		exit(path, state) {
-			if (getData(path, alreadyTransformed) === true) return false;
+			if (getNodeData(path, alreadyTransformed) === true) return false;
 
-			let functionName = getFunctionName(path);
-			if (functionName === DefaultExportSymbol) {
-				functionName = basename(this.filename) ?? null;
-			}
-
+			const functionName = getFunctionName(path, this.filename);
+			const isComponentLike =
+				!getNodeData(path, alreadyTransformed) && isComponentName(functionName);
 			if (shouldTransform(path, functionName, state.opts)) {
-				transformFunction(
-					t,
-					state.opts,
-					path,
-					functionName,
-					state,
-					this.filename || ""
-				);
+				transformFunction(t, state.opts, path, functionName, state);
 				log(true, path, functionName, this.filename);
-			} else if (isComponentLike(path, functionName)) {
+			} else if (isComponentLike) {
 				log(false, path, functionName, this.filename);
 			}
 		},
@@ -872,7 +899,7 @@ export default function signalsTransform(
 			CallExpression(path, state) {
 				if (options.detectTransformedJSX) {
 					if (isJSXAlternativeCall(path, state)) {
-						setOnFunctionScope(path, containsJSX, true, this.filename);
+						setOnParentComponentOrHook(path, containsJSX, true, this.filename);
 					}
 				}
 
@@ -892,21 +919,31 @@ export default function signalsTransform(
 
 			MemberExpression(path) {
 				if (isValueMemberExpression(path)) {
-					setOnFunctionScope(path, maybeUsesSignal, true, this.filename);
+					setOnParentComponentOrHook(
+						path,
+						maybeUsesSignal,
+						true,
+						this.filename
+					);
 				}
 			},
 
 			ObjectPattern(path) {
 				if (hasValuePropertyInPattern(path.node)) {
-					setOnFunctionScope(path, maybeUsesSignal, true, this.filename);
+					setOnParentComponentOrHook(
+						path,
+						maybeUsesSignal,
+						true,
+						this.filename
+					);
 				}
 			},
 
 			JSXElement(path) {
-				setOnFunctionScope(path, containsJSX, true, this.filename);
+				setOnParentComponentOrHook(path, containsJSX, true, this.filename);
 			},
 			JSXFragment(path) {
-				setOnFunctionScope(path, containsJSX, true, this.filename);
+				setOnParentComponentOrHook(path, containsJSX, true, this.filename);
 			},
 		},
 	};

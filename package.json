@@ -41,7 +41,7 @@
     "ci:build": "pnpm build && pnpm docs:build",
     "ci:test": "pnpm lint && pnpm test",
     "prepare": "husky install && playwright install chromium",
-    "format": "prettier --ignore-path .gitignore --write '**/*.{js,jsx,ts,tsx,yml,json,md}'",
+    "format": "prettier --write .",
     "version": "pnpm changeset version && pnpm i --lockfile-only"
   },
   "authors": [
@@ -84,17 +84,28 @@
     "prettier": "^3.6.2",
     "shx": "^0.3.4",
     "typescript": "~5.8.3",
-    "vitest": "^4.0.17",
-    "vite": "^6.3.5"
+    "vite": "^6.3.5",
+    "vitest": "^4.0.17"
   },
   "lint-staged": {
-    "**/*.{js,jsx,ts,tsx,yml,json,md}": [
+    "**/*.{js,mjs,jsx,ts,tsx,yml,yaml,json,md,html,css}": [
       "prettier --write"
     ]
   },
   "prettier": {
     "arrowParens": "avoid",
-    "trailingComma": "es5"
+    "trailingComma": "es5",
+    "overrides": [
+      {
+        "files": [
+          "package.json",
+          "mangle.json"
+        ],
+        "options": {
+          "parser": "json-stringify"
+        }
+      }
+    ]
   },
   "pnpm": {
     "patchedDependencies": {
@@ -109,6 +120,6 @@
   },
   "packageManager": "pnpm@10.7.0",
   "volta": {
-    "node": "18.18.0"
+    "node": "24.13.0"
   }
 }

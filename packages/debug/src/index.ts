@@ -45,16 +45,6 @@ function trackDependency(target: Signal | Effect, source: Signal | Effect) {
 	signalDependencies.get(target)?.add(sourceId);
 }
 
-let scheduled = false;
-function scheduleFlush() {
-	if (!scheduled) {
-		scheduled = true;
-		queueMicrotask(() => {
-			flushUpdates();
-			scheduled = false;
-		});
-	}
-}
 // Store original methods
 const originalSubscribe = Signal.prototype._subscribe;
 const originalUnsubscribe = Signal.prototype._unsubscribe;
@@ -132,6 +122,7 @@ Computed.prototype._refresh = function () {
 			depth: baseSignal.depth,
 			type: "value",
 			subscribedTo: getSignalId(baseSignal.signal),
+			allDependencies: getAllCurrentDependencies(this as any),
 		});
 		updateInfoMap.set(baseSignal.signal, updateInfoList);
 	}
@@ -207,6 +198,46 @@ function hasUpdateEntry(signal: Signal) {
 	return false;
 }
 
+export interface DependencyInfo {
+	id: string;
+	name: string;
+	type: "signal" | "computed";
+}
+
+/**
+ * Get all current dependencies for a computed or effect by walking the _sources linked list.
+ * This provides the complete picture of what signals a computed/effect depends on,
+ * not just the one that triggered an update.
+ *
+ * Returns rich dependency info (id, name, type) so the devtools can render
+ * dependency nodes even if they haven't had their own updates.
+ */
+function getAllCurrentDependencies(
+	node: ComputedType | Effect
+): DependencyInfo[] | undefined {
+	if (!("_sources" in node)) {
+		return undefined;
+	}
+
+	const dependencies = new Map<string, DependencyInfo>();
+	let sourceNode = (node as ComputedType)._sources;
+
+	while (sourceNode) {
+		const source = sourceNode._source as Signal;
+		const id = getSignalId(source);
+		if (!dependencies.has(id)) {
+			dependencies.set(id, {
+				id,
+				name: getSignalName(source, 'value'),
+				type: "_fn" in source ? "computed" : "signal",
+			});
+		}
+		sourceNode = sourceNode._nextSource;
+	}
+
+	return dependencies.size > 0 ? Array.from(dependencies.values()) : undefined;
+}
+
 function bubbleUpToBaseSignal(
 	node: ComputedType,
 	depth = 1
@@ -254,8 +285,9 @@ Effect.prototype._debugCallback = function (this: Effect) {
 				signal: this,
 				timestamp: Date.now(),
 				depth: baseSignal.depth,
-				type: "effect",
+				type: "component",
 				subscribedTo: getSignalId(baseSignal.signal),
+				allDependencies: getAllCurrentDependencies(this as any),
 			});
 			updateInfoMap.set(baseSignal.signal, updateInfoList);
 		}
@@ -267,7 +299,24 @@ Effect.prototype._callback = function (this: Effect) {
 	if (!debugEnabled || internalEffects.has(this))
 		return originalEffectCallback.call(this);
 
-	this._debugCallback!();
+	if ("_sources" in this) {
+		const baseSignal = bubbleUpToBaseSignal(this as any);
+		if (baseSignal) {
+			// Track dependency
+			trackDependency(this, baseSignal.signal);
+
+			const updateInfoList = updateInfoMap.get(baseSignal.signal) || [];
+			updateInfoList.push({
+				signal: this,
+				timestamp: Date.now(),
+				depth: baseSignal.depth,
+				type: "effect",
+				subscribedTo: getSignalId(baseSignal.signal),
+				allDependencies: getAllCurrentDependencies(this as any),
+			});
+			updateInfoMap.set(baseSignal.signal, updateInfoList);
+		}
+	}
 
 	return originalEffectCallback.call(this);
 };
@@ -288,6 +337,17 @@ Effect.prototype._dispose = function (this: Effect) {
 	return originalEffectDispose.call(this);
 };
 
+let scheduled = false;
+function scheduleFlush() {
+	if (!scheduled) {
+		scheduled = true;
+		queueMicrotask(() => {
+			flushUpdates();
+			scheduled = false;
+		});
+	}
+}
+
 function flushUpdates() {
 	const signals = Array.from(inflightUpdates);
 	inflightUpdates.clear();
@@ -300,10 +360,7 @@ function flushUpdates() {
 		if (typeof window !== "undefined" && !bridge.shouldThrottleUpdate()) {
 			// Filter updates based on signal names
 			const filteredUpdates = updateInfoList.filter(updateInfo => {
-				const signalName = getSignalName(
-					updateInfo.signal,
-					updateInfo.type === "effect"
-				);
+				const signalName = getSignalName(updateInfo.signal, updateInfo.type);
 				return bridge.matchesFilter(signalName);
 			});
 
@@ -332,18 +389,19 @@ function logUpdate(info: UpdateInfo, prevDepth: number) {
 	if (!debugEnabled || !consoleLoggingEnabled) return;
 
 	const { signal, type, depth } = info;
-	const name = getSignalName(signal, type === "effect");
+	const name = getSignalName(signal, type);
 
-	if (type === "effect") {
+	if (type === "effect" || type === "component") {
 		if (prevDepth === depth) {
 			endUpdateGroup();
 		}
 
+		const copy = type === "effect" ? "effect" : "component render";
 		if (isGrouped)
 			console.groupCollapsed(
-				`${" ".repeat(depth * 2)}↪️ Triggered effect: ${name}`
+				`${" ".repeat(depth * 2)}↪️ Triggered ${copy}: ${name}`
 			);
-		else console.log(`${" ".repeat(depth * 2)}↪️ Triggered effect: ${name}`);
+		else console.log(`${" ".repeat(depth * 2)}↪️ Triggered ${copy}: ${name}`);
 		return;
 	}
 

@@ -6,8 +6,11 @@ import {
 	ReadonlySignal,
 	SignalOptions,
 	EffectOptions,
+	type Model,
+	type ModelConstructor,
 } from "@preact/signals-core";
 import {
+	useState,
 	useRef,
 	useMemo,
 	useEffect,
@@ -459,4 +462,22 @@ declare global {
 	interface Window {
 		__PREACT_SIGNALS_DEVTOOLS__: SignalsDevToolsAPI;
 	}
+}
+
+/** See comment in packages/core/src/index.ts on the same interface for an explanation */
+interface InternalModelConstructor<TModel, TArgs extends any[]>
+	extends ModelConstructor<TModel, TArgs> {
+	(...args: TArgs): Model<TModel>;
+}
+
+export function useModel<TModel>(
+	factory: ModelConstructor<TModel, []> | (() => Model<TModel>)
+): Model<TModel> {
+	type InternalFactory =
+		| InternalModelConstructor<TModel, []>
+		| (() => Model<TModel>);
+
+	const [inst] = useState(() => (factory as InternalFactory)());
+	useEffect(() => inst[Symbol.dispose], [inst]);
+	return inst;
 }
