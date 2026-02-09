@@ -914,7 +914,7 @@ function effect(fn: EffectFn, options?: EffectOptions): () => void {
 
 //#region Action
 
-interface Action<TArgs extends any[], TReturn> {
+export interface Action<TArgs extends any[], TReturn> {
 	(...args: TArgs): TReturn;
 	displayName?: string;
 }
@@ -944,8 +944,8 @@ type ValidateModel<TModel> = {
 	[Key in keyof TModel]: Key extends string | number
 		? TModel[Key] extends ReadonlySignal<unknown>
 			? TModel[Key]
-			: TModel[Key] extends (...args: any[]) => any
-				? TModel[Key]
+			: TModel[Key] extends (...args: infer Args) => infer Return
+				? Action<Args, Return>
 				: TModel[Key] extends object
 					? ValidateModel<TModel[Key]>
 					: `Property '${Key}' is not a Signal, Action, or an object that contains only Signals and Actions.`
@@ -1033,11 +1033,15 @@ function createModel<TModel, TFactoryArgs extends any[] = []>(
 
 		for (const key in model) {
 			// @ts-expect-error TypeScript can't infer that model[key] is a valid here
-			if (typeof model[key] === "function") {
-				const actionName = options?.name ? `${options.name}.${key}` : key;
+			const actionFn = model[key];
+			if (typeof actionFn === "function") {
+				const actionName =
+					actionFn.displayName ??
+					(options?.name ? `${options.name}.${key}` : key);
+
 				// @ts-expect-error TypeScript can't infer that model[key] is a valid function
 				// to pass to action here
-				model[key] = action(model[key], { name: actionName });
+				model[key] = action(actionFn, { name: actionName });
 			}
 		}
 

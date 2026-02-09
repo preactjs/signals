@@ -2602,12 +2602,61 @@ describe("createModel", () => {
 		expect(effectRan).to.equal(true); // Effect runs before error is thrown
 	});
 
-	it("assigns the name option to a special name symbol property", () => {
+	it("assigns the name option to the model constructor", () => {
 		const CounterModel = createModel(() => ({ count: signal(0) }), {
 			name: "CounterModel",
 		});
 
 		expect(CounterModel.displayName).to.equal("CounterModel");
+	});
+
+	it("assigns displayName to implicit actions based on model name", () => {
+		const CounterModel = createModel(
+			() => ({
+				count: signal(0),
+				increment() {
+					this.count.value++;
+				},
+				add(n: number) {
+					this.count.value += n;
+				},
+			}),
+			{ name: "CounterModel" }
+		);
+
+		const counter = new CounterModel();
+		expect(counter.increment.displayName).to.equal("CounterModel.increment");
+		expect(counter.add.displayName).to.equal("CounterModel.add");
+	});
+
+	it("assigns method name as displayName to implicit actions when model has no name", () => {
+		const CounterModel = createModel(() => ({
+			count: signal(0),
+			increment() {
+				this.count.value++;
+			},
+		}));
+
+		const counter = new CounterModel();
+		expect(counter.increment.displayName).to.equal("increment");
+	});
+
+	it("preserves existing displayName on actions", () => {
+		const increment = function (this: { count: Signal<number> }) {
+			this.count.value++;
+		};
+		increment.displayName = "CustomName";
+
+		const CounterModel = createModel(
+			() => ({
+				count: signal(0),
+				increment,
+			}),
+			{ name: "CounterModel" }
+		);
+
+		const counter = new CounterModel();
+		expect(counter.increment.displayName).to.equal("CustomName");
 	});
 
 	describe("model composition", () => {
