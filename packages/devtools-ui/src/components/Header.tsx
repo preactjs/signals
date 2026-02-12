@@ -31,8 +31,8 @@ export function Header() {
 			<div className="header-title">
 				<h1>Signals</h1>
 				<StatusIndicator
-					status={connectionStore.status}
-					message={connectionStore.message}
+					status={connectionStore.status.value}
+					message={connectionStore.message.value}
 				/>
 			</div>
 			<div className="header-controls">

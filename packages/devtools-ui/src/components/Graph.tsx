@@ -197,7 +197,7 @@ export function GraphVisualization() {
 	const graphData = useComputed<GraphData>(() => {
 		const rawUpdates = updates.value;
 		const disposed = disposedSignalIds.value;
-		const showDisposed = settingsStore.showDisposedSignals;
+		const showDisposed = settingsStore.showDisposedSignals.value;
 
 		if (!rawUpdates || rawUpdates.length === 0) return { nodes: [], links: [] };
 
