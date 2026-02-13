@@ -1,5 +1,11 @@
 # @preact/signals
 
+## 2.8.0
+
+### Minor Changes
+
+- [#878](https://github.com/preactjs/signals/pull/878) [`4aa565b`](https://github.com/preactjs/signals/commit/4aa565b3b668100b9c7ce09805da67cab8e3f5b2) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Support returning a plain array in the `when` of a `For` component
+
 ## 2.7.1
 
 ### Patch Changes
