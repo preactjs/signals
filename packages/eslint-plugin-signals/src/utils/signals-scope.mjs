@@ -89,13 +89,19 @@ function getSignalsCallName(sourceCode, callNode, nameSet) {
 		}
 	}
 
-	// Namespace import fallback: core.computed(...)
+	// Namespace import: core.computed(...)
+	// Verify the namespace object actually imports from a signals package.
 	if (
 		callee.type === "MemberExpression" &&
+		!callee.computed &&
 		callee.property.type === "Identifier" &&
-		nameSet.has(callee.property.name)
+		nameSet.has(callee.property.name) &&
+		callee.object.type === "Identifier"
 	) {
-		return callee.property.name;
+		const resolved = resolveImport(sourceCode, callee.object);
+		if (resolved && SIGNAL_PACKAGES.has(resolved.source)) {
+			return callee.property.name;
+		}
 	}
 
 	return null;

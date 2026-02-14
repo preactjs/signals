@@ -77,24 +77,48 @@ describe("no-value-after-await", () => {
 				   await fetch("/api");
 				   counter.value++;
 				 }`,
+
+				// Unresolved identifier .value after await — not flagged
+				// (could be a DOM element, class instance, etc.)
+				`async function run() {
+				   await fetch("/api");
+				   console.log(unknownVar.value);
+				 }`,
+
+				// Function parameter .value after await — not flagged
+				// (without type annotation, we can't tell if it's a signal)
+				`async function run(obj) {
+				   await fetch("/api");
+				   console.log(obj.value);
+				 }`,
 			],
 			invalid: [
+				// Known signal (via creator call) read after await
 				{
-					code: `async function run() {
+					code: `import { signal } from "@preact/signals-core";
+					       const sig = signal(0);
+					       async function run() {
 					         await fetch("/api");
 					         console.log(sig.value);
 					       }`,
 					errors: [{ messageId: "valueAfterAwait" }],
 				},
+				// Arrow function
 				{
-					code: `const run = async () => {
+					code: `import { signal } from "@preact/signals-core";
+					       const sig = signal(0);
+					       const run = async () => {
 					         await fetch("/api");
 					         return sig.value;
 					       };`,
 					errors: [{ messageId: "valueAfterAwait" }],
 				},
+				// Multiple signal reads after await
 				{
-					code: `async function run() {
+					code: `import { signal } from "@preact/signals-core";
+					       const sig1 = signal(0);
+					       const sig2 = signal("");
+					       async function run() {
 					         await fetch("/api");
 					         const a = sig1.value;
 					         const b = sig2.value;
@@ -104,8 +128,10 @@ describe("no-value-after-await", () => {
 						{ messageId: "valueAfterAwait" },
 					],
 				},
+				// Inside async effect callback
 				{
-					code: `import { effect } from "@preact/signals-core";
+					code: `import { signal, effect } from "@preact/signals-core";
+					       const name = signal("test");
 					       effect(async () => {
 					         await somePromise;
 					         console.log(name.value);

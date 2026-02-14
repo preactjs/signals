@@ -42,6 +42,11 @@ describe("no-signal-write-in-computed", () => {
 				`import { computed } from "some-other-lib";
 				 const s = { value: 0 };
 				 const c = computed(() => { s.value = 1; return s.value; });`,
+
+				// Namespace import from non-signals package should be ignored
+				`import * as utils from "some-other-lib";
+				 const s = { value: 0 };
+				 const c = utils.computed(() => { s.value = 1; return s.value; });`,
 			],
 			invalid: [
 				// Direct write in computed arrow (signals-core)
@@ -97,6 +102,34 @@ describe("no-signal-write-in-computed", () => {
 					code: `import { useComputed } from "@preact/signals-react";
 					        const b = { value: 0 };
 					        const c = useComputed(() => { b.value = 1; return 42; });`,
+					errors: [{ messageId: "noWriteInComputed" }],
+				},
+				// Increment (UpdateExpression: sig.value++)
+				{
+					code: `import { signal, computed } from "@preact/signals-core";
+					        const s = signal(0);
+					        const c = computed(() => { s.value++; return s.value; });`,
+					errors: [{ messageId: "noWriteInComputed" }],
+				},
+				// Decrement (UpdateExpression: --sig.value)
+				{
+					code: `import { signal, computed } from "@preact/signals-core";
+					        const s = signal(0);
+					        const c = computed(() => { --s.value; return s.value; });`,
+					errors: [{ messageId: "noWriteInComputed" }],
+				},
+				// Compound assignment (sig.value += 1)
+				{
+					code: `import { signal, computed } from "@preact/signals-core";
+					        const s = signal(0);
+					        const c = computed(() => { s.value += 1; return s.value; });`,
+					errors: [{ messageId: "noWriteInComputed" }],
+				},
+				// Namespace import from signals package — still caught
+				{
+					code: `import * as core from "@preact/signals-core";
+					        const s = core.signal(0);
+					        const c = core.computed(() => { s.value = 1; return s.value; });`,
 					errors: [{ messageId: "noWriteInComputed" }],
 				},
 			],

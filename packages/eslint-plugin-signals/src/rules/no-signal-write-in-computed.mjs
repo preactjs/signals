@@ -77,6 +77,24 @@ const rule = {
 					});
 				}
 			},
+
+			UpdateExpression(node) {
+				if (computedStack.length === 0) return;
+
+				const arg = node.argument;
+				if (
+					arg.type === "MemberExpression" &&
+					arg.property.type === "Identifier" &&
+					arg.property.name === "value" &&
+					!arg.computed
+				) {
+					context.report({
+						node,
+						messageId: "noWriteInComputed",
+						data: { fn: computedStack[computedStack.length - 1] },
+					});
+				}
+			},
 		};
 	},
 };

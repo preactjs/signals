@@ -6,6 +6,13 @@ import rule from "../src/rules/no-signal-in-component-body.mjs";
 const tester = new RuleTester({
 	languageOptions: { ecmaVersion: 2022, sourceType: "module" },
 });
+const jsxTester = new RuleTester({
+	languageOptions: {
+		ecmaVersion: 2022,
+		sourceType: "module",
+		parserOptions: { ecmaFeatures: { jsx: true } },
+	},
+});
 
 describe("no-signal-in-component-body", () => {
 	it("should pass RuleTester", () => {
@@ -260,6 +267,57 @@ describe("no-signal-in-component-body", () => {
 					         const count = signal(0);
 					         return null;
 					       }`,
+					errors: [
+						{
+							messageId: "preferHook",
+							data: { fn: "signal", hook: "useSignal" },
+						},
+					],
+				},
+			],
+		});
+	});
+
+	it("should detect components via JSX return", () => {
+		jsxTester.run("no-signal-in-component-body-jsx", rule, {
+			valid: [
+				// Lowercase function without JSX — not a component
+				`import { signal } from "@preact/signals-core";
+				 function createCounter() {
+				   return signal(0);
+				 }`,
+
+				// signal() inside a nested callback inside a JSX component is fine
+				`import { signal } from "@preact/signals-core";
+				 function myPage() {
+				   const handleClick = () => {
+				     const s = signal(0);
+				   };
+				   return <div onClick={handleClick} />;
+				 }`,
+			],
+			invalid: [
+				// Lowercase function that returns JSX — detected as component
+				{
+					code: `import { signal } from "@preact/signals-core";
+					       function myPage() {
+					         const count = signal(0);
+					         return <div>{count.value}</div>;
+					       }`,
+					errors: [
+						{
+							messageId: "preferHook",
+							data: { fn: "signal", hook: "useSignal" },
+						},
+					],
+				},
+				// Arrow component returning JSX fragment
+				{
+					code: `import { signal } from "@preact/signals-core";
+					       const myList = () => {
+					         const items = signal([]);
+					         return <>{items.value.map(i => <li key={i}>{i}</li>)}</>;
+					       };`,
 					errors: [
 						{
 							messageId: "preferHook",

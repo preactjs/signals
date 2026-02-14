@@ -41,8 +41,54 @@ function getFunctionName(node) {
 /**
  * Returns true if the name follows the React component convention (PascalCase).
  */
-function isLikelyComponent(name) {
+function isPascalCase(name) {
 	return typeof name === "string" && /^[A-Z]/.test(name);
+}
+
+/**
+ * Check if an AST node contains a JSX element or fragment (non-recursive
+ * into nested functions — only checks the function's own body).
+ */
+function containsJSX(node) {
+	if (!node) return false;
+	if (node.type === "JSXElement" || node.type === "JSXFragment") {
+		return true;
+	}
+	// Don't recurse into nested functions
+	if (
+		node.type === "FunctionExpression" ||
+		node.type === "ArrowFunctionExpression" ||
+		node.type === "FunctionDeclaration"
+	) {
+		return false;
+	}
+	for (const key of Object.keys(node)) {
+		if (key === "parent") continue;
+		const child = node[key];
+		if (child && typeof child === "object") {
+			if (Array.isArray(child)) {
+				for (const item of child) {
+					if (item && typeof item.type === "string" && containsJSX(item))
+						return true;
+				}
+			} else if (typeof child.type === "string") {
+				if (containsJSX(child)) return true;
+			}
+		}
+	}
+	return false;
+}
+
+/**
+ * Determine whether a function node is likely a React/Preact component.
+ *
+ * Two heuristics (either is sufficient):
+ * 1. PascalCase name (the de-facto React convention)
+ * 2. The function body contains JSX (catches unnamed or lowercase components)
+ */
+function isLikelyComponent(node) {
+	if (isPascalCase(getFunctionName(node))) return true;
+	return containsJSX(node.body);
 }
 
 /** @type {import("eslint").Rule.RuleModule} */
@@ -74,7 +120,7 @@ const rule = {
 		const fnStack = [];
 
 		function onFunctionEnter(node) {
-			fnStack.push(isLikelyComponent(getFunctionName(node)));
+			fnStack.push(isLikelyComponent(node));
 		}
 
 		function onFunctionExit() {

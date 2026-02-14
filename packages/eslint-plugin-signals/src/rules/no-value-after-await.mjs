@@ -6,7 +6,10 @@
  * Writing to `.value` after await is fine — only reads are flagged.
  */
 
-import { isKnownSignal } from "../utils/signals-scope.mjs";
+import {
+	isKnownSignal,
+	isSignalByTypeChecker,
+} from "../utils/signals-scope.mjs";
 
 /** @type {import("eslint").Rule.RuleModule} */
 const rule = {
@@ -26,6 +29,7 @@ const rule = {
 
 	create(context) {
 		const sourceCode = context.sourceCode ?? context.getSourceCode();
+		const parserServices = context.parserServices ?? sourceCode?.parserServices;
 		const scopeStack = [];
 
 		/** True when the MemberExpression is the target of an assignment or update. */
@@ -52,37 +56,52 @@ const rule = {
 		}
 
 		/**
-		 * Best-effort check: is the `.value` receiver a known signal?
-		 * Unresolvable identifiers (globals, params without annotations) still
-		 * warn — `.value` after `await` is suspicious regardless.
+		 * Check whether the `.value` receiver is a signal.
+		 *
+		 * Detection strategy (in order):
+		 * 1. Scope analysis — traces to signal creator calls or Signal type annotations.
+		 * 2. TypeScript type checker — catches member-expression signals (obj.sig).
+		 * 3. For identifiers that resolve to a local variable or parameter with a
+		 *    definition, assume NOT a signal (the user declared it, and it didn't
+		 *    match steps 1-2).
+		 * 4. For completely unresolvable identifiers (globals with no definition),
+		 *    assume it could be a signal and flag conservatively.
 		 */
 		function isLikelySignal(node) {
-			if (node.type !== "Identifier") return true;
+			// Scope analysis: definitive yes
 			if (isKnownSignal(sourceCode, node)) return true;
 
+			// Type checker: definitive yes (handles member expressions too)
+			if (isSignalByTypeChecker(parserServices, node)) return true;
+
+			// For non-identifiers (member expressions, call results, etc.)
+			// without type checker info we can't tell — skip to avoid noise.
+			if (node.type !== "Identifier") return false;
+
+			// Walk scope chain to find the variable definition
 			let scope;
 			try {
 				scope = sourceCode.getScope(node);
 			} catch {
-				return true;
+				return false;
 			}
 
 			while (scope) {
 				const variable = scope.variables.find(v => v.name === node.name);
 				if (variable) {
-					for (const def of variable.defs) {
-						if (
-							def.type === "Variable" &&
-							def.node.type === "VariableDeclarator"
-						) {
-							return false; // has a local init we checked — it's not a signal
-						}
-					}
-					return true;
+					// Variable has definitions (local var, param, import, etc.)
+					// — it didn't match scope analysis or type checker, so it's
+					// not a signal.
+					if (variable.defs.length > 0) return false;
+
+					// Implicit global (no defs) — could be anything, skip.
+					return false;
 				}
 				scope = scope.upper;
 			}
-			return true;
+			// Completely unresolved — skip to avoid false positives on
+			// DOM elements, class instances, etc.
+			return false;
 		}
 
 		return {

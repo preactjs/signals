@@ -10,6 +10,7 @@ An [Oxlint](https://oxc.rs)/ESLint plugin that catches common signal misuse patt
 | [`signals/no-value-after-await`](#no-value-after-await)               | error    | Warn when reading `.value` after an `await`, which breaks tracking                   |
 | [`signals/no-signal-truthiness`](#no-signal-truthiness)               | warn     | Warn when a signal object itself is evaluated for truthiness                         |
 | [`signals/no-signal-in-component-body`](#no-signal-in-component-body) | error    | Disallow calling `signal`/`computed`/`effect` in a component body; use hooks instead |
+| [`signals/no-conditional-value-read`](#no-conditional-value-read)     | error    | Warn when `.value` is read conditionally behind a non-reactive guard                 |
 
 ## Installation
 
@@ -29,6 +30,7 @@ pnpm add -D eslint-plugin-signals
 		"signals/no-value-after-await": "error",
 		"signals/no-signal-truthiness": "warn",
 		"signals/no-signal-in-component-body": "error",
+		"signals/no-conditional-value-read": "error",
 	},
 }
 ```
@@ -57,6 +59,7 @@ export default [
 			"signals/no-value-after-await": "error",
 			"signals/no-signal-truthiness": "warn",
 			"signals/no-signal-in-component-body": "error",
+			"signals/no-conditional-value-read": "error",
 		},
 	},
 ];
@@ -192,9 +195,43 @@ function MyComponent() {
 }
 ```
 
-> **Note:** Component detection relies on the PascalCase naming convention.
-> Functions whose names start with an uppercase letter are treated as components.
-> Lowercase-named functions (utilities, factories, hooks) are not flagged.
+> **Note:** Component detection uses two heuristics (either is sufficient):
+> PascalCase naming convention, or the function body containing JSX.
+> This catches both conventionally named components and lowercase components
+> that return JSX. Utility functions without JSX are not flagged.
+
+### `no-conditional-value-read`
+
+Warns when signal `.value` is read conditionally inside a reactive scope (`effect`, `computed`, `useSignalEffect`, `useComputed`) behind a guard that does **not** itself read `.value`.
+
+When a guard condition doesn't read any signal `.value`, no signal is tracked as a dependency for that guard. If the guard prevents the `.value` read from executing, the reactive scope may silently stop updating.
+
+```js
+// ❌ Bad — guard doesn't read .value, so sig is not tracked
+effect(() => {
+	if (someNonReactiveCondition) return;
+	console.log(sig.value); // may never re-run!
+});
+
+effect(() => {
+	const id = action.peek(); // .peek() is non-reactive
+	if (!id) return;
+	console.log(states.value[id]); // not tracked!
+});
+
+// ✅ Good — guard reads .value, so the signal is tracked
+effect(() => {
+	if (!enabled.value) return;
+	console.log(data.value); // tracked, effect re-runs
+});
+
+// ✅ Good — .value read is unconditional
+effect(() => {
+	const v = sig.value; // always executed
+	if (!v) return;
+	doSomething(v);
+});
+```
 
 ## How Detection Works
 
@@ -231,11 +268,48 @@ This means:
 
 ## Limitations
 
-- Signals passed through function arguments, returned from helper functions,
-  or dynamically aliased cannot be traced.
-- Namespace imports (`import * as signals from "..."`) use a best-effort
-  property-name check on the member expression.
-- Oxlint currently does not benefit from type-aware linting.
+### No indirect signal tracking
+
+All rules operate on **local, single-file** scope analysis. Signals that cross
+function boundaries — passed as arguments, returned from helpers, or stored in
+intermediate variables via dynamic assignment — cannot be traced:
+
+```js
+// Not detected — signal crosses a function boundary
+function helper(sig) {
+	sig.value = 42; // write not visible to no-signal-write-in-computed
+}
+computed(() => {
+	helper(mySignal);
+	return mySignal.value;
+});
+
+// Not detected — signal returned from a function
+function getCount() {
+	return signal(0);
+}
+if (getCount()) {
+} // truthiness check not flagged
+
+// Not detected — signal aliased through an object
+const store = { count: signal(0) };
+const ref = store.count;
+if (ref) {
+} // not flagged without type checker
+```
+
+This is a fundamental limitation of static analysis without full cross-function
+data-flow tracking. When TypeScript type information is available (via
+`@typescript-eslint/parser` with `project: true`), some of these cases are
+caught through type-based detection — particularly member expressions like
+`store.count` where the type checker can resolve the type.
+
+### Other limitations
+
+- Namespace imports (`import * as signals from "..."`) are verified against the
+  import source but rely on property-name matching for the called function.
+- Oxlint currently does not benefit from type-aware linting, so detection in
+  Oxlint is limited to scope analysis and type annotations.
 
 ## License
 

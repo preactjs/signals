@@ -108,6 +108,38 @@ describe("no-signal-truthiness", () => {
 					       if (count) {}`,
 					errors: [{ messageId: "noSignalTruthiness" }],
 				},
+				// Signal on right side of && chain
+				{
+					code: `import { signal } from "@preact/signals-core";
+					       const count = signal(0);
+					       const x = something && count;`,
+					errors: [{ messageId: "noSignalTruthiness" }],
+				},
+				// Signal on right side of || chain
+				{
+					code: `import { signal } from "@preact/signals-core";
+					       const count = signal(0);
+					       const x = fallback || count;`,
+					errors: [{ messageId: "noSignalTruthiness" }],
+				},
+				// Signal in middle of chain — both left and right flagged
+				{
+					code: `import { signal } from "@preact/signals-core";
+					       const a = signal(0);
+					       const b = signal(1);
+					       const x = a && b;`,
+					errors: [
+						{ messageId: "noSignalTruthiness" },
+						{ messageId: "noSignalTruthiness" },
+					],
+				},
+				// Signal on right of ?? (nullish coalescing)
+				{
+					code: `import { signal } from "@preact/signals-core";
+					       const count = signal(0);
+					       const x = fallback ?? count;`,
+					errors: [{ messageId: "noSignalTruthiness" }],
+				},
 			],
 		});
 	});

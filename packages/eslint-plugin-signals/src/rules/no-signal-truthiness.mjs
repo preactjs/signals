@@ -75,6 +75,13 @@ const rule = {
 
 			LogicalExpression(node) {
 				if (isSignal(node.left)) reportNode(node.left);
+				// Check the right operand too — signals deeper in chains
+				// like `a && count && b` or `fallback || mySignal` are
+				// equally problematic. Skip if the right operand is itself
+				// a LogicalExpression (the visitor will handle it).
+				if (node.right.type !== "LogicalExpression" && isSignal(node.right)) {
+					reportNode(node.right);
+				}
 			},
 
 			UnaryExpression(node) {
