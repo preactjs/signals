@@ -1,4 +1,4 @@
-import { signal, computed } from "@preact/signals";
+import { signal, computed, effect } from "@preact/signals";
 import type {
 	DevToolsAdapter,
 	ConnectionStatus,
@@ -8,11 +8,14 @@ import type {
 	DependencyInfo,
 } from "@preact/signals-devtools-adapter";
 
+export type ThemeMode = "auto" | "light" | "dark";
+
 export interface DevToolsContext {
 	adapter: DevToolsAdapter;
 	connectionStore: ReturnType<typeof createConnectionStore>;
 	updatesStore: ReturnType<typeof createUpdatesStore>;
 	settingsStore: ReturnType<typeof createSettingsStore>;
+	themeStore: ReturnType<typeof createThemeStore>;
 }
 
 let currentContext: DevToolsContext | null = null;
@@ -325,16 +328,85 @@ export function createSettingsStore(adapter: DevToolsAdapter) {
 	};
 }
 
+const THEME_STORAGE_KEY = "signals-devtools-theme";
+
+export function createThemeStore() {
+	const stored = (() => {
+		try {
+			const val = localStorage.getItem(THEME_STORAGE_KEY);
+			if (val === "light" || val === "dark" || val === "auto") return val;
+		} catch {
+			// localStorage unavailable
+		}
+		return "auto" as ThemeMode;
+	})();
+
+	const theme = signal<ThemeMode>(stored);
+
+	const mediaQuery =
+		typeof window !== "undefined"
+			? window.matchMedia("(prefers-color-scheme: dark)")
+			: null;
+	const systemIsDark = signal(mediaQuery?.matches ?? false);
+
+	if (mediaQuery) {
+		const handler = (e: MediaQueryListEvent) => {
+			systemIsDark.value = e.matches;
+		};
+		mediaQuery.addEventListener("change", handler);
+	}
+
+	const resolvedTheme = computed<"light" | "dark">(() =>
+		theme.value === "auto"
+			? systemIsDark.value
+				? "dark"
+				: "light"
+			: theme.value
+	);
+
+	// Apply data-theme attribute to the devtools container
+	effect(() => {
+		const resolved = resolvedTheme.value;
+		const el = document.querySelector(".signals-devtools");
+		if (el instanceof HTMLElement) {
+			el.dataset.theme = resolved;
+		}
+	});
+
+	const toggleTheme = () => {
+		const order: ThemeMode[] = ["auto", "light", "dark"];
+		const idx = order.indexOf(theme.value);
+		theme.value = order[(idx + 1) % order.length];
+		try {
+			localStorage.setItem(THEME_STORAGE_KEY, theme.value);
+		} catch {
+			// localStorage unavailable
+		}
+	};
+
+	return {
+		get theme() {
+			return theme.value;
+		},
+		get resolvedTheme() {
+			return resolvedTheme.value;
+		},
+		toggleTheme,
+	};
+}
+
 export function initDevTools(adapter: DevToolsAdapter): DevToolsContext {
 	const settingsStore = createSettingsStore(adapter);
 	const updatesStore = createUpdatesStore(adapter, settingsStore);
 	const connectionStore = createConnectionStore(adapter);
+	const themeStore = createThemeStore();
 
 	currentContext = {
 		adapter,
 		connectionStore,
 		updatesStore,
 		settingsStore,
+		themeStore,
 	};
 
 	return currentContext;
