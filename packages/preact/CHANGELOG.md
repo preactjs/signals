@@ -1,5 +1,17 @@
 # @preact/signals
 
+## 2.8.0
+
+### Minor Changes
+
+- [#878](https://github.com/preactjs/signals/pull/878) [`4aa565b`](https://github.com/preactjs/signals/commit/4aa565b3b668100b9c7ce09805da67cab8e3f5b2) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Support returning a plain array in the `when` of a `For` component
+
+## 2.7.1
+
+### Patch Changes
+
+- [#870](https://github.com/preactjs/signals/pull/870) [`c8636fa`](https://github.com/preactjs/signals/commit/c8636fa69d9efcae86abc5503f69ff3d79a5b951) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Prevent scheduled effects from highjacking the execution-context
+
 ## 2.7.0
 
 ### Minor Changes
