@@ -1,5 +1,11 @@
 # @preact/signals-devtools-ui
 
+## 0.4.1
+
+### Patch Changes
+
+- [#872](https://github.com/preactjs/signals/pull/872) [`8848feb`](https://github.com/preactjs/signals/commit/8848feba51ec578cadc33c558ccee3f6a4310893) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Dark mode in devtools
+
 ## 0.4.0
 
 ### Minor Changes
