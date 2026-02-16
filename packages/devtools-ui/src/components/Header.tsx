@@ -39,9 +39,10 @@ export function Header() {
 				<button
 					className="theme-toggle"
 					onClick={themeStore.toggleTheme}
-					title={`Theme: ${themeLabels[themeStore.theme]}`}
+					title={`Theme: ${themeLabels[themeStore.theme.value]}`}
 				>
-					{themeIcons[themeStore.theme]} {themeLabels[themeStore.theme]}
+					{themeIcons[themeStore.theme.value]}{" "}
+					{themeLabels[themeStore.theme.value]}
 				</button>
 				{onClear && <Button onClick={onClear}>Clear</Button>}
 				{onTogglePause && (
