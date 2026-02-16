@@ -1,5 +1,11 @@
 # @preact/signals
 
+## 2.8.1
+
+### Patch Changes
+
+- [#883](https://github.com/preactjs/signals/pull/883) [`849413f`](https://github.com/preactjs/signals/commit/849413f23a612ffeb3a159b4e65e0b0f4408ed9b) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Ensure that re-mounting components preserve the DOM updaters correctly
+
 ## 2.8.0
 
 ### Minor Changes
