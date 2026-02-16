@@ -44,7 +44,7 @@ export function DevToolsPanel({
 					</button>
 				</div>
 				<div className="tab-content">
-					{!connectionStore.isConnected ? (
+					{!connectionStore.isConnected.value ? (
 						<EmptyState onRefresh={connectionStore.refreshConnection} />
 					) : (
 						<>

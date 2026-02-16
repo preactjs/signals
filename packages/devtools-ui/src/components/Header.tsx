@@ -31,17 +31,18 @@ export function Header() {
 			<div className="header-title">
 				<h1>Signals</h1>
 				<StatusIndicator
-					status={connectionStore.status}
-					message={connectionStore.message}
+					status={connectionStore.status.value}
+					message={connectionStore.message.value}
 				/>
 			</div>
 			<div className="header-controls">
 				<button
 					className="theme-toggle"
 					onClick={themeStore.toggleTheme}
-					title={`Theme: ${themeLabels[themeStore.theme]}`}
+					title={`Theme: ${themeLabels[themeStore.theme.value]}`}
 				>
-					{themeIcons[themeStore.theme]} {themeLabels[themeStore.theme]}
+					{themeIcons[themeStore.theme.value]}{" "}
+					{themeLabels[themeStore.theme.value]}
 				</button>
 				{onClear && <Button onClick={onClear}>Clear</Button>}
 				{onTogglePause && (

@@ -739,7 +739,7 @@ describe("@preact/signals-devtools-ui", () => {
 			const context = getContext();
 
 			// Initial status before any events
-			expect(context.connectionStore.status).to.be.a("string");
+			expect(context.connectionStore.status.value).to.be.a("string");
 		});
 
 		it("should update status on connectionStatusChanged event", () => {
@@ -751,8 +751,10 @@ describe("@preact/signals-devtools-ui", () => {
 				message: "Connected to signals",
 			});
 
-			expect(context.connectionStore.status).to.equal("connected");
-			expect(context.connectionStore.message).to.equal("Connected to signals");
+			expect(context.connectionStore.status.value).to.equal("connected");
+			expect(context.connectionStore.message.value).to.equal(
+				"Connected to signals"
+			);
 		});
 
 		it("should update isConnected on signalsAvailable event", () => {
@@ -761,7 +763,7 @@ describe("@preact/signals-devtools-ui", () => {
 
 			mockAdapter._emit("signalsAvailable", true);
 
-			expect(context.connectionStore.isConnected).to.be.true;
+			expect(context.connectionStore.isConnected.value).to.be.true;
 		});
 
 		it("should call requestState on refreshConnection", () => {
@@ -902,9 +904,11 @@ describe("@preact/signals-devtools-ui", () => {
 			initDevTools(mockAdapter);
 			const context = getContext();
 
-			expect(context.settingsStore.settings.enabled).to.be.true;
-			expect(context.settingsStore.settings.grouped).to.be.true;
-			expect(context.settingsStore.settings.maxUpdatesPerSecond).to.equal(60);
+			expect(context.settingsStore.settings.value.enabled).to.be.true;
+			expect(context.settingsStore.settings.value.grouped).to.be.true;
+			expect(context.settingsStore.settings.value.maxUpdatesPerSecond).to.equal(
+				60
+			);
 		});
 
 		it("should apply settings and call sendConfig", () => {
@@ -921,8 +925,10 @@ describe("@preact/signals-devtools-ui", () => {
 			context.settingsStore.applySettings(newSettings);
 
 			expect(mockAdapter.sendConfig).toHaveBeenCalledWith(newSettings);
-			expect(context.settingsStore.settings.enabled).to.be.false;
-			expect(context.settingsStore.settings.maxUpdatesPerSecond).to.equal(30);
+			expect(context.settingsStore.settings.value.enabled).to.be.false;
+			expect(context.settingsStore.settings.value.maxUpdatesPerSecond).to.equal(
+				30
+			);
 		});
 
 		it("should update settings on configReceived event", () => {
@@ -938,18 +944,20 @@ describe("@preact/signals-devtools-ui", () => {
 				},
 			});
 
-			expect(context.settingsStore.settings.enabled).to.be.false;
-			expect(context.settingsStore.settings.maxUpdatesPerSecond).to.equal(100);
+			expect(context.settingsStore.settings.value.enabled).to.be.false;
+			expect(context.settingsStore.settings.value.maxUpdatesPerSecond).to.equal(
+				100
+			);
 		});
 
 		it("should toggle showDisposedSignals", () => {
 			initDevTools(mockAdapter);
 			const context = getContext();
 
-			expect(context.settingsStore.showDisposedSignals).to.be.false;
+			expect(context.settingsStore.showDisposedSignals.value).to.be.false;
 
 			context.settingsStore.toggleShowDisposedSignals();
-			expect(context.settingsStore.showDisposedSignals).to.be.true;
+			expect(context.settingsStore.showDisposedSignals.value).to.be.true;
 		});
 	});
 
