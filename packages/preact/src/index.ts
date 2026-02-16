@@ -276,6 +276,7 @@ hook(OptionsTypes.DIFFED, (old, vnode) => {
 				updaters = {};
 				dom._updaters = updaters;
 			}
+
 			for (let prop in props) {
 				let updater = updaters[prop];
 				let signal = props[prop];
@@ -285,6 +286,10 @@ hook(OptionsTypes.DIFFED, (old, vnode) => {
 				} else {
 					updater._update(signal, renderedProps);
 				}
+			}
+
+			for (let prop in props) {
+				renderedProps[prop] = props[prop];
 			}
 		}
 	}
@@ -305,17 +310,25 @@ function createPropUpdater(
 		dom.ownerSVGElement === undefined;
 
 	const changeSignal = signal(propSignal);
+	// Track the last value we know was applied to the DOM, so we can skip
+	// redundant updates without writing back to vnode.props (which would
+	// clobber the Signal reference and break unmount/remount cycles).
+	let lastRenderedValue: any = propSignal.peek();
 	return {
 		_update: (newSignal: Signal, newProps: typeof props) => {
 			changeSignal.value = newSignal;
 			props = newProps;
+			lastRenderedValue = newSignal.peek();
 		},
 		_dispose: effect(function (this: Effect) {
 			this._notify = notifyDomUpdates;
 			const value = changeSignal.value.value;
 			// If Preact just rendered this value, don't render it again:
-			if (props[prop] === value) return;
-			props[prop] = value;
+			if (lastRenderedValue === value) {
+				lastRenderedValue = undefined;
+				return;
+			}
+			lastRenderedValue = undefined;
 			if (setAsProperty) {
 				// @ts-ignore-next-line silly
 				dom[prop] = value;
@@ -345,6 +358,7 @@ hook(OptionsTypes.UNMOUNT, (old, vnode: VNode) => {
 				}
 			}
 		}
+		vnode.__np = undefined;
 	} else {
 		let component = vnode.__c;
 		if (component) {
