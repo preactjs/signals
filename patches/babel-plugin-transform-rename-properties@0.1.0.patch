@@ -1,0 +1,130 @@
+diff --git a/index.js b/index.js
+index 30ac154fbcc31ea4a03204d190ea99389f022ee9..45f69dcce7b49a0e8bcd2451f84bcca4616ea994 100644
+--- a/index.js
++++ b/index.js
+@@ -1,3 +1,20 @@
++/** Check if node is a template literal with no expressions (e.g., `foo`) */
++function isConstantTemplateLiteral(t, node) {
++  return (
++    t.isTemplateLiteral(node) &&
++    node.expressions.length === 0 &&
++    node.quasis.length === 1
++  );
++}
++
++/** Create a template literal node with no expressions (e.g., `foo`) */
++function constantTemplateLiteral(t, value) {
++  return t.templateLiteral(
++    [t.templateElement({ raw: value, cooked: value }, true)],
++    []
++  );
++}
++
+ module.exports = function ({ types: t }, options = {}) {
+   const rename = options.rename || {};
+ 
+@@ -41,40 +58,86 @@ module.exports = function ({ types: t }, options = {}) {
+     },
+   };
+ 
++  const renameMemberExpression = {
++    exit(path) {
++      const node = path.node;
++
++      let name;
++      if (t.isIdentifier(node.property) && !node.computed) {
++        name = node.property.name;
++      } else if (t.isStringLiteral(node.property)) {
++        name = node.property.value;
++      } else {
++        return;
++      }
++
++      const newName = nameMap.get(name);
++      if (newName === undefined) {
++        return;
++      }
++
++      const newProperty = t.isValidIdentifier(newName)
++        ? t.identifier(newName)
++        : t.stringLiteral(newName);
++      const computed = !t.isValidIdentifier(newName);
++
++      let newNode;
++      if (t.isOptionalMemberExpression(node)) {
++        newNode = t.optionalMemberExpression(
++          node.object,
++          newProperty,
++          computed,
++          node.optional
++        );
++      } else {
++        newNode = t.memberExpression(
++          node.object,
++          newProperty,
++          computed
++        );
++      }
++      path.replaceWith(newNode);
++      path.skip();
++    },
++  };
++
+   return {
+     name: "transform-rename-properties",
+     visitor: {
+       Property: replacePropertyOrMethod,
+       Method: replacePropertyOrMethod,
+-      MemberExpression: {
++      MemberExpression: renameMemberExpression,
++      OptionalMemberExpression: renameMemberExpression,
++      BinaryExpression: {
+         exit(path) {
+           const node = path.node;
++          if (node.operator !== "in") {
++            return;
++          }
++
++          let oldName;
++          let isTemplateLiteral = false;
+ 
+-          let name;
+-          if (t.isIdentifier(node.property) && !node.computed) {
+-            name = node.property.name;
+-          } else if (t.isStringLiteral(node.property)) {
+-            name = node.property.value;
++          if (t.isStringLiteral(node.left)) {
++            oldName = node.left.value;
++          } else if (isConstantTemplateLiteral(t, node.left)) {
++            oldName = node.left.quasis[0].value.cooked;
++            isTemplateLiteral = true;
+           } else {
+             return;
+           }
+ 
+-          const newName = nameMap.get(name);
++          const newName = nameMap.get(oldName);
+           if (newName === undefined) {
+             return;
+           }
+ 
+-          let newNode;
+-          if (t.isValidIdentifier(newName)) {
+-            newNode = t.memberExpression(node.object, t.identifier(newName));
+-          } else {
+-            newNode = t.memberExpression(
+-              node.object,
+-              t.stringLiteral(newName),
+-              true
+-            );
+-          }
+-          path.replaceWith(newNode);
++          const newNode = isTemplateLiteral
++            ? constantTemplateLiteral(t, newName)
++            : t.stringLiteral(newName);
++
++          const replacedNode = t.binaryExpression("in", newNode, node.right);
++          path.replaceWith(replacedNode);
+           path.skip();
+         },
+       },

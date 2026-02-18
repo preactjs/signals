@@ -199,10 +199,10 @@ describe("getSignalName", () => {
 		expect(getSignalName(comp)).toBe("doubled");
 	});
 
-	it("should return (anonymous signal) for unnamed computed", () => {
+	it("should return (anonymous computed) for unnamed computed", () => {
 		const sig = signal(1);
 		const comp = computed(() => sig.value * 2);
 		// @ts-expect-error
-		expect(getSignalName(comp)).toBe("(anonymous signal)");
+		expect(getSignalName(comp)).toBe("(anonymous computed)");
 	});
 });

@@ -8,6 +8,9 @@ overrides:
   socket.io: ~4.7.2
 
 patchedDependencies:
+  babel-plugin-transform-rename-properties@0.1.0:
+    hash: bd5506f3d1e6386443447cf0eb8c8e701b16d07bf9caa92eae22b34452f8f591
+    path: patches/babel-plugin-transform-rename-properties@0.1.0.patch
   microbundle@0.15.1:
     hash: 191ddb4c75616fbd059c0f22ba3000be648ce78c33a2f5286f6d1ff43f9ea6b8
     path: patches/microbundle@0.15.1.patch
@@ -78,7 +81,7 @@ importers:
         version: 6.1.1
       babel-plugin-transform-rename-properties:
         specifier: ^0.1.0
-        version: 0.1.0(@babel/core@7.28.5)
+        version: 0.1.0(patch_hash=bd5506f3d1e6386443447cf0eb8c8e701b16d07bf9caa92eae22b34452f8f591)(@babel/core@7.28.5)
       buffer:
         specifier: ^6.0.3
         version: 6.0.3
@@ -7587,7 +7590,7 @@ snapshots:
     dependencies:
       '@babel/core': 7.28.5
 
-  babel-plugin-transform-rename-properties@0.1.0(@babel/core@7.28.5):
+  babel-plugin-transform-rename-properties@0.1.0(patch_hash=bd5506f3d1e6386443447cf0eb8c8e701b16d07bf9caa92eae22b34452f8f591)(@babel/core@7.28.5):
     dependencies:
       '@babel/core': 7.28.5
 
