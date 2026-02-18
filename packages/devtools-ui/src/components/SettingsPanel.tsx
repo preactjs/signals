@@ -9,12 +9,11 @@ export function SettingsPanel() {
 	const popover = useRef<HTMLDivElement>(null);
 
 	const onApply = settingsStore.applySettings;
-	const settings = settingsStore.settings;
 
-	const localSettings = useSignal<Settings>(settings);
+	const localSettings = useSignal<Settings>(settingsStore.settings.value);
 
 	useSignalEffect(() => {
-		localSettings.value = settingsStore.settings;
+		localSettings.value = settingsStore.settings.value;
 	});
 
 	const handleApply = () => {
@@ -132,7 +131,7 @@ export function SettingsPanel() {
 					<label>
 						<input
 							type="checkbox"
-							checked={settingsStore.showDisposedSignals}
+							checked={settingsStore.showDisposedSignals.value}
 							onChange={() => settingsStore.toggleShowDisposedSignals()}
 						/>
 						Show disposed signals in graph
