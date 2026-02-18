@@ -71,6 +71,30 @@ export default defineConfig({
 						dirname,
 						"./packages/preact/utils/src/index.tsx"
 					),
+					"@preact/signals-react/runtime": path.join(
+						dirname,
+						"./packages/react/runtime/src/index.ts"
+					),
+					"@preact/signals-react/utils": path.join(
+						dirname,
+						"./packages/react/utils/src/index.tsx"
+					),
+					"@preact/signals-react": path.join(
+						dirname,
+						"./packages/react/src/index.ts"
+					),
+					"@preact/signals-react-runtime": path.join(
+						dirname,
+						"./packages/react/runtime/src/index.ts"
+					),
+					"@preact/signals-react-utils": path.join(
+						dirname,
+						"./packages/react/utils/src/index.tsx"
+					),
+					"@preact/signals-react-transform": path.join(
+						dirname,
+						"./packages/react-transform/src/index.ts"
+					),
 					"@preact/signals-debug": path.join(
 						dirname,
 						"./packages/debug/src/index.ts"
