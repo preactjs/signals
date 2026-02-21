@@ -44,7 +44,17 @@
     "@preact/signals-core": "workspace:^1.13.0"
   },
   "peerDependencies": {
-    "@preact/signals-core": ">=1.12.2"
+    "@preact/signals": ">=2.6.0",
+    "@preact/signals-core": ">=1.12.2",
+    "@preact/signals-react": ">=3.6.2"
+  },
+  "peerDependenciesMeta": {
+    "@preact/signals": {
+      "optional": true
+    },
+    "@preact/signals-react": {
+      "optional": true
+    }
   },
   "publishConfig": {
     "access": "public",
