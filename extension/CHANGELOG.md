@@ -1,5 +1,12 @@
 # preact-signals-devtools
 
+## 1.1.11
+
+### Patch Changes
+
+- Updated dependencies [[`dbdd585`](https://github.com/preactjs/signals/commit/dbdd585e5c059fe52742452dd69fe390c3a683f9)]:
+  - @preact/signals-devtools-ui@0.4.2
+
 ## 1.1.10
 
 ### Patch Changes

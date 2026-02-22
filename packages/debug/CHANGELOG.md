@@ -1,5 +1,11 @@
 # @preact/signals-debug
 
+## 1.4.2
+
+### Patch Changes
+
+- [#887](https://github.com/preactjs/signals/pull/887) [`a559c3a`](https://github.com/preactjs/signals/commit/a559c3a11747ac2a0169c9d34feaeff126b8fcec) Thanks [@rschristian](https://github.com/rschristian)! - Ensure we specify the proper peerDependencies in the package.json
+
 ## 1.4.1
 
 ### Patch Changes
