@@ -229,6 +229,13 @@ importers:
   packages/core: {}
 
   packages/debug:
+    dependencies:
+      '@preact/signals':
+        specifier: '>=2.6.0'
+        version: 2.8.1(preact@10.27.2)
+      '@preact/signals-react':
+        specifier: '>=3.6.2'
+        version: 3.9.0(react@18.2.0)
     devDependencies:
       '@preact/signals-core':
         specifier: workspace:^1.13.0
@@ -1594,6 +1601,19 @@ packages:
     peerDependencies:
       '@babel/core': 7.x
       vite: 2.x || 3.x
+
+  '@preact/signals-core@1.13.0':
+    resolution: {integrity: sha512-slT6XeTCAbdql61GVLlGU4x7XHI7kCZV5Um5uhE4zLX4ApgiiXc0UYFvVOKq06xcovzp7p+61l68oPi563ARKg==}
+
+  '@preact/signals-react@3.9.0':
+    resolution: {integrity: sha512-C0Qn4AiAYEAHbg7/UEMgdJd+GNDnP/OxI1tk+8WDco9QFIh4gbW+r9V2K4M6OAB6A/ztHW/uZ8/kwBnxNSB94g==}
+    peerDependencies:
+      react: ^16.14.0 || 17.x || 18.x || 19.x
+
+  '@preact/signals@2.8.1':
+    resolution: {integrity: sha512-wX6U0SpcCukZTJBs5ChljvBZb3XmYzA5gd4vKHgX8wZZKaQCo2WHtmThdLx+mcVvlBa5u3XShC7ffbETJD4BiQ==}
+    peerDependencies:
+      preact: '>= 10.25.0 || >=11.0.0-0'
 
   '@prefresh/babel-plugin@0.4.3':
     resolution: {integrity: sha512-fYAWbU1WDSLn108kKY4eDaaeUcnszFqXjgaGKYXNZ5NLulpRTpsrY+Sbfo9q8LDpWrBpqIgzjrwNnvglWI1xNQ==}
@@ -7002,6 +7022,19 @@ snapshots:
     transitivePeerDependencies:
       - preact
       - supports-color
+
+  '@preact/signals-core@1.13.0': {}
+
+  '@preact/signals-react@3.9.0(react@18.2.0)':
+    dependencies:
+      '@preact/signals-core': 1.13.0
+      react: 18.2.0
+      use-sync-external-store: 1.2.0(react@18.2.0)
+
+  '@preact/signals@2.8.1(preact@10.27.2)':
+    dependencies:
+      '@preact/signals-core': 1.13.0
+      preact: 10.27.2
 
   '@prefresh/babel-plugin@0.4.3': {}
 
