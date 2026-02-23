@@ -46,6 +46,7 @@ function endBatch() {
 
 	let error: unknown;
 	let hasError = false;
+	reconcileBatchSnapshots();
 
 	while (batchedEffect !== undefined) {
 		let effect: Effect | undefined = batchedEffect;
@@ -128,9 +129,46 @@ let batchedEffect: Effect | undefined = undefined;
 let batchDepth = 0;
 let batchIteration = 0;
 
+type BatchSnapshot = {
+	_value: unknown;
+	_version: number;
+};
+
+let batchSnapshots: Map<Signal, BatchSnapshot> | undefined = undefined;
+
 // A global version number for signals, used for fast-pathing repeated
 // computed.peek()/computed.value calls when nothing has changed globally.
 let globalVersion = 0;
+
+function recordBatchSnapshot(source: Signal) {
+	// Only capture writes during the user-visible batch callback, not during effect flush.
+	if (batchDepth === 0 || batchIteration !== 0) {
+		return;
+	}
+
+	let snapshots = batchSnapshots;
+	if (snapshots === undefined) {
+		snapshots = batchSnapshots = new Map();
+	}
+
+	if (!snapshots.has(source)) {
+		snapshots.set(source, { _value: source._value, _version: source._version });
+	}
+}
+
+function reconcileBatchSnapshots() {
+	if (batchSnapshots === undefined) {
+		return;
+	}
+
+	const snapshots = batchSnapshots;
+	batchSnapshots = undefined;
+	for (const [source, snapshot] of snapshots) {
+		if (source._value === snapshot._value) {
+			source._version = snapshot._version;
+		}
+	}
+}
 
 function addDependency(signal: Signal): Node | undefined {
 	if (evalContext === undefined) {
@@ -399,6 +437,7 @@ Object.defineProperty(Signal.prototype, "value", {
 				throw new Error("Cycle detected");
 			}
 
+			recordBatchSnapshot(this);
 			this._value = value;
 			this._version++;
 			globalVersion++;
