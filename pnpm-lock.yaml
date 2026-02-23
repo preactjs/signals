@@ -110,7 +110,7 @@ importers:
         specifier: ^8.0.0
         version: 8.0.4
       oxfmt:
-        specifier: latest
+        specifier: ^0.35.0
         version: 0.35.0
       oxlint:
         specifier: ^1.3.0
