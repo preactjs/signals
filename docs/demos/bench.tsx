@@ -59,8 +59,8 @@ bench("Computed tree", () => {
 	return {
 		run(i) {
 			r.value = i % 255;
-			g.value = (i / 5) % 255 | 0;
-			b.value = (i / 10) % 255 | 0;
+			g.value = ((i / 5) % 255) | 0;
+			b.value = ((i / 10) % 255) | 0;
 		},
 		cleanup() {
 			console.log(last);

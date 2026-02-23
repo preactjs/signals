@@ -41,7 +41,7 @@
     "ci:build": "pnpm build && pnpm docs:build",
     "ci:test": "pnpm lint && pnpm test",
     "prepare": "husky install && playwright install chromium",
-    "format": "prettier --write .",
+    "format": "oxfmt",
     "version": "pnpm changeset version && pnpm i --lockfile-only"
   },
   "authors": [
@@ -79,9 +79,9 @@
     "lint-staged": "^14.0.1",
     "microbundle": "^0.15.1",
     "npm-run-all2": "^8.0.0",
+    "oxfmt": "latest",
     "oxlint": "^1.3.0",
     "playwright": "^1.53.1",
-    "prettier": "^3.6.2",
     "shx": "^0.3.4",
     "typescript": "~5.8.3",
     "vite": "^6.3.5",
@@ -89,22 +89,7 @@
   },
   "lint-staged": {
     "**/*.{js,mjs,jsx,ts,tsx,yml,yaml,json,md,html,css}": [
-      "prettier --write"
-    ]
-  },
-  "prettier": {
-    "arrowParens": "avoid",
-    "trailingComma": "es5",
-    "overrides": [
-      {
-        "files": [
-          "package.json",
-          "mangle.json"
-        ],
-        "options": {
-          "parser": "json-stringify"
-        }
-      }
+      "oxfmt --no-error-on-unmatched-pattern"
     ]
   },
   "pnpm": {
