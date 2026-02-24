@@ -68,7 +68,6 @@ options.diffed = (vnode: VNode) => {
 	);
 };
 
-// eslint-disable-next-line @typescript-eslint/ban-types
 function getName(type: string | (Function & { displayName?: string })) {
 	if (typeof type === "string") return type;
 	return (type && (type.name || type.displayName)) || String(type);

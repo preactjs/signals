@@ -49,7 +49,7 @@ function Nesting() {
 			<div>
 				<strong>numberKey: </strong>
 				<button onClick={() => obj.numberKey.value--}>–</button>
-				<output>{showNumberKey.value && obj.numberKey}</output>
+				<output>{showNumberKey.value && obj.numberKey.value}</output>
 				<button onClick={() => obj.numberKey.value++}>+</button>
 				<label>
 					<input
