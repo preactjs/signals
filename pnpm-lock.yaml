@@ -8,6 +8,9 @@ overrides:
   socket.io: ~4.7.2
 
 patchedDependencies:
+  babel-plugin-transform-rename-properties@0.1.0:
+    hash: bd5506f3d1e6386443447cf0eb8c8e701b16d07bf9caa92eae22b34452f8f591
+    path: patches/babel-plugin-transform-rename-properties@0.1.0.patch
   microbundle@0.15.1:
     hash: 191ddb4c75616fbd059c0f22ba3000be648ce78c33a2f5286f6d1ff43f9ea6b8
     path: patches/microbundle@0.15.1.patch
@@ -78,7 +81,7 @@ importers:
         version: 6.1.1
       babel-plugin-transform-rename-properties:
         specifier: ^0.1.0
-        version: 0.1.0(@babel/core@7.28.5)
+        version: 0.1.0(patch_hash=bd5506f3d1e6386443447cf0eb8c8e701b16d07bf9caa92eae22b34452f8f591)(@babel/core@7.28.5)
       buffer:
         specifier: ^6.0.3
         version: 6.0.3
@@ -238,6 +241,13 @@ importers:
   packages/core: {}
 
   packages/debug:
+    dependencies:
+      '@preact/signals':
+        specifier: '>=2.6.0'
+        version: 2.8.1(preact@10.27.2)
+      '@preact/signals-react':
+        specifier: '>=3.6.2'
+        version: 3.9.0(react@18.2.0)
     devDependencies:
       '@preact/signals-core':
         specifier: workspace:^1.13.0
@@ -1766,6 +1776,19 @@ packages:
     peerDependencies:
       '@babel/core': 7.x
       vite: 2.x || 3.x
+
+  '@preact/signals-core@1.13.0':
+    resolution: {integrity: sha512-slT6XeTCAbdql61GVLlGU4x7XHI7kCZV5Um5uhE4zLX4ApgiiXc0UYFvVOKq06xcovzp7p+61l68oPi563ARKg==}
+
+  '@preact/signals-react@3.9.0':
+    resolution: {integrity: sha512-C0Qn4AiAYEAHbg7/UEMgdJd+GNDnP/OxI1tk+8WDco9QFIh4gbW+r9V2K4M6OAB6A/ztHW/uZ8/kwBnxNSB94g==}
+    peerDependencies:
+      react: ^16.14.0 || 17.x || 18.x || 19.x
+
+  '@preact/signals@2.8.1':
+    resolution: {integrity: sha512-wX6U0SpcCukZTJBs5ChljvBZb3XmYzA5gd4vKHgX8wZZKaQCo2WHtmThdLx+mcVvlBa5u3XShC7ffbETJD4BiQ==}
+    peerDependencies:
+      preact: '>= 10.25.0 || >=11.0.0-0'
 
   '@prefresh/babel-plugin@0.4.3':
     resolution: {integrity: sha512-fYAWbU1WDSLn108kKY4eDaaeUcnszFqXjgaGKYXNZ5NLulpRTpsrY+Sbfo9q8LDpWrBpqIgzjrwNnvglWI1xNQ==}
@@ -7393,6 +7416,19 @@ snapshots:
       - preact
       - supports-color
 
+  '@preact/signals-core@1.13.0': {}
+
+  '@preact/signals-react@3.9.0(react@18.2.0)':
+    dependencies:
+      '@preact/signals-core': 1.13.0
+      react: 18.2.0
+      use-sync-external-store: 1.2.0(react@18.2.0)
+
+  '@preact/signals@2.8.1(preact@10.27.2)':
+    dependencies:
+      '@preact/signals-core': 1.13.0
+      preact: 10.27.2
+
   '@prefresh/babel-plugin@0.4.3': {}
 
   '@prefresh/core@1.3.4(preact@10.27.2)':
@@ -8034,7 +8070,7 @@ snapshots:
     dependencies:
       '@babel/core': 7.28.5
 
-  babel-plugin-transform-rename-properties@0.1.0(@babel/core@7.28.5):
+  babel-plugin-transform-rename-properties@0.1.0(patch_hash=bd5506f3d1e6386443447cf0eb8c8e701b16d07bf9caa92eae22b34452f8f591)(@babel/core@7.28.5):
     dependencies:
       '@babel/core': 7.28.5
 

@@ -1,5 +1,17 @@
 # @preact/signals-devtools-ui
 
+## 0.4.2
+
+### Patch Changes
+
+- [#876](https://github.com/preactjs/signals/pull/876) [`dbdd585`](https://github.com/preactjs/signals/commit/dbdd585e5c059fe52742452dd69fe390c3a683f9) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Use the native createModel in devtools-ui
+
+## 0.4.1
+
+### Patch Changes
+
+- [#872](https://github.com/preactjs/signals/pull/872) [`8848feb`](https://github.com/preactjs/signals/commit/8848feba51ec578cadc33c558ccee3f6a4310893) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Dark mode in devtools
+
 ## 0.4.0
 
 ### Minor Changes

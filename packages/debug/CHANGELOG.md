@@ -1,5 +1,17 @@
 # @preact/signals-debug
 
+## 1.4.2
+
+### Patch Changes
+
+- [#887](https://github.com/preactjs/signals/pull/887) [`a559c3a`](https://github.com/preactjs/signals/commit/a559c3a11747ac2a0169c9d34feaeff126b8fcec) Thanks [@rschristian](https://github.com/rschristian)! - Ensure we specify the proper peerDependencies in the package.json
+
+## 1.4.1
+
+### Patch Changes
+
+- [#867](https://github.com/preactjs/signals/pull/867) [`2587dd0`](https://github.com/preactjs/signals/commit/2587dd07426c6cc397124e44017a68029277beb2) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Avoid calling `console.group` on effects, they can't have descendants
+
 ## 1.4.0
 
 ### Minor Changes
