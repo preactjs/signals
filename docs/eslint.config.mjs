@@ -1,5 +1,5 @@
 import tsParser from "@typescript-eslint/parser";
-import signals from "eslint-plugin-signals";
+import signals from "@preact/eslint-plugin-signals";
 
 export default [
 	{

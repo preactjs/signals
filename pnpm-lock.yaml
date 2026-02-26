@@ -133,6 +133,9 @@ importers:
 
   docs:
     dependencies:
+      '@preact/eslint-plugin-signals':
+        specifier: workspace:../packages/eslint-plugin-signals
+        version: link:../packages/eslint-plugin-signals
       '@preact/signals':
         specifier: workspace:../packages/preact
         version: link:../packages/preact
@@ -185,9 +188,6 @@ importers:
       eslint:
         specifier: ^9.0.0
         version: 9.39.2
-      eslint-plugin-signals:
-        specifier: workspace:../packages/eslint-plugin-signals
-        version: link:../packages/eslint-plugin-signals
       oxlint:
         specifier: ^1.47.0
         version: 1.47.0

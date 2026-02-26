@@ -14,7 +14,6 @@
  */
 
 import {
-	EFFECT_CREATORS,
 	ALL_REACTIVE_CREATORS,
 	getSignalsCallName,
 	isSignalsImport,
