@@ -1,4 +1,4 @@
-# eslint-plugin-signals
+# @preact/eslint-plugin-signals
 
 An [Oxlint](https://oxc.rs)/ESLint plugin that catches common signal misuse patterns in projects using `@preact/signals-core`, `@preact/signals`, or `@preact/signals-react`.
 
@@ -15,7 +15,7 @@ An [Oxlint](https://oxc.rs)/ESLint plugin that catches common signal misuse patt
 ## Installation
 
 ```sh
-pnpm add -D eslint-plugin-signals
+pnpm add -D @preact/eslint-plugin-signals
 ```
 
 ## Configuration
@@ -24,7 +24,7 @@ pnpm add -D eslint-plugin-signals
 
 ```jsonc
 {
-	"jsPlugins": ["eslint-plugin-signals"],
+	"jsPlugins": ["@preact/eslint-plugin-signals"],
 	"rules": {
 		"signals/no-signal-write-in-computed": "error",
 		"signals/no-value-after-await": "error",
@@ -38,7 +38,7 @@ pnpm add -D eslint-plugin-signals
 ### ESLint (flat config — `eslint.config.mjs`)
 
 ```js
-import signals from "eslint-plugin-signals";
+import signals from "@preact/eslint-plugin-signals";
 import tsParser from "@typescript-eslint/parser";
 
 export default [
