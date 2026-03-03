@@ -21,8 +21,8 @@ import noConditionalValueRead from "./rules/no-conditional-value-read.mjs";
 
 const plugin = {
 	meta: {
-		name: "eslint-plugin-signals",
-		version: "0.1.0",
+		name: "@preact/eslint-plugin-signals",
+		version: "0.2.0",
 	},
 	rules: {
 		"no-signal-write-in-computed": noSignalWriteInComputed,

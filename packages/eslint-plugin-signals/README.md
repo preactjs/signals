@@ -26,11 +26,11 @@ pnpm add -D @preact/eslint-plugin-signals
 {
 	"jsPlugins": ["@preact/eslint-plugin-signals"],
 	"rules": {
-		"signals/no-signal-write-in-computed": "error",
-		"signals/no-value-after-await": "error",
-		"signals/no-signal-truthiness": "warn",
-		"signals/no-signal-in-component-body": "error",
-		"signals/no-conditional-value-read": "error",
+		"@preact/signals/no-signal-write-in-computed": "error",
+		"@preact/signals/no-value-after-await": "error",
+		"@preact/signals/no-signal-truthiness": "warn",
+		"@preact/signals/no-signal-in-component-body": "error",
+		"@preact/signals/no-conditional-value-read": "error",
 	},
 }
 ```
