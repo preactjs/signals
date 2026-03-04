@@ -59,8 +59,8 @@ bench("Computed tree", () => {
 	return {
 		run(i) {
 			r.value = i % 255;
-			g.value = (i / 5) % 255 | 0;
-			b.value = (i / 10) % 255 | 0;
+			g.value = ((i / 5) % 255) | 0;
+			b.value = ((i / 10) % 255) | 0;
 		},
 		cleanup() {
 			console.log(last);
@@ -232,8 +232,9 @@ function createRunner() {
 			results[i].value = result;
 			await sleep(100);
 		}
+
 		running.value = false;
-		console.log(`Finished in ${total.value.toFixed(2)}ms`);
+		console.log(`Finished in ${total.peek().toFixed(2)}ms`);
 	}
 	return { run, running, results, total };
 }

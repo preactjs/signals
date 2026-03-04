@@ -54,7 +54,60 @@ export default defineConfig({
 						"./packages/preact/utils/dist/utils.module.js"
 					),
 				}
-			: {},
+			: {
+					"@preact/signals-core": path.join(
+						dirname,
+						"./packages/core/src/index.ts"
+					),
+					"@preact/signals/utils": path.join(
+						dirname,
+						"./packages/preact/utils/src/index.tsx"
+					),
+					"@preact/signals": path.join(
+						dirname,
+						"./packages/preact/src/index.ts"
+					),
+					"@preact/signals-utils": path.join(
+						dirname,
+						"./packages/preact/utils/src/index.tsx"
+					),
+					"@preact/signals-react/runtime": path.join(
+						dirname,
+						"./packages/react/runtime/src/index.ts"
+					),
+					"@preact/signals-react/utils": path.join(
+						dirname,
+						"./packages/react/utils/src/index.tsx"
+					),
+					"@preact/signals-react": path.join(
+						dirname,
+						"./packages/react/src/index.ts"
+					),
+					"@preact/signals-react-runtime": path.join(
+						dirname,
+						"./packages/react/runtime/src/index.ts"
+					),
+					"@preact/signals-react-utils": path.join(
+						dirname,
+						"./packages/react/utils/src/index.tsx"
+					),
+					"@preact/signals-react-transform": path.join(
+						dirname,
+						"./packages/react-transform/src/index.ts"
+					),
+					"@preact/signals-debug": path.join(
+						dirname,
+						"./packages/debug/src/index.ts"
+					),
+					"@preact/signals-preact-transform": path.join(
+						dirname,
+						"./packages/preact-transform/src/index.ts"
+					),
+					"@preact/signals-devtools-adapter": path.join(
+						dirname,
+						"./packages/devtools-adapter/src/index.ts"
+					),
+				},
 	},
 	plugins: [
 		manglePlugin,

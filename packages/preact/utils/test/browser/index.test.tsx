@@ -60,6 +60,52 @@ describe("@preact/signals-utils", () => {
 			});
 			expect(scratch.innerHTML).to.eq("<p>Showing 2</p>");
 		});
+
+		it("Should preserve signal props after unmount/remount cycle", () => {
+			const counter = signal(0);
+			const visible = computed(() => counter.value >= 1 && counter.value <= 2);
+			const cls = computed(() => `val-${counter.value}`);
+			act(() => {
+				render(
+					<Show when={visible}>
+						<div class={cls}>content</div>
+					</Show>,
+					scratch
+				);
+			});
+			// counter=0, not visible
+			expect(scratch.innerHTML).to.eq("");
+
+			act(() => {
+				counter.value = 1;
+			});
+			// counter=1, visible first time
+			expect(scratch.innerHTML).to.eq('<div class="val-1">content</div>');
+
+			act(() => {
+				counter.value = 2;
+			});
+			// counter=2, still visible, class updates
+			expect(scratch.innerHTML).to.eq('<div class="val-2">content</div>');
+
+			act(() => {
+				counter.value = 0;
+			});
+			// counter=0, unmounted
+			expect(scratch.innerHTML).to.eq("");
+
+			act(() => {
+				counter.value = 1;
+			});
+			// counter=1, remounted — signal props must still work
+			expect(scratch.innerHTML).to.eq('<div class="val-1">content</div>');
+
+			act(() => {
+				counter.value = 2;
+			});
+			// counter=2, class should update after remount
+			expect(scratch.innerHTML).to.eq('<div class="val-2">content</div>');
+		});
 	});
 
 	describe("<For />", () => {

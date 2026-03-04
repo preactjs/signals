@@ -32,7 +32,7 @@ interface ForProps<T> {
 	each:
 		| Signal<Array<T>>
 		| ReadonlySignal<Array<T>>
-		| (() => Signal<Array<T>> | ReadonlySignal<Array<T>>);
+		| (() => Array<T> | Signal<Array<T>> | ReadonlySignal<Array<T>>);
 	fallback?: ReactNode;
 	children: (value: T, index: number) => ReactNode;
 }
@@ -40,17 +40,17 @@ interface ForProps<T> {
 export function For<T>(props: ForProps<T>): JSX.Element | null {
 	useSignals();
 	const cache = useMemo(() => new Map(), []);
-	let list = (
-		(typeof props.each === "function" ? props.each() : props.each) as Signal<
-			Array<T>
-		>
-	).value;
+	const list = (typeof props.each === "function" ? props.each() : props.each) as
+		| Signal<Array<T>>
+		| Array<T>;
 
-	if (!list.length) return (props.fallback as JSX.Element) || null;
+	const listValue = list instanceof Signal ? list.value : list;
+
+	if (!listValue.length) return (props.fallback as JSX.Element) || null;
 
 	const removed = new Set(cache.keys());
 
-	const items = list.map((value, key) => {
+	const items = listValue.map((value, key) => {
 		removed.delete(value);
 		if (!cache.has(value)) {
 			const result = (

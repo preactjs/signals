@@ -32,24 +32,24 @@ interface ForProps<T> {
 	each:
 		| Signal<Array<T>>
 		| ReadonlySignal<Array<T>>
-		| (() => Signal<Array<T>> | ReadonlySignal<Array<T>>);
+		| (() => Array<T> | Signal<Array<T>> | ReadonlySignal<Array<T>>);
 	fallback?: ComponentChildren;
 	children: (value: T, index: number) => ComponentChildren;
 }
 
 export function For<T>(props: ForProps<T>): ComponentChildren | null {
 	const cache = useMemo(() => new Map(), []);
-	let list = (
-		(typeof props.each === "function" ? props.each() : props.each) as Signal<
-			Array<T>
-		>
-	).value;
+	const list = (typeof props.each === "function" ? props.each() : props.each) as
+		| Signal<Array<T>>
+		| Array<T>;
 
-	if (!list.length) return props.fallback || null;
+	const listValue = list instanceof Signal ? list.value : list;
+
+	if (!listValue.length) return props.fallback || null;
 
 	const removed = new Set(cache.keys());
 
-	const items = list.map((value, key) => {
+	const items = listValue.map((value, key) => {
 		removed.delete(value);
 		if (!cache.has(value)) {
 			const result = <Item v={value} i={key} children={props.children} />;

@@ -39,10 +39,10 @@ describe("Signal Debug", () => {
 			expect(groupSpy).toHaveBeenCalledWith("🎯 Signal Update: count");
 			expect(consoleSpy).toHaveBeenCalledWith("From:", "0");
 			expect(consoleSpy).toHaveBeenCalledWith("To:", "1");
-			expect(groupCollapsedSpy).toHaveBeenCalledWith(
+			expect(consoleSpy).toHaveBeenCalledWith(
 				"  ↪️ Triggered effect: count-subscribe"
 			);
-			expect(groupEndSpy).toHaveBeenCalledTimes(2);
+			expect(groupEndSpy).toHaveBeenCalledTimes(1);
 		});
 
 		it("should handle object values correctly", async () => {
@@ -209,10 +209,10 @@ describe("Signal Debug", () => {
 			await new Promise(resolve => setTimeout(resolve, 0));
 
 			expect(groupSpy).toHaveBeenCalledWith("🎯 Signal Update: count");
-			expect(groupCollapsedSpy).toHaveBeenCalledWith(
+			expect(consoleSpy).toHaveBeenCalledWith(
 				"  ↪️ Triggered effect: count-effect"
 			);
-			expect(groupEndSpy).toHaveBeenCalledTimes(2);
+			expect(groupEndSpy).toHaveBeenCalledTimes(1);
 		});
 
 		it("should show effect deep updates", async () => {
@@ -233,10 +233,10 @@ describe("Signal Debug", () => {
 			expect(groupCollapsedSpy).toHaveBeenCalledWith(
 				"  ↪️ Triggered update: doubled"
 			);
-			expect(groupCollapsedSpy).toHaveBeenCalledWith(
+			expect(consoleSpy).toHaveBeenCalledWith(
 				"    ↪️ Triggered effect: logger"
 			);
-			expect(groupEndSpy).toHaveBeenCalledTimes(3);
+			expect(groupEndSpy).toHaveBeenCalledTimes(2);
 		});
 	});
 
@@ -398,7 +398,7 @@ describe("Signal Debug", () => {
 
 			// Debug logging should show the connection from sharedCounter to the effect
 			expect(groupSpy).toHaveBeenCalledWith("🎯 Signal Update: sharedCounter");
-			expect(groupCollapsedSpy).toHaveBeenCalledWith(
+			expect(consoleSpy).toHaveBeenCalledWith(
 				"  ↪️ Triggered effect: multiSourceEffect"
 			);
 		});
@@ -434,7 +434,7 @@ describe("Signal Debug", () => {
 
 			expect(effectSpy).toHaveBeenCalledOnce();
 			expect(groupSpy).toHaveBeenCalledWith("🎯 Signal Update: sig4");
-			expect(groupCollapsedSpy).toHaveBeenCalledWith(
+			expect(consoleSpy).toHaveBeenCalledWith(
 				"  ↪️ Triggered effect: manySourcesEffect"
 			);
 		});
@@ -476,7 +476,7 @@ describe("Signal Debug", () => {
 			expect(groupCollapsedSpy).toHaveBeenCalledWith(
 				"  ↪️ Triggered update: sum"
 			);
-			expect(groupCollapsedSpy).toHaveBeenCalledWith(
+			expect(consoleSpy).toHaveBeenCalledWith(
 				"    ↪️ Triggered effect: sumEffect"
 			);
 		});
@@ -529,7 +529,7 @@ describe("Signal Debug", () => {
 			expect(groupCollapsedSpy).toHaveBeenCalledWith(
 				"    ↪️ Triggered update: comp2"
 			);
-			expect(groupCollapsedSpy).toHaveBeenCalledWith(
+			expect(consoleSpy).toHaveBeenCalledWith(
 				"      ↪️ Triggered effect: nestedEffect"
 			);
 		});

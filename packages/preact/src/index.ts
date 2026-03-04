@@ -68,7 +68,11 @@ let finishUpdate: (() => void) | undefined;
 
 function setCurrentUpdater(updater?: Effect) {
 	// end tracking for the current update:
-	if (finishUpdate) finishUpdate();
+	if (finishUpdate) {
+		const finish = finishUpdate;
+		finishUpdate = undefined;
+		finish();
+	}
 	// start tracking the new update:
 	finishUpdate = updater && updater._start();
 }
@@ -175,7 +179,14 @@ Object.defineProperties(Signal.prototype, {
 	props: {
 		configurable: true,
 		get() {
-			return { data: this };
+			const s: Signal = this;
+			return {
+				data: {
+					get value() {
+						return s.value;
+					},
+				},
+			};
 		},
 	},
 	// Setting a VNode's _depth to 1 forces Preact to clone it before modifying:
@@ -207,6 +218,7 @@ hook(OptionsTypes.DIFF, (old, vnode) => {
 
 /** Set up Updater before rendering a component */
 hook(OptionsTypes.RENDER, (old, vnode) => {
+	old(vnode);
 	// Ignore the Fragment inserted by preact.createElement().
 	if (vnode.type !== Fragment) {
 		setCurrentUpdater();
@@ -235,8 +247,6 @@ hook(OptionsTypes.RENDER, (old, vnode) => {
 		currentComponent = component;
 		setCurrentUpdater(updater);
 	}
-
-	old(vnode);
 });
 
 /** Finish current updater if a component errors */
@@ -273,6 +283,7 @@ hook(OptionsTypes.DIFFED, (old, vnode) => {
 				updaters = {};
 				dom._updaters = updaters;
 			}
+
 			for (let prop in props) {
 				let updater = updaters[prop];
 				let signal = props[prop];
@@ -282,6 +293,10 @@ hook(OptionsTypes.DIFFED, (old, vnode) => {
 				} else {
 					updater._update(signal, renderedProps);
 				}
+			}
+
+			for (let prop in props) {
+				renderedProps[prop] = props[prop];
 			}
 		}
 	}
@@ -302,17 +317,25 @@ function createPropUpdater(
 		dom.ownerSVGElement === undefined;
 
 	const changeSignal = signal(propSignal);
+	// Track the last value we know was applied to the DOM, so we can skip
+	// redundant updates without writing back to vnode.props (which would
+	// clobber the Signal reference and break unmount/remount cycles).
+	let lastRenderedValue: any = propSignal.peek();
 	return {
 		_update: (newSignal: Signal, newProps: typeof props) => {
 			changeSignal.value = newSignal;
 			props = newProps;
+			lastRenderedValue = newSignal.peek();
 		},
 		_dispose: effect(function (this: Effect) {
 			this._notify = notifyDomUpdates;
 			const value = changeSignal.value.value;
 			// If Preact just rendered this value, don't render it again:
-			if (props[prop] === value) return;
-			props[prop] = value;
+			if (lastRenderedValue === value) {
+				lastRenderedValue = undefined;
+				return;
+			}
+			lastRenderedValue = undefined;
 			if (setAsProperty) {
 				// @ts-ignore-next-line silly
 				dom[prop] = value;
@@ -342,6 +365,7 @@ hook(OptionsTypes.UNMOUNT, (old, vnode: VNode) => {
 				}
 			}
 		}
+		vnode.__np = undefined;
 	} else {
 		let component = vnode.__c;
 		if (component) {
@@ -492,8 +516,10 @@ export function useSignalEffect(
 }
 
 /** See comment in packages/core/src/index.ts on the same interface for an explanation */
-interface InternalModelConstructor<TModel, TArgs extends any[]>
-	extends ModelConstructor<TModel, TArgs> {
+interface InternalModelConstructor<
+	TModel,
+	TArgs extends any[],
+> extends ModelConstructor<TModel, TArgs> {
 	(...args: TArgs): Model<TModel>;
 }
 
