@@ -976,8 +976,10 @@ export type ModelConstructor<TModel, TFactoryArgs extends any[] = []> = new (
  *
  * @internal
  */
-interface InternalModelConstructor<TModel, TFactoryArgs extends any[]>
-	extends ModelConstructor<TModel, TFactoryArgs> {
+interface InternalModelConstructor<
+	TModel,
+	TFactoryArgs extends any[],
+> extends ModelConstructor<TModel, TFactoryArgs> {
 	(...args: TFactoryArgs): Model<TModel>;
 }
 
