@@ -228,7 +228,7 @@ function getAllCurrentDependencies(
 		if (!dependencies.has(id)) {
 			dependencies.set(id, {
 				id,
-				name: getSignalName(source, 'value'),
+				name: getSignalName(source, "value"),
 				type: "_fn" in source ? "computed" : "signal",
 			});
 		}

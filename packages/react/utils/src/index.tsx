@@ -40,9 +40,9 @@ interface ForProps<T> {
 export function For<T>(props: ForProps<T>): JSX.Element | null {
 	useSignals();
 	const cache = useMemo(() => new Map(), []);
-	const list = (
-		typeof props.each === "function" ? props.each() : props.each
-	) as Signal<Array<T>> | Array<T>;
+	const list = (typeof props.each === "function" ? props.each() : props.each) as
+		| Signal<Array<T>>
+		| Array<T>;
 
 	const listValue = list instanceof Signal ? list.value : list;
 

@@ -516,8 +516,10 @@ export function useSignalEffect(
 }
 
 /** See comment in packages/core/src/index.ts on the same interface for an explanation */
-interface InternalModelConstructor<TModel, TArgs extends any[]>
-	extends ModelConstructor<TModel, TArgs> {
+interface InternalModelConstructor<
+	TModel,
+	TArgs extends any[],
+> extends ModelConstructor<TModel, TArgs> {
 	(...args: TArgs): Model<TModel>;
 }
 

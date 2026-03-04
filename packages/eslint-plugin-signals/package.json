@@ -1,0 +1,50 @@
+{
+  "name": "@preact/eslint-plugin-signals",
+  "version": "0.1.0",
+  "license": "MIT",
+  "description": "Oxlint/ESLint plugin for @preact/signals to catch common signal misuse patterns",
+  "keywords": [
+    "eslint",
+    "eslintplugin",
+    "oxlint",
+    "signals",
+    "preact",
+    "react"
+  ],
+  "authors": [
+    "The Preact Authors (https://github.com/preactjs/signals/contributors)"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/preactjs/signals",
+    "directory": "packages/eslint-plugin-signals"
+  },
+  "bugs": "https://github.com/preactjs/signals/issues",
+  "homepage": "https://preactjs.com",
+  "funding": {
+    "type": "opencollective",
+    "url": "https://opencollective.com/preact"
+  },
+  "type": "module",
+  "main": "src/index.mjs",
+  "exports": {
+    ".": "./src/index.mjs"
+  },
+  "files": [
+    "src",
+    "CHANGELOG.md",
+    "LICENSE",
+    "README.md"
+  ],
+  "devDependencies": {
+    "@typescript-eslint/parser": "^8.0.0",
+    "eslint": "^9.0.0"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}
