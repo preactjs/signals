@@ -179,7 +179,14 @@ Object.defineProperties(Signal.prototype, {
 	props: {
 		configurable: true,
 		get() {
-			return { data: this };
+			const s: Signal = this;
+			return {
+				data: {
+					get value() {
+						return s.value;
+					},
+				},
+			};
 		},
 	},
 	// Setting a VNode's _depth to 1 forces Preact to clone it before modifying:

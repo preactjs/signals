@@ -394,7 +394,14 @@ Object.defineProperties(Signal.prototype, {
 	props: {
 		configurable: true,
 		get() {
-			return { data: this };
+			const s: Signal = this;
+			return {
+				data: {
+					get value() {
+						return s.value;
+					},
+				},
+			};
 		},
 	},
 	ref: { configurable: true, value: null },

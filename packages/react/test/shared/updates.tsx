@@ -153,6 +153,26 @@ export function updateSignalsTests(usingTransform = false) {
 			expect(text).to.be.instanceOf(HTMLDivElement);
 			expect(text.firstChild).to.have.property("data", "changed");
 		});
+
+		// #773
+		it("should not cause infinite recursion when traversing Signal props", () => {
+			const sig = signal("test");
+			const props = (sig as any).props;
+			expect(props.data).not.to.equal(sig);
+			expect(props.data.value).to.equal("test");
+			const visited = new Set<object>();
+			function traverse(obj: unknown, depth = 0): void {
+				if (depth > 100)
+					throw new Error("Possible infinite recursion detected");
+				if (obj == null || typeof obj !== "object") return;
+				if (visited.has(obj)) return;
+				visited.add(obj);
+				for (const key of Object.keys(obj as object)) {
+					traverse((obj as any)[key], depth + 1);
+				}
+			}
+			expect(() => traverse(props)).not.to.throw();
+		});
 	});
 
 	describe("Component bindings", () => {
