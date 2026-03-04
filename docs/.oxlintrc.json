@@ -4,11 +4,11 @@
   "jsPlugins": ["@preact/eslint-plugin-signals"],
   "categories": {},
   "rules": {
-    "signals/no-signal-write-in-computed": "error",
-    "signals/no-value-after-await": "error",
-    "signals/no-signal-truthiness": "error",
-    "signals/no-signal-in-component-body": "error",
-    "signals/no-conditional-value-read": "warn",
+    "@preact/signals/no-signal-write-in-computed": "error",
+    "@preact/signals/no-value-after-await": "error",
+    "@preact/signals/no-signal-truthiness": "error",
+    "@preact/signals/no-signal-in-component-body": "error",
+    "@preact/signals/no-conditional-value-read": "warn",
     "eslint/no-unused-vars": "off",
     "eslint/no-useless-escape": "off",
     "eslint-plugin-unicorn/no-empty-file": "off"
