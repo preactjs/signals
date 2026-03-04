@@ -96,6 +96,7 @@ function batch<T>(fn: () => T): T {
 	if (batchDepth > 0) {
 		return fn();
 	}
+	currentBatchSnapshotVersion = ++batchSnapshotVersion;
 	/*@__INLINE__**/ startBatch();
 	try {
 		return fn();
@@ -130,11 +131,15 @@ let batchDepth = 0;
 let batchIteration = 0;
 
 type BatchSnapshot = {
+	_source: Signal;
 	_value: unknown;
 	_version: number;
+	_next?: BatchSnapshot;
 };
 
-let batchSnapshots: Map<Signal, BatchSnapshot> | undefined = undefined;
+let batchSnapshotVersion = 0;
+let currentBatchSnapshotVersion = 0;
+let batchSnapshots: BatchSnapshot | undefined = undefined;
 
 // A global version number for signals, used for fast-pathing repeated
 // computed.peek()/computed.value calls when nothing has changed globally.
@@ -146,27 +151,26 @@ function recordBatchSnapshot(source: Signal) {
 		return;
 	}
 
-	let snapshots = batchSnapshots;
-	if (snapshots === undefined) {
-		snapshots = batchSnapshots = new Map();
-	}
-
-	if (!snapshots.has(source)) {
-		snapshots.set(source, { _value: source._value, _version: source._version });
+	if (source._batchSnapshotVersion !== currentBatchSnapshotVersion) {
+		source._batchSnapshotVersion = currentBatchSnapshotVersion;
+		batchSnapshots = {
+			_source: source,
+			_value: source._value,
+			_version: source._version,
+			_next: batchSnapshots,
+		};
 	}
 }
 
 function reconcileBatchSnapshots() {
-	if (batchSnapshots === undefined) {
-		return;
-	}
-
-	const snapshots = batchSnapshots;
+	let snapshots = batchSnapshots;
 	batchSnapshots = undefined;
-	for (const [source, snapshot] of snapshots) {
-		if (source._value === snapshot._value) {
-			source._version = snapshot._version;
+
+	while (snapshots !== undefined) {
+		if (snapshots._source._value === snapshots._value) {
+			snapshots._source._version = snapshots._version;
 		}
+		snapshots = snapshots._next;
 	}
 }
 
@@ -279,6 +283,9 @@ declare class Signal<T = any> {
 	/** @internal */
 	_targets?: Node;
 
+	/** @internal */
+	_batchSnapshotVersion: number;
+
 	constructor(value?: T, options?: SignalOptions<T>);
 
 	/** @internal */
@@ -332,6 +339,7 @@ function Signal(this: Signal, value?: unknown, options?: SignalOptions) {
 	this._version = 0;
 	this._node = undefined;
 	this._targets = undefined;
+	this._batchSnapshotVersion = 0;
 	this._watched = options?.watched;
 	this._unwatched = options?.unwatched;
 	this.name = options?.name;
