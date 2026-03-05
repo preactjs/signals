@@ -1,6 +1,6 @@
 {
   "name": "@preact/eslint-plugin-signals",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "license": "MIT",
   "description": "Oxlint/ESLint plugin for @preact/signals to catch common signal misuse patterns",
   "keywords": [

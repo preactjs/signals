@@ -1,5 +1,14 @@
 # @preact/signals
 
+## 2.8.2
+
+### Patch Changes
+
+- [#888](https://github.com/preactjs/signals/pull/888) [`d3c419d`](https://github.com/preactjs/signals/commit/d3c419d735492e164434f5486453da82660109b0) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Fix infinite recursion when tools like Storybook traverse Signal props
+
+- Updated dependencies [[`308c921`](https://github.com/preactjs/signals/commit/308c921bbf189dd72861ef587f5e559d16299b68)]:
+  - @preact/signals-core@1.14.0
+
 ## 2.8.1
 
 ### Patch Changes
