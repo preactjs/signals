@@ -852,6 +852,47 @@ describe("effect()", () => {
 		expect(spy).not.toHaveBeenCalled();
 	});
 
+	it("should not rerun an effect for a no-op batch assignment", () => {
+		const foo = signal(42);
+		const spy = vi.fn(() => {
+			foo.value;
+		});
+
+		effect(spy);
+		expect(spy).toHaveBeenCalledOnce();
+		spy.mockClear();
+
+		batch(() => {
+			foo.value = 0;
+			foo.value = 42;
+		});
+
+		expect(spy).not.toHaveBeenCalled();
+	});
+
+	it("should not rerun an effect for repeated no-op top-level batches", () => {
+		const foo = signal(42);
+		const spy = vi.fn(() => {
+			foo.value;
+		});
+
+		effect(spy);
+		expect(spy).toHaveBeenCalledOnce();
+		spy.mockClear();
+
+		batch(() => {
+			foo.value = 0;
+			foo.value = 42;
+		});
+		expect(spy).not.toHaveBeenCalled();
+
+		batch(() => {
+			foo.value = -1;
+			foo.value = 42;
+		});
+		expect(spy).not.toHaveBeenCalled();
+	});
+
 	it("should not rerun parent effect if a nested child effect's signal's value changes", () => {
 		const parentSignal = signal(0);
 		const childSignal = signal(0);

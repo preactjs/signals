@@ -46,6 +46,7 @@ function endBatch() {
 
 	let error: unknown;
 	let hasError = false;
+	reconcileBatchSnapshots();
 
 	while (batchedEffect !== undefined) {
 		let effect: Effect | undefined = batchedEffect;
@@ -95,6 +96,7 @@ function batch<T>(fn: () => T): T {
 	if (batchDepth > 0) {
 		return fn();
 	}
+	currentBatchSnapshotVersion = ++batchSnapshotVersion;
 	/*@__INLINE__**/ startBatch();
 	try {
 		return fn();
@@ -128,9 +130,49 @@ let batchedEffect: Effect | undefined = undefined;
 let batchDepth = 0;
 let batchIteration = 0;
 
+type BatchSnapshot = {
+	_source: Signal;
+	_value: unknown;
+	_version: number;
+	_next?: BatchSnapshot;
+};
+
+let batchSnapshotVersion = 0;
+let currentBatchSnapshotVersion = 0;
+let batchSnapshots: BatchSnapshot | undefined = undefined;
+
 // A global version number for signals, used for fast-pathing repeated
 // computed.peek()/computed.value calls when nothing has changed globally.
 let globalVersion = 0;
+
+function recordBatchSnapshot(source: Signal) {
+	// Only capture writes during the user-visible batch callback, not during effect flush.
+	if (batchDepth === 0 || batchIteration !== 0) {
+		return;
+	}
+
+	if (source._batchSnapshotVersion !== currentBatchSnapshotVersion) {
+		source._batchSnapshotVersion = currentBatchSnapshotVersion;
+		batchSnapshots = {
+			_source: source,
+			_value: source._value,
+			_version: source._version,
+			_next: batchSnapshots,
+		};
+	}
+}
+
+function reconcileBatchSnapshots() {
+	let snapshots = batchSnapshots;
+	batchSnapshots = undefined;
+
+	while (snapshots !== undefined) {
+		if (snapshots._source._value === snapshots._value) {
+			snapshots._source._version = snapshots._version;
+		}
+		snapshots = snapshots._next;
+	}
+}
 
 function addDependency(signal: Signal): Node | undefined {
 	if (evalContext === undefined) {
@@ -241,6 +283,9 @@ declare class Signal<T = any> {
 	/** @internal */
 	_targets?: Node;
 
+	/** @internal */
+	_batchSnapshotVersion: number;
+
 	constructor(value?: T, options?: SignalOptions<T>);
 
 	/** @internal */
@@ -294,6 +339,7 @@ function Signal(this: Signal, value?: unknown, options?: SignalOptions) {
 	this._version = 0;
 	this._node = undefined;
 	this._targets = undefined;
+	this._batchSnapshotVersion = 0;
 	this._watched = options?.watched;
 	this._unwatched = options?.unwatched;
 	this.name = options?.name;
@@ -399,6 +445,7 @@ Object.defineProperty(Signal.prototype, "value", {
 				throw new Error("Cycle detected");
 			}
 
+			recordBatchSnapshot(this);
 			this._value = value;
 			this._version++;
 			globalVersion++;
