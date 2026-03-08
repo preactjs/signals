@@ -1,5 +1,11 @@
 # @preact/signals-core
 
+## 1.14.0
+
+### Minor Changes
+
+- [#891](https://github.com/preactjs/signals/pull/891) [`308c921`](https://github.com/preactjs/signals/commit/308c921bbf189dd72861ef587f5e559d16299b68) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Prevent batches where a signal goes from A --> B --> A from triggering dependent updates, a computed/effect should not re-run when the dependencies in a batched update amount to an equal value.
+
 ## 1.13.0
 
 ### Minor Changes
