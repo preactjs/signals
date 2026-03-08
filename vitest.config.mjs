@@ -17,6 +17,10 @@ export default defineConfig({
 						dirname,
 						"./packages/core/dist/signals-core.module.js"
 					),
+					"@preact/signals-remote": path.join(
+						dirname,
+						"./packages/remote/dist/remote.module.js"
+					),
 					"@preact/signals/utils": path.join(
 						dirname,
 						"./packages/preact/utils/dist/utils.module.js"
@@ -58,6 +62,10 @@ export default defineConfig({
 					"@preact/signals-core": path.join(
 						dirname,
 						"./packages/core/src/index.ts"
+					),
+					"@preact/signals-remote": path.join(
+						dirname,
+						"./packages/remote/src/index.ts"
 					),
 					"@preact/signals/utils": path.join(
 						dirname,

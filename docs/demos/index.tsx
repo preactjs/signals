@@ -16,6 +16,7 @@ const demos = {
 	Models: lazy(() => import("./todo")),
 	Devtools: lazy(() => import("./devtools")),
 	Nesting: lazy(() => import("./nesting")),
+	WorkerRemote: lazy(() => import("./worker-remote")),
 	Animation: lazy(() => import("./animation")),
 	Bench: lazy(() => import("./bench")),
 	Unmount: lazy(() => import("./Unmount")),

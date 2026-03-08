@@ -19,6 +19,7 @@
     "preact-render-to-string": "^6.0.0",
     "@preact/eslint-plugin-signals": "workspace:../packages/eslint-plugin-signals",
     "@preact/signals-core": "workspace:../packages/core",
+    "@preact/signals-remote": "workspace:../packages/remote",
     "@preact/signals-debug": "workspace:../packages/debug",
     "@preact/signals": "workspace:../packages/preact",
     "@preact/signals-react": "workspace:../packages/react",

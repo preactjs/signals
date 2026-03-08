@@ -14,9 +14,11 @@ function packages(prod: boolean) {
 		const p = resolve(root, name, "package.json");
 		const pkg = JSON.parse(fs.readFileSync(p, "utf-8"));
 		if (pkg.private) continue;
-		const entry = prod ? "." : pkg.source;
+		const entry = prod
+			? "."
+			: (pkg.source ?? pkg.module ?? pkg.main ?? pkg.exports?.["."]);
+		if (typeof entry !== "string") continue;
 		alias[pkg.name] = resolve(root, name, entry);
-		console.log(`alias: ${pkg.name} -> ${alias[pkg.name]}`);
 	}
 	return alias;
 }
