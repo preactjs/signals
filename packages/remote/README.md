@@ -5,8 +5,9 @@ Prototype helpers for mirroring `@preact/signals-core` state across a transport 
 The package is transport-agnostic:
 
 - publish individual signals
-- publish flat models made of signals/computeds and actions
+- publish flat models made of signals and actions
 - invoke model actions through Promise-based RPC
+- derive client types from a shared remote model definition
 
 ## Installation
 
@@ -36,7 +37,7 @@ const client = createRemoteSignalClient(clientTransport);
 const remoteCount = client.signal<number>("count");
 
 effect(() => {
-	if (remoteCount.ready.value) {
+	if (remoteCount.status.value === "ready") {
 		console.log("remote count", remoteCount.value);
 	}
 });
@@ -48,29 +49,20 @@ count.value = 2;
 ## Model Usage
 
 ```ts
-import { computed, createModel, signal } from "@preact/signals-core";
+import { createModel, signal } from "@preact/signals-core";
 import {
 	createRemoteSignalClient,
 	createRemoteSignalServer,
 	createRemoteTransportPair,
+	defineRemoteModel,
 } from "@preact/signals-remote";
 
-interface CounterModel {
-	count: ReturnType<typeof signal<number>>;
-	status: ReturnType<typeof computed<string>>;
-	add(amount: number): number;
-	reset(): void;
-}
-
-const server = createRemoteSignalServer();
-const CounterModel = createModel<CounterModel>(() => {
+const CounterModel = createModel(() => {
 	const count = signal(0);
-	const status = computed(() => `count:${count.value}`);
 
 	return {
 		count,
-		status,
-		add(amount) {
+		add(amount: number) {
 			count.value += amount;
 			return count.value;
 		},
@@ -80,8 +72,10 @@ const CounterModel = createModel<CounterModel>(() => {
 	};
 });
 
-const model = new CounterModel();
-server.publishModel("counter", model);
+const counterRemote = defineRemoteModel("counter", CounterModel);
+
+const server = createRemoteSignalServer();
+server.publishModel(counterRemote, new CounterModel());
 
 const { server: serverTransport, client: clientTransport } =
 	createRemoteTransportPair();
@@ -89,57 +83,58 @@ const { server: serverTransport, client: clientTransport } =
 server.attach(serverTransport);
 
 const client = createRemoteSignalClient(clientTransport);
-const remoteCounter = client.model<CounterModel>("counter");
+const remoteCounter = client.model<typeof counterRemote>(counterRemote);
 
 await remoteCounter.actions.add(2);
 
-if (remoteCounter.ready.value && remoteCounter.state) {
+if (remoteCounter.status.value === "ready" && remoteCounter.state) {
 	console.log(remoteCounter.state.count.value);
-	console.log(remoteCounter.state.status.value);
 }
 ```
 
 ## Type-only Contracts
 
-If the server and client should not share runtime values across realms, define a contract type and import it with `import type` only:
+If the server and client should not share runtime values across realms, export the remote definition and import it with `import type` on the client:
 
 ```ts
-// counter.contract.ts
-import type { RemoteModelContract } from "@preact/signals-remote";
-import type { WorkerCounterModel } from "./shared";
+// counter.remote.ts
+import { defineRemoteModel } from "@preact/signals-remote";
+import { CounterModel } from "./counter.model";
 
-export type CounterContract = RemoteModelContract<
-	"worker-counter",
-	WorkerCounterModel
->;
+export const counterRemote = defineRemoteModel("counter", CounterModel);
 ```
 
 ```ts
 // server
-import type { CounterContract } from "./counter.contract";
+import { counterRemote } from "./counter.remote";
+import { CounterModel } from "./counter.model";
 
-server.publishModel<CounterContract>("worker-counter", model);
+server.publishModel(counterRemote, new CounterModel());
 ```
 
 ```ts
 // client
-import type { CounterContract } from "./counter.contract";
+import type { counterRemote } from "./counter.remote";
 
-const remoteCounter = client.model<CounterContract>("worker-counter");
+const remoteCounter = client.model<typeof counterRemote>("counter");
 ```
 
-This keeps the key as the only runtime value while still deriving state and action types from a shared contract.
+This keeps the runtime boundary to the string key while still deriving state and action types from the model definition.
 
 ## API
 
+### `defineRemoteModel(key, model?)`
+
+Creates a typed remote model definition. You can pass a `createModel()` constructor to infer the model shape automatically.
+
 ### `createRemoteSignalServer()`
 
-Creates a server registry that can publish signals and models.
+Creates a server registry that can publish signals and flat models.
 
 - `createSignal(key, initialValue, options?)`
 - `publish(key, source)`
 - `unpublish(key)`
-- `publishModel(key, model)`
+- `publishModel(keyOrDefinition, model)`
 - `unpublishModel(key)`
 - `attach(transport)`
 
@@ -148,13 +143,12 @@ Creates a server registry that can publish signals and models.
 Creates a client registry that lazily subscribes to published remote state.
 
 - `signal(key, options?)`
-- `model(key)`
+- `model(keyOrDefinition)`
 - `dispose()`
 
 Each remote signal exposes:
 
 - `value`
-- `ready`
 - `status`
 - `error`
 - `dispose()`
@@ -162,15 +156,10 @@ Each remote signal exposes:
 Each remote model exposes:
 
 - `state`
-- `ready`
 - `status`
 - `error`
 - `actions` derived from the model's functions
 - `dispose()`
-
-### `createRemoteTransportPair()`
-
-Creates an in-memory transport pair for tests, demos, and local prototyping.
 
 ## Adapting a WebSocket
 

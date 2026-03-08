@@ -15,7 +15,6 @@ const SIGNAL_BRAND = Symbol.for("preact-signals");
 export type RemoteSignalRecord<T> = {
 	remote: RemoteSignal<T>;
 	value: Signal<T | undefined>;
-	ready: Signal<boolean>;
 	status: Signal<RemoteSignalStatus>;
 	error: Signal<Error | undefined>;
 	version: number;
@@ -32,7 +31,6 @@ type InternalRemoteModel<TModel, TActions> = RemoteModel<TModel, TActions> & {
 
 export type RemoteModelRecord<TModel = unknown, TActions = {}> = {
 	remote: InternalRemoteModel<TModel, TActions>;
-	ready: Signal<boolean>;
 	status: Signal<RemoteSignalStatus>;
 	error: Signal<Error | undefined>;
 	leaves: Map<string, Signal<unknown>>;
@@ -118,13 +116,11 @@ export function createRemoteSignalRecord<T>(
 	options?: RemoteSignalOptions<T>
 ): RemoteSignalRecord<T> {
 	const value = signal<T | undefined>(options?.initialValue);
-	const ready = signal(false);
 	const status = signal<RemoteSignalStatus>("connecting");
 	const error = signal<Error | undefined>(undefined);
 
 	const remote = Object.assign(value, {
 		key,
-		ready,
 		status,
 		error,
 		dispose: onDispose,
@@ -133,7 +129,6 @@ export function createRemoteSignalRecord<T>(
 	return {
 		remote,
 		value,
-		ready,
 		status,
 		error,
 		version: -1,
@@ -145,7 +140,6 @@ export function createRemoteModelRecord<TModel, TActions>(
 	onDispose: () => void,
 	callAction: (action: string, args: unknown[]) => Promise<unknown>
 ): RemoteModelRecord<TModel, TActions> {
-	const ready = signal(false);
 	const status = signal<RemoteSignalStatus>("connecting");
 	const error = signal<Error | undefined>(undefined);
 	const actionCache: Record<string, (...args: unknown[]) => Promise<unknown>> =
@@ -168,7 +162,6 @@ export function createRemoteModelRecord<TModel, TActions>(
 
 	const remote: InternalRemoteModel<TModel, TActions> = {
 		key,
-		ready,
 		status,
 		error,
 		actions,
@@ -178,7 +171,6 @@ export function createRemoteModelRecord<TModel, TActions>(
 
 	return {
 		remote,
-		ready,
 		status,
 		error,
 		leaves: new Map(),

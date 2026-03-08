@@ -1,8 +1,8 @@
 export type {
-	RemoteActionDefinitions,
 	RemoteContractActions,
 	RemoteContractKey,
 	RemoteContractModel,
+	RemoteModelReference,
 	RemoteContractState,
 	RemoteModel,
 	RemoteModelActionDefinitions,
@@ -19,6 +19,7 @@ export type {
 	RemoteSignalTransport,
 } from "./types";
 
+export { defineRemoteModel } from "./define";
 export { createRemoteSignalClient } from "./client";
 export { createRemoteSignalServer } from "./server";
 export { createRemoteTransportPair } from "./transport";

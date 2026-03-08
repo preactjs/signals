@@ -5,6 +5,7 @@ import {
 	createRemoteSignalClient,
 	createRemoteSignalServer,
 	createRemoteTransportPair,
+	defineRemoteModel,
 } from "@preact/signals-remote";
 
 async function flushTransport() {
@@ -24,11 +25,11 @@ describe("signals-remote", () => {
 		const client = createRemoteSignalClient(clientTransport);
 		const remoteCount = client.signal<number>("count");
 
-		expect(remoteCount.ready.value).to.equal(false);
+		expect(remoteCount.status.value).to.equal("connecting");
 
 		await flushTransport();
 
-		expect(remoteCount.ready.value).to.equal(true);
+		expect(remoteCount.status.value).to.equal("ready");
 		expect(remoteCount.value).to.equal(0);
 
 		count.value = 1;
@@ -94,7 +95,6 @@ describe("signals-remote", () => {
 
 		await flushTransport();
 
-		expect(remoteCount.ready.value).to.equal(false);
 		expect(remoteCount.status.value).to.equal("error");
 		expect(remoteCount.error.value?.message).to.equal(
 			"Unknown remote signal: missing"
@@ -116,7 +116,6 @@ describe("signals-remote", () => {
 		server.unpublish("count");
 		await flushTransport();
 
-		expect(remoteCount.ready.value).to.equal(false);
 		expect(remoteCount.status.value).to.equal("unpublished");
 	});
 
@@ -144,12 +143,12 @@ describe("signals-remote", () => {
 				status: typeof status;
 			}>("counter");
 
-			expect(remoteCounter.ready.value).to.equal(false);
+			expect(remoteCounter.status.value).to.equal("connecting");
 			expect(remoteCounter.state).to.equal(undefined);
 
 			await flushTransport();
 
-			expect(remoteCounter.ready.value).to.equal(true);
+			expect(remoteCounter.status.value).to.equal("ready");
 			expect(remoteCounter.state?.count.value).to.equal(0);
 			expect(remoteCounter.state?.updatedAt.value).to.equal("never");
 			expect(remoteCounter.state?.status.value).to.equal("count:0@never");
@@ -161,6 +160,42 @@ describe("signals-remote", () => {
 			expect(remoteCounter.state?.count.value).to.equal(2);
 			expect(remoteCounter.state?.updatedAt.value).to.equal("now");
 			expect(remoteCounter.state?.status.value).to.equal("count:2@now");
+		});
+
+		it("uses defineRemoteModel contracts for publish and subscribe", async () => {
+			const server = createRemoteSignalServer();
+			const CounterModel = createModel(() => {
+				const count = signal(0);
+				return {
+					count,
+					increment() {
+						count.value += 1;
+						return count.value;
+					},
+				};
+			});
+			const counterRemote = defineRemoteModel("counter", CounterModel);
+			const model = new CounterModel();
+
+			server.publishModel(counterRemote, model);
+
+			const { server: serverTransport, client: clientTransport } =
+				createRemoteTransportPair();
+			server.attach(serverTransport);
+
+			const client = createRemoteSignalClient(clientTransport);
+			const remoteCounter = client.model<typeof counterRemote>(counterRemote);
+
+			await flushTransport();
+
+			expect(remoteCounter.status.value).to.equal("ready");
+			expect(remoteCounter.state?.count.value).to.equal(0);
+
+			const result = await remoteCounter.actions.increment();
+			await flushTransport();
+
+			expect(result).to.equal(1);
+			expect(remoteCounter.state?.count.value).to.equal(1);
 		});
 
 		it("derives remote actions from model functions and resolves return values", async () => {
@@ -184,10 +219,7 @@ describe("signals-remote", () => {
 			server.attach(serverTransport);
 
 			const client = createRemoteSignalClient(clientTransport);
-			const remoteCounter = client.model<
-				typeof model,
-				{ add: (amount: number) => number }
-			>("counter");
+			const remoteCounter = client.model<typeof model>("counter");
 
 			await flushTransport();
 
@@ -221,14 +253,14 @@ describe("signals-remote", () => {
 			server.attach(serverTransport);
 
 			const client = createRemoteSignalClient(clientTransport);
-			const remoteCounter = client.model<
-				typeof model,
-				{ increment: () => void }
-			>("counter");
+			const remoteCounter = client.model<typeof model>("counter");
 
 			const observed: string[] = [];
 			effect(() => {
-				if (!remoteCounter.ready.value || remoteCounter.state === undefined) {
+				if (
+					remoteCounter.status.value !== "ready" ||
+					remoteCounter.state === undefined
+				) {
 					return;
 				}
 
@@ -264,9 +296,7 @@ describe("signals-remote", () => {
 			server.attach(serverTransport);
 
 			const client = createRemoteSignalClient(clientTransport);
-			const remoteCounter = client.model<typeof model, { fail: () => void }>(
-				"counter"
-			);
+			const remoteCounter = client.model<typeof model>("counter");
 
 			await flushTransport();
 
@@ -293,7 +323,6 @@ describe("signals-remote", () => {
 			server.unpublishModel("counter");
 			await flushTransport();
 
-			expect(remoteCounter.ready.value).to.equal(false);
 			expect(remoteCounter.status.value).to.equal("unpublished");
 		});
 
@@ -310,14 +339,12 @@ describe("signals-remote", () => {
 
 			await flushTransport();
 
-			expect(remoteCounter.ready.value).to.equal(false);
 			expect(remoteCounter.status.value).to.equal("error");
 			expect(remoteCounter.error.value?.message).to.equal(
 				"Unknown remote model: missing"
 			);
 		});
 
-		// TEMP, have to think about this one
 		it("throws when publishing a nested model shape", () => {
 			const server = createRemoteSignalServer();
 

@@ -4,6 +4,7 @@ import {
 	type SignalOptions,
 } from "@preact/signals-core";
 
+import { resolveRemoteModelKey } from "./define";
 import {
 	collectPublishedModelActions,
 	collectPublishedModelLeaves,
@@ -11,6 +12,7 @@ import {
 	type PublishedModel,
 } from "./internal";
 import type {
+	RemoteModelContract,
 	RemoteSignalMessage,
 	RemoteSignalServer,
 	RemoteSignalTransport,
@@ -70,7 +72,11 @@ export function createRemoteSignalServer(): RemoteSignalServer {
 		};
 	}
 
-	function publishModel<TModel extends object>(key: string, model: TModel) {
+	function publishModel<TModel extends object>(
+		reference: string | RemoteModelContract,
+		model: TModel
+	) {
+		const key = resolveRemoteModelKey(reference);
 		assertKeyAvailable(key);
 
 		publishedModels.set(key, {

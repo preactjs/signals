@@ -1,8 +1,8 @@
-import type { RemoteModelContract } from "@preact/signals-remote";
+import { defineRemoteModel } from "@preact/signals-remote";
 
-import type { WorkerCounterModel } from "./shared";
+import { WorkerCounterModel } from "./model";
 
-export type WorkerCounterContract = RemoteModelContract<
+export const workerCounterRemote = defineRemoteModel(
 	"worker-counter",
 	WorkerCounterModel
->;
+);

@@ -1,5 +1,6 @@
 import { batch } from "@preact/signals-core";
 
+import { resolveRemoteModelKey } from "./define";
 import {
 	applyRemoteModelEntries,
 	createRemoteModelRecord,
@@ -9,6 +10,7 @@ import {
 } from "./internal";
 import type {
 	RemoteModel,
+	RemoteModelContract,
 	RemoteSignal,
 	RemoteSignalClient,
 	RemoteSignalMessage,
@@ -22,6 +24,128 @@ function rejectPendingCalls(record: RemoteModelRecord, error: Error) {
 	}
 
 	record.pendingCalls.clear();
+}
+
+function handleSignalMessage(
+	remotes: Map<string, RemoteSignalRecord<unknown>>,
+	message: RemoteSignalMessage
+) {
+	const record = remotes.get(message.key);
+	if (record === undefined) {
+		return;
+	}
+
+	if (message.type === "snapshot" || message.type === "update") {
+		if (message.version < record.version) {
+			return;
+		}
+
+		record.version = message.version;
+		batch(() => {
+			record.value.value = message.value;
+			record.error.value = undefined;
+			record.status.value = "ready";
+		});
+		return;
+	}
+
+	if (message.type === "error") {
+		batch(() => {
+			record.error.value = new Error(message.message);
+			record.status.value = "error";
+		});
+		return;
+	}
+
+	if (message.type === "unpublished") {
+		batch(() => {
+			record.error.value = undefined;
+			record.status.value = "unpublished";
+		});
+	}
+}
+
+function handleModelMessage(
+	models: Map<string, RemoteModelRecord>,
+	message: RemoteSignalMessage
+) {
+	const record = models.get(message.key);
+	if (record === undefined) {
+		return;
+	}
+
+	if (message.type === "model-snapshot") {
+		if (message.version < record.version) {
+			return;
+		}
+
+		batch(() => {
+			record.version = message.version;
+			applyRemoteModelEntries(record, message.entries);
+			record.error.value = undefined;
+			record.status.value = "ready";
+		});
+		return;
+	}
+
+	if (message.type === "model-patch") {
+		if (message.version < record.version) {
+			return;
+		}
+
+		batch(() => {
+			record.version = message.version;
+			applyRemoteModelEntries(record, message.updates);
+			record.error.value = undefined;
+			record.status.value = "ready";
+		});
+		return;
+	}
+
+	if (message.type === "model-error") {
+		batch(() => {
+			record.error.value = new Error(message.message);
+			record.status.value = "error";
+		});
+		rejectPendingCalls(record, new Error(message.message));
+		return;
+	}
+
+	if (message.type === "model-unpublished") {
+		batch(() => {
+			record.error.value = undefined;
+			record.status.value = "unpublished";
+		});
+		rejectPendingCalls(
+			record,
+			new Error(`Remote model '${message.key}' is no longer published.`)
+		);
+		return;
+	}
+
+	if (message.type === "model-action-result") {
+		const pending = record.pendingCalls.get(message.callId);
+		if (pending === undefined) {
+			return;
+		}
+
+		record.pendingCalls.delete(message.callId);
+		record.error.value = undefined;
+		pending.resolve(message.value);
+		return;
+	}
+
+	if (message.type === "model-action-error") {
+		const pending = record.pendingCalls.get(message.callId);
+		if (pending === undefined) {
+			return;
+		}
+
+		record.pendingCalls.delete(message.callId);
+		const error = new Error(message.message);
+		record.error.value = error;
+		pending.reject(error);
+	}
 }
 
 export function createRemoteSignalClient(
@@ -43,7 +167,6 @@ export function createRemoteSignalClient(
 
 		remotes.delete(key);
 		batch(() => {
-			record.ready.value = false;
 			record.error.value = undefined;
 			record.status.value = "disposed";
 		});
@@ -58,9 +181,8 @@ export function createRemoteSignalClient(
 
 		models.delete(key);
 		batch(() => {
-			record.ready.value = false;
-			record.status.value = "disposed";
 			record.error.value = undefined;
+			record.status.value = "disposed";
 		});
 		rejectPendingCalls(
 			record,
@@ -112,7 +234,10 @@ export function createRemoteSignalClient(
 			transport.send({ type: "subscribe", key });
 			return record.remote;
 		},
-		model<TModel, TActions = {}>(key: string): RemoteModel<TModel, TActions> {
+		model<TModel, TActions = {}>(
+			reference: string | RemoteModelContract
+		): RemoteModel<TModel, TActions> {
+			const key = resolveRemoteModelKey(reference);
 			const existing = models.get(key);
 			if (existing !== undefined) {
 				return existing.remote as RemoteModel<TModel, TActions>;
@@ -142,135 +267,4 @@ export function createRemoteSignalClient(
 			}
 		},
 	};
-}
-
-function handleSignalMessage(
-	remotes: Map<string, RemoteSignalRecord<unknown>>,
-	message: RemoteSignalMessage
-) {
-	const record = remotes.get(message.key);
-	if (record === undefined) {
-		return;
-	}
-
-	if (message.type === "snapshot" || message.type === "update") {
-		if (message.version < record.version) {
-			return;
-		}
-
-		batch(() => {
-			record.version = message.version;
-			record.value.value = message.value;
-			record.ready.value = true;
-			record.error.value = undefined;
-			record.status.value = "ready";
-		});
-		return;
-	}
-
-	if (message.type === "error") {
-		batch(() => {
-			record.ready.value = false;
-			record.error.value = new Error(message.message);
-			record.status.value = "error";
-		});
-		return;
-	}
-
-	if (message.type === "unpublished") {
-		batch(() => {
-			record.ready.value = false;
-			record.error.value = undefined;
-			record.status.value = "unpublished";
-		});
-	}
-}
-
-function handleModelMessage(
-	models: Map<string, RemoteModelRecord>,
-	message: RemoteSignalMessage
-) {
-	const record = models.get(message.key);
-	if (record === undefined) {
-		return;
-	}
-
-	if (message.type === "model-snapshot") {
-		if (message.version < record.version) {
-			return;
-		}
-
-		batch(() => {
-			record.version = message.version;
-			applyRemoteModelEntries(record, message.entries);
-			batch(() => {
-				record.ready.value = true;
-				record.error.value = undefined;
-				record.status.value = "ready";
-			});
-		});
-		return;
-	}
-
-	if (message.type === "model-patch") {
-		if (message.version < record.version) {
-			return;
-		}
-
-		batch(() => {
-			record.version = message.version;
-			applyRemoteModelEntries(record, message.updates);
-			record.ready.value = true;
-			record.error.value = undefined;
-			record.status.value = "ready";
-		});
-		return;
-	}
-
-	if (message.type === "model-error") {
-		batch(() => {
-			record.ready.value = false;
-			record.error.value = new Error(message.message);
-			record.status.value = "error";
-			rejectPendingCalls(record, new Error(message.message));
-		});
-		return;
-	}
-
-	if (message.type === "model-unpublished") {
-		batch(() => {
-			record.ready.value = false;
-			record.error.value = undefined;
-			record.status.value = "unpublished";
-		});
-		rejectPendingCalls(
-			record,
-			new Error(`Remote model '${message.key}' is no longer published.`)
-		);
-		return;
-	}
-
-	if (message.type === "model-action-result") {
-		const pending = record.pendingCalls.get(message.callId);
-		if (pending === undefined) {
-			return;
-		}
-
-		record.pendingCalls.delete(message.callId);
-		record.error.value = undefined;
-		pending.resolve(message.value);
-		return;
-	}
-
-	if (message.type === "model-action-error") {
-		const pending = record.pendingCalls.get(message.callId);
-		if (pending === undefined) {
-			return;
-		}
-
-		record.pendingCalls.delete(message.callId);
-		const error = new Error(message.message);
-		record.error.value = error;
-		pending.reject(error);
-	}
 }

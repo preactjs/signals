@@ -9,18 +9,18 @@ import {
 	type RemoteSignalTransport,
 } from "@preact/signals-remote";
 
-import type { WorkerCounterContract } from "./contract";
+import type { workerCounterRemote } from "./contract";
 import "./style.css";
 
 type WorkerCounterRemote = RemoteModel<
-	RemoteContractModel<WorkerCounterContract>,
-	RemoteContractActions<WorkerCounterContract>
+	RemoteContractModel<typeof workerCounterRemote>,
+	RemoteContractActions<typeof workerCounterRemote>
 >;
 
 type DemoSession = {
 	counter: WorkerCounterRemote;
 	runAction(
-		action: keyof RemoteContractActions<WorkerCounterContract>
+		action: keyof RemoteContractActions<typeof workerCounterRemote>
 	): Promise<void>;
 	dispose(): void;
 };
@@ -96,7 +96,7 @@ function createSession(onTraffic: (line: string) => void): DemoSession {
 	});
 	const transport = createWorkerTransport(worker, onTraffic);
 	const client = createRemoteSignalClient(transport);
-	const counter = client.model<WorkerCounterContract>("worker-counter");
+	const counter = client.model<typeof workerCounterRemote>("worker-counter");
 
 	return {
 		counter,
@@ -141,29 +141,28 @@ export default function WorkerRemote() {
 		return <p class="info">Starting the worker-backed signal demo...</p>;
 	}
 
-	const ready =
-		current.counter.ready.value && current.counter.state !== undefined;
 	const state = current.counter.state;
+	const ready = current.counter.status.value === "ready" && state !== undefined;
 
 	return (
 		<div class="worker-remote">
 			<p class="info">
 				This demo keeps the source model inside a <code>Web Worker</code>. The
 				worker uses <code>createModel()</code> to define a flat object of
-				signals and actions. The main thread mirrors the model state and invokes
-				worker actions through
-				<code>@preact/signals-remote</code> over the worker&apos;s
-				<code>postMessage()</code> boundary.
+				signals and actions, then publishes a typed remote contract. The main
+				thread only imports that contract as a type and mirrors the worker state
+				over
+				<code>postMessage()</code>.
 			</p>
 
 			<div class="worker-remote-grid">
 				<section class="worker-remote-card">
 					<h4>Remote Count</h4>
 					<div class="worker-remote-value">
-						{ready ? state?.count.value : "..."}
+						{ready ? state.count.value : "..."}
 					</div>
 					<p class="worker-remote-meta">
-						Model state: <strong>{current.counter.status}</strong>
+						Model status: <strong>{current.counter.status.value}</strong>
 					</p>
 					<p class="worker-remote-meta">
 						Action RPC: <strong>{ready ? "ready" : "waiting"}</strong>
@@ -174,16 +173,16 @@ export default function WorkerRemote() {
 					<h4>Worker Status</h4>
 					<p class="worker-remote-meta">
 						{ready
-							? state?.status.value
+							? state.status.value
 							: "Waiting for the first worker model snapshot..."}
 					</p>
 					<p class="worker-remote-meta">
 						Last worker update:{" "}
-						<strong>{ready ? state?.updatedAt.value : "--"}</strong>
+						<strong>{ready ? state.updatedAt.value : "--"}</strong>
 					</p>
 					<p class="worker-remote-meta">
 						Timer running:{" "}
-						<strong>{state?.ticking.value ? "yes" : "no"}</strong>
+						<strong>{ready && state.ticking.value ? "yes" : "no"}</strong>
 					</p>
 					{current.counter.error.value && (
 						<p class="worker-remote-meta">
@@ -202,10 +201,12 @@ export default function WorkerRemote() {
 				</button>
 				<button
 					onClick={() =>
-						void current.runAction(state?.ticking.value ? "stop" : "start")
+						void current.runAction(
+							ready && state.ticking.value ? "stop" : "start"
+						)
 					}
 				>
-					{state?.ticking.value ? "Stop timer" : "Start timer"}
+					{ready && state.ticking.value ? "Stop timer" : "Start timer"}
 				</button>
 				<button onClick={() => void current.runAction("reset")}>Reset</button>
 			</div>
