@@ -345,6 +345,8 @@ describe("signals-remote", () => {
 			);
 		});
 
+		// TODO: temp, this could probably be allowed when a signal contains
+		// nested signals but is currently not supported
 		it("throws when publishing a nested model shape", () => {
 			const server = createRemoteSignalServer();
 
