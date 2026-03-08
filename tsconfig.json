@@ -15,6 +15,7 @@
     "paths": {
       "@preact/signals-core": ["./packages/core/src/index.ts"],
       "@preact/signals-debug": ["./packages/debug/src/index.ts"],
+      "@preact/signals-remote": ["./packages/remote/src/index.ts"],
       "@preact/signals": ["./packages/preact/src/index.ts"],
       "@preact/signals-react": ["./packages/react/src/index.ts"],
       "@preact/signals-react/utils": ["./packages/react/utils/src/index.tsx"],

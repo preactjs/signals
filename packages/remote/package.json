@@ -1,0 +1,53 @@
+{
+  "name": "@preact/signals-remote",
+  "version": "0.0.0",
+  "license": "MIT",
+  "description": "Prototype transport primitives for syncing signals across a network boundary",
+  "keywords": [],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/preactjs/signals",
+    "directory": "packages/remote"
+  },
+  "bugs": "https://github.com/preactjs/signals/issues",
+  "homepage": "https://preactjs.com",
+  "funding": {
+    "type": "opencollective",
+    "url": "https://opencollective.com/preact"
+  },
+  "amdName": "preactSignalsRemote",
+  "main": "dist/remote.js",
+  "module": "dist/remote.module.js",
+  "unpkg": "dist/remote.min.js",
+  "types": "dist/signals-remote.d.ts",
+  "source": "src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/signals-remote.d.ts",
+      "browser": "./dist/remote.module.js",
+      "import": "./dist/remote.mjs",
+      "require": "./dist/remote.js"
+    }
+  },
+  "mangle": "../../mangle.json",
+  "files": [
+    "src",
+    "dist",
+    "CHANGELOG.md",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "prepublishOnly": "cd ../.. && pnpm build:remote"
+  },
+  "devDependencies": {
+    "@preact/signals-core": "workspace:^1.14.0"
+  },
+  "peerDependencies": {
+    "@preact/signals-core": ">=1.14.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}

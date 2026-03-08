@@ -154,6 +154,9 @@ importers:
       '@preact/signals-react':
         specifier: workspace:../packages/react
         version: link:../packages/react
+      '@preact/signals-remote':
+        specifier: workspace:../packages/remote
+        version: link:../packages/remote
       preact:
         specifier: ^10.25.0
         version: 10.27.2
@@ -482,6 +485,12 @@ importers:
       react:
         specifier: ^16.14.0 || 17.x || 18.x || 19.x
         version: 18.2.0
+
+  packages/remote:
+    devDependencies:
+      '@preact/signals-core':
+        specifier: workspace:^1.14.0
+        version: link:../core
 
 packages:
 

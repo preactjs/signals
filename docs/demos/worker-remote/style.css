@@ -1,0 +1,77 @@
+.worker-remote {
+  display: grid;
+  gap: 16px;
+  max-width: 920px;
+}
+
+.worker-remote-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.worker-remote-card {
+  padding: 14px;
+  border-radius: 10px;
+  background: #f4f6fb;
+  box-shadow: inset 0 0 0 1px #d3dbef;
+  color: #24324d;
+}
+
+.worker-remote-card h4,
+.worker-remote-log h4 {
+  margin: 0 0 8px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #304166;
+}
+
+.worker-remote-value {
+  font-size: clamp(2rem, 5vw, 3.25rem);
+  font-weight: 700;
+  line-height: 1;
+  color: #10203d;
+}
+
+.worker-remote-meta {
+  margin: 6px 0 0;
+  font-size: 0.95rem;
+  color: #536584;
+}
+
+.worker-remote-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.worker-remote-log {
+  padding: 14px;
+  border-radius: 10px;
+  background: #101828;
+  box-shadow: inset 0 0 0 1px #293548;
+  color: #c8d4e7;
+}
+
+.worker-remote-log ul {
+  margin: 0;
+  padding-left: 18px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.worker-remote-log code {
+  color: #f7b267;
+}
+
+.worker-remote-card code,
+.worker-remote-card strong {
+  color: #10203d;
+}
+
+@media (max-width: 640px) {
+  .worker-remote-controls button {
+    flex: 1 1 calc(50% - 10px);
+  }
+}
