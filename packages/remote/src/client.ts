@@ -42,9 +42,11 @@ export function createRemoteSignalClient(
 		}
 
 		remotes.delete(key);
-		record.ready.value = false;
-		record.error.value = undefined;
-		record.status.value = "disposed";
+		batch(() => {
+			record.ready.value = false;
+			record.error.value = undefined;
+			record.status.value = "disposed";
+		});
 		transport.send({ type: "unsubscribe", key });
 	}
 
@@ -55,9 +57,11 @@ export function createRemoteSignalClient(
 		}
 
 		models.delete(key);
-		record.ready.value = false;
-		record.status.value = "disposed";
-		record.error.value = undefined;
+		batch(() => {
+			record.ready.value = false;
+			record.status.value = "disposed";
+			record.error.value = undefined;
+		});
 		rejectPendingCalls(
 			record,
 			new Error(`Remote model '${key}' was disposed.`)
@@ -154,25 +158,31 @@ function handleSignalMessage(
 			return;
 		}
 
-		record.version = message.version;
-		record.value.value = message.value;
-		record.ready.value = true;
-		record.error.value = undefined;
-		record.status.value = "ready";
+		batch(() => {
+			record.version = message.version;
+			record.value.value = message.value;
+			record.ready.value = true;
+			record.error.value = undefined;
+			record.status.value = "ready";
+		});
 		return;
 	}
 
 	if (message.type === "error") {
-		record.ready.value = false;
-		record.error.value = new Error(message.message);
-		record.status.value = "error";
+		batch(() => {
+			record.ready.value = false;
+			record.error.value = new Error(message.message);
+			record.status.value = "error";
+		});
 		return;
 	}
 
 	if (message.type === "unpublished") {
-		record.ready.value = false;
-		record.error.value = undefined;
-		record.status.value = "unpublished";
+		batch(() => {
+			record.ready.value = false;
+			record.error.value = undefined;
+			record.status.value = "unpublished";
+		});
 	}
 }
 
@@ -193,9 +203,11 @@ function handleModelMessage(
 		batch(() => {
 			record.version = message.version;
 			applyRemoteModelEntries(record, message.entries);
-			record.ready.value = true;
-			record.error.value = undefined;
-			record.status.value = "ready";
+			batch(() => {
+				record.ready.value = true;
+				record.error.value = undefined;
+				record.status.value = "ready";
+			});
 		});
 		return;
 	}
@@ -216,17 +228,21 @@ function handleModelMessage(
 	}
 
 	if (message.type === "model-error") {
-		record.ready.value = false;
-		record.error.value = new Error(message.message);
-		record.status.value = "error";
-		rejectPendingCalls(record, new Error(message.message));
+		batch(() => {
+			record.ready.value = false;
+			record.error.value = new Error(message.message);
+			record.status.value = "error";
+			rejectPendingCalls(record, new Error(message.message));
+		});
 		return;
 	}
 
 	if (message.type === "model-unpublished") {
-		record.ready.value = false;
-		record.error.value = undefined;
-		record.status.value = "unpublished";
+		batch(() => {
+			record.ready.value = false;
+			record.error.value = undefined;
+			record.status.value = "unpublished";
+		});
 		rejectPendingCalls(
 			record,
 			new Error(`Remote model '${message.key}' is no longer published.`)

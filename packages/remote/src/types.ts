@@ -106,13 +106,10 @@ export interface RemoteSignalOptions<T> {
 
 export interface RemoteSignal<T> extends ReadonlySignal<T | undefined> {
 	readonly key: string;
-	readonly ready: ReadonlySignal<boolean>;
 	readonly status: ReadonlySignal<RemoteSignalStatus>;
 	readonly error: ReadonlySignal<Error | undefined>;
 	dispose(): void;
 }
-
-export type RemoteActionDefinitions = object;
 
 export type RemoteModelState<TModel> = {
 	[Key in keyof TModel as TModel[Key] extends ReadonlySignal<unknown>
@@ -142,28 +139,35 @@ export interface RemoteModelContract<
 	TActions = RemoteModelActionDefinitions<TModel>,
 > {
 	readonly key: TKey;
-	readonly model: TModel;
-	readonly actions: TActions;
+	readonly __model?: TModel;
+	readonly __actions?: TActions;
 }
 
 export type RemoteContractKey<TContract extends RemoteModelContract> =
 	TContract["key"];
 
 export type RemoteContractModel<TContract extends RemoteModelContract> =
-	TContract["model"];
+	TContract extends RemoteModelContract<string, infer TModel, any>
+		? TModel
+		: never;
 
 export type RemoteContractState<TContract extends RemoteModelContract> =
 	RemoteModelState<RemoteContractModel<TContract>>;
 
 export type RemoteContractActions<TContract extends RemoteModelContract> =
-	TContract["actions"];
+	TContract extends RemoteModelContract<string, any, infer TActions>
+		? TActions
+		: never;
+
+export type RemoteModelReference<TContract extends RemoteModelContract> =
+	| RemoteContractKey<TContract>
+	| TContract;
 
 export interface RemoteModel<
 	TModel,
 	TActions = RemoteModelActionDefinitions<TModel>,
 > {
 	readonly key: string;
-	readonly ready: ReadonlySignal<boolean>;
 	readonly status: ReadonlySignal<RemoteSignalStatus>;
 	readonly error: ReadonlySignal<Error | undefined>;
 	readonly state: RemoteModelState<TModel> | undefined;
@@ -174,7 +178,7 @@ export interface RemoteModel<
 export interface RemoteSignalClient {
 	signal<T>(key: string, options?: RemoteSignalOptions<T>): RemoteSignal<T>;
 	model<TContract extends RemoteModelContract>(
-		key: RemoteContractKey<TContract>
+		reference: RemoteModelReference<TContract>
 	): RemoteModel<
 		RemoteContractModel<TContract>,
 		RemoteContractActions<TContract>
@@ -194,7 +198,7 @@ export interface RemoteSignalServer {
 	publish<T>(key: string, source: ReadonlySignal<T>): () => void;
 	unpublish(key: string): void;
 	publishModel<TContract extends RemoteModelContract>(
-		key: RemoteContractKey<TContract>,
+		reference: RemoteModelReference<TContract>,
 		model: RemoteContractModel<TContract>
 	): () => void;
 	publishModel<TModel extends object>(key: string, model: TModel): () => void;
