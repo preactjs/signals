@@ -1,19 +1,15 @@
-import type { RemoteSignalMessage } from "@preact/signals-remote";
+import type { ReadonlySignal } from "@preact/signals-core";
 
-export type WorkerCommand =
-	| { type: "increment" }
-	| { type: "decrement" }
-	| { type: "randomize" }
-	| { type: "start" }
-	| { type: "stop" }
-	| { type: "reset" };
+export interface WorkerCounterModel {
+	count: ReadonlySignal<number>;
+	ticking: ReadonlySignal<boolean>;
+	updatedAt: ReadonlySignal<string>;
+	status: ReadonlySignal<string>;
 
-export type WorkerEnvelope =
-	| {
-			kind: "remote";
-			message: RemoteSignalMessage;
-	  }
-	| {
-			kind: "command";
-			command: WorkerCommand;
-	  };
+	increment(): void;
+	decrement(): void;
+	randomize(): void;
+	start(): void;
+	stop(): void;
+	reset(): void;
+}

@@ -1,43 +1,95 @@
 /// <reference lib="webworker" />
 
-import { computed } from "@preact/signals-core";
+import { computed, createModel, signal } from "@preact/signals-core";
 import {
 	createRemoteSignalServer,
+	type RemoteSignalMessage,
 	type RemoteSignalTransport,
 } from "@preact/signals-remote";
 
-import type { WorkerCommand, WorkerEnvelope } from "./shared";
+import type { WorkerCounterContract } from "./contract";
 
 declare const self: DedicatedWorkerGlobalScope;
 
 const server = createRemoteSignalServer();
-const count = server.createSignal("count", 0, { name: "worker-count" });
-const ticking = server.createSignal("ticking", false, {
-	name: "worker-ticking",
-});
-const updatedAt = server.createSignal("updatedAt", formatTime(), {
-	name: "worker-updated-at",
+
+const WorkerCounterModel = createModel(() => {
+	const count = signal(0, { name: "worker-count" });
+	const ticking = signal(false, { name: "worker-ticking" });
+	const updatedAt = signal(formatTime(), { name: "worker-updated-at" });
+	const status = computed(
+		() =>
+			ticking.value
+				? `Worker timer running - pushed count ${count.value}`
+				: `Worker idle - last count ${count.value}`,
+		{ name: "worker-status" }
+	);
+
+	let timer: ReturnType<typeof setInterval> | undefined;
+
+	function stamp() {
+		updatedAt.value = formatTime();
+	}
+
+	function setCount(next: number) {
+		count.value = next;
+		stamp();
+	}
+
+	return {
+		count,
+		ticking,
+		updatedAt,
+		status,
+		increment() {
+			setCount(count.value + 1);
+		},
+		decrement() {
+			setCount(count.value - 1);
+		},
+		randomize() {
+			setCount(Math.floor(Math.random() * 100));
+		},
+		start() {
+			if (timer !== undefined) {
+				return;
+			}
+
+			ticking.value = true;
+			stamp();
+			timer = setInterval(() => {
+				count.value += 1;
+				stamp();
+			}, 1000);
+		},
+		stop() {
+			if (timer === undefined) {
+				return;
+			}
+
+			clearInterval(timer);
+			timer = undefined;
+			ticking.value = false;
+			stamp();
+		},
+		reset() {
+			this.stop();
+			setCount(0);
+		},
+	};
 });
 
-const status = computed(
-	() =>
-		ticking.value
-			? `Worker timer running - pushed count ${count.value}`
-			: `Worker idle - last count ${count.value}`,
-	{ name: "worker-status" }
-);
+const model = new WorkerCounterModel();
 
-server.publish("status", status);
+server.publishModel<WorkerCounterContract>("worker-counter", model);
 
 const transport: RemoteSignalTransport = {
 	send(message) {
-		self.postMessage({ kind: "remote", message } satisfies WorkerEnvelope);
+		self.postMessage(message);
 	},
 	subscribe(listener) {
-		const handleMessage = (event: MessageEvent<WorkerEnvelope>) => {
-			if (event.data?.kind === "remote") {
-				listener(event.data.message);
-			}
+		const handleMessage = (event: MessageEvent<RemoteSignalMessage>) => {
+			listener(event.data);
 		};
 
 		self.addEventListener("message", handleMessage as EventListener);
@@ -50,73 +102,8 @@ const transport: RemoteSignalTransport = {
 
 server.attach(transport);
 
-let timer: ReturnType<typeof setInterval> | undefined;
-
 function formatTime() {
 	return new Date().toLocaleTimeString();
 }
-
-function stamp() {
-	updatedAt.value = formatTime();
-}
-
-function setCount(next: number) {
-	count.value = next;
-	stamp();
-}
-
-function start() {
-	if (timer !== undefined) {
-		return;
-	}
-
-	ticking.value = true;
-	stamp();
-	timer = setInterval(() => {
-		count.value += 1;
-		stamp();
-	}, 1000);
-}
-
-function stop() {
-	if (timer === undefined) {
-		return;
-	}
-
-	clearInterval(timer);
-	timer = undefined;
-	ticking.value = false;
-	stamp();
-}
-
-function handleCommand(command: WorkerCommand) {
-	switch (command.type) {
-		case "increment":
-			setCount(count.value + 1);
-			break;
-		case "decrement":
-			setCount(count.value - 1);
-			break;
-		case "randomize":
-			setCount(Math.floor(Math.random() * 100));
-			break;
-		case "start":
-			start();
-			break;
-		case "stop":
-			stop();
-			break;
-		case "reset":
-			stop();
-			setCount(0);
-			break;
-	}
-}
-
-self.addEventListener("message", (event: MessageEvent<WorkerEnvelope>) => {
-	if (event.data?.kind === "command") {
-		handleCommand(event.data.command);
-	}
-});
 
 export {};

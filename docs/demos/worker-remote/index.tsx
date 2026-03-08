@@ -2,22 +2,34 @@ import { useEffect } from "preact/hooks";
 import { useSignal } from "@preact/signals";
 import {
 	createRemoteSignalClient,
-	type RemoteSignal,
+	type RemoteContractActions,
+	type RemoteContractModel,
+	type RemoteModel,
 	type RemoteSignalMessage,
 	type RemoteSignalTransport,
 } from "@preact/signals-remote";
 
-import type { WorkerCommand, WorkerEnvelope } from "./shared";
+import type { WorkerCounterContract } from "./contract";
 import "./style.css";
 
+type WorkerCounterRemote = RemoteModel<
+	RemoteContractModel<WorkerCounterContract>,
+	RemoteContractActions<WorkerCounterContract>
+>;
+
 type DemoSession = {
-	count: RemoteSignal<number>;
-	status: RemoteSignal<string>;
-	ticking: RemoteSignal<boolean>;
-	updatedAt: RemoteSignal<string>;
-	send(command: WorkerCommand): void;
+	counter: WorkerCounterRemote;
+	runAction(
+		action: keyof RemoteContractActions<WorkerCounterContract>
+	): Promise<void>;
 	dispose(): void;
 };
+
+function formatEntryList(entries: Array<{ key: string; value: unknown }>) {
+	return entries
+		.map(entry => `${entry.key}=${JSON.stringify(entry.value)}`)
+		.join(", ");
+}
 
 function formatRemoteMessage(
 	direction: "main->worker" | "worker->main",
@@ -34,6 +46,23 @@ function formatRemoteMessage(
 			return `${direction} error(${message.key}) ${message.message}`;
 		case "unpublished":
 			return `${direction} unpublished(${message.key})`;
+		case "subscribe-model":
+		case "unsubscribe-model":
+			return `${direction} ${message.type}(${message.key})`;
+		case "model-snapshot":
+			return `${direction} model-snapshot(${message.key}) ${formatEntryList(message.entries)}`;
+		case "model-patch":
+			return `${direction} model-patch(${message.key}) ${formatEntryList(message.updates)}`;
+		case "model-error":
+			return `${direction} model-error(${message.key}) ${message.message}`;
+		case "model-unpublished":
+			return `${direction} model-unpublished(${message.key})`;
+		case "call-model-action":
+			return `${direction} action ${message.key}.${message.action}(${message.args.map(arg => JSON.stringify(arg)).join(", ")})`;
+		case "model-action-result":
+			return `${direction} action-result(${message.key}#${message.callId}) ${JSON.stringify(message.value)}`;
+		case "model-action-error":
+			return `${direction} action-error(${message.key}#${message.callId}) ${message.message}`;
 	}
 }
 
@@ -44,16 +73,12 @@ function createWorkerTransport(
 	return {
 		send(message) {
 			onTraffic(formatRemoteMessage("main->worker", message));
-			worker.postMessage({ kind: "remote", message } satisfies WorkerEnvelope);
+			worker.postMessage(message);
 		},
 		subscribe(listener) {
-			const handleMessage = (event: MessageEvent<WorkerEnvelope>) => {
-				if (event.data?.kind !== "remote") {
-					return;
-				}
-
-				onTraffic(formatRemoteMessage("worker->main", event.data.message));
-				listener(event.data.message);
+			const handleMessage = (event: MessageEvent<RemoteSignalMessage>) => {
+				onTraffic(formatRemoteMessage("worker->main", event.data));
+				listener(event.data);
 			};
 
 			worker.addEventListener("message", handleMessage as EventListener);
@@ -71,20 +96,17 @@ function createSession(onTraffic: (line: string) => void): DemoSession {
 	});
 	const transport = createWorkerTransport(worker, onTraffic);
 	const client = createRemoteSignalClient(transport);
-
-	const count = client.signal<number>("count");
-	const status = client.signal<string>("status");
-	const ticking = client.signal<boolean>("ticking");
-	const updatedAt = client.signal<string>("updatedAt");
+	const counter = client.model<WorkerCounterContract>("worker-counter");
 
 	return {
-		count,
-		status,
-		ticking,
-		updatedAt,
-		send(command) {
-			onTraffic(`main->worker command.${command.type}`);
-			worker.postMessage({ kind: "command", command } satisfies WorkerEnvelope);
+		counter,
+		async runAction(action) {
+			onTraffic(`ui invoke ${action}()`);
+			try {
+				await counter.actions[action]();
+			} catch (error) {
+				onTraffic(`ui action-error ${action}(): ${String(error)}`);
+			}
 		},
 		dispose() {
 			client.dispose();
@@ -99,7 +121,7 @@ export default function WorkerRemote() {
 
 	useEffect(() => {
 		const pushTraffic = (line: string) => {
-			traffic.value = [line, ...traffic.peek()].slice(0, 10);
+			traffic.value = [line, ...traffic.peek()].slice(0, 12);
 		};
 
 		pushTraffic("main: booting worker");
@@ -120,28 +142,31 @@ export default function WorkerRemote() {
 	}
 
 	const ready =
-		current.count.ready.value &&
-		current.status.ready.value &&
-		current.ticking.ready.value &&
-		current.updatedAt.ready.value;
+		current.counter.ready.value && current.counter.state !== undefined;
+	const state = current.counter.state;
 
 	return (
 		<div class="worker-remote">
 			<p class="info">
-				This demo keeps the source signals inside a <code>Web Worker</code>. The
-				main thread mirrors them with <code>@preact/signals-remote</code> over
-				the worker&apos;s <code>postMessage()</code> boundary.
+				This demo keeps the source model inside a <code>Web Worker</code>. The
+				worker uses <code>createModel()</code> to define a flat object of
+				signals and actions. The main thread mirrors the model state and invokes
+				worker actions through
+				<code>@preact/signals-remote</code> over the worker&apos;s
+				<code>postMessage()</code> boundary.
 			</p>
 
 			<div class="worker-remote-grid">
 				<section class="worker-remote-card">
 					<h4>Remote Count</h4>
 					<div class="worker-remote-value">
-						{ready ? current.count.value : "..."}
+						{ready ? state?.count.value : "..."}
 					</div>
 					<p class="worker-remote-meta">
-						Main thread subscription state:{" "}
-						<strong>{current.count.status}</strong>
+						Model state: <strong>{current.counter.status}</strong>
+					</p>
+					<p class="worker-remote-meta">
+						Action RPC: <strong>{ready ? "ready" : "waiting"}</strong>
 					</p>
 				</section>
 
@@ -149,34 +174,40 @@ export default function WorkerRemote() {
 					<h4>Worker Status</h4>
 					<p class="worker-remote-meta">
 						{ready
-							? current.status.value
-							: "Waiting for the first worker snapshot..."}
+							? state?.status.value
+							: "Waiting for the first worker model snapshot..."}
 					</p>
 					<p class="worker-remote-meta">
 						Last worker update:{" "}
-						<strong>{ready ? current.updatedAt.value : "--"}</strong>
+						<strong>{ready ? state?.updatedAt.value : "--"}</strong>
 					</p>
 					<p class="worker-remote-meta">
 						Timer running:{" "}
-						<strong>{current.ticking.value ? "yes" : "no"}</strong>
+						<strong>{state?.ticking.value ? "yes" : "no"}</strong>
 					</p>
+					{current.counter.error.value && (
+						<p class="worker-remote-meta">
+							Last action error:{" "}
+							<strong>{current.counter.error.value.message}</strong>
+						</p>
+					)}
 				</section>
 			</div>
 
 			<div class="worker-remote-controls">
-				<button onClick={() => current.send({ type: "decrement" })}>-1</button>
-				<button onClick={() => current.send({ type: "increment" })}>+1</button>
-				<button onClick={() => current.send({ type: "randomize" })}>
+				<button onClick={() => void current.runAction("decrement")}>-1</button>
+				<button onClick={() => void current.runAction("increment")}>+1</button>
+				<button onClick={() => void current.runAction("randomize")}>
 					Randomize
 				</button>
 				<button
 					onClick={() =>
-						current.send({ type: current.ticking.value ? "stop" : "start" })
+						void current.runAction(state?.ticking.value ? "stop" : "start")
 					}
 				>
-					{current.ticking.value ? "Stop timer" : "Start timer"}
+					{state?.ticking.value ? "Stop timer" : "Start timer"}
 				</button>
-				<button onClick={() => current.send({ type: "reset" })}>Reset</button>
+				<button onClick={() => void current.runAction("reset")}>Reset</button>
 			</div>
 
 			<section class="worker-remote-log">
