@@ -549,7 +549,7 @@ describe("@preact/signals-vite-plugin", () => {
 			expect(secondBatch).to.deep.equal(firstBatch);
 			expect(
 				firstBatch.events.map((event: SignalsAgentEvent) => event.source)
-			).to.deep.equal(["signals", "page", "console"]);
+			).to.deep.equal(["signals", "page"]);
 		} finally {
 			vi.useRealTimers();
 		}

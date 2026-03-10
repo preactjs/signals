@@ -119,7 +119,7 @@ Start tight, then widen only if needed.
 Respond with:
 
 1. the triggering action
-2. the key network/console fact
+2. the key network or page fact
 3. the contradictory signal transition
 4. the likely faulty branch or file
 5. the smallest fix that would align state with reality
@@ -136,5 +136,5 @@ Fix the submit error branch so it sets the error signal and leaves the form in a
 ## Cautions
 
 - Treat sanitized/sensitive values like `[Redacted]` as evidence that sensitive state exists, not as missing data.
-- Do not assume every console error is causal; correlate it with nearby signal and network events.
+- Do not assume every page or network error is causal; correlate it with nearby signal events.
 - Prefer the earliest contradictory event in the timeline over the loudest downstream symptom.

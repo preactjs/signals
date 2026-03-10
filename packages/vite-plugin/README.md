@@ -2,7 +2,7 @@
 
 Vite tooling that wires up Signals debugging with less manual setup.
 
-In development it auto-injects `@preact/signals-debug`, applies the React or Preact Signals Babel transform for you, forwards signal updates to a local HTTP API, and captures nearby page context such as console warnings/errors, network activity, navigation, and form interactions. In production builds it keeps the React transform enabled without the extra debug metadata.
+In development it auto-injects `@preact/signals-debug`, applies the React or Preact Signals Babel transform for you, forwards signal updates to a local HTTP API, and captures nearby page context such as network activity, navigation, and form interactions. In production builds it keeps the React transform enabled without the extra debug metadata.
 
 ## Installation
 
@@ -54,7 +54,7 @@ Query params for event reads:
 - `limit=<count>` - return only the most recent matching events
 - `filterPatterns=AuthForm,login` or repeated `filterPatterns` params - match events by summary, signal name, page info, and related metadata
 - `filter=...` - alias for `filterPatterns`
-- `source=signals|console|network|page` - restrict results to selected sources
+- `source=signals|network|page` - restrict results to selected sources
 
 ## Example flow
 
@@ -80,7 +80,6 @@ curl -X POST http://localhost:5173/__signals_agent__/reset
 
 - signal values are sanitized before transport
 - keys like `password`, `token`, `secret`, and `authorization` are redacted
-- console capture defaults to `warn` and `error` to avoid duplicating signal console logs
 - network capture records request metadata and statuses, not request bodies
 - requests made to the plugin's own debugging API are excluded from captured network events
 - malformed JSON sent to the debugging API returns `400`

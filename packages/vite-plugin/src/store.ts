@@ -61,6 +61,10 @@ export function createSignalsAgentStore(
 
 	function reset() {
 		events.length = 0;
+		for (const session of sessions.values()) {
+			session.listeners.clear();
+		}
+		sessions.clear();
 		nextEventId = 1;
 	}
 
