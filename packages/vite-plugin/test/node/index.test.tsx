@@ -388,7 +388,7 @@ describe("@preact/signals-vite-plugin", () => {
 		});
 	});
 
-	it("resets buffered events and sessions", async () => {
+	it("resets buffered events while preserving sessions", async () => {
 		const middleware = createMiddleware();
 
 		const createSessionRequest = createRequest({
@@ -399,6 +399,7 @@ describe("@preact/signals-vite-plugin", () => {
 		const createSessionResponse = createResponse();
 		middleware(createSessionRequest, createSessionResponse.res, vi.fn());
 		await createSessionResponse.ended;
+		const { session } = JSON.parse(createSessionResponse.text());
 
 		const appendEventsRequest = createRequest({
 			method: "POST",
@@ -437,16 +438,19 @@ describe("@preact/signals-vite-plugin", () => {
 		middleware(sessionsRequest, sessionsResponse.res, vi.fn());
 		await sessionsResponse.ended;
 
-		expect(JSON.parse(sessionsResponse.text())).to.deep.equal({ sessions: [] });
+		expect(JSON.parse(sessionsResponse.text())).to.deep.equal({
+			sessions: [session],
+		});
 
 		const eventsRequest = createRequest({
-			url: "/__signals_agent__/events",
+			url: `/__signals_agent__/sessions/${session.id}/events`,
 		});
 		const eventsResponse = createResponse();
 		middleware(eventsRequest, eventsResponse.res, vi.fn());
 		await eventsResponse.ended;
 
 		expect(JSON.parse(eventsResponse.text())).to.deep.equal({
+			session,
 			events: [],
 			cursor: null,
 		});

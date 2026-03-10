@@ -42,7 +42,7 @@ Transform behavior:
 The plugin serves a small API from the Vite dev server:
 
 - `POST /__signals_agent__/sessions` - create a filtered debugging session
-- `POST /__signals_agent__/reset` - clear all buffered events and active sessions
+- `POST /__signals_agent__/reset` - clear buffered events while keeping active sessions
 - `GET /__signals_agent__/sessions/:id/events` - fetch buffered events for a session
 - `GET /__signals_agent__/sessions/:id/stream` - stream matching events over SSE
 - `DELETE /__signals_agent__/sessions/:id` - stop a session
