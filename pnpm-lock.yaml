@@ -154,6 +154,9 @@ importers:
       '@preact/signals-react':
         specifier: workspace:../packages/react
         version: link:../packages/react
+      '@preact/signals-vite-plugin':
+        specifier: workspace:../packages/vite-plugin
+        version: link:../packages/vite-plugin
       preact:
         specifier: ^10.25.0
         version: 10.27.2
@@ -482,6 +485,27 @@ importers:
       react:
         specifier: ^16.14.0 || 17.x || 18.x || 19.x
         version: 18.2.0
+
+  packages/vite-plugin:
+    dependencies:
+      '@babel/core':
+        specifier: ^7.28.4
+        version: 7.28.5
+      '@babel/preset-typescript':
+        specifier: ^7.27.1
+        version: 7.27.1(@babel/core@7.28.5)
+      '@preact/signals-debug':
+        specifier: workspace:*
+        version: link:../debug
+      '@preact/signals-preact-transform':
+        specifier: workspace:*
+        version: link:../preact-transform
+      '@preact/signals-react-transform':
+        specifier: workspace:*
+        version: link:../react-transform
+      vite:
+        specifier: ^6.0.0 || ^7.0.0
+        version: 7.3.1(@types/node@20.19.30)
 
 packages:
 

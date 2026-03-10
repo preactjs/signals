@@ -18,6 +18,7 @@
     "preact-iso": "^2.3.0",
     "preact-render-to-string": "^6.0.0",
     "@preact/eslint-plugin-signals": "workspace:../packages/eslint-plugin-signals",
+    "@preact/signals-vite-plugin": "workspace:../packages/vite-plugin",
     "@preact/signals-core": "workspace:../packages/core",
     "@preact/signals-debug": "workspace:../packages/debug",
     "@preact/signals": "workspace:../packages/preact",

@@ -25,6 +25,7 @@
       "@preact/signals-react-transform": [
         "./packages/react-transform/src/index.ts"
       ],
+      "@preact/signals-vite-plugin": ["./packages/vite-plugin/src/index.ts"],
       "@preact/signals-preact-transform": [
         "./packages/preact-transform/src/index.ts"
       ]

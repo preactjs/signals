@@ -1,0 +1,63 @@
+{
+  "name": "@preact/signals-vite-plugin",
+  "version": "0.1.0",
+  "license": "MIT",
+  "description": "Vite tooling for AI-native @preact/signals debugging",
+  "keywords": [
+    "preact",
+    "signals",
+    "vite",
+    "debug",
+    "agent",
+    "llm"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/preactjs/signals",
+    "directory": "packages/vite-plugin"
+  },
+  "bugs": "https://github.com/preactjs/signals/issues",
+  "homepage": "https://preactjs.com",
+  "funding": {
+    "type": "opencollective",
+    "url": "https://opencollective.com/preact"
+  },
+  "amdName": "preactSignalsVitePlugin",
+  "main": "dist/vite-plugin.js",
+  "module": "dist/vite-plugin.module.js",
+  "unpkg": "dist/vite-plugin.min.js",
+  "types": "dist/vite-plugin.d.ts",
+  "source": "src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/vite-plugin.d.ts",
+      "import": "./dist/vite-plugin.mjs",
+      "require": "./dist/vite-plugin.js"
+    }
+  },
+  "mangle": "../../mangle.json",
+  "files": [
+    "src",
+    "dist",
+    "CHANGELOG.md",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "prepublishOnly": "cd ../.. && pnpm build:vite-plugin"
+  },
+  "dependencies": {
+    "@babel/core": "^7.28.4",
+    "@babel/preset-typescript": "^7.27.1",
+    "@preact/signals-debug": "workspace:*",
+    "@preact/signals-preact-transform": "workspace:*",
+    "@preact/signals-react-transform": "workspace:*"
+  },
+  "peerDependencies": {
+    "vite": "^6.0.0 || ^7.0.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}

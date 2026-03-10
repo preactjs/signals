@@ -13,6 +13,7 @@ const demos = {
 	Sum,
 	GlobalCounter,
 	DuelingCounters,
+	AuthForm: lazy(() => import("./auth-form")),
 	Models: lazy(() => import("./todo")),
 	Devtools: lazy(() => import("./devtools")),
 	Nesting: lazy(() => import("./nesting")),
