@@ -400,6 +400,13 @@ describe("@preact/signals-vite-plugin", () => {
 		middleware(createSessionRequest, createSessionResponse.res, vi.fn());
 		await createSessionResponse.ended;
 		const { session } = JSON.parse(createSessionResponse.text());
+		expect(session).to.deep.include({
+			filterPatterns: ["AuthForm"],
+			sources: ["signals", "network", "page"],
+		});
+		expect(session.id).to.be.a("string");
+		expect(session.createdAt).to.be.a("number");
+		expect(session.updatedAt).to.be.a("number");
 
 		const appendEventsRequest = createRequest({
 			method: "POST",
@@ -438,9 +445,15 @@ describe("@preact/signals-vite-plugin", () => {
 		middleware(sessionsRequest, sessionsResponse.res, vi.fn());
 		await sessionsResponse.ended;
 
-		expect(JSON.parse(sessionsResponse.text())).to.deep.equal({
-			sessions: [session],
+		const { sessions } = JSON.parse(sessionsResponse.text());
+		expect(sessions).to.have.length(1);
+		expect(sessions[0]).to.deep.include({
+			id: session.id,
+			filterPatterns: session.filterPatterns,
+			sources: session.sources,
 		});
+		expect(sessions[0].createdAt).to.be.a("number");
+		expect(sessions[0].updatedAt).to.be.a("number");
 
 		const eventsRequest = createRequest({
 			url: `/__signals_agent__/sessions/${session.id}/events`,
@@ -449,11 +462,16 @@ describe("@preact/signals-vite-plugin", () => {
 		middleware(eventsRequest, eventsResponse.res, vi.fn());
 		await eventsResponse.ended;
 
-		expect(JSON.parse(eventsResponse.text())).to.deep.equal({
-			session,
-			events: [],
-			cursor: null,
+		const eventsPayload = JSON.parse(eventsResponse.text());
+		expect(eventsPayload.events).to.deep.equal([]);
+		expect(eventsPayload.cursor).to.equal(null);
+		expect(eventsPayload.session).to.deep.include({
+			id: session.id,
+			filterPatterns: session.filterPatterns,
+			sources: session.sources,
 		});
+		expect(eventsPayload.session.createdAt).to.be.a("number");
+		expect(eventsPayload.session.updatedAt).to.be.a("number");
 	});
 
 	it("respects the configured maxEvents buffer limit", async () => {
