@@ -7,6 +7,10 @@ import type {
 	DebugConfig,
 } from "./types";
 
+type AdapterCommandMessage =
+	| { type: "CONFIGURE_DEBUG"; payload: Settings }
+	| { type: "REQUEST_STATE" };
+
 export interface BrowserExtensionAdapterOptions {
 	/**
 	 * The target window to communicate with (defaults to current window)
@@ -80,7 +84,7 @@ export class BrowserExtensionAdapter extends BaseAdapter {
 		this.sendMessage({ type: "REQUEST_STATE" });
 	}
 
-	private sendMessage(message: any): void {
+	private sendMessage(message: AdapterCommandMessage): void {
 		this.targetWindow.postMessage(message, "*");
 	}
 

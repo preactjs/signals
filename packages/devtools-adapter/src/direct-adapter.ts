@@ -1,6 +1,17 @@
 import { BaseAdapter } from "./base-adapter";
 import type { Settings, SignalUpdate, SignalDisposed } from "./types";
 
+interface DirectDevToolsAPI {
+	onUpdate: (callback: (updates: SignalUpdate[]) => void) => () => void;
+	onDisposal?: (callback: (disposals: SignalDisposed[]) => void) => () => void;
+	onInit: (callback: () => void) => () => void;
+	sendConfig?: (config: Settings) => void;
+}
+
+type DirectAdapterWindow = Window & {
+	__PREACT_SIGNALS_DEVTOOLS__?: DirectDevToolsAPI;
+};
+
 export interface DirectAdapterOptions {
 	/**
 	 * Reference to the window containing the signals debug API
@@ -24,16 +35,16 @@ export interface DirectAdapterOptions {
  * extension context.
  */
 export class DirectAdapter extends BaseAdapter {
-	private targetWindow: Window;
+	private targetWindow: DirectAdapterWindow;
 	private pollInterval: number;
 	private maxWaitTime: number;
-	private devtoolsAPI: any = null;
+	private devtoolsAPI: DirectDevToolsAPI | null = null;
 	private cleanupFns: Array<() => void> = [];
 	private pollTimer: ReturnType<typeof setInterval> | null = null;
 
 	constructor(options: DirectAdapterOptions = {}) {
 		super();
-		this.targetWindow = options.targetWindow ?? window;
+		this.targetWindow = (options.targetWindow ?? window) as DirectAdapterWindow;
 		this.pollInterval = options.pollInterval ?? 100;
 		this.maxWaitTime = options.maxWaitTime ?? 10000;
 	}
@@ -123,7 +134,7 @@ export class DirectAdapter extends BaseAdapter {
 	}
 
 	private tryConnect(): boolean {
-		const api = (this.targetWindow as any).__PREACT_SIGNALS_DEVTOOLS__;
+		const api = this.targetWindow.__PREACT_SIGNALS_DEVTOOLS__;
 
 		if (!api) {
 			return false;
