@@ -41,6 +41,16 @@ export interface DevToolsMessage {
 	timestamp: number;
 }
 
+export interface FormattedDebugConfig {
+	settings: {
+		enabled: boolean;
+		grouped: boolean;
+		consoleLogging: boolean;
+		maxUpdatesPerSecond: number;
+		filterPatterns: string[];
+	};
+}
+
 export interface SignalsDevToolsAPI {
 	onUpdate: (
 		callback: (updates: FormattedSignalUpdate[]) => void
@@ -49,7 +59,7 @@ export interface SignalsDevToolsAPI {
 		callback: (disposals: FormattedSignalDisposed[]) => void
 	) => () => void;
 	onInit: (callback: () => void) => () => void;
-	sendConfig: (config: any) => void;
+	sendConfig: (config: FormattedDebugConfig) => void;
 	sendUpdate: (updateInfo: UpdateInfo[]) => void;
 	sendDisposal: (
 		signal: any,
@@ -192,7 +202,7 @@ class DevToolsCommunicator {
 		}
 	}
 
-	public sendConfig(config: any) {
+	public sendConfig(config: FormattedDebugConfig) {
 		this.postMessage({
 			type: "SIGNALS_CONFIG",
 			payload: config,

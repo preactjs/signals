@@ -1,4 +1,5 @@
 import { BaseAdapter } from "./base-adapter";
+import { normalizeDebugConfig } from "./normalize";
 import type {
 	Settings,
 	SignalUpdate,
@@ -165,8 +166,11 @@ export class BrowserExtensionAdapter extends BaseAdapter {
 		this.updateConnectionStatus();
 	}
 
-	private handleConfig(payload: DebugConfig): void {
-		this.emit("configReceived", payload);
+	private handleConfig(payload: DebugConfig | Settings | unknown): void {
+		const config = normalizeDebugConfig(payload);
+		if (config) {
+			this.emit("configReceived", config);
+		}
 	}
 
 	private updateConnectionStatus(): void {
