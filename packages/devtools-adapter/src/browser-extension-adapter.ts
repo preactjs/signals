@@ -103,6 +103,7 @@ export class BrowserExtensionAdapter extends BaseAdapter {
 				this.emit("signalInit");
 				break;
 
+			case "SIGNALS_AVAILABLE":
 			case "SIGNALS_AVAILABILITY":
 				this.handleSignalsAvailability(payload);
 				break;
