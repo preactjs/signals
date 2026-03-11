@@ -4,6 +4,12 @@ import type { GraphData, GraphLink, GraphNode } from "../types";
 import type { SignalUpdate } from "../context";
 import { getContext } from "../context";
 
+interface GraphRenderData extends GraphData {
+	nodeLookup: Map<string, GraphNode>;
+	svgWidth: number;
+	svgHeight: number;
+}
+
 const copyToClipboard = (text: string) => {
 	const copyEl = document.createElement("textarea");
 	try {
@@ -194,12 +200,20 @@ export function GraphVisualization() {
 		}
 	};
 
-	const graphData = useComputed<GraphData>(() => {
+	const graphData = useComputed<GraphRenderData>(() => {
 		const rawUpdates = updates.value;
 		const disposed = disposedSignalIds.value;
 		const showDisposed = settingsStore.showDisposedSignals.value;
 
-		if (!rawUpdates || rawUpdates.length === 0) return { nodes: [], links: [] };
+		if (!rawUpdates || rawUpdates.length === 0) {
+			return {
+				nodes: [],
+				links: [],
+				nodeLookup: new Map(),
+				svgWidth: 800,
+				svgHeight: 600,
+			};
+		}
 
 		const nodes = new Map<string, GraphNode>();
 		const links = new Map<string, GraphLink>();
@@ -303,9 +317,23 @@ export function GraphVisualization() {
 			});
 		});
 
+		const graphNodes = Array.from(nodes.values());
+		const nodeLookup = new Map(graphNodes.map(node => [node.id, node]));
+		const svgWidth = graphNodes.reduce(
+			(maxWidth, node) => Math.max(maxWidth, node.x + 100),
+			800
+		);
+		const svgHeight = graphNodes.reduce(
+			(maxHeight, node) => Math.max(maxHeight, node.y + 100),
+			600
+		);
+
 		return {
-			nodes: Array.from(nodes.values()),
+			nodes: graphNodes,
 			links: allLinks,
+			nodeLookup,
+			svgWidth,
+			svgHeight,
 		};
 	});
 
@@ -462,9 +490,6 @@ export function GraphVisualization() {
 		);
 	}
 
-	const svgWidth = Math.max(800, ...graphData.value.nodes.map(n => n.x + 100));
-	const svgHeight = Math.max(600, ...graphData.value.nodes.map(n => n.y + 100));
-
 	return (
 		<div className="graph-container">
 			<div
@@ -480,9 +505,9 @@ export function GraphVisualization() {
 				<svg
 					ref={svgRef}
 					className="graph-svg"
-					width={svgWidth}
-					height={svgHeight}
-					viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+					width={graphData.value.svgWidth}
+					height={graphData.value.svgHeight}
+					viewBox={`0 0 ${graphData.value.svgWidth} ${graphData.value.svgHeight}`}
 				>
 					<defs>
 						<marker
@@ -502,12 +527,8 @@ export function GraphVisualization() {
 					>
 						<g className="links">
 							{graphData.value.links.map((link, index) => {
-								const sourceNode = graphData.value.nodes.find(
-									n => n.id === link.source
-								);
-								const targetNode = graphData.value.nodes.find(
-									n => n.id === link.target
-								);
+								const sourceNode = graphData.value.nodeLookup.get(link.source);
+								const targetNode = graphData.value.nodeLookup.get(link.target);
 
 								if (!sourceNode || !targetNode) return null;
 
