@@ -2,7 +2,7 @@
   "name": "@preact/signals-vite-plugin",
   "version": "0.0.0",
   "license": "MIT",
-  "description": "Vite tooling for AI-native @preact/signals debugging",
+  "description": "Vite tooling for preact-signals",
   "keywords": [
     "preact",
     "signals",
@@ -49,12 +49,24 @@
   "dependencies": {
     "@babel/core": "^7.28.4",
     "@babel/preset-typescript": "^7.27.1",
-    "@preact/signals-debug": "workspace:*",
+    "@preact/signals-debug": "workspace:*"
+  },
+  "devDependencies": {
     "@preact/signals-preact-transform": "workspace:*",
     "@preact/signals-react-transform": "workspace:*"
   },
   "peerDependencies": {
+    "@preact/signals-preact-transform": "^0.1.0",
+    "@preact/signals-react-transform": "^0.8.1",
     "vite": "^6.0.0 || ^7.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@preact/signals-preact-transform": {
+      "optional": true
+    },
+    "@preact/signals-react-transform": {
+      "optional": true
+    }
   },
   "publishConfig": {
     "access": "public",

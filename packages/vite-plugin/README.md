@@ -10,6 +10,16 @@ In development it auto-injects `@preact/signals-debug`, applies the React or Pre
 pnpm add -D @preact/signals-vite-plugin
 ```
 
+Install the matching transform alongside it:
+
+```bash
+# React
+pnpm add -D @preact/signals-react-transform
+
+# Preact
+pnpm add -D @preact/signals-preact-transform
+```
+
 ## Usage
 
 ```ts

@@ -1,7 +1,5 @@
 // @ts-expect-error Babel types come from DefinitelyTyped in consumers
 import { transformAsync } from "@babel/core";
-import preactSignalsTransform from "@preact/signals-preact-transform";
-import reactSignalsTransform from "@preact/signals-react-transform";
 import type { ResolvedConfig } from "vite";
 
 export type SignalsTransformFramework = "react" | "preact";
@@ -67,8 +65,7 @@ export async function runSignalsTransform({
 	framework: SignalsTransformFramework;
 	debug: boolean;
 }): Promise<{ code: string; map: any } | null> {
-	const signalsTransform =
-		framework === "react" ? reactSignalsTransform : preactSignalsTransform;
+	const signalsTransform = await loadSignalsTransform(framework);
 	const isTypeScript = /\.[cm]?tsx?$/.test(id);
 	const result = await transformAsync(code, {
 		filename: id,
@@ -100,4 +97,56 @@ export async function runSignalsTransform({
 		code: result.code,
 		map: result.map ?? null,
 	};
+}
+
+async function loadSignalsTransform(framework: SignalsTransformFramework) {
+	const packageName = getTransformPackageName(framework);
+
+	try {
+		const signalsTransformModule =
+			framework === "react"
+				? await import("@preact/signals-react-transform")
+				: await import("@preact/signals-preact-transform");
+
+		return signalsTransformModule.default ?? signalsTransformModule;
+	} catch (error) {
+		if (!isMissingModuleError(error, packageName)) {
+			throw error;
+		}
+
+		throw new Error(
+			`signalsVite() needs "${packageName}" installed to auto-transform "${framework}" files. Add it as a devDependency, set an explicit "framework" option, or set autoTransform: false.`
+		);
+	}
+}
+
+function getTransformPackageName(framework: SignalsTransformFramework): string {
+	return framework === "react"
+		? "@preact/signals-react-transform"
+		: "@preact/signals-preact-transform";
+}
+
+function isMissingModuleError(error: unknown, packageName: string): boolean {
+	if (!(error instanceof Error)) {
+		return false;
+	}
+
+	const typedError = error as Error & { cause?: unknown; code?: string };
+	const cause =
+		typeof typedError.cause === "object" && typedError.cause !== null
+			? typedError.cause
+			: null;
+	const causeCode =
+		cause && "code" in cause && typeof cause.code === "string"
+			? cause.code
+			: null;
+	const errorCode =
+		typeof typedError.code === "string" ? typedError.code : null;
+
+	return (
+		error.message.includes(packageName) ||
+		(cause instanceof Error && cause.message.includes(packageName)) ||
+		errorCode === "ERR_MODULE_NOT_FOUND" ||
+		causeCode === "ERR_MODULE_NOT_FOUND"
+	);
 }

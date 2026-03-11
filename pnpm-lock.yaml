@@ -497,15 +497,16 @@ importers:
       '@preact/signals-debug':
         specifier: workspace:*
         version: link:../debug
+      vite:
+        specifier: ^6.0.0 || ^7.0.0
+        version: 7.3.1(@types/node@20.19.30)
+    devDependencies:
       '@preact/signals-preact-transform':
         specifier: workspace:*
         version: link:../preact-transform
       '@preact/signals-react-transform':
         specifier: workspace:*
         version: link:../react-transform
-      vite:
-        specifier: ^6.0.0 || ^7.0.0
-        version: 7.3.1(@types/node@20.19.30)
 
 packages:
 
