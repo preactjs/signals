@@ -41,9 +41,13 @@ class ExtensionBridge {
 
 	private sendCurrentState() {
 		getDevToolsCommunicator().sendConfig({
-			...this.config,
-			timestamp: Date.now(),
-			type: "CURRENT_STATE",
+			settings: {
+				enabled: this.config.enabled ?? true,
+				grouped: this.config.grouped ?? true,
+				consoleLogging: this.config.consoleLogging ?? true,
+				maxUpdatesPerSecond: this.config.maxUpdatesPerSecond ?? 60,
+				filterPatterns: [...(this.config.filterPatterns ?? [])],
+			},
 		});
 	}
 

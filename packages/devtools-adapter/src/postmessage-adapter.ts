@@ -1,4 +1,5 @@
 import { BaseAdapter } from "./base-adapter";
+import { normalizeDebugConfig } from "./normalize";
 import type { Settings, SignalUpdate, SignalDisposed } from "./types";
 
 export interface PostMessageAdapterOptions {
@@ -114,8 +115,15 @@ export class PostMessageAdapter extends BaseAdapter {
 
 			case "SIGNALS_CONFIG":
 			case "SIGNALS_CONFIG_FROM_PAGE":
-				this.emit("configReceived", payload);
+				this.handleConfig(payload);
 				break;
+		}
+	}
+
+	private handleConfig(payload: unknown): void {
+		const config = normalizeDebugConfig(payload);
+		if (config) {
+			this.emit("configReceived", config);
 		}
 	}
 
