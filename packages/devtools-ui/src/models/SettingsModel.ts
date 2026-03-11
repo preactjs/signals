@@ -1,4 +1,4 @@
-import { signal, createModel } from "@preact/signals";
+import { effect, signal, createModel } from "@preact/signals";
 import type {
 	DevToolsAdapter,
 	Settings,
@@ -24,11 +24,14 @@ export const SettingsModel = createModel((adapter: DevToolsAdapter) => {
 		showDisposedSignals.value = !showDisposedSignals.value;
 	};
 
-	// Listen to adapter events
-	adapter.on("configReceived", (config: { settings?: Settings }) => {
-		if (config.settings) {
+	effect(() => {
+		const unsubscribe = adapter.on("configReceived", config => {
 			settings.value = config.settings;
-		}
+		});
+
+		return () => {
+			unsubscribe();
+		};
 	});
 
 	return {

@@ -36,3 +36,5 @@ export {
 	createPostMessageAdapter,
 	type PostMessageAdapterOptions,
 } from "./postmessage-adapter";
+
+export { normalizeDebugConfig } from "./normalize";

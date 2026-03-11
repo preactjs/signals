@@ -1,4 +1,4 @@
-import { signal, computed, createModel } from "@preact/signals";
+import { effect, signal, computed, createModel } from "@preact/signals";
 import type {
 	DevToolsAdapter,
 	SignalDisposed,
@@ -186,22 +186,33 @@ export const UpdatesModel = createModel(
 			disposedSignalIds.value = new Set();
 		};
 
-		// Listen to adapter events
-		adapter.on("signalUpdate", (signalUpdates: SignalUpdate[]) => {
-			if (isPaused.value) return;
+		effect(() => {
+			const unsubscribeSignalUpdate = adapter.on(
+				"signalUpdate",
+				(signalUpdates: SignalUpdate[]) => {
+					if (isPaused.value) return;
 
-			const updatesArray: Array<SignalUpdate | Divider> = [
-				...signalUpdates,
-			].reverse();
-			updatesArray.push({ type: "divider" });
+					const updatesArray: Array<SignalUpdate | Divider> = [
+						...signalUpdates,
+					].reverse();
+					updatesArray.push({ type: "divider" });
 
-			addUpdate(updatesArray);
-		});
+					addUpdate(updatesArray);
+				}
+			);
 
-		// Listen to disposal events
-		adapter.on("signalDisposed", (disposals: SignalDisposed[]) => {
-			if (isPaused.value) return;
-			addDisposal(disposals);
+			const unsubscribeSignalDisposed = adapter.on(
+				"signalDisposed",
+				(disposals: SignalDisposed[]) => {
+					if (isPaused.value) return;
+					addDisposal(disposals);
+				}
+			);
+
+			return () => {
+				unsubscribeSignalUpdate();
+				unsubscribeSignalDisposed();
+			};
 		});
 
 		const collapsedUpdateTree = computed(() => {
