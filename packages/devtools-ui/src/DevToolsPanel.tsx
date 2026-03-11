@@ -6,7 +6,12 @@ import { Header } from "./components/Header";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { GraphVisualization } from "./components/Graph";
 import { UpdatesContainer } from "./components/UpdatesContainer";
-import { initDevTools, destroyDevTools, getContext } from "./context";
+import {
+	createDevToolsContext,
+	destroyDevToolsContext,
+	getContext,
+	setCurrentDevToolsContext,
+} from "./context";
 
 export interface DevToolsPanelProps {
 	/** Hide the header (useful for embedded contexts) */
@@ -86,12 +91,16 @@ export interface MountOptions extends DevToolsPanelProps {
  */
 export async function mount(options: MountOptions): Promise<() => void> {
 	const { adapter, container, ...panelProps } = options;
+	const context = createDevToolsContext(adapter);
 
-	// Initialize context with adapter
-	initDevTools(adapter);
+	try {
+		await adapter.connect();
+	} catch (error) {
+		destroyDevToolsContext(context);
+		throw error;
+	}
 
-	// Connect the adapter
-	await adapter.connect();
+	setCurrentDevToolsContext(context);
 
 	// Clear existing content
 	container.innerHTML = "";
@@ -102,6 +111,6 @@ export async function mount(options: MountOptions): Promise<() => void> {
 	// Return cleanup function
 	return () => {
 		render(null, container);
-		destroyDevTools();
+		destroyDevToolsContext(context);
 	};
 }
