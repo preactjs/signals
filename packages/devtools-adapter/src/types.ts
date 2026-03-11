@@ -15,8 +15,8 @@ export interface SignalUpdate {
 	signalType: "signal" | "computed" | "effect" | "component";
 	signalName: string;
 	signalId?: string;
-	prevValue?: any;
-	newValue?: any;
+	prevValue?: unknown;
+	newValue?: unknown;
 	timestamp?: number;
 	receivedAt: number;
 	depth?: number;

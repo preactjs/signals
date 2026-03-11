@@ -12,8 +12,8 @@ export interface FormattedSignalUpdate {
 	signalType: "signal" | "computed" | "effect" | "component";
 	signalName: string;
 	signalId: string;
-	prevValue?: any;
-	newValue?: any;
+	prevValue?: unknown;
+	newValue?: unknown;
 	timestamp: number;
 	depth: number;
 	subscribedTo?: string;
@@ -37,7 +37,7 @@ export interface DevToolsMessage {
 		| "SIGNALS_INIT"
 		| "SIGNALS_CONFIG"
 		| "SIGNALS_DISPOSED";
-	payload: any;
+	payload: unknown;
 	timestamp: number;
 }
 
@@ -62,7 +62,7 @@ export interface SignalsDevToolsAPI {
 	sendConfig: (config: FormattedDebugConfig) => void;
 	sendUpdate: (updateInfo: UpdateInfo[]) => void;
 	sendDisposal: (
-		signal: any,
+		signal: unknown,
 		signalType: "signal" | "computed" | "effect"
 	) => void;
 	isConnected: () => boolean;

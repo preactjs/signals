@@ -2,6 +2,10 @@ import { BaseAdapter } from "./base-adapter";
 import { normalizeDebugConfig } from "./normalize";
 import type { Settings, SignalUpdate, SignalDisposed } from "./types";
 
+type AdapterCommandMessage =
+	| { type: "CONFIGURE_DEBUG"; payload: Settings }
+	| { type: "REQUEST_STATE" };
+
 export interface PostMessageAdapterOptions {
 	/**
 	 * The source window where the signals debug API is running
@@ -79,7 +83,7 @@ export class PostMessageAdapter extends BaseAdapter {
 		this.sendMessage({ type: "REQUEST_STATE" });
 	}
 
-	private sendMessage(message: any): void {
+	private sendMessage(message: AdapterCommandMessage): void {
 		this.targetWindow.postMessage(message, this.targetOrigin);
 	}
 
