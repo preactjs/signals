@@ -27,7 +27,7 @@ function packages(prod: boolean) {
 // @ts-expect-error
 export default defineConfig(env => ({
 	plugins: [
-		env.mode !== "production" ? signalsVite() : null,
+		env.mode !== "production" ? signalsVite({ framework: "preact" }) : null,
 		process.env.DEBUG
 			? preact({
 					exclude: /\breact/,

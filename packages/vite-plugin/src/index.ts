@@ -3,10 +3,10 @@ import { createSignalsAgentStore } from "./store";
 import { createClientModuleCode } from "./client-module";
 import { handleRequest, InvalidJsonBodyError, sendJson } from "./server";
 import {
-	resolveTransformFramework,
 	runSignalsTransform,
 	shouldRunSignalsTransform,
 	stripQuery,
+	type SignalsTransformFramework,
 } from "./signals-transform";
 import {
 	createEntryModuleCode,
@@ -18,20 +18,18 @@ import {
 } from "./virtual-modules";
 
 export interface SignalsViteOptions {
-	endpointBase?: string;
+	endpointBase?: string | false;
 	maxEvents?: number;
 	autoImportDebug?: boolean;
 	autoTransform?: boolean;
-	framework?: "auto" | "react" | "preact";
+	framework?: SignalsTransformFramework;
 }
 
 export function signalsVite(options: SignalsViteOptions = {}): Plugin {
 	const endpointBase = normalizeEndpointBase(options.endpointBase);
+	const hasDebugEndpoint = endpointBase !== false;
 	const store = createSignalsAgentStore({ maxEvents: options.maxEvents });
 	let resolvedConfig: ResolvedConfig | null = null;
-	const clientOptions = {
-		endpointBase,
-	};
 
 	const isProductionBuild = () =>
 		resolvedConfig?.isProduction ?? resolvedConfig?.command === "build";
@@ -52,20 +50,20 @@ export function signalsVite(options: SignalsViteOptions = {}): Plugin {
 		},
 		load(id) {
 			if (id === RESOLVED_VIRTUAL_MODULE_ID) {
-				return createClientModuleCode(clientOptions);
+				return hasDebugEndpoint
+					? createClientModuleCode({ endpointBase })
+					: null;
 			}
 			if (id === RESOLVED_VIRTUAL_ENTRY_MODULE_ID) {
 				return createEntryModuleCode({
 					autoImportDebug: options.autoImportDebug !== false,
+					installClient: hasDebugEndpoint,
 				});
 			}
 			return null;
 		},
 		async transform(code, id) {
-			const framework = resolveTransformFramework({
-				configuredFramework: options.framework ?? "auto",
-				config: resolvedConfig,
-			});
+			const framework = options.framework;
 
 			if (
 				!framework ||
@@ -88,7 +86,10 @@ export function signalsVite(options: SignalsViteOptions = {}): Plugin {
 			});
 		},
 		transformIndexHtml() {
-			if (isProductionBuild()) {
+			if (
+				isProductionBuild() ||
+				(options.autoImportDebug === false && !hasDebugEndpoint)
+			) {
 				return undefined;
 			}
 
@@ -104,6 +105,10 @@ export function signalsVite(options: SignalsViteOptions = {}): Plugin {
 			];
 		},
 		configureServer(server) {
+			if (!hasDebugEndpoint) {
+				return;
+			}
+
 			server.middlewares.use((req, res, next) => {
 				handleRequest({
 					store,
@@ -122,7 +127,13 @@ export function signalsVite(options: SignalsViteOptions = {}): Plugin {
 	};
 }
 
-function normalizeEndpointBase(endpointBase = "/__signals_agent__"): string {
+function normalizeEndpointBase(
+	endpointBase: string | false = "/__signals_agent__"
+): string | false {
+	if (endpointBase === false) {
+		return false;
+	}
+
 	if (endpointBase.trim() === "" || /^\/+$/u.test(endpointBase.trim())) {
 		return "/";
 	}

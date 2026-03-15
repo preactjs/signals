@@ -2,7 +2,7 @@
 
 Vite tooling that wires up Signals debugging with less manual setup.
 
-In development it auto-injects `@preact/signals-debug`, applies the React or Preact Signals Babel transform for you, forwards signal updates to a local HTTP API, and captures nearby page context such as network activity, navigation, and form interactions. In production builds it keeps the React transform enabled without the extra debug metadata.
+In development it auto-injects `@preact/signals-debug`, can apply the React or Preact Signals Babel transform for you, forwards signal updates to a local HTTP API, and captures nearby page context such as network activity, navigation, and form interactions. In production builds it keeps the React transform enabled without the extra debug metadata.
 
 ## Installation
 
@@ -10,7 +10,7 @@ In development it auto-injects `@preact/signals-debug`, applies the React or Pre
 pnpm add -D @preact/signals-vite-plugin
 ```
 
-Install the matching transform alongside it:
+Install the matching transform alongside it if you want the built-in transform integration:
 
 ```bash
 # React
@@ -27,7 +27,7 @@ import { defineConfig } from "vite";
 import { signalsVite } from "@preact/signals-vite-plugin";
 
 export default defineConfig({
-	plugins: [signalsVite()],
+	plugins: [signalsVite({ framework: "preact" })],
 });
 ```
 
@@ -35,17 +35,27 @@ export default defineConfig({
 
 `signalsVite()` accepts a small set of controls:
 
-- `endpointBase` - override the default API base (`/__signals_agent__`)
+- `endpointBase` - override the default API base (`/__signals_agent__`), or set it to `false` to disable the debug API and browser event capture
 - `maxEvents` - cap the in-memory event buffer size (defaults to `2000`)
 - `autoImportDebug` - skip auto-importing `@preact/signals-debug` when set to `false`
 - `autoTransform` - disable the built-in React/Preact Babel transform integration
-- `framework` - force `react`, `preact`, or `auto` detection for the transform layer
+- `framework` - enable the built-in transform layer for `react` or `preact`
 
-Transform behavior:
+Transform behavior when `framework` is set:
 
 - React projects get `@preact/signals-react-transform` in both dev and build
 - React development also enables the transform's debug metadata so component and signal names show up in `@preact/signals-debug`
 - Preact projects get `@preact/signals-preact-transform` during development so signal names are injected automatically
+
+If you only want the transform wiring and not the local debug API, use:
+
+```ts
+signalsVite({
+	framework: "react",
+	endpointBase: false,
+	autoImportDebug: false,
+});
+```
 
 ## What it exposes
 

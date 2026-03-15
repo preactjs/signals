@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { createClientModuleCode } from "../../src/client-module";
 import { signalsVite } from "../../src/index";
 import { createSignalsAgentStore } from "../../src/store";
+import { RESOLVED_VIRTUAL_ENTRY_MODULE_ID } from "../../src/virtual-modules";
 import {
 	queryEvents,
 	sanitizeForTransport,
@@ -575,6 +576,38 @@ describe("@preact/signals-vite-plugin", () => {
 		} finally {
 			vi.useRealTimers();
 		}
+	});
+
+	it("can disable the debug endpoint and browser event gathering", () => {
+		const plugin = createPlugin({ endpointBase: false }, "serve");
+		const use = vi.fn();
+
+		(plugin.configureServer as any)?.({
+			middlewares: {
+				use,
+			},
+		} as any);
+
+		expect(use).not.toHaveBeenCalled();
+		expect((plugin.load as any)?.(RESOLVED_VIRTUAL_ENTRY_MODULE_ID)).to.equal(
+			'import "@preact/signals-debug";'
+		);
+	});
+
+	it("does not auto-detect a framework transform", async () => {
+		const plugin = createPlugin(undefined, "serve");
+		const result = await (plugin.transform as any)?.(
+			[
+				'import { signal } from "@preact/signals-react";',
+				"const count = signal(0);",
+				"export function Counter() {",
+				"\treturn <p>{count.value}</p>;",
+				"}",
+			].join("\n"),
+			"/src/Counter.tsx"
+		);
+
+		expect(result).to.equal(null);
 	});
 
 	it("applies the React transform with debug support during development", async () => {

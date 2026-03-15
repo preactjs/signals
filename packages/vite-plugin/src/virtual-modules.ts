@@ -5,6 +5,7 @@ export const RESOLVED_VIRTUAL_ENTRY_MODULE_ID = `\0${VIRTUAL_ENTRY_MODULE_ID}`;
 
 export interface SignalsAgentEntryModuleOptions {
 	autoImportDebug: boolean;
+	installClient: boolean;
 }
 
 export function createEntryModuleCode(
@@ -14,10 +15,12 @@ export function createEntryModuleCode(
 		options.autoImportDebug
 			? `import ${JSON.stringify("@preact/signals-debug")};`
 			: null,
-		`import { installSignalsAgentClient } from ${JSON.stringify(
-			VIRTUAL_MODULE_ID
-		)};`,
-		"installSignalsAgentClient();",
+		options.installClient
+			? `import { installSignalsAgentClient } from ${JSON.stringify(
+					VIRTUAL_MODULE_ID
+				)};`
+			: null,
+		options.installClient ? "installSignalsAgentClient();" : null,
 	]
 		.filter(Boolean)
 		.join("\n");

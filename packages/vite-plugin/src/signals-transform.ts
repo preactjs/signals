@@ -1,6 +1,5 @@
 // @ts-expect-error Babel types come from DefinitelyTyped in consumers
 import { transformAsync } from "@babel/core";
-import type { ResolvedConfig } from "vite";
 
 export type SignalsTransformFramework = "react" | "preact";
 
@@ -18,40 +17,6 @@ export function shouldRunSignalsTransform(id: string): boolean {
 		return false;
 	}
 	return true;
-}
-
-export function resolveTransformFramework({
-	configuredFramework,
-	config,
-}: {
-	configuredFramework: "auto" | SignalsTransformFramework;
-	config: ResolvedConfig | null;
-}): SignalsTransformFramework | null {
-	if (configuredFramework !== "auto") {
-		return configuredFramework;
-	}
-
-	const esbuildOptions =
-		config?.esbuild && typeof config.esbuild === "object"
-			? config.esbuild
-			: null;
-	if (esbuildOptions?.jsxImportSource === "preact") {
-		return "preact";
-	}
-	if (esbuildOptions?.jsxImportSource === "react") {
-		return "react";
-	}
-
-	const pluginNames =
-		config?.plugins.map(plugin => plugin.name.toLowerCase()) ?? [];
-	if (pluginNames.some(name => name.includes("preact"))) {
-		return "preact";
-	}
-	if (pluginNames.some(name => name.includes("react"))) {
-		return "react";
-	}
-
-	return null;
 }
 
 export async function runSignalsTransform({
@@ -115,7 +80,7 @@ async function loadSignalsTransform(framework: SignalsTransformFramework) {
 		}
 
 		throw new Error(
-			`signalsVite() needs "${packageName}" installed to auto-transform "${framework}" files. Add it as a devDependency, set an explicit "framework" option, or set autoTransform: false.`
+			`signalsVite() needs "${packageName}" installed to transform "${framework}" files. Add it as a devDependency or set autoTransform: false.`
 		);
 	}
 }
