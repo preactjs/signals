@@ -1,0 +1,35 @@
+.auth-demo .card {
+  min-width: 320px;
+}
+
+.auth-form {
+  display: grid;
+  gap: 1rem;
+}
+
+.auth-field {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.auth-field span {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #4a4a4a;
+}
+
+.auth-field input {
+  padding: 0.65rem 0.8rem;
+  border: 1px solid #c9c9d4;
+  border-radius: 0.75rem;
+  font: inherit;
+}
+
+.auth-debug {
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.85rem 1rem;
+  border-radius: 0.9rem;
+  background: #f7f4ff;
+  color: #4a3479;
+}
