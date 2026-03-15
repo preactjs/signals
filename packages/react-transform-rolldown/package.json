@@ -1,0 +1,77 @@
+{
+  "name": "@preact/signals-react-transform-rolldown",
+  "version": "0.0.0",
+  "license": "MIT",
+  "description": "Rolldown plugin for the React Signals transform",
+  "keywords": [
+    "plugin",
+    "react",
+    "rolldown",
+    "signals"
+  ],
+  "authors": [
+    "The Preact Authors (https://github.com/preactjs/signals/contributors)"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/preactjs/signals",
+    "directory": "packages/react-transform-rolldown"
+  },
+  "bugs": "https://github.com/preactjs/signals/issues",
+  "homepage": "https://preactjs.com",
+  "funding": {
+    "type": "opencollective",
+    "url": "https://opencollective.com/preact"
+  },
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "source": "src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "CHANGELOG.md",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "microbundle --raw --no-compress --external \"rolldown,rolldown/utils,rolldown-string\" --globals \"rolldown/utils=rolldownUtils\"",
+    "test": "cd ../.. && pnpm vitest run ./packages/react-transform-rolldown/test/node/*.test.ts",
+    "prepublishOnly": "cd ../.. && pnpm build:react-transform-rolldown"
+  },
+  "dependencies": {
+    "rolldown-string": "^0.3.0"
+  },
+  "peerDependencies": {
+    "@preact/signals-react": "^3.9.1",
+    "react": "^16.14.0 || 17.x || 18.x || 19.x",
+    "rolldown": "^1.0.0-rc.9",
+    "vite": "^8.0.0"
+  },
+  "peerDependenciesMeta": {
+    "vite": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@preact/signals-core": "workspace:*",
+    "@preact/signals-react": "workspace:^3.9.1",
+    "@types/react": "^18.3.23",
+    "@types/react-dom": "^18.3.7",
+    "jsdom": "^26.1.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "rolldown": "^1.0.0-rc.9"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}
