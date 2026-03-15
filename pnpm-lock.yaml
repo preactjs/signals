@@ -467,6 +467,18 @@ importers:
         specifier: ^6.9.0
         version: 6.10.0(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
 
+  packages/react-transform-swc:
+    devDependencies:
+      '@swc/core':
+        specifier: ^1.15.18
+        version: 1.15.18
+      prettier:
+        specifier: ^3.0.0
+        version: 3.6.2
+      vitest:
+        specifier: ^4.0.17
+        version: 4.0.17(@types/node@20.19.30)(@vitest/browser-playwright@4.0.17)
+
   packages/react/runtime:
     dependencies:
       '@preact/signals-core':
