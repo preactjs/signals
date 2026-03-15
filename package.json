@@ -4,7 +4,7 @@
   "scripts": {
     "prebuild": "shx rm -rf packages/*/dist/",
     "build": "run-p build:* && pnpm _build:devtools-ui",
-    "_build": "microbundle --raw --globals @preact/signals-core=preactSignalsCore,preact/hooks=preactHooks,@preact/signals-react/runtime=reactSignalsRuntime",
+    "_build": "microbundle --raw --globals @preact/signals-core=preactSignalsCore,preact/hooks=preactHooks,@preact/signals-react/runtime=reactSignalsRuntime,rolldown/utils=rolldownUtils",
     "build:core": "pnpm _build --cwd packages/core && pnpm postbuild:core",
     "build:debug": "pnpm _build --cwd packages/debug && pnpm postbuild:debug",
     "build:devtools-adapter": "pnpm _build --cwd packages/devtools-adapter && pnpm postbuild:devtools-adapter",
@@ -15,6 +15,7 @@
     "build:react-utils": "pnpm _build --cwd packages/react/utils && pnpm postbuild:react-utils",
     "build:react-runtime": "pnpm _build --cwd packages/react/runtime && pnpm postbuild:react-runtime",
     "build:react-transform": "pnpm _build --no-compress --cwd packages/react-transform",
+    "build:react-transform-rolldown": "pnpm _build --no-compress --cwd packages/react-transform-rolldown --external \"rolldown,rolldown/utils,rolldown-string\"",
     "build:preact-transform": "pnpm _build --no-compress --cwd packages/preact-transform",
     "postbuild:core": "shx mv -f  packages/core/dist/index.d.ts  packages/core/dist/signals-core.d.ts",
     "postbuild:debug": "shx mv -f packages/debug/dist/debug/src/index.d.ts packages/debug/dist/signals-debug.d.ts",
