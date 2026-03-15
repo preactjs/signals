@@ -68,11 +68,7 @@ async function loadSignalsTransform(framework: SignalsTransformFramework) {
 	const packageName = getTransformPackageName(framework);
 
 	try {
-		const signalsTransformModule =
-			framework === "react"
-				? await import("@preact/signals-react-transform")
-				: await import("@preact/signals-preact-transform");
-
+		const signalsTransformModule = await import(packageName);
 		return signalsTransformModule.default ?? signalsTransformModule;
 	} catch (error) {
 		if (!isMissingModuleError(error, packageName)) {
