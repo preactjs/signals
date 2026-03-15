@@ -130,4 +130,6 @@ dist
 .yarn/install-state.gz
 .pnp.*
 
-.pnpm-store/
+**/.pnpm-store/
+**/.swc/
+**/target/
