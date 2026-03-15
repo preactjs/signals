@@ -16,6 +16,7 @@ Read the [announcement post](https://preactjs.com/blog/introducing-signals/) to 
   - [`untracked(fn)`](../core/README.md#untrackedfn)
 - [React Integration](#react-integration)
   - [Babel Transform](#babel-transform)
+  - [SWC Transform](#swc-transform)
   - [`useSignals` hook](#usesignals-hook)
   - [Hooks](#hooks)
   - [Using signals with React's SSR APIs](#using-signals-with-reacts-ssr-apis)
@@ -37,7 +38,7 @@ The React integration can be installed via:
 npm install @preact/signals-react
 ```
 
-We have a couple of options for integrating Signals into React. The recommended approach is to use the Babel transform to automatically make your components that use signals reactive.
+We have a couple of options for integrating Signals into React. The recommended approach is to use a build-time transform to automatically make your components that use signals reactive.
 
 ### Babel Transform
 
@@ -64,6 +65,22 @@ function CounterValue() {
 ```
 
 See the [Readme for the Babel plugin](../react-transform/README.md) for more details about how the transform works and configuring it.
+
+### SWC Transform
+
+If your project uses SWC instead of Babel, install `@preact/signals-react-transform-swc` and configure it in `jsc.experimental.plugins`.
+
+```json
+{
+	"jsc": {
+		"experimental": {
+			"plugins": [["@preact/signals-react-transform-swc", { "mode": "auto" }]]
+		}
+	}
+}
+```
+
+See the [Readme for the SWC plugin](../react-transform-swc/README.md) for the supported options and local setup details.
 
 ### `useSignals` hook
 

@@ -1,0 +1,56 @@
+{
+  "name": "@preact/signals-react-transform-swc",
+  "version": "0.0.0",
+  "license": "MIT",
+  "description": "SWC plugin to transform React components for Preact Signals",
+  "keywords": [
+    "swc",
+    "signals",
+    "react",
+    "rust"
+  ],
+  "authors": [
+    "The Preact Authors (https://github.com/preactjs/signals/contributors)"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/preactjs/signals",
+    "directory": "packages/react-transform-swc"
+  },
+  "bugs": "https://github.com/preactjs/signals/issues",
+  "homepage": "https://preactjs.com",
+  "funding": {
+    "type": "opencollective",
+    "url": "https://opencollective.com/preact"
+  },
+  "main": "dist/signals_react_transform_swc.wasm",
+  "exports": {
+    ".": "./dist/signals_react_transform_swc.wasm"
+  },
+  "preferUnplugged": true,
+  "files": [
+    "dist",
+    "src",
+    "Cargo.toml",
+    "CHANGELOG.md",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "cross-env RUSTFLAGS=\"--cfg swc_ast_unknown\" cargo build --release --target wasm32-wasip1 && shx rm -rf dist && shx mkdir -p dist && shx cp target/wasm32-wasip1/release/signals_react_transform_swc.wasm dist/signals_react_transform_swc.wasm",
+    "build:debug": "cross-env RUSTFLAGS=\"--cfg swc_ast_unknown\" cargo build --target wasm32-wasip1 && shx rm -rf dist && shx mkdir -p dist && shx cp target/wasm32-wasip1/debug/signals_react_transform_swc.wasm dist/signals_react_transform_swc.wasm",
+    "prepublishOnly": "cd ../.. && pnpm build:react-transform-swc",
+    "test": "pnpm run build:debug && cd ../.. && vitest run ./packages/react-transform-swc/test/node/index.test.tsx"
+  },
+  "peerDependencies": {
+    "@swc/core": "^1.15.18"
+  },
+  "devDependencies": {
+    "@swc/core": "^1.15.18",
+    "prettier": "^3.0.0",
+    "vitest": "^4.0.17"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}

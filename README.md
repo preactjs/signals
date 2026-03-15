@@ -28,6 +28,7 @@ Read the [announcement post](https://preactjs.com/blog/introducing-signals/) to 
       - [`useSignalRef`](./packages/preact/README.md#usesignalref)
 - [React Integration](./packages/react/README.md#react-integration)
   - [Babel Transform](./packages/react/README.md#babel-transform)
+  - [SWC Transform](./packages/react-transform-swc/README.md#signals-react-transform-swc)
   - [`useSignals` hook](./packages/react/README.md#usesignals-hook)
   - [Hooks](./packages/react/README.md#hooks)
   - [Using signals with React's SSR APIs](./packages/react/README.md#using-signals-with-reacts-ssr-apis)
