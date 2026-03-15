@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 
 const format = (code: string) => prettier.format(code, { parser: "babel" });
 const pluginPath = fileURLToPath(
+	// @ts-expect-error URL types are not fully supported in Node.js yet
 	new URL("../../dist/signals_preact_transform_swc.wasm", import.meta.url)
 );
 
