@@ -25,6 +25,9 @@
       "@preact/signals-react-transform": [
         "./packages/react-transform/src/index.ts"
       ],
+      "@preact/signals-react-transform-rolldown": [
+        "./packages/react-transform-rolldown/src/index.ts"
+      ],
       "@preact/signals-preact-transform": [
         "./packages/preact-transform/src/index.ts"
       ]
