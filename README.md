@@ -16,6 +16,7 @@ Read the [announcement post](https://preactjs.com/blog/introducing-signals/) to 
   - [`untracked(fn)`](./packages/core/README.md#untrackedfn)
 - [Debug Extension](./packages/debug/README.md#preact-integration)
 - [Preact Integration](./packages/preact/README.md#preact-integration)
+  - [SWC Transform](./packages/preact-transform-swc/README.md#signals-preact-transform-swc)
   - [Hooks](./packages/preact/README.md#hooks)
   - [Rendering optimizations](./packages/preact/README.md#rendering-optimizations)
     - [Attribute optimization (experimental)](./packages/preact/README.md#attribute-optimization-experimental)
