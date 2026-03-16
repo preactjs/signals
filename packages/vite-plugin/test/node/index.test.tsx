@@ -18,11 +18,12 @@ const page = {
 };
 
 function createMiddleware(
-	options?: Parameters<typeof signalsVite>[0]
+	options?: Parameters<typeof signalsVite>[0],
+	hook: "configurePreviewServer" | "configureServer" = "configureServer"
 ): (req: any, res: any, next: () => void) => void {
 	const plugin = signalsVite(options);
 	let middleware: ((req: any, res: any, next: () => void) => void) | undefined;
-	(plugin.configureServer as any)?.({
+	(plugin[hook] as any)?.({
 		middlewares: {
 			use(handler: (req: any, res: any, next: () => void) => void) {
 				middleware = handler;
@@ -207,7 +208,7 @@ function createResponse() {
 	};
 }
 
-describe("@preact/signals-vite-plugin", () => {
+describe("@preact/signals-agent-vite", () => {
 	it("redacts secret-looking keys before transport", () => {
 		const value = sanitizeForTransport({
 			email: "jovi@example.com",
@@ -387,6 +388,18 @@ describe("@preact/signals-vite-plugin", () => {
 		expect(JSON.parse(response.text())).to.deep.equal({
 			error: "Invalid JSON body",
 		});
+	});
+
+	it("registers the agent middleware for preview servers too", async () => {
+		const middleware = createMiddleware(undefined, "configurePreviewServer");
+		const req = createRequest({ url: "/__signals_agent__/health" });
+		const response = createResponse();
+
+		middleware(req, response.res, vi.fn());
+		await response.ended;
+
+		expect(response.res.statusCode).to.equal(200);
+		expect(JSON.parse(response.text())).to.deep.equal({ ok: true });
 	});
 
 	it("resets buffered events while preserving sessions", async () => {

@@ -20,6 +20,26 @@ export interface HandleRequestOptions {
 	next: () => void;
 }
 
+export function createSignalsAgentMiddleware({
+	store,
+	endpointBase,
+}: Pick<HandleRequestOptions, "store" | "endpointBase">) {
+	return (req: IncomingMessage, res: ServerResponse, next: () => void) => {
+		handleRequest({
+			store,
+			endpointBase,
+			req,
+			res,
+			next,
+		}).catch(error => {
+			const statusCode = error instanceof InvalidJsonBodyError ? 400 : 500;
+			sendJson(res, statusCode, {
+				error: error instanceof Error ? error.message : "Unexpected error",
+			});
+		});
+	};
+}
+
 export async function handleRequest({
 	store,
 	endpointBase,

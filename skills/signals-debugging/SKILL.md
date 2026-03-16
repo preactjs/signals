@@ -5,7 +5,7 @@ description: Interprets `@preact/signals-debug` updates and the AI-native Vite e
 
 # Signals Debugging
 
-Use this skill when a user reports a UI bug in an app that uses `@preact/signals-debug`, the Signals devtools bridge, or `@preact/signals-vite-plugin`.
+Use this skill when a user reports a UI bug in an app that uses `@preact/signals-debug`, the Signals devtools bridge, or `@preact/signals-agent-vite`.
 
 The Vite plugin is configured with `signalsVite()`.
 
@@ -56,7 +56,7 @@ Think in this order:
 
 ## Vite Plugin Workflow
 
-When the app uses `@preact/signals-vite-plugin`, use this flow:
+When the app uses `@preact/signals-agent-vite`, use this flow:
 
 1. Create a session:
 

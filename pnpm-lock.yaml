@@ -154,7 +154,7 @@ importers:
       '@preact/signals-react':
         specifier: workspace:../packages/react
         version: link:../packages/react
-      '@preact/signals-vite-plugin':
+      '@preact/signals-agent-vite':
         specifier: workspace:../packages/vite-plugin
         version: link:../packages/vite-plugin
       preact:

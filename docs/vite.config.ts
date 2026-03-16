@@ -1,6 +1,6 @@
 import { defineConfig, Plugin, Connect } from "vite";
 import preact from "@preact/preset-vite";
-import { signalsVite } from "@preact/signals-vite-plugin";
+import { signalsVite } from "@preact/signals-agent-vite";
 import { resolve, posix, join } from "path";
 import fs from "fs";
 

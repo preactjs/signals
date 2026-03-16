@@ -1,5 +1,5 @@
 ---
-"@preact/signals-vite-plugin": minor
+"@preact/signals-agent-vite": minor
 ---
 
 Initial release

@@ -1,7 +1,7 @@
 import type { Plugin, ResolvedConfig } from "vite";
 import { createSignalsAgentStore } from "./store";
 import { createClientModuleCode } from "./client-module";
-import { handleRequest, InvalidJsonBodyError, sendJson } from "./server";
+import { createSignalsAgentMiddleware } from "./server";
 import {
 	runSignalsTransform,
 	shouldRunSignalsTransform,
@@ -29,6 +29,9 @@ export function signalsVite(options: SignalsViteOptions = {}): Plugin {
 	const endpointBase = normalizeEndpointBase(options.endpointBase);
 	const hasDebugEndpoint = endpointBase !== false;
 	const store = createSignalsAgentStore({ maxEvents: options.maxEvents });
+	const serverMiddleware = hasDebugEndpoint
+		? createSignalsAgentMiddleware({ store, endpointBase })
+		: null;
 	let resolvedConfig: ResolvedConfig | null = null;
 
 	const isProductionBuild = () =>
@@ -105,24 +108,18 @@ export function signalsVite(options: SignalsViteOptions = {}): Plugin {
 			];
 		},
 		configureServer(server) {
-			if (!hasDebugEndpoint) {
+			if (!serverMiddleware) {
 				return;
 			}
 
-			server.middlewares.use((req, res, next) => {
-				handleRequest({
-					store,
-					endpointBase,
-					req,
-					res,
-					next,
-				}).catch(error => {
-					const statusCode = error instanceof InvalidJsonBodyError ? 400 : 500;
-					sendJson(res, statusCode, {
-						error: error instanceof Error ? error.message : "Unexpected error",
-					});
-				});
-			});
+			server.middlewares.use(serverMiddleware);
+		},
+		configurePreviewServer(server) {
+			if (!serverMiddleware) {
+				return;
+			}
+
+			server.middlewares.use(serverMiddleware);
 		},
 	};
 }

@@ -107,7 +107,7 @@ export default defineConfig({
 						dirname,
 						"./packages/devtools-adapter/src/index.ts"
 					),
-					"@preact/signals-vite-plugin": path.join(
+					"@preact/signals-agent-vite": path.join(
 						dirname,
 						"./packages/vite-plugin/src/index.ts"
 					),

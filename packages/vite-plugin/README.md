@@ -1,4 +1,4 @@
-# @preact/signals-vite-plugin
+# @preact/signals-agent-vite
 
 Vite tooling that wires up Signals debugging with less manual setup.
 
@@ -7,7 +7,7 @@ In development it auto-injects `@preact/signals-debug`, can apply the React or P
 ## Installation
 
 ```bash
-pnpm add -D @preact/signals-vite-plugin
+pnpm add -D @preact/signals-agent-vite
 ```
 
 Install the matching transform alongside it if you want the built-in transform integration:
@@ -24,7 +24,7 @@ pnpm add -D @preact/signals-preact-transform
 
 ```ts
 import { defineConfig } from "vite";
-import { signalsVite } from "@preact/signals-vite-plugin";
+import { signalsVite } from "@preact/signals-agent-vite";
 
 export default defineConfig({
 	plugins: [signalsVite({ framework: "preact" })],
@@ -59,7 +59,7 @@ signalsVite({
 
 ## What it exposes
 
-The plugin serves a small API from the Vite dev server:
+The plugin serves the same small API from both the Vite dev server and `vite preview`:
 
 - `POST /__signals_agent__/sessions` - create a filtered debugging session
 - `POST /__signals_agent__/reset` - clear buffered events while keeping active sessions

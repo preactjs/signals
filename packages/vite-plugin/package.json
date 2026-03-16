@@ -22,10 +22,8 @@
     "type": "opencollective",
     "url": "https://opencollective.com/preact"
   },
-  "amdName": "preactSignalsVitePlugin",
   "main": "dist/vite-plugin.js",
   "module": "dist/vite-plugin.module.js",
-  "unpkg": "dist/vite-plugin.min.js",
   "types": "dist/vite-plugin.d.ts",
   "source": "src/index.ts",
   "exports": {
@@ -48,7 +46,6 @@
   },
   "dependencies": {
     "@babel/core": "^7.28.4",
-    "@babel/preset-typescript": "^7.27.1",
     "@preact/signals-debug": "workspace:*"
   },
   "devDependencies": {
