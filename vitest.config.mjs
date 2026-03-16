@@ -107,6 +107,10 @@ export default defineConfig({
 						dirname,
 						"./packages/devtools-adapter/src/index.ts"
 					),
+					"@preact/signals-agent-vite": path.join(
+						dirname,
+						"./packages/vite-plugin/src/index.ts"
+					),
 				},
 	},
 	plugins: [

@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2020",
+    "module": "ES2020",
     "lib": ["ES2021.WeakRef", "ES2015.Symbol", "DOM", "ESNext.Disposable"],
     "moduleResolution": "node",
     "esModuleInterop": true,
@@ -25,6 +26,7 @@
       "@preact/signals-react-transform": [
         "./packages/react-transform/src/index.ts"
       ],
+      "@preact/signals-agent-vite": ["./packages/vite-plugin/src/index.ts"],
       "@preact/signals-preact-transform": [
         "./packages/preact-transform/src/index.ts"
       ]

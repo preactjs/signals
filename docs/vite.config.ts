@@ -1,5 +1,6 @@
 import { defineConfig, Plugin, Connect } from "vite";
 import preact from "@preact/preset-vite";
+import { signalsVite } from "@preact/signals-agent-vite";
 import { resolve, posix, join } from "path";
 import fs from "fs";
 
@@ -12,9 +13,11 @@ function packages(prod: boolean) {
 	for (let name of fs.readdirSync(root)) {
 		if (name[0] === ".") continue;
 		const p = resolve(root, name, "package.json");
+		if (!fs.existsSync(p)) continue;
 		const pkg = JSON.parse(fs.readFileSync(p, "utf-8"));
 		if (pkg.private) continue;
 		const entry = prod ? "." : pkg.source;
+		if (typeof pkg.name !== "string" || typeof entry !== "string") continue;
 		alias[pkg.name] = resolve(root, name, entry);
 		console.log(`alias: ${pkg.name} -> ${alias[pkg.name]}`);
 	}
@@ -24,6 +27,7 @@ function packages(prod: boolean) {
 // @ts-expect-error
 export default defineConfig(env => ({
 	plugins: [
+		env.mode !== "production" ? signalsVite({ framework: "preact" }) : null,
 		process.env.DEBUG
 			? preact({
 					exclude: /\breact/,
