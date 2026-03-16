@@ -139,6 +139,9 @@ importers:
       '@preact/signals':
         specifier: workspace:../packages/preact
         version: link:../packages/preact
+      '@preact/signals-agent-vite':
+        specifier: workspace:../packages/vite-plugin
+        version: link:../packages/vite-plugin
       '@preact/signals-core':
         specifier: workspace:../packages/core
         version: link:../packages/core
@@ -154,9 +157,6 @@ importers:
       '@preact/signals-react':
         specifier: workspace:../packages/react
         version: link:../packages/react
-      '@preact/signals-agent-vite':
-        specifier: workspace:../packages/vite-plugin
-        version: link:../packages/vite-plugin
       preact:
         specifier: ^10.25.0
         version: 10.27.2
@@ -491,9 +491,6 @@ importers:
       '@babel/core':
         specifier: ^7.28.4
         version: 7.28.5
-      '@babel/preset-typescript':
-        specifier: ^7.27.1
-        version: 7.27.1(@babel/core@7.28.5)
       '@preact/signals-debug':
         specifier: workspace:*
         version: link:../debug
