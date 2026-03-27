@@ -1,5 +1,11 @@
 # @preact/signals-react
 
+## 3.10.0
+
+### Minor Changes
+
+- [#907](https://github.com/preactjs/signals/pull/907) [`904a879`](https://github.com/preactjs/signals/commit/904a8793a13021c738312809425dda8d54738510) Thanks [@jbalsas](https://github.com/jbalsas)! - Add optional `getKey` prop to `<For>` component for stable list reconciliation. When provided, `getKey` generates stable keys for the internal `<Item>` wrapper, fixing incorrect DOM reuse when items are removed or reordered.
+
 ## 3.9.1
 
 ### Patch Changes
