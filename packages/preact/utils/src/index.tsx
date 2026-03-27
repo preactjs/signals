@@ -34,6 +34,7 @@ interface ForProps<T> {
 		| ReadonlySignal<Array<T>>
 		| (() => Array<T> | Signal<Array<T>> | ReadonlySignal<Array<T>>);
 	fallback?: ComponentChildren;
+	getKey?: (item: T, index: number) => string | number;
 	children: (value: T, index: number) => ComponentChildren;
 }
 
@@ -49,10 +50,13 @@ export function For<T>(props: ForProps<T>): ComponentChildren | null {
 
 	const removed = new Set(cache.keys());
 
-	const items = listValue.map((value, key) => {
+	const items = listValue.map((value, index) => {
 		removed.delete(value);
 		if (!cache.has(value)) {
-			const result = <Item v={value} i={key} children={props.children} />;
+			const key = props.getKey ? props.getKey(value, index) : index;
+			const result = (
+				<Item key={key} v={value} i={index} children={props.children} />
+			);
 			cache.set(value, result);
 			return result;
 		}
