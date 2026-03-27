@@ -163,6 +163,78 @@ describe("@preact/signals-utils", () => {
 				"<p>foo-baz</p><p>bar-baz</p><p>qux-baz</p>"
 			);
 		});
+
+		it("Should use getKey for stable identity on item removal", () => {
+			const list = signal([
+				{ id: "a", label: "Alice" },
+				{ id: "b", label: "Bob" },
+				{ id: "c", label: "Carol" },
+			]);
+			const Paragraph = (p: any) => <p>{p.children}</p>;
+			act(() => {
+				render(
+					<For each={list} getKey={item => item.id}>
+						{item => <Paragraph>{item.label}</Paragraph>}
+					</For>,
+					scratch
+				);
+			});
+			expect(scratch.innerHTML).to.eq("<p>Alice</p><p>Bob</p><p>Carol</p>");
+
+			// Remove middle item
+			act(() => {
+				list.value = [
+					{ id: "a", label: "Alice" },
+					{ id: "c", label: "Carol" },
+				];
+			});
+			expect(scratch.innerHTML).to.eq("<p>Alice</p><p>Carol</p>");
+		});
+
+		it("Should handle duplicate values with getKey", () => {
+			const list = signal([
+				{ id: 1, name: "foo" },
+				{ id: 2, name: "foo" },
+			]);
+			const Paragraph = (p: any) => <p>{p.children}</p>;
+			act(() => {
+				render(
+					<For each={list} getKey={item => item.id}>
+						{item => <Paragraph>{item.name}</Paragraph>}
+					</For>,
+					scratch
+				);
+			});
+			expect(scratch.innerHTML).to.eq("<p>foo</p><p>foo</p>");
+		});
+
+		it("Should reorder correctly with getKey", () => {
+			const list = signal([
+				{ id: "x", label: "X" },
+				{ id: "y", label: "Y" },
+				{ id: "z", label: "Z" },
+			]);
+			const Paragraph = (p: any) => <p>{p.children}</p>;
+			act(() => {
+				render(
+					<For each={list} getKey={item => item.id}>
+						{item => <Paragraph>{item.label}</Paragraph>}
+					</For>,
+					scratch
+				);
+			});
+			expect(scratch.innerHTML).to.eq("<p>X</p><p>Y</p><p>Z</p>");
+
+			// Reverse order
+			act(() => {
+				list.value = [
+					{ id: "z", label: "Z" },
+					{ id: "y", label: "Y" },
+					{ id: "x", label: "X" },
+				];
+			});
+			expect(scratch.innerHTML).to.eq("<p>Z</p><p>Y</p><p>X</p>");
+		});
 	});
 
 	describe("useSignalRef", () => {
