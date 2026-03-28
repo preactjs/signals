@@ -2388,6 +2388,53 @@ describe("createModel", () => {
 		expect(counter.count.value).to.equal(1);
 	});
 
+	it("should wrap nested object methods as actions", () => {
+		const CounterModel = createModel(() => ({
+			counter: {
+				count: signal(0),
+				increment() {
+					this.count.value++;
+				},
+			},
+		}));
+
+		const model = new CounterModel();
+		expect(model.counter.count.value).to.equal(0);
+
+		model.counter.increment();
+		expect(model.counter.count.value).to.equal(1);
+	});
+
+	it("should batch updates from deeply nested object methods", () => {
+		let effectRunCount = 0;
+		const TestModel = createModel(() => ({
+			stats: {
+				counts: {
+					primary: signal(0),
+					secondary: signal(0),
+					incrementBoth() {
+						this.primary.value += 1;
+						this.secondary.value += 1;
+					},
+				},
+			},
+		}));
+
+		const model = new TestModel();
+		effect(() => {
+			model.stats.counts.primary.value;
+			model.stats.counts.secondary.value;
+			effectRunCount++;
+		});
+
+		expect(effectRunCount).to.equal(1);
+
+		model.stats.counts.incrementBoth();
+		expect(effectRunCount).to.equal(2);
+		expect(model.stats.counts.primary.value).to.equal(1);
+		expect(model.stats.counts.secondary.value).to.equal(1);
+	});
+
 	it("should automatically batch signal updates within actions", () => {
 		let effectRunCount = 0;
 		const TestModel = createModel(() => {
