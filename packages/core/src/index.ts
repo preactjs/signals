@@ -1046,24 +1046,22 @@ function startCapturingEffects(): () => Effect[] | undefined {
 	};
 }
 
+const wrapInAction = (value: Record<string, unknown>) => {
+	for (const key in value) {
+		const val = value[key];
+		if (typeof val === "function") {
+			value[key] = action(val as (...args: unknown[]) => unknown);
+		} else if (typeof val === "object" && val !== null && !("brand" in val)) {
+			// Recursively wrap nested object properties in actions. This allows users to write
+			// nested models without worrying about wrapping their functions in `action`.
+			wrapInAction(val as Record<string, unknown>);
+		}
+	}
+};
+
 function createModel<TModel, TFactoryArgs extends any[] = []>(
 	modelFactory: ModelFactory<TModel, TFactoryArgs>
 ): ModelConstructor<TModel, TFactoryArgs> {
-	type ActionContainer = Record<string, unknown>;
-
-	const wrapInAction = (value: ActionContainer) => {
-		for (const key in value) {
-			const val = value[key];
-			if (typeof val === "function") {
-				value[key] = action(val as (...args: unknown[]) => unknown);
-			} else if (typeof val === "object" && val !== null && !("brand" in val)) {
-				// Recursively wrap nested object properties in actions. This allows users to write
-				// nested models without worrying about wrapping their functions in `action`.
-				wrapInAction(val as ActionContainer);
-			}
-		}
-	};
-
 	return function SignalModel(...args: TFactoryArgs): Model<TModel> {
 		let modelEffects: Effect[] | undefined;
 		let model: Model<TModel>;
