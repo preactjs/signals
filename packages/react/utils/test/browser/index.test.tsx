@@ -126,21 +126,28 @@ describe("@preact/signals-react-utils", () => {
 			);
 		});
 
-		it("Should use getKey for stable identity on item removal", async () => {
+		it("Should respect child keys for stable identity on item removal", async () => {
 			const list = signal([
 				{ id: "a", label: "Alice" },
 				{ id: "b", label: "Bob" },
 				{ id: "c", label: "Carol" },
 			]);
-			const Paragraph = (p: any) => <p>{p.children}</p>;
+			const getInputs = () =>
+				Array.from(scratch.querySelectorAll<HTMLInputElement>("input"));
 			await act(() => {
 				render(
-					<For each={list} getKey={item => item.id}>
-						{item => <Paragraph>{item.label}</Paragraph>}
+					<For each={list}>
+						{item => <input key={item.id} defaultValue={item.label} />}
 					</For>
 				);
 			});
-			expect(scratch.innerHTML).to.eq("<p>Alice</p><p>Bob</p><p>Carol</p>");
+			expect(getInputs().map(input => input.value)).to.deep.eq([
+				"Alice",
+				"Bob",
+				"Carol",
+			]);
+
+			getInputs()[1].value = "Bobby";
 
 			// Remove middle item
 			await act(() => {
@@ -149,10 +156,13 @@ describe("@preact/signals-react-utils", () => {
 					{ id: "c", label: "Carol" },
 				];
 			});
-			expect(scratch.innerHTML).to.eq("<p>Alice</p><p>Carol</p>");
+			expect(getInputs().map(input => input.value)).to.deep.eq([
+				"Alice",
+				"Carol",
+			]);
 		});
 
-		it("Should handle duplicate values with getKey", async () => {
+		it("Should handle duplicate values with child keys", async () => {
 			const list = signal([
 				{ id: 1, name: "foo" },
 				{ id: 2, name: "foo" },
@@ -160,29 +170,35 @@ describe("@preact/signals-react-utils", () => {
 			const Paragraph = (p: any) => <p>{p.children}</p>;
 			await act(() => {
 				render(
-					<For each={list} getKey={item => item.id}>
-						{item => <Paragraph>{item.name}</Paragraph>}
+					<For each={list}>
+						{item => <Paragraph key={item.id}>{item.name}</Paragraph>}
 					</For>
 				);
 			});
 			expect(scratch.innerHTML).to.eq("<p>foo</p><p>foo</p>");
 		});
 
-		it("Should reorder correctly with getKey", async () => {
+		it("Should reorder correctly with child keys", async () => {
 			const list = signal([
 				{ id: "x", label: "X" },
 				{ id: "y", label: "Y" },
 				{ id: "z", label: "Z" },
 			]);
-			const Paragraph = (p: any) => <p>{p.children}</p>;
+			const getInputs = () =>
+				Array.from(scratch.querySelectorAll<HTMLInputElement>("input"));
 			await act(() => {
 				render(
-					<For each={list} getKey={item => item.id}>
-						{item => <Paragraph>{item.label}</Paragraph>}
+					<For each={list}>
+						{item => <input key={item.id} defaultValue={item.label} />}
 					</For>
 				);
 			});
-			expect(scratch.innerHTML).to.eq("<p>X</p><p>Y</p><p>Z</p>");
+			const initialInputs = getInputs();
+			expect(initialInputs.map(input => input.value)).to.deep.eq([
+				"X",
+				"Y",
+				"Z",
+			]);
 
 			// Reverse order
 			await act(() => {
@@ -192,7 +208,15 @@ describe("@preact/signals-react-utils", () => {
 					{ id: "x", label: "X" },
 				];
 			});
-			expect(scratch.innerHTML).to.eq("<p>Z</p><p>Y</p><p>X</p>");
+			const reorderedInputs = getInputs();
+			expect(reorderedInputs.map(input => input.value)).to.deep.eq([
+				"Z",
+				"Y",
+				"X",
+			]);
+			expect(reorderedInputs[0]).to.eq(initialInputs[2]);
+			expect(reorderedInputs[1]).to.eq(initialInputs[1]);
+			expect(reorderedInputs[2]).to.eq(initialInputs[0]);
 		});
 	});
 
