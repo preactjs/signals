@@ -357,7 +357,7 @@ importers:
         specifier: workspace:*
         version: link:..
       '@preact/signals-core':
-        specifier: workspace:^1.14.0
+        specifier: workspace:^1.14.1
         version: link:../../core
       preact:
         specifier: '>= 10.25.0'
