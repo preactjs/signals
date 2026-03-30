@@ -839,6 +839,16 @@ type EffectFn =
 	| ((this: { dispose: () => void }) => void | (() => void))
 	| (() => void | (() => void));
 
+// Avoid hard-requiring the ESNext.Disposable lib in consuming tsconfigs.
+// When `Symbol.dispose` is available, this becomes a symbol-keyed disposer type.
+type DisposeSymbol = typeof Symbol extends { readonly dispose: infer TDispose }
+	? TDispose
+	: never;
+type DisposableLike = {
+	[K in DisposeSymbol & PropertyKey]: () => void;
+};
+type DisposeFn = (() => void) & DisposableLike;
+
 /**
  * The base class for reactive effects.
  */
@@ -942,7 +952,7 @@ Effect.prototype.dispose = function () {
  * @param fn The effect callback.
  * @returns A function for disposing the effect.
  */
-function effect(fn: EffectFn, options?: EffectOptions): () => void {
+function effect(fn: EffectFn, options?: EffectOptions): DisposeFn {
 	const effect = new Effect(fn, options);
 	try {
 		effect._callback();
@@ -954,7 +964,7 @@ function effect(fn: EffectFn, options?: EffectOptions): () => void {
 	// because bound functions seem to be just as fast and take up a lot less memory.
 	const dispose = effect._dispose.bind(effect);
 	(dispose as any)[Symbol.dispose] = dispose;
-	return dispose as any;
+	return dispose as DisposeFn;
 }
 
 //#endregion Effect
@@ -984,7 +994,7 @@ type ValidateModel<TModel> = {
 				: `Property ${Key extends string ? `'${Key}' ` : ""}is not a Signal, Action, or an object that contains only Signals and Actions.`;
 };
 
-export type Model<TModel> = ValidateModel<TModel> & Disposable;
+export type Model<TModel> = ValidateModel<TModel> & DisposableLike;
 
 export type ModelFactory<TModel, TFactoryArgs extends any[] = []> = (
 	...args: TFactoryArgs
