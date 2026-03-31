@@ -1,5 +1,13 @@
 # @preact/signals-core
 
+## 1.14.1
+
+### Patch Changes
+
+- [#906](https://github.com/preactjs/signals/pull/906) [`0c65390`](https://github.com/preactjs/signals/commit/0c6539096057d991679f49baf68dd97f7121f322) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Wrap nested object methods returned from createModel so composed models keep action batching semantics without manual action wrappers.
+
+- [#911](https://github.com/preactjs/signals/pull/911) [`6c17923`](https://github.com/preactjs/signals/commit/6c17923a0a7d822621702022d96b046c6758f6dc) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Avoid hard-requiring `ESNext.Disposable` in consumer tsconfigs for `Model` and `effect()` types.
+
 ## 1.14.0
 
 ### Minor Changes
