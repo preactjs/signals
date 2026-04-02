@@ -18,7 +18,6 @@ Read the [announcement post](https://preactjs.com/blog/introducing-signals/) to 
   - [Babel Transform](#babel-transform)
   - [`useSignals` hook](#usesignals-hook)
   - [Hooks](#hooks)
-    - [`useModel`](#usemodel)
   - [Using signals with React's SSR APIs](#using-signals-with-reacts-ssr-apis)
   - [Rendering optimizations](#rendering-optimizations)
   - [Utility Components and Hooks](#utility-components-and-hooks)

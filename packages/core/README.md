@@ -15,6 +15,7 @@ Read the [announcement post](https://preactjs.com/blog/introducing-signals/) to 
   - [`effect(fn)`](#effectfn)
   - [`batch(fn)`](#batchfn)
   - [`untracked(fn)`](#untrackedfn)
+  - [`createModel(fn)`](#createmodelfn)
 - [License](#license)
 
 ## Installation:
@@ -25,7 +26,7 @@ npm install @preact/signals-core
 
 ## Guide / API
 
-The signals library exposes five functions which are the building blocks to model any business logic you can think of.
+The signals library exposes a small set of primitives you can use to model everything from simple state to structured reactive models.
 
 ### `signal(initialValue)`
 
@@ -252,6 +253,40 @@ effect(() => {
 	effectCount.value = untracked(fn);
 });
 ```
+
+### `createModel(fn)`
+
+Use `createModel` to define disposable model instances that group signals, computed values, and actions together.
+
+```js
+import { computed, createModel, effect, signal } from "@preact/signals-core";
+
+const CounterModel = createModel((initialCount = 0) => {
+	const count = signal(initialCount);
+	const doubled = computed(() => count.value * 2);
+
+	effect(() => {
+		console.log("Count changed:", count.value);
+	});
+
+	return {
+		count,
+		doubled,
+		increment() {
+			count.value++;
+		},
+	};
+});
+
+const counter = new CounterModel(5);
+
+counter.increment();
+console.log(counter.doubled.value);
+
+counter[Symbol.dispose]();
+```
+
+The factory can accept constructor arguments, and every method returned from it is automatically wrapped as an action so updates stay batched and untracked. Effects created while constructing the model are captured and disposed when you call `model[Symbol.dispose]()`. Models can also contain nested objects as long as they only expose signals and methods.
 
 ## License
 

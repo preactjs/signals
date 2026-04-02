@@ -16,7 +16,6 @@ Read the [announcement post](https://preactjs.com/blog/introducing-signals/) to 
   - [`untracked(fn)`](../core/README.md#untrackedfn)
 - [Preact Integration](#preact-integration)
   - [Hooks](#hooks)
-    - [`useModel`](#usemodel)
   - [Rendering optimizations](#rendering-optimizations)
     - [Attribute optimization (experimental)](#attribute-optimization-experimental)
   - [Utility Components and Hooks](#utility-components-and-hooks)
