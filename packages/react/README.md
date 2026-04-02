@@ -18,6 +18,7 @@ Read the [announcement post](https://preactjs.com/blog/introducing-signals/) to 
   - [Babel Transform](#babel-transform)
   - [`useSignals` hook](#usesignals-hook)
   - [Hooks](#hooks)
+    - [`useModel`](#usemodel)
   - [Using signals with React's SSR APIs](#using-signals-with-reacts-ssr-apis)
   - [Rendering optimizations](#rendering-optimizations)
   - [Utility Components and Hooks](#utility-components-and-hooks)
@@ -102,6 +103,29 @@ function Counter() {
 	);
 }
 ```
+
+#### `useModel`
+
+Use `useModel` to create a model instance once per component and automatically dispose it when the component unmounts.
+
+```js
+import { createModel, signal, useModel } from "@preact/signals-react";
+
+const CounterModel = createModel(() => ({
+	count: signal(0),
+	increment() {
+		this.count.value++;
+	},
+}));
+
+function Counter() {
+	const model = useModel(CounterModel);
+
+	return <button onClick={() => model.increment()}>{model.count.value}</button>;
+}
+```
+
+If your model needs constructor arguments, pass a factory function to `useModel` that creates the instance.
 
 ### Using signals with React's SSR APIs
 
