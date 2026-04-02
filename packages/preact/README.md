@@ -72,6 +72,29 @@ function Counter() {
 }
 ```
 
+#### `useModel`
+
+Use `useModel` to create a model instance once per component and automatically dispose it when the component unmounts.
+
+```js
+import { createModel, signal, useModel } from "@preact/signals";
+
+const CounterModel = createModel(() => ({
+	count: signal(0),
+	increment() {
+		this.count.value++;
+	},
+}));
+
+function Counter() {
+	const model = useModel(CounterModel);
+
+	return <button onClick={() => model.increment()}>{model.count.value}</button>;
+}
+```
+
+If your model needs constructor arguments, pass a factory function to `useModel` that creates the instance.
+
 ### Rendering optimizations
 
 The Preact adapter ships with several optimizations it can apply out of the box to skip virtual-dom rendering entirely. If you pass a signal directly into JSX, it will bind directly to the DOM `Text` node that is created and update that whenever the signal changes.

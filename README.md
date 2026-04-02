@@ -14,6 +14,7 @@ Read the [announcement post](https://preactjs.com/blog/introducing-signals/) to 
   - [`effect(fn)`](./packages/core/README.md#effectfn)
   - [`batch(fn)`](./packages/core/README.md#batchfn)
   - [`untracked(fn)`](./packages/core/README.md#untrackedfn)
+  - [`createModel(fn)`](./packages/core/README.md#createmodelfn)
 - [Debug Extension](./packages/debug/README.md#preact-integration)
 - [Preact Integration](./packages/preact/README.md#preact-integration)
   - [Hooks](./packages/preact/README.md#hooks)
