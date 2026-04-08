@@ -32,7 +32,7 @@ jobs:
           registry-url: "https://registry.npmjs.org"
 
       - name: Update npm
-        run: npm install -g npm@11.12
+        run: npm install -g npm@11.11
 
       - name: Install dependencies
         run: pnpm install
