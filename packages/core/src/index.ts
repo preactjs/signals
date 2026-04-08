@@ -422,13 +422,7 @@ Signal.prototype.toJSON = function () {
 };
 
 Signal.prototype.peek = function () {
-	const prevContext = evalContext;
-	evalContext = undefined;
-	try {
-		return this.value;
-	} finally {
-		evalContext = prevContext;
-	}
+	return untracked(() => this.value);
 };
 
 Object.defineProperty(Signal.prototype, "value", {
