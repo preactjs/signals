@@ -3,15 +3,35 @@
   "build": {
     "dockerfile": "Dockerfile"
   },
+  "init": true,
+  "remoteUser": "node",
+  "mounts": [
+    // Persist the user profile across rebuilds.
+    {
+      "source": "profile-${devcontainerId}",
+      "target": "/home/node",
+      "type": "volume"
+    },
+    {
+      // An anonymous volume that gets destroyed on rebuild,
+      // which allows VS Code to reinstall extensions and dotfiles.
+      "target": "/home/node/.vscode-server",
+      "type": "volume"
+    }
+  ],
   "customizations": {
     "vscode": {
       "settings": {
-        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.codeActionsOnSave": {
+          "source.fixAll.oxc": "always"
+        },
+        "editor.defaultFormatter": "oxc.oxc-vscode",
+        "editor.formatOnSave": true,
+        "editor.formatOnSaveMode": "file",
         "explorer.excludeGitIgnore": true
       },
-      "extensions": ["dbaeumer.vscode-eslint", "esbenp.prettier-vscode"]
+      "extensions": ["oxc.oxc-vscode"]
     }
   },
-  "postCreateCommand": "pnpm i",
-  "remoteUser": "node"
+  "postCreateCommand": "corepack install && pnpm install --frozen-lockfile"
 }
