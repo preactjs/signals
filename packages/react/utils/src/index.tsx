@@ -34,8 +34,17 @@ interface ForProps<T> {
 		| ReadonlySignal<Array<T>>
 		| (() => Array<T> | Signal<Array<T>> | ReadonlySignal<Array<T>>);
 	fallback?: ReactNode;
+	/** @deprecated in favour of extracting the key from the child element */
 	getKey?: (item: T, index: number) => string | number;
 	children: (value: T, index: number) => ReactNode;
+}
+
+function getNodeKey(node: ReactNode): string | number | null {
+	if (node && typeof node === "object" && "key" in node) {
+		return (node as { key: string | number | null }).key ?? null;
+	}
+
+	return null;
 }
 
 export function For<T>(props: ForProps<T>): JSX.Element | null {
@@ -54,7 +63,10 @@ export function For<T>(props: ForProps<T>): JSX.Element | null {
 	const items = listValue.map((value, index) => {
 		removed.delete(value);
 		if (!cache.has(value)) {
-			const key = props.getKey ? props.getKey(value, index) : index;
+			const key =
+				getNodeKey(props.children(value, index)) ??
+				props.getKey?.(value, index) ??
+				index;
 			const result = (
 				<Item v={value} key={key} i={index} children={props.children} />
 			);

@@ -164,18 +164,22 @@ function App() {
 
 #### For Component
 
-The `For` component helps you render lists from signal arrays with automatic caching of rendered items.
+The `For` component helps you render lists from signal arrays. Return keyed children from the callback when you need stable reconciliation.
 
 ```js
 import { For } from "@preact/signals/utils";
 import { signal } from "@preact/signals";
 
-const items = signal(["A", "B", "C"]);
+const items = signal([
+	{ id: "a", label: "A" },
+	{ id: "b", label: "B" },
+	{ id: "c", label: "C" },
+]);
 
 function App() {
 	return (
 		<For each={items} fallback={<p>No items</p>}>
-			{(item, index) => <div key={index}>Item: {item}</div>}
+			{item => <div key={item.id}>Item: {item.label}</div>}
 		</For>
 	);
 }
