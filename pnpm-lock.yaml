@@ -357,7 +357,7 @@ importers:
         specifier: workspace:*
         version: link:..
       '@preact/signals-core':
-        specifier: workspace:^1.14.1
+        specifier: workspace:^1.14.2
         version: link:../../core
       preact:
         specifier: '>= 10.25.0'
@@ -2853,6 +2853,7 @@ packages:
 
   deepcopy@2.1.0:
     resolution: {integrity: sha512-8cZeTb1ZKC3bdSCP6XOM1IsTczIO73fdqtwa2B0N15eAz7gmyhQo+mc5gnFuulsgN3vIQYmTgbmQVKalH1dKvQ==}
+    deprecated: No longer maintained. Use structuredClone instead.
 
   deepmerge@4.3.1:
     resolution: {integrity: sha512-3sUqbMEc77XqpdNO7FRyRog+eW3ph+GYCbj+rK+uYyRMuwsVy0rMiVtPn+QJlKFvWP/1PYpapqYn0Me2knFn+A==}
