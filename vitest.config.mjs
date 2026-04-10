@@ -49,6 +49,10 @@ export default defineConfig({
 						dirname,
 						"./packages/react-transform/dist/signals-transform.mjs"
 					),
+					"@preact/signals-react-transform-rolldown": path.join(
+						dirname,
+						"./packages/react-transform-rolldown/dist/index.mjs"
+					),
 					"@preact/signals-utils": path.join(
 						dirname,
 						"./packages/preact/utils/dist/utils.module.js"
@@ -94,6 +98,10 @@ export default defineConfig({
 					"@preact/signals-react-transform": path.join(
 						dirname,
 						"./packages/react-transform/src/index.ts"
+					),
+					"@preact/signals-react-transform-rolldown": path.join(
+						dirname,
+						"./packages/react-transform-rolldown/src/index.ts"
 					),
 					"@preact/signals-debug": path.join(
 						dirname,
@@ -160,6 +168,7 @@ export default defineConfig({
 			include: [
 				"packages/**/dist/**/*.js",
 				"packages/react-transform/src/**/*.ts",
+				"packages/react-transform-rolldown/src/**/*.ts",
 			],
 			provider: "v8",
 			reporter: ["text-summary", "lcov"],
@@ -169,7 +178,7 @@ export default defineConfig({
 			{
 				extends: true,
 				test: {
-					include: ["./packages/**/test/**/*.test.tsx"],
+					include: ["./packages/**/test/**/*.test.{ts,tsx}"],
 					exclude: [
 						"./packages/**/test/browser/**/*.test.tsx",
 						"**/node_modules/**",
