@@ -1,7 +1,14 @@
 import { ReadonlySignal, Signal } from "@preact/signals-core";
 import { useSignal } from "@preact/signals-react";
 import { useSignals } from "@preact/signals-react/runtime";
-import { Fragment, createElement, useMemo, ReactNode } from "react";
+import {
+	Fragment,
+	createElement,
+	useMemo,
+	ReactNode,
+	useLayoutEffect,
+	useEffect,
+} from "react";
 
 interface ShowProps<T = boolean> {
 	when: Signal<T> | ReadonlySignal<T> | (() => T);
@@ -73,9 +80,14 @@ export function For<T>(props: ForProps<T>): JSX.Element | null {
 
 For.displayName = "For";
 
+const useIsomorphicLayoutEffect =
+	typeof window !== "undefined" ? useLayoutEffect : useEffect;
+
 export function useLiveSignal<T>(value: T): Signal<T> {
 	const s = useSignal(value);
-	if (s.peek() !== value) s.value = value;
+	useIsomorphicLayoutEffect(() => {
+		if (s.peek() !== value) s.value = value;
+	}, [value]);
 	return s;
 }
 
