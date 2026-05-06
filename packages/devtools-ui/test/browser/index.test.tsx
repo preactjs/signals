@@ -16,7 +16,11 @@ import { SettingsPanel } from "../../src/components/SettingsPanel";
 import { StatusIndicator } from "../../src/components/StatusIndicator";
 import { UpdateItem } from "../../src/components/UpdateItem";
 import { UpdatesContainer } from "../../src/components/UpdatesContainer";
-import { GraphVisualization } from "../../src/components/Graph";
+import {
+	GraphVisualization,
+	calculateFitTransform,
+	calculateGraphBounds,
+} from "../../src/components/Graph";
 import type {
 	DevToolsAdapter,
 	Settings,
@@ -958,6 +962,45 @@ describe("@preact/signals-devtools-ui", () => {
 
 			context.settingsStore.toggleShowDisposedSignals();
 			expect(context.settingsStore.showDisposedSignals.value).to.be.true;
+		});
+	});
+
+	describe("GraphVisualization viewport helpers", () => {
+		it("should calculate bounds that include node radii", () => {
+			const bounds = calculateGraphBounds([
+				{
+					id: "signal-a",
+					name: "signalA",
+					type: "signal",
+					x: 100,
+					y: 100,
+					depth: 0,
+				},
+			]);
+
+			expect(bounds).to.not.be.null;
+			expect(bounds!.minX).to.be.lessThan(100);
+			expect(bounds!.minY).to.be.lessThan(100);
+			expect(bounds!.maxX).to.be.greaterThan(100);
+			expect(bounds!.maxY).to.be.greaterThan(100);
+		});
+
+		it("should fit tall graphs into short wide viewports", () => {
+			const transform = calculateFitTransform(
+				{
+					minX: 0,
+					minY: 0,
+					maxX: 600,
+					maxY: 3000,
+					width: 600,
+					height: 3000,
+				},
+				{ width: 1200, height: 400 }
+			);
+
+			expect(transform.zoom).to.be.lessThan(1);
+			expect(3000 * transform.zoom).to.be.at.most(400);
+			expect(transform.offset.x).to.be.greaterThan(0);
 		});
 	});
 

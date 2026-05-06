@@ -4,6 +4,96 @@ import type { GraphData, GraphLink, GraphNode } from "../types";
 import type { SignalUpdate } from "../context";
 import { getContext } from "../context";
 
+const DEFAULT_VIEWPORT_SIZE = { width: 800, height: 600 };
+const FIT_PADDING = 80;
+const MIN_ZOOM = 0.001;
+const MAX_ZOOM = 5;
+
+interface Point {
+	x: number;
+	y: number;
+}
+
+interface ViewportSize {
+	width: number;
+	height: number;
+}
+
+interface GraphBounds {
+	minX: number;
+	minY: number;
+	maxX: number;
+	maxY: number;
+	width: number;
+	height: number;
+}
+
+const getNodeRadius = (node: GraphNode) => {
+	const baseRadius = 30;
+	const charWidth = 6.5;
+	const padding = 16;
+	const textWidth = node.name.length * charWidth + padding;
+	return Math.max(baseRadius, Math.min(textWidth / 2, 70));
+};
+
+export const calculateGraphBounds = (
+	nodes: GraphNode[]
+): GraphBounds | null => {
+	if (nodes.length === 0) return null;
+
+	let minX = Infinity;
+	let minY = Infinity;
+	let maxX = -Infinity;
+	let maxY = -Infinity;
+
+	for (const node of nodes) {
+		const radius = getNodeRadius(node) + 24;
+		minX = Math.min(minX, node.x - radius);
+		minY = Math.min(minY, node.y - radius);
+		maxX = Math.max(maxX, node.x + radius);
+		maxY = Math.max(maxY, node.y + radius);
+	}
+
+	return {
+		minX,
+		minY,
+		maxX,
+		maxY,
+		width: Math.max(1, maxX - minX),
+		height: Math.max(1, maxY - minY),
+	};
+};
+
+export const calculateFitTransform = (
+	bounds: GraphBounds | null,
+	viewport: ViewportSize,
+	padding = FIT_PADDING
+) => {
+	if (!bounds) return { offset: { x: 0, y: 0 }, zoom: 1 };
+
+	const viewportWidth = Math.max(1, viewport.width);
+	const viewportHeight = Math.max(1, viewport.height);
+	const availableWidth = Math.max(1, viewportWidth - padding * 2);
+	const availableHeight = Math.max(1, viewportHeight - padding * 2);
+	const nextZoom = Math.min(
+		MAX_ZOOM,
+		Math.max(
+			MIN_ZOOM,
+			Math.min(availableWidth / bounds.width, availableHeight / bounds.height)
+		)
+	);
+
+	return {
+		offset: {
+			x: (viewportWidth - bounds.width * nextZoom) / 2 - bounds.minX * nextZoom,
+			y:
+				(viewportHeight - bounds.height * nextZoom) / 2 -
+				bounds.minY * nextZoom,
+		},
+		zoom: nextZoom,
+	};
+};
+
 const copyToClipboard = (text: string) => {
 	const copyEl = document.createElement("textarea");
 	try {
@@ -32,6 +122,10 @@ export function GraphVisualization() {
 	const toastText = useSignal<string>();
 	const hoveredNode = useSignal<GraphNode | null>(null);
 	const tooltipPos = useSignal({ x: 0, y: 0 });
+	const viewportSize = useSignal<ViewportSize>(DEFAULT_VIEWPORT_SIZE);
+	const hasUserAdjustedView = useSignal(false);
+	const pendingPanOffset = useRef<Point | null>(null);
+	const panAnimationFrame = useRef<number | null>(null);
 
 	useEffect(() => {
 		const handleClickOutside = (e: MouseEvent) => {
@@ -47,6 +141,51 @@ export function GraphVisualization() {
 		document.addEventListener("mousedown", handleClickOutside);
 		return () => {
 			document.removeEventListener("mousedown", handleClickOutside);
+		};
+	}, []);
+
+	useEffect(() => {
+		const container = containerRef.current;
+		if (!container) return;
+
+		const updateViewportSize = () => {
+			const rect = container.getBoundingClientRect();
+			const width = Math.max(
+				1,
+				rect.width || container.clientWidth || DEFAULT_VIEWPORT_SIZE.width
+			);
+			const height = Math.max(
+				1,
+				rect.height || container.clientHeight || DEFAULT_VIEWPORT_SIZE.height
+			);
+			const current = viewportSize.value;
+
+			if (current.width !== width || current.height !== height) {
+				viewportSize.value = { width, height };
+			}
+		};
+
+		updateViewportSize();
+
+		let resizeObserver: ResizeObserver | undefined;
+		if (typeof ResizeObserver !== "undefined") {
+			resizeObserver = new ResizeObserver(updateViewportSize);
+			resizeObserver.observe(container);
+		}
+
+		window.addEventListener("resize", updateViewportSize);
+
+		return () => {
+			resizeObserver?.disconnect();
+			window.removeEventListener("resize", updateViewportSize);
+		};
+	}, []);
+
+	useEffect(() => {
+		return () => {
+			if (panAnimationFrame.current !== null) {
+				cancelAnimationFrame(panAnimationFrame.current);
+			}
 		};
 	}, []);
 
@@ -287,19 +426,26 @@ export function GraphVisualization() {
 		// Minimize edge crossings
 		minimizeCrossings(nodesByLayer, allLinks);
 
-		// Layout nodes with proper spacing
+		// Layout nodes with proper spacing. Keep every layer within positive graph
+		// coordinates so tall layers are pannable instead of being clipped above 0.
 		const nodeSpacing = 120;
 		const layerSpacing = 250;
-		const startX = 100;
-		const startY = 80;
+		const graphPadding = 100;
+		const maxLayerNodeCount = Math.max(
+			1,
+			...Array.from(nodesByLayer.values()).map(layerNodes => layerNodes.length)
+		);
+		const graphHeight =
+			graphPadding * 2 + Math.max(0, maxLayerNodeCount - 1) * nodeSpacing;
 
 		nodesByLayer.forEach((layerNodes, layer) => {
 			const layerHeight = (layerNodes.length - 1) * nodeSpacing;
-			const layerStartY = startY - layerHeight / 2;
+			const layerStartY =
+				graphPadding + (graphHeight - graphPadding * 2 - layerHeight) / 2;
 
 			layerNodes.forEach((node, index) => {
-				node.x = startX + layer * layerSpacing;
-				node.y = layerStartY + index * nodeSpacing + nodesByLayer.size * 50;
+				node.x = graphPadding + layer * layerSpacing;
+				node.y = layerStartY + index * nodeSpacing;
 			});
 		});
 
@@ -309,21 +455,106 @@ export function GraphVisualization() {
 		};
 	});
 
+	const graphBounds = useComputed(() =>
+		calculateGraphBounds(graphData.value.nodes)
+	);
+	const nodesById = useComputed(
+		() => new Map(graphData.value.nodes.map(node => [node.id, node]))
+	);
+	const layoutSignature = graphBounds.value
+		? [
+				graphData.value.nodes.length,
+				graphData.value.links.length,
+				Math.round(graphBounds.value.minX),
+				Math.round(graphBounds.value.minY),
+				Math.round(graphBounds.value.maxX),
+				Math.round(graphBounds.value.maxY),
+			].join(":")
+		: "empty";
+
+	const applyViewTransform = (next: { offset: Point; zoom: number }) => {
+		if (Math.abs(zoom.value - next.zoom) > 0.001) {
+			zoom.value = next.zoom;
+		}
+
+		if (
+			Math.abs(panOffset.value.x - next.offset.x) > 0.5 ||
+			Math.abs(panOffset.value.y - next.offset.y) > 0.5
+		) {
+			panOffset.value = next.offset;
+		}
+	};
+
+	const fitView = () => {
+		applyViewTransform(
+			calculateFitTransform(graphBounds.value, viewportSize.value)
+		);
+	};
+
+	useEffect(() => {
+		if (!hasUserAdjustedView.value) {
+			fitView();
+		}
+	}, [layoutSignature, viewportSize.value.width, viewportSize.value.height]);
+
+	const getSvgPoint = (e: MouseEvent | WheelEvent): Point | null => {
+		const svg = svgRef.current;
+		if (!svg) return null;
+
+		const ctm = svg.getScreenCTM();
+		if (ctm) {
+			const point = svg.createSVGPoint();
+			point.x = e.clientX;
+			point.y = e.clientY;
+			const svgPoint = point.matrixTransform(ctm.inverse());
+			return { x: svgPoint.x, y: svgPoint.y };
+		}
+
+		const rect = svg.getBoundingClientRect();
+		if (!rect.width || !rect.height) return null;
+
+		return {
+			x: ((e.clientX - rect.left) / rect.width) * viewportSize.value.width,
+			y: ((e.clientY - rect.top) / rect.height) * viewportSize.value.height,
+		};
+	};
+
+	const schedulePanOffset = (nextOffset: Point) => {
+		pendingPanOffset.current = nextOffset;
+
+		if (panAnimationFrame.current !== null) return;
+
+		panAnimationFrame.current = requestAnimationFrame(() => {
+			panAnimationFrame.current = null;
+			if (pendingPanOffset.current) {
+				panOffset.value = pendingPanOffset.current;
+				pendingPanOffset.current = null;
+			}
+		});
+	};
+
 	const handleMouseDown = (e: MouseEvent) => {
 		if (e.button !== 0) return;
+		const point = getSvgPoint(e);
+		if (!point) return;
+
+		hasUserAdjustedView.value = true;
 		isPanning.value = true;
 		startPan.value = {
-			x: e.clientX - panOffset.value.x,
-			y: e.clientY - panOffset.value.y,
+			x: point.x - panOffset.value.x,
+			y: point.y - panOffset.value.y,
 		};
 	};
 
 	const handleMouseMove = (e: MouseEvent) => {
 		if (!isPanning.value) return;
-		panOffset.value = {
-			x: e.clientX - startPan.value.x,
-			y: e.clientY - startPan.value.y,
-		};
+		const point = getSvgPoint(e);
+		if (!point) return;
+
+		schedulePanOffset({
+			x: point.x - startPan.value.x,
+			y: point.y - startPan.value.y,
+		});
 	};
 
 	const handleMouseUp = () => {
@@ -333,28 +564,32 @@ export function GraphVisualization() {
 	const handleWheel = (e: WheelEvent) => {
 		e.preventDefault();
 
-		const container = containerRef.current;
-		if (!container) return;
+		const point = getSvgPoint(e);
+		if (!point) return;
 
-		const rect = container.getBoundingClientRect();
-		const mouseX = e.clientX - rect.left;
-		const mouseY = e.clientY - rect.top;
+		hasUserAdjustedView.value = true;
 
-		const delta = e.deltaY > 0 ? 0.96 : 1.04;
-		const newZoom = Math.min(Math.max(0.1, zoom.value * delta), 5);
+		const normalizedDeltaY =
+			e.deltaMode === WheelEvent.DOM_DELTA_LINE
+				? e.deltaY * 16
+				: e.deltaMode === WheelEvent.DOM_DELTA_PAGE
+					? e.deltaY * viewportSize.value.height
+					: e.deltaY;
+		const delta = Math.exp(-normalizedDeltaY * 0.0015);
+		const newZoom = Math.min(Math.max(MIN_ZOOM, zoom.value * delta), MAX_ZOOM);
 
 		const zoomRatio = newZoom / zoom.value;
 		panOffset.value = {
-			x: mouseX - (mouseX - panOffset.value.x) * zoomRatio,
-			y: mouseY - (mouseY - panOffset.value.y) * zoomRatio,
+			x: point.x - (point.x - panOffset.value.x) * zoomRatio,
+			y: point.y - (point.y - panOffset.value.y) * zoomRatio,
 		};
 
 		zoom.value = newZoom;
 	};
 
 	const resetView = () => {
-		panOffset.value = { x: 0, y: 0 };
-		zoom.value = 1;
+		hasUserAdjustedView.value = false;
+		fitView();
 	};
 
 	const toggleExportMenu = () => {
@@ -363,14 +598,6 @@ export function GraphVisualization() {
 
 	const mermaidIdPattern = /[^a-zA-Z0-9]/g;
 	const computeMermaidId = (id: string) => id.replace(mermaidIdPattern, "_");
-
-	const getNodeRadius = (node: GraphNode) => {
-		const baseRadius = 30;
-		const charWidth = 6.5;
-		const padding = 16;
-		const textWidth = node.name.length * charWidth + padding;
-		return Math.max(baseRadius, Math.min(textWidth / 2, 70));
-	};
 
 	const handleNodeMouseEnter = (node: GraphNode, e: MouseEvent) => {
 		hoveredNode.value = node;
@@ -462,8 +689,8 @@ export function GraphVisualization() {
 		);
 	}
 
-	const svgWidth = Math.max(800, ...graphData.value.nodes.map(n => n.x + 100));
-	const svgHeight = Math.max(600, ...graphData.value.nodes.map(n => n.y + 100));
+	const viewBoxWidth = Math.max(1, viewportSize.value.width);
+	const viewBoxHeight = Math.max(1, viewportSize.value.height);
 
 	return (
 		<div className="graph-container">
@@ -480,9 +707,10 @@ export function GraphVisualization() {
 				<svg
 					ref={svgRef}
 					className="graph-svg"
-					width={svgWidth}
-					height={svgHeight}
-					viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+					width="100%"
+					height="100%"
+					viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`}
+					preserveAspectRatio="none"
 				>
 					<defs>
 						<marker
@@ -502,12 +730,8 @@ export function GraphVisualization() {
 					>
 						<g className="links">
 							{graphData.value.links.map((link, index) => {
-								const sourceNode = graphData.value.nodes.find(
-									n => n.id === link.source
-								);
-								const targetNode = graphData.value.nodes.find(
-									n => n.id === link.target
-								);
+								const sourceNode = nodesById.value.get(link.source);
+								const targetNode = nodesById.value.get(link.target);
 
 								if (!sourceNode || !targetNode) return null;
 
@@ -579,9 +803,9 @@ export function GraphVisualization() {
 					<button
 						className="graph-reset-button"
 						onClick={resetView}
-						title="Reset view"
+						title="Fit graph to viewport"
 					>
-						⟲ Reset View
+						⟲ Fit View
 					</button>
 
 					<div ref={exportMenuRef} className="graph-export-container">
