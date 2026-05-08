@@ -1,13 +1,24 @@
-import { For, Show, useSignalRef } from "@preact/signals-react/utils";
+import {
+	For,
+	Show,
+	useSignalRef,
+	useLiveSignal,
+} from "@preact/signals-react/utils";
 import {
 	act,
 	checkHangingAct,
 	createRoot,
 	Root,
 } from "../../../test/shared/utils";
-import { computed, signal } from "@preact/signals-react";
+import {
+	computed,
+	Signal,
+	signal,
+	useSignalEffect,
+} from "@preact/signals-react";
 import { createElement } from "react";
-import { describe, beforeEach, afterEach, it, expect } from "vitest";
+import { describe, beforeEach, afterEach, it, expect, vi } from "vitest";
+import { useSignals } from "@preact/signals-react/runtime";
 
 describe("@preact/signals-react-utils", () => {
 	let scratch: HTMLDivElement;
@@ -26,6 +37,66 @@ describe("@preact/signals-react-utils", () => {
 		checkHangingAct();
 		await act(() => root.unmount());
 		scratch.remove();
+	});
+
+	describe("useLiveSignal", () => {
+		it("should work", async () => {
+			const logs: string[] = [];
+			const App = (props: { count: number }) => {
+				useSignals();
+				const count = useLiveSignal(props.count);
+
+				useSignalEffect(() => {
+					logs.push("Count is " + count.value);
+				});
+
+				return <p>{count.value}</p>;
+			};
+
+			await act(() => {
+				render(<App count={0} />);
+			});
+			expect(scratch.innerHTML).to.eq("<p>0</p>");
+			expect(logs).to.deep.eq(["Count is 0"]);
+
+			await act(() => {
+				render(<App count={1} />);
+			});
+			expect(scratch.innerHTML).to.eq("<p>1</p>");
+			expect(logs).to.deep.eq(["Count is 0", "Count is 1"]);
+		});
+
+		it("Should not cause a react error when used in a component that re-renders", async () => {
+			const consoleError = vi.spyOn(console, "error");
+			const consoleWarn = vi.spyOn(console, "warn");
+
+			const Counter = (props: { count: Signal<number> }) => {
+				useSignals();
+				return <p>{props.count.value}</p>;
+			};
+
+			const App = (props: { count: number }) => {
+				const count = useLiveSignal(props.count);
+				return (
+					<div>
+						<Counter count={count} />
+						<Counter count={count} />
+					</div>
+				);
+			};
+
+			await act(async () => {
+				await render(<App count={0} />);
+			});
+			expect(scratch.innerHTML).to.eq("<div><p>0</p><p>0</p></div>");
+
+			await act(async () => {
+				await render(<App count={1} />);
+			});
+			expect(scratch.innerHTML).to.eq("<div><p>1</p><p>1</p></div>");
+			expect(consoleError).toBeCalledTimes(0);
+			expect(consoleWarn).toBeCalledTimes(0);
+		});
 	});
 
 	describe("<Show />", () => {
