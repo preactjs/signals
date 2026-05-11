@@ -1,5 +1,11 @@
 # @preact/signals-core
 
+## 1.14.2
+
+### Patch Changes
+
+- [#915](https://github.com/preactjs/signals/pull/915) [`054afc1`](https://github.com/preactjs/signals/commit/054afc1c7deef23b48df74941c9ab57235dc894e) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Shave some bytes by using untracked to implement peek
+
 ## 1.14.1
 
 ### Patch Changes

@@ -1,5 +1,14 @@
 # @preact/signals-react
 
+## 3.10.1
+
+### Patch Changes
+
+- [#918](https://github.com/preactjs/signals/pull/918) [`8732619`](https://github.com/preactjs/signals/commit/873261927b493535cc5e205894b4552b4d2bf7ae) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Update `live-signal` within an effect to avoid the `cannot update component while rendering other component` error in react.
+
+- Updated dependencies [[`054afc1`](https://github.com/preactjs/signals/commit/054afc1c7deef23b48df74941c9ab57235dc894e)]:
+  - @preact/signals-core@1.14.2
+
 ## 3.10.0
 
 ### Minor Changes
