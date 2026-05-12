@@ -94,19 +94,6 @@
       "oxfmt --no-error-on-unmatched-pattern"
     ]
   },
-  "pnpm": {
-    "patchedDependencies": {
-      "microbundle@0.15.1": "patches/microbundle@0.15.1.patch",
-      "babel-plugin-transform-rename-properties@0.1.0": "patches/babel-plugin-transform-rename-properties@0.1.0.patch"
-    },
-    "overrides": {
-      "socket.io": "~4.7.2"
-    },
-    "onlyBuiltDependencies": [
-      "esbuild"
-    ]
-  },
-  "packageManager": "pnpm@10.7.0",
   "volta": {
     "node": "24.13.0"
   }
