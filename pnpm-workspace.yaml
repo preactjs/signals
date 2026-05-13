@@ -10,3 +10,20 @@ packages:
   - "extension"
   # exclude packages that are inside test directories
   - "!**/test/**"
+
+minimumReleaseAge: 10080
+
+blockExoticSubdeps: true
+
+overrides:
+  socket.io: ~4.7.2
+
+patchedDependencies:
+  microbundle@0.15.1: patches/microbundle@0.15.1.patch
+  babel-plugin-transform-rename-properties@0.1.0: patches/babel-plugin-transform-rename-properties@0.1.0.patch
+
+allowBuilds:
+  core-js: true
+  dtrace-provider: true
+  esbuild: true
+  spawn-sync: true
