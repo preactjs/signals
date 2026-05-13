@@ -788,6 +788,40 @@ describe("@preact/signals", () => {
 			expect(div.getAttribute("title")).to.equal("");
 			expect(spy).not.toHaveBeenCalled();
 		});
+
+		// https://github.com/preactjs/signals/issues/923
+		it("should not re-apply unchanged signal props when parent rerenders", () => {
+			const count = signal(0);
+			const width = signal(200);
+
+			function App() {
+				return (
+					<div>
+						<p>{count.value}</p>
+						{/* @ts-ignore */}
+						<canvas width={width} />
+					</div>
+				);
+			}
+
+			render(<App />, scratch);
+
+			const canvas = scratch.querySelector("canvas") as HTMLCanvasElement;
+			const setAttributeSpy = vi.spyOn(canvas, "setAttribute");
+
+			act(() => {
+				count.value++;
+			});
+
+			// Parent rerendered but width signal didn't change — Preact must
+			// not re-apply the attribute, otherwise non-idempotent setters
+			// like canvas width/height (which reset the bitmap to transparent
+			// even when the value is unchanged) would be triggered redundantly.
+			const widthCalls = setAttributeSpy.mock.calls.filter(
+				([name]) => name === "width"
+			);
+			expect(widthCalls).to.have.length(0);
+		});
 	});
 
 	describe("hooks mixed with signals", () => {
