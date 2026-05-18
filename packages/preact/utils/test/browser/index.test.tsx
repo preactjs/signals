@@ -259,6 +259,37 @@ describe("@preact/signals-utils", () => {
 			expect(reorderedInputs[1]).to.eq(initialInputs[1]);
 			expect(reorderedInputs[2]).to.eq(initialInputs[0]);
 		});
+
+		it("Should prefer child keys over getKey", () => {
+			const list = signal([
+				{ id: "x", label: "X" },
+				{ id: "y", label: "Y" },
+				{ id: "z", label: "Z" },
+			]);
+			const getInputs = () =>
+				Array.from(scratch.querySelectorAll<HTMLInputElement>("input"));
+			act(() => {
+				render(
+					<For each={list} getKey={(_, index) => index}>
+						{item => <input key={item.id} defaultValue={item.label} />}
+					</For>,
+					scratch
+				);
+			});
+			const initialInputs = getInputs();
+
+			act(() => {
+				list.value = [
+					{ id: "z", label: "Z" },
+					{ id: "y", label: "Y" },
+					{ id: "x", label: "X" },
+				];
+			});
+			const reorderedInputs = getInputs();
+			expect(reorderedInputs[0]).to.eq(initialInputs[2]);
+			expect(reorderedInputs[1]).to.eq(initialInputs[1]);
+			expect(reorderedInputs[2]).to.eq(initialInputs[0]);
+		});
 	});
 
 	describe("useSignalRef", () => {
