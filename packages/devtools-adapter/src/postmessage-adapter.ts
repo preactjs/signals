@@ -1,5 +1,10 @@
 import { BaseAdapter } from "./base-adapter";
+import { normalizeDebugConfig } from "./normalize";
 import type { Settings, SignalUpdate, SignalDisposed } from "./types";
+
+type AdapterCommandMessage =
+	| { type: "CONFIGURE_DEBUG"; payload: Settings }
+	| { type: "REQUEST_STATE" };
 
 export interface PostMessageAdapterOptions {
 	/**
@@ -78,7 +83,7 @@ export class PostMessageAdapter extends BaseAdapter {
 		this.sendMessage({ type: "REQUEST_STATE" });
 	}
 
-	private sendMessage(message: any): void {
+	private sendMessage(message: AdapterCommandMessage): void {
 		this.targetWindow.postMessage(message, this.targetOrigin);
 	}
 
@@ -114,8 +119,15 @@ export class PostMessageAdapter extends BaseAdapter {
 
 			case "SIGNALS_CONFIG":
 			case "SIGNALS_CONFIG_FROM_PAGE":
-				this.emit("configReceived", payload);
+				this.handleConfig(payload);
 				break;
+		}
+	}
+
+	private handleConfig(payload: unknown): void {
+		const config = normalizeDebugConfig(payload);
+		if (config) {
+			this.emit("configReceived", config);
 		}
 	}
 

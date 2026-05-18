@@ -24,6 +24,23 @@ export interface DevToolsContext {
 
 let currentContext: DevToolsContext | null = null;
 
+function createContextStores(adapter: DevToolsAdapter): DevToolsContext {
+	const settingsStore = new SettingsModel(adapter);
+	return {
+		adapter,
+		connectionStore: new ConnectionModel(adapter),
+		updatesStore: new UpdatesModel(adapter, settingsStore),
+		settingsStore,
+		themeStore: new ThemeModel(),
+	};
+}
+
+export function createDevToolsContext(
+	adapter: DevToolsAdapter
+): DevToolsContext {
+	return createContextStores(adapter);
+}
+
 export function getContext(): DevToolsContext {
 	if (!currentContext) {
 		throw new Error(
@@ -34,29 +51,32 @@ export function getContext(): DevToolsContext {
 }
 
 export function initDevTools(adapter: DevToolsAdapter): DevToolsContext {
-	const settingsStore = new SettingsModel(adapter);
-	const updatesStore = new UpdatesModel(adapter, settingsStore);
-	const connectionStore = new ConnectionModel(adapter);
-	const themeStore = new ThemeModel();
-
-	currentContext = {
-		adapter,
-		connectionStore,
-		updatesStore,
-		settingsStore,
-		themeStore,
-	};
+	currentContext = createContextStores(adapter);
 
 	return currentContext;
 }
 
+export function setCurrentDevToolsContext(
+	context: DevToolsContext | null
+): DevToolsContext | null {
+	currentContext = context;
+	return currentContext;
+}
+
+export function destroyDevToolsContext(context: DevToolsContext): void {
+	context.connectionStore[Symbol.dispose]();
+	context.updatesStore[Symbol.dispose]();
+	context.settingsStore[Symbol.dispose]();
+	context.themeStore[Symbol.dispose]();
+	context.adapter.disconnect();
+
+	if (currentContext === context) {
+		currentContext = null;
+	}
+}
+
 export function destroyDevTools(): void {
 	if (currentContext) {
-		currentContext.connectionStore[Symbol.dispose]();
-		currentContext.updatesStore[Symbol.dispose]();
-		currentContext.settingsStore[Symbol.dispose]();
-		currentContext.themeStore[Symbol.dispose]();
-		currentContext.adapter.disconnect();
-		currentContext = null;
+		destroyDevToolsContext(currentContext);
 	}
 }

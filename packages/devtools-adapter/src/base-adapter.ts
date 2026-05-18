@@ -62,9 +62,11 @@ export abstract class BaseAdapter implements DevToolsAdapter {
 		...args: Parameters<AdapterEvents[K]>
 	): void {
 		const listenerSet = this.listeners[event];
-		listenerSet.forEach((listener: any) => {
+		listenerSet.forEach(listener => {
 			try {
-				listener(...args);
+				(listener as (...eventArgs: Parameters<AdapterEvents[K]>) => void)(
+					...args
+				);
 			} catch (error) {
 				console.error(`Error in ${event} listener:`, error);
 			}

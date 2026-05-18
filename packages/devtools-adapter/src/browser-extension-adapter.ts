@@ -1,10 +1,15 @@
 import { BaseAdapter } from "./base-adapter";
+import { normalizeDebugConfig } from "./normalize";
 import type {
 	Settings,
 	SignalUpdate,
 	SignalDisposed,
 	DebugConfig,
 } from "./types";
+
+type AdapterCommandMessage =
+	| { type: "CONFIGURE_DEBUG"; payload: Settings }
+	| { type: "REQUEST_STATE" };
 
 export interface BrowserExtensionAdapterOptions {
 	/**
@@ -79,7 +84,7 @@ export class BrowserExtensionAdapter extends BaseAdapter {
 		this.sendMessage({ type: "REQUEST_STATE" });
 	}
 
-	private sendMessage(message: any): void {
+	private sendMessage(message: AdapterCommandMessage): void {
 		this.targetWindow.postMessage(message, "*");
 	}
 
@@ -102,6 +107,7 @@ export class BrowserExtensionAdapter extends BaseAdapter {
 				this.emit("signalInit");
 				break;
 
+			case "SIGNALS_AVAILABLE":
 			case "SIGNALS_AVAILABILITY":
 				this.handleSignalsAvailability(payload);
 				break;
@@ -165,8 +171,11 @@ export class BrowserExtensionAdapter extends BaseAdapter {
 		this.updateConnectionStatus();
 	}
 
-	private handleConfig(payload: DebugConfig): void {
-		this.emit("configReceived", payload);
+	private handleConfig(payload: DebugConfig | Settings | unknown): void {
+		const config = normalizeDebugConfig(payload);
+		if (config) {
+			this.emit("configReceived", config);
+		}
 	}
 
 	private updateConnectionStatus(): void {
