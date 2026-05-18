@@ -294,10 +294,6 @@ hook(OptionsTypes.DIFFED, (old, vnode) => {
 					updater._update(signal, renderedProps);
 				}
 			}
-
-			for (let prop in props) {
-				renderedProps[prop] = props[prop];
-			}
 		}
 	}
 	old(vnode);
@@ -363,6 +359,16 @@ hook(OptionsTypes.UNMOUNT, (old, vnode: VNode) => {
 					let updater = updaters[prop];
 					if (updater) updater._dispose();
 				}
+			}
+		}
+		// Restore Signal references into vnode.props so that, if this vnode
+		// instance is reused for a remount, the DIFF hook can re-detect the
+		// signal-bound props (they were replaced with peeked values during diff).
+		let signalProps = vnode.__np;
+		if (signalProps) {
+			let props = vnode.props;
+			for (let prop in signalProps) {
+				props[prop] = signalProps[prop];
 			}
 		}
 		vnode.__np = undefined;
