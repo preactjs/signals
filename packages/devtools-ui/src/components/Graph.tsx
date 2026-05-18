@@ -680,7 +680,11 @@ export function GraphVisualization() {
 
 	const handleExportJSON = async () => {
 		showExportMenu.value = false;
-		const value = JSON.stringify(graphData.value, null, 2);
+		const exportData: GraphData = {
+			nodes: graphData.value.nodes,
+			links: graphData.value.links,
+		};
+		const value = JSON.stringify(exportData, null, 2);
 		copyToClipboard(value);
 		showToast("Copied to clipboard!");
 	};

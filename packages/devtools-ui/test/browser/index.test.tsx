@@ -1125,6 +1125,61 @@ describe("@preact/signals-devtools-ui", () => {
 			expect(links.length).to.equal(2);
 		});
 
+		it("should export only graph nodes and links as JSON", async () => {
+			initDevTools(mockAdapter);
+
+			const updateWithDeps = {
+				type: "update" as const,
+				signalType: "computed" as const,
+				signalName: "total",
+				signalId: "computed-total-1",
+				prevValue: 0,
+				newValue: 100,
+				receivedAt: Date.now(),
+				depth: 1,
+				allDependencies: [
+					{ id: "signal-x-1", name: "x", type: "signal" as const },
+				] as DependencyInfo[],
+			};
+			mockAdapter._emit("signalUpdate", [updateWithDeps]);
+
+			let copiedText = "";
+			const originalExecCommand = document.execCommand;
+			document.execCommand = vi.fn(command => {
+				copiedText =
+					(
+						document.body.querySelector(
+							"textarea"
+						) as HTMLTextAreaElement | null
+					)?.value ?? "";
+				return command === "copy";
+			});
+
+			try {
+				render(<GraphVisualization />, scratch);
+
+				await act(async () => {
+					(
+						scratch.querySelector(".graph-export-button") as HTMLButtonElement
+					).click();
+				});
+				const jsonExportButton = Array.from(
+					scratch.querySelectorAll(".graph-export-menu-item")
+				).find(button => button.textContent === "JSON") as HTMLButtonElement;
+				await act(async () => {
+					jsonExportButton.click();
+				});
+			} finally {
+				document.execCommand = originalExecCommand;
+			}
+
+			expect(copiedText).to.not.equal("");
+			const exported = JSON.parse(copiedText);
+			expect(Object.keys(exported).sort()).to.deep.equal(["links", "nodes"]);
+			expect(exported.nodes).to.have.length(2);
+			expect(exported.links).to.have.length(1);
+		});
+
 		it("should not duplicate nodes when dependency appears in multiple updates", () => {
 			initDevTools(mockAdapter);
 
