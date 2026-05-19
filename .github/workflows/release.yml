@@ -29,6 +29,7 @@ jobs:
       - name: Install Node.js
         uses: actions/setup-node@v4
         with:
+          package-manager-cache: false
           node-version: 24
           registry-url: "https://registry.npmjs.org"
 
@@ -75,6 +76,7 @@ jobs:
       - name: Install Node.js
         uses: actions/setup-node@v4
         with:
+          package-manager-cache: false
           node-version: 24
           registry-url: "https://registry.npmjs.org"
 
