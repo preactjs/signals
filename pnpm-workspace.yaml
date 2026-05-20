@@ -12,6 +12,8 @@ packages:
   - "!**/test/**"
 
 minimumReleaseAge: 10080
+minimumReleaseAgeExclude:
+  - preact
 
 blockExoticSubdeps: true
 
