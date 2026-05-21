@@ -1,5 +1,18 @@
 # @preact/signals-devtools-ui
 
+## 0.4.3
+
+### Patch Changes
+
+- [#928](https://github.com/preactjs/signals/pull/928) [`7d3b123`](https://github.com/preactjs/signals/commit/7d3b1238ab879c54279bded4a64eb45871560778) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Clean up DevTools integration types and configuration payload handling. The debug package now sends normalized settings payloads, adapters accept current and legacy config/availability messages, and the UI disposes adapter subscriptions when contexts are destroyed.
+
+- [#919](https://github.com/preactjs/signals/pull/919) [`980189c`](https://github.com/preactjs/signals/commit/980189cc3be1700b6465a8804ce640948d12a27f) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Improve dependency graph fit and panning on large canvases.
+
+- [#927](https://github.com/preactjs/signals/pull/927) [`6a38fb6`](https://github.com/preactjs/signals/commit/6a38fb657796c9584938bea66bc82e4efb857081) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Fix dependency graph JSON export to include only serializable graph data instead of internal render metadata.
+
+- Updated dependencies [[`7d3b123`](https://github.com/preactjs/signals/commit/7d3b1238ab879c54279bded4a64eb45871560778)]:
+  - @preact/signals-devtools-adapter@0.4.1
+
 ## 0.4.2
 
 ### Patch Changes

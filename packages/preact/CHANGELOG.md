@@ -1,5 +1,11 @@
 # @preact/signals
 
+## 2.9.1
+
+### Patch Changes
+
+- [#924](https://github.com/preactjs/signals/pull/924) [`ebcee90`](https://github.com/preactjs/signals/commit/ebcee906dbf3e0de5ccf58cb2b10209e1d28b5ac) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Fix redundant DOM attribute writes when a parent rerenders with unchanged signal props. The DIFFED hook no longer writes Signal references back into `vnode.props`, which was causing Preact's prop diff to see a mismatch (old: Signal, new: peeked value) and re-apply every signal-bound attribute on every parent rerender.
+
 ## 2.9.0
 
 ### Minor Changes
