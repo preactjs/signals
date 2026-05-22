@@ -1,5 +1,11 @@
 # @preact/signals-devtools-adapter
 
+## 0.4.1
+
+### Patch Changes
+
+- [#928](https://github.com/preactjs/signals/pull/928) [`7d3b123`](https://github.com/preactjs/signals/commit/7d3b1238ab879c54279bded4a64eb45871560778) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Clean up DevTools integration types and configuration payload handling. The debug package now sends normalized settings payloads, adapters accept current and legacy config/availability messages, and the UI disposes adapter subscriptions when contexts are destroyed.
+
 ## 0.4.0
 
 ### Minor Changes

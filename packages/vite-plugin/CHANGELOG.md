@@ -1,5 +1,12 @@
 # @preact/signals-agent-vite
 
+## 0.1.2
+
+### Patch Changes
+
+- Updated dependencies [[`7d3b123`](https://github.com/preactjs/signals/commit/7d3b1238ab879c54279bded4a64eb45871560778)]:
+  - @preact/signals-debug@1.4.3
+
 ## 0.1.1
 
 ### Patch Changes
