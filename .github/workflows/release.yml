@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - 1.x.x
 
 jobs:
   release:
@@ -24,7 +23,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@a3252b78c470c02df07e9d59298aecedc3ccdd6d # v3
         with:
-          version: 11.0.0
+          version: 11.3.0
 
       - name: Install Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
@@ -71,7 +70,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@a3252b78c470c02df07e9d59298aecedc3ccdd6d # v3
         with:
-          version: 11.0.0
+          version: 11.3.0
 
       - name: Install Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
