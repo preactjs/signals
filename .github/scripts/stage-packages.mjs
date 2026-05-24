@@ -94,7 +94,7 @@ for (const packageJsonPath of packageJsonPaths()) {
   ];
 
   console.log(`Staging ${pkg.name}@${pkg.version} with dist-tag ${tag}...`);
-  const result = spawnSync("npm", args, {
+  const result = spawnSync("pnpm", args, {
     cwd: root,
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
