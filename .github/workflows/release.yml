@@ -40,7 +40,7 @@ jobs:
         run: node .github/scripts/has-unpublished-packages.mjs
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
 
       - name: Create Release Pull Request
         id: changesets
@@ -83,7 +83,7 @@ jobs:
         run: npm install -g npm@11.15.0
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
 
       - name: Publish packages
         uses: changesets/action@e0145edc7d9d8679003495b11f87bd8ef63c0cba # v1.5.3

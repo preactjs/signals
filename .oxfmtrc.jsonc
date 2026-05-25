@@ -4,6 +4,6 @@
 	"arrowParens": "avoid",
 	"trailingComma": "es5",
 	"insertFinalNewline": true,
-	"ignorePatterns": ["pnpm-lock.yaml"],
+	"ignorePatterns": ["pnpm-lock.yaml", "mangle.json"],
 	"experimentalSortPackageJson": false,
 }
