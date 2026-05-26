@@ -40,6 +40,7 @@ interface ForProps<T> {
 
 export function For<T>(props: ForProps<T>): ComponentChildren | null {
 	const cache = useMemo(() => new Map(), []);
+	const indexes = useMemo(() => new Map(), []);
 	const list = (typeof props.each === "function" ? props.each() : props.each) as
 		| Signal<Array<T>>
 		| Array<T>;
@@ -52,12 +53,13 @@ export function For<T>(props: ForProps<T>): ComponentChildren | null {
 
 	const items = listValue.map((value, index) => {
 		removed.delete(value);
-		if (!cache.has(value)) {
+		if (!cache.has(value) || indexes.get(value) !== index) {
 			const key = props.getKey ? props.getKey(value, index) : index;
 			const result = (
 				<Item key={key} v={value} i={index} children={props.children} />
 			);
 			cache.set(value, result);
+			indexes.set(value, index);
 			return result;
 		}
 		return cache.get(value);
@@ -65,6 +67,7 @@ export function For<T>(props: ForProps<T>): ComponentChildren | null {
 
 	removed.forEach(value => {
 		cache.delete(value);
+		indexes.delete(value);
 	});
 
 	return createElement(Fragment, null, items);
