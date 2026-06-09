@@ -42,7 +42,7 @@
     "docs:preview": "cd docs && pnpm preview",
     "ci:build": "pnpm build && pnpm docs:build",
     "ci:test": "pnpm lint && pnpm test",
-    "prepare": "husky install && playwright install chromium",
+    "prepare": "husky install",
     "format": "oxfmt",
     "version": "pnpm changeset version && pnpm i --lockfile-only"
   },
