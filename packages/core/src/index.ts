@@ -397,13 +397,7 @@ Signal.prototype.subscribe = function (fn) {
 	return effect(
 		() => {
 			const value = this.value;
-			const prevContext = evalContext;
-			evalContext = undefined;
-			try {
-				fn(value);
-			} finally {
-				evalContext = prevContext;
-			}
+			untracked(() => fn(value));
 		},
 		{ name: "sub" }
 	);
@@ -608,15 +602,12 @@ declare class Computed<T = any> extends Signal<T> {
 
 /** @internal */
 function Computed(this: Computed, fn: () => unknown, options?: SignalOptions) {
-	Signal.call(this, undefined);
+	Signal.call(this, undefined, options);
 
 	this._fn = fn;
 	this._sources = undefined;
 	this._globalVersion = globalVersion - 1;
 	this._flags = OUTDATED;
-	this._watched = options?.watched;
-	this._unwatched = options?.unwatched;
-	this.name = options?.name;
 }
 
 Computed.prototype = new Signal() as Computed;
