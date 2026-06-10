@@ -823,6 +823,45 @@ describe("@preact/signals", () => {
 			expect(widthCalls).to.have.length(0);
 		});
 
+		// https://github.com/preactjs/signals/issues/923 — changed-signal variant:
+		// the binding effect already wrote the new value to the DOM, so a later
+		// parent rerender must not re-apply it either.
+		it("should not re-apply signal props the binding effect already wrote when parent rerenders", () => {
+			const count = signal(0);
+			const width = signal(200);
+
+			function App() {
+				return (
+					<div>
+						<p>{count.value}</p>
+						{/* @ts-ignore */}
+						<canvas width={width} />
+					</div>
+				);
+			}
+
+			render(<App />, scratch);
+
+			const canvas = scratch.querySelector("canvas") as HTMLCanvasElement;
+
+			// The binding effect applies the new width directly to the DOM.
+			act(() => {
+				width.value = 300;
+			});
+			expect(canvas.getAttribute("width")).to.equal("300");
+
+			const setAttributeSpy = vi.spyOn(canvas, "setAttribute");
+
+			act(() => {
+				count.value++;
+			});
+
+			const widthCalls = setAttributeSpy.mock.calls.filter(
+				([name]) => name === "width"
+			);
+			expect(widthCalls).to.have.length(0);
+		});
+
 		it("should not strand the DOM at a stale value when a re-render reuses the node while a signal prop update is pending", async () => {
 			const disabled = signal(false);
 			const spy = vi.fn();
