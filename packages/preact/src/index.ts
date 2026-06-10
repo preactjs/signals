@@ -313,25 +313,21 @@ function createPropUpdater(
 		dom.ownerSVGElement === undefined;
 
 	const changeSignal = signal(propSignal);
-	// Track the last value we know was applied to the DOM, so we can skip
-	// redundant updates without writing back to vnode.props (which would
-	// clobber the Signal reference and break unmount/remount cycles).
-	let lastRenderedValue: any = propSignal.peek();
 	return {
 		_update: (newSignal: Signal, newProps: typeof props) => {
 			changeSignal.value = newSignal;
 			props = newProps;
-			lastRenderedValue = newSignal.peek();
 		},
 		_dispose: effect(function (this: Effect) {
 			this._notify = notifyDomUpdates;
 			const value = changeSignal.value.value;
 			// If Preact just rendered this value, don't render it again:
-			if (lastRenderedValue === value) {
-				lastRenderedValue = undefined;
-				return;
-			}
-			lastRenderedValue = undefined;
+			if (props[prop] === value) return;
+			// Write the value back into the rendered props so that Preact's next
+			// diff compares against what is actually in the DOM. The Signal
+			// reference itself lives in vnode.__np and is restored into props by
+			// the UNMOUNT hook, so this never clobbers it.
+			props[prop] = value;
 			if (setAsProperty) {
 				// @ts-ignore-next-line silly
 				dom[prop] = value;
