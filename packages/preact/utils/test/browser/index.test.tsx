@@ -164,6 +164,106 @@ describe("@preact/signals-utils", () => {
 			);
 		});
 
+		it("Should pass updated indexes to reused items after removal", () => {
+			const alice = { id: "a", label: "Alice" };
+			const bob = { id: "b", label: "Bob" };
+			const carol = { id: "c", label: "Carol" };
+			const list = signal([alice, bob, carol]);
+			const rerender = signal(0);
+			const Paragraph = (p: any) => <p>{p.children}</p>;
+
+			act(() => {
+				render(
+					<For each={list} getKey={item => item.id}>
+						{(item, index) => (
+							<Paragraph>
+								{item.label}:{index}:{rerender.value}
+							</Paragraph>
+						)}
+					</For>,
+					scratch
+				);
+			});
+			expect(scratch.innerHTML).to.eq(
+				"<p>Alice:0:0</p><p>Bob:1:0</p><p>Carol:2:0</p>"
+			);
+
+			act(() => {
+				list.value = [bob, carol];
+			});
+			act(() => {
+				rerender.value = 1;
+			});
+			expect(scratch.innerHTML).to.eq("<p>Bob:0:1</p><p>Carol:1:1</p>");
+		});
+
+		it("Should pass updated indexes to object items after removal without getKey", () => {
+			const alice = { label: "Alice" };
+			const bob = { label: "Bob" };
+			const carol = { label: "Carol" };
+			const list = signal([alice, bob, carol]);
+			const rerender = signal(0);
+			const Paragraph = (p: any) => <p>{p.children}</p>;
+
+			act(() => {
+				render(
+					<For each={list}>
+						{(item, index) => (
+							<Paragraph>
+								{item.label}:{index}:{rerender.value}
+							</Paragraph>
+						)}
+					</For>,
+					scratch
+				);
+			});
+			expect(scratch.innerHTML).to.eq(
+				"<p>Alice:0:0</p><p>Bob:1:0</p><p>Carol:2:0</p>"
+			);
+
+			act(() => {
+				list.value = [bob, carol];
+			});
+			act(() => {
+				rerender.value = 1;
+			});
+			expect(scratch.innerHTML).to.eq("<p>Bob:0:1</p><p>Carol:1:1</p>");
+		});
+
+		it("Should preserve DOM identity of reused items after a re-index without getKey", () => {
+			const alice = { label: "Alice" };
+			const bob = { label: "Bob" };
+			const carol = { label: "Carol" };
+			const list = signal([alice, bob, carol]);
+			const Paragraph = (p: any) => <p>{p.children}</p>;
+
+			act(() => {
+				render(
+					<For each={list}>
+						{(item, index) => (
+							<Paragraph>
+								{item.label}:{index}
+							</Paragraph>
+						)}
+					</For>,
+					scratch
+				);
+			});
+			const bobNodeBefore = scratch.querySelectorAll("p")[1];
+
+			act(() => {
+				list.value = [bob, carol];
+			});
+
+			// Bob's index changed 1 -> 0. Because the cached vnode is reused (not
+			// recreated with a new positional key), Bob keeps the very same DOM
+			// node. Recreating the vnode here would re-key it to 0 and reconcile
+			// Bob into Alice's old node, losing focus/state.
+			const bobNodeAfter = scratch.querySelectorAll("p")[0];
+			expect(scratch.innerHTML).to.eq("<p>Bob:0</p><p>Carol:1</p>");
+			expect(bobNodeAfter).to.equal(bobNodeBefore);
+		});
+
 		it("Should use getKey for stable identity on item removal", () => {
 			const list = signal([
 				{ id: "a", label: "Alice" },
