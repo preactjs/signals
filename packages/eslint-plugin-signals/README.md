@@ -11,6 +11,7 @@ An [Oxlint](https://oxc.rs)/ESLint plugin that catches common signal misuse patt
 | [`signals/no-signal-truthiness`](#no-signal-truthiness)               | warn     | Warn when a signal object itself is evaluated for truthiness                         |
 | [`signals/no-signal-in-component-body`](#no-signal-in-component-body) | error    | Disallow calling `signal`/`computed`/`effect` in a component body; use hooks instead |
 | [`signals/no-conditional-value-read`](#no-conditional-value-read)     | error    | Warn when `.value` is read conditionally behind a non-reactive guard                 |
+| [`signals/no-useless-computed`](#no-useless-computed)                 | warn     | Disallow a `computed()` that only returns another signal's `.value` unchanged        |
 
 ## Installation
 
@@ -31,6 +32,7 @@ pnpm add -D @preact/eslint-plugin-signals
 		"@preact/signals/no-signal-truthiness": "warn",
 		"@preact/signals/no-signal-in-component-body": "error",
 		"@preact/signals/no-conditional-value-read": "error",
+		"@preact/signals/no-useless-computed": "warn",
 	},
 }
 ```
@@ -60,6 +62,7 @@ export default [
 			"signals/no-signal-truthiness": "warn",
 			"signals/no-signal-in-component-body": "error",
 			"signals/no-conditional-value-read": "error",
+			"signals/no-useless-computed": "warn",
 		},
 	},
 ];
@@ -232,6 +235,36 @@ effect(() => {
 	doSomething(v);
 });
 ```
+
+### `no-useless-computed`
+
+Warns when `computed()` or `useComputed()` only returns another signal's
+`.value` unchanged.
+
+This creates an extra reactive graph node and subscription without deriving a
+new value. Transformations, property reads from the value, and multi-step
+callbacks are allowed.
+
+```js
+const count = signal(0);
+
+// ❌ Bad
+const duplicate = computed(() => count.value);
+const alsoDuplicate = useComputed(() => {
+	return count.value;
+});
+
+// ✅ Good
+const doubled = computed(() => count.value * 2);
+const visible = computed(() => !hidden.value);
+const name = computed(() => user.value.name);
+const direct = count;
+```
+
+> **Note:** If you use this pattern to expose a readonly view in TypeScript,
+> prefer `const view: ReadonlySignal<number> = count;`. `ReadonlySignal` is
+> structural, so a writable `Signal` satisfies it. JavaScript consumers who
+> need a runtime write barrier can disable this rule for that line.
 
 ## How Detection Works
 

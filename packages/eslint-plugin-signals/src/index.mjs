@@ -11,6 +11,7 @@
  *   - signals/no-signal-truthiness
  *   - signals/no-signal-in-component-body
  *   - signals/no-conditional-value-read
+ *   - signals/no-useless-computed
  */
 
 import noSignalWriteInComputed from "./rules/no-signal-write-in-computed.mjs";
@@ -18,6 +19,7 @@ import noValueAfterAwait from "./rules/no-value-after-await.mjs";
 import noSignalTruthiness from "./rules/no-signal-truthiness.mjs";
 import noSignalInComponentBody from "./rules/no-signal-in-component-body.mjs";
 import noConditionalValueRead from "./rules/no-conditional-value-read.mjs";
+import noUselessComputed from "./rules/no-useless-computed.mjs";
 
 const plugin = {
 	meta: {
@@ -30,6 +32,7 @@ const plugin = {
 		"no-signal-truthiness": noSignalTruthiness,
 		"no-signal-in-component-body": noSignalInComponentBody,
 		"no-conditional-value-read": noConditionalValueRead,
+		"no-useless-computed": noUselessComputed,
 	},
 };
 
