@@ -869,6 +869,42 @@ describe("effect()", () => {
 		expect(spy).not.toHaveBeenCalled();
 	});
 
+	it("should not rerun an effect for a no-op batch assignment that reverts to NaN", () => {
+		const foo = signal(NaN);
+		const spy = vi.fn(() => {
+			foo.value;
+		});
+
+		effect(spy);
+		expect(spy).toHaveBeenCalledOnce();
+		spy.mockClear();
+
+		batch(() => {
+			foo.value = 0;
+			foo.value = NaN;
+		});
+
+		expect(spy).not.toHaveBeenCalled();
+	});
+
+	it("should rerun an effect for a batch assignment that changes the value to NaN", () => {
+		const foo = signal(1);
+		const spy = vi.fn(() => {
+			foo.value;
+		});
+
+		effect(spy);
+		expect(spy).toHaveBeenCalledOnce();
+		spy.mockClear();
+
+		batch(() => {
+			foo.value = NaN;
+		});
+
+		expect(spy).toHaveBeenCalledOnce();
+		expect(Number.isNaN(foo.value)).to.equal(true);
+	});
+
 	it("should not rerun an effect for repeated no-op top-level batches", () => {
 		const foo = signal(42);
 		const spy = vi.fn(() => {

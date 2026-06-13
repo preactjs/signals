@@ -167,7 +167,13 @@ function reconcileBatchSnapshots() {
 	batchSnapshots = undefined;
 
 	while (snapshots !== undefined) {
-		if (snapshots._source._value === snapshots._value) {
+		const value = snapshots._source._value;
+		const snapshot = snapshots._value;
+		// Roll back the version if the value ended up unchanged. The extra
+		// self-comparison treats a value that started and ended as NaN as
+		// unchanged, since `NaN === NaN` is `false` (avoids `Object.is` to
+		// keep ES5 output).
+		if (value === snapshot || (value !== value && snapshot !== snapshot)) {
 			snapshots._source._version = snapshots._version;
 		}
 		snapshots = snapshots._next;
