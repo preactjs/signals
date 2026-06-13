@@ -197,6 +197,76 @@ describe("@preact/signals-react-utils", () => {
 			);
 		});
 
+		it("Should pass updated indexes to reused items after removal", async () => {
+			const alice = { id: "a", label: "Alice" };
+			const bob = { id: "b", label: "Bob" };
+			const carol = { id: "c", label: "Carol" };
+			const list = signal([alice, bob, carol]);
+			const rerender = signal(0);
+			const Paragraph = (p: any) => <p>{p.children}</p>;
+
+			await act(() => {
+				render(
+					<For each={list} getKey={item => item.id}>
+						{(item, index) => (
+							<Paragraph>
+								{item.label}:{index}:{rerender.value}
+							</Paragraph>
+						)}
+					</For>
+				);
+			});
+			expect(scratch.innerHTML).to.eq(
+				"<p>Alice:0:0</p><p>Bob:1:0</p><p>Carol:2:0</p>"
+			);
+
+			// Remove the first item while keeping the remaining item references,
+			// which previously reused Bob and Carol's cached child elements
+			// with stale indexes.
+			await act(() => {
+				list.value = [bob, carol];
+			});
+
+			// Force the reused children to render again. They should receive their
+			// new indexes from the updated list, not the indexes they had at mount.
+			await act(() => {
+				rerender.value = 1;
+			});
+			expect(scratch.innerHTML).to.eq("<p>Bob:0:1</p><p>Carol:1:1</p>");
+		});
+
+		it("Should pass updated indexes to object items after removal without getKey", async () => {
+			const alice = { label: "Alice" };
+			const bob = { label: "Bob" };
+			const carol = { label: "Carol" };
+			const list = signal([alice, bob, carol]);
+			const rerender = signal(0);
+			const Paragraph = (p: any) => <p>{p.children}</p>;
+
+			await act(() => {
+				render(
+					<For each={list}>
+						{(item, index) => (
+							<Paragraph>
+								{item.label}:{index}:{rerender.value}
+							</Paragraph>
+						)}
+					</For>
+				);
+			});
+			expect(scratch.innerHTML).to.eq(
+				"<p>Alice:0:0</p><p>Bob:1:0</p><p>Carol:2:0</p>"
+			);
+
+			await act(() => {
+				list.value = [bob, carol];
+			});
+			await act(() => {
+				rerender.value = 1;
+			});
+			expect(scratch.innerHTML).to.eq("<p>Bob:0:1</p><p>Carol:1:1</p>");
+		});
+
 		it("Should use getKey for stable identity on item removal", async () => {
 			const list = signal([
 				{ id: "a", label: "Alice" },
