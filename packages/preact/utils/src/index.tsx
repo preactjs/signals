@@ -1,4 +1,4 @@
-import { ReadonlySignal, Signal } from "@preact/signals-core";
+import { ReadonlySignal, Signal, signal } from "@preact/signals-core";
 import { useSignal } from "@preact/signals";
 import { Fragment, createElement, ComponentChildren } from "preact";
 import { useMemo } from "preact/hooks";
@@ -11,7 +11,7 @@ interface ShowProps<T = boolean> {
 
 const Item = (props: any) => {
 	return typeof props.children === "function"
-		? props.children(props.v, props.i)
+		? props.children(props.v, props.i ? props.i.value : undefined)
 		: props.children;
 };
 
@@ -52,15 +52,22 @@ export function For<T>(props: ForProps<T>): ComponentChildren | null {
 
 	const items = listValue.map((value, index) => {
 		removed.delete(value);
-		if (!cache.has(value)) {
+		let entry = cache.get(value);
+		if (!entry) {
+			const i = signal(index);
 			const key = props.getKey ? props.getKey(value, index) : index;
-			const result = (
-				<Item key={key} v={value} i={index} children={props.children} />
+			const vnode = (
+				<Item key={key} v={value} i={i} children={props.children} />
 			);
-			cache.set(value, result);
-			return result;
+			entry = { vnode, i };
+			cache.set(value, entry);
+		} else if (entry.i.peek() !== index) {
+			// Index changed (e.g. an earlier item was removed/reordered). Push the
+			// new index through the per-item signal so the cached vnode is reused
+			// and the child re-renders reactively instead of being recreated.
+			entry.i.value = index;
 		}
-		return cache.get(value);
+		return entry.vnode;
 	});
 
 	removed.forEach(value => {
