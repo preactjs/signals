@@ -24,7 +24,7 @@ import noUselessComputed from "./rules/no-useless-computed.mjs";
 const plugin = {
 	meta: {
 		name: "@preact/eslint-plugin-signals",
-		version: "0.2.0",
+		version: "0.3.0",
 	},
 	rules: {
 		"no-signal-write-in-computed": noSignalWriteInComputed,

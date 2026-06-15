@@ -1,5 +1,11 @@
 # @preact/eslint-plugin-signals
 
+## 0.3.0
+
+### Minor Changes
+
+- [#940](https://github.com/preactjs/signals/pull/940) [`70c7b9f`](https://github.com/preactjs/signals/commit/70c7b9f3ba4fad54077c3f6da0992160e57ec771) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Add `no-useless-computed` rule that flags `computed()`/`useComputed()` callbacks which only return a single signal's `.value` without transformation
+
 ## 0.2.0
 
 ### Minor Changes

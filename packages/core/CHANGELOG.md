@@ -1,5 +1,11 @@
 # @preact/signals-core
 
+## 1.14.3
+
+### Patch Changes
+
+- [#937](https://github.com/preactjs/signals/pull/937) [`beb84c1`](https://github.com/preactjs/signals/commit/beb84c19d67c54d85e68ac033ac797b5792d1f8f) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Optimize bundle size
+
 ## 1.14.2
 
 ### Patch Changes
