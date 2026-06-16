@@ -1,5 +1,14 @@
 # @preact/signals-react
 
+## 3.10.2
+
+### Patch Changes
+
+- [#942](https://github.com/preactjs/signals/pull/942) [`e76780c`](https://github.com/preactjs/signals/commit/e76780c7800febc10f57d15cd34166c2f19c65d0) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Fix stale `<For>` render-prop indexes after removals/reorders by making each cached item's index reactive (a per-item signal) instead of a frozen prop. Cached children are reused and re-render with the new index rather than being recreated, so DOM/component identity is preserved.
+
+- Updated dependencies [[`beb84c1`](https://github.com/preactjs/signals/commit/beb84c19d67c54d85e68ac033ac797b5792d1f8f)]:
+  - @preact/signals-core@1.14.3
+
 ## 3.10.1
 
 ### Patch Changes

@@ -1,5 +1,16 @@
 # @preact/signals
 
+## 2.9.2
+
+### Patch Changes
+
+- [#942](https://github.com/preactjs/signals/pull/942) [`e76780c`](https://github.com/preactjs/signals/commit/e76780c7800febc10f57d15cd34166c2f19c65d0) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Fix stale `<For>` render-prop indexes after removals/reorders by making each cached item's index reactive (a per-item signal) instead of a frozen prop. Cached children are reused and re-render with the new index rather than being recreated, so DOM/component identity is preserved.
+
+- [#938](https://github.com/preactjs/signals/pull/938) [`e0ce9fd`](https://github.com/preactjs/signals/commit/e0ce9fdf92df7f0ece2c89d44554c39f36dc6882) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Fix Signal-bound DOM props getting stranded at a stale value when Preact reuses a DOM node. The prop-binding effect now writes the applied value back into the rendered props, keeping Preact's diff baseline in sync with the DOM instead of assuming Preact applied every update.
+
+- Updated dependencies [[`beb84c1`](https://github.com/preactjs/signals/commit/beb84c19d67c54d85e68ac033ac797b5792d1f8f)]:
+  - @preact/signals-core@1.14.3
+
 ## 2.9.1
 
 ### Patch Changes
