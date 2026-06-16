@@ -108,6 +108,9 @@ function batch<T>(fn: () => T): T {
 // Currently evaluated computed or effect.
 let evalContext: Computed | Effect | undefined = undefined;
 
+// Effects captured while constructing a model instance.
+let capturedEffects: Effect[] | undefined;
+
 /**
  * Run a callback function that can access signal values without
  * subscribing to the signal updates.
@@ -117,11 +120,18 @@ let evalContext: Computed | Effect | undefined = undefined;
  */
 function untracked<T>(fn: () => T): T {
 	const prevContext = evalContext;
+	const prevCapturedEffects = capturedEffects;
+
 	evalContext = undefined;
+	// Model effect capture is another kind of ambient tracking. Suppress it in
+	// untracked callbacks while still allowing nested createModel() calls to
+	// establish their own capture scope.
+	capturedEffects = undefined;
 	try {
 		return fn();
 	} finally {
 		evalContext = prevContext;
+		capturedEffects = prevCapturedEffects;
 	}
 }
 
@@ -858,8 +868,6 @@ declare class Effect {
 export interface EffectOptions {
 	name?: string;
 }
-
-let capturedEffects: Effect[] | undefined;
 
 /** @internal */
 function Effect(this: Effect, fn: EffectFn, options?: EffectOptions) {

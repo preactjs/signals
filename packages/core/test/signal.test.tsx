@@ -5,6 +5,7 @@ import {
 	effect,
 	batch,
 	createModel,
+	action,
 	Signal,
 	untracked,
 	ReadonlySignal,
@@ -2678,6 +2679,109 @@ describe("createModel", () => {
 
 		expect(() => new ErrorModel()).to.throw("Factory error");
 		expect(effectRan).to.equal(true); // Effect runs before error is thrown
+	});
+
+	it("does not capture effects created inside untracked callbacks", () => {
+		let runs = 0;
+		const cleanup = vi.fn();
+		let disposeEffect!: () => void;
+
+		const TestModel = createModel(() => {
+			const count = signal(0);
+
+			untracked(() => {
+				disposeEffect = effect(() => {
+					count.value;
+					runs++;
+					return cleanup;
+				});
+			});
+
+			return { count };
+		});
+
+		const model = new TestModel();
+		expect(runs).to.equal(1);
+
+		model[Symbol.dispose]();
+		expect(cleanup).not.toHaveBeenCalled();
+
+		model.count.value++;
+		expect(runs).to.equal(2);
+		expect(cleanup).toHaveBeenCalledTimes(1);
+
+		disposeEffect();
+		expect(cleanup).toHaveBeenCalledTimes(2);
+	});
+
+	it("does not capture effects created inside action callbacks", () => {
+		let runs = 0;
+		const cleanup = vi.fn();
+		let disposeEffect!: () => void;
+
+		const TestModel = createModel(() => {
+			const count = signal(0);
+
+			const createExternalEffect = action(() => {
+				disposeEffect = effect(() => {
+					count.value;
+					runs++;
+					return cleanup;
+				});
+			});
+
+			createExternalEffect();
+
+			return { count };
+		});
+
+		const model = new TestModel();
+		expect(runs).to.equal(1);
+
+		model[Symbol.dispose]();
+		expect(cleanup).not.toHaveBeenCalled();
+
+		model.count.value++;
+		expect(runs).to.equal(2);
+		expect(cleanup).toHaveBeenCalledTimes(1);
+
+		disposeEffect();
+		expect(cleanup).toHaveBeenCalledTimes(2);
+	});
+
+	it("lets nested models created inside untracked capture their own effects without promoting them to the outer model", () => {
+		let runs = 0;
+		const cleanup = vi.fn();
+
+		const InnerModel = createModel(() => {
+			const count = signal(0);
+
+			effect(() => {
+				count.value;
+				runs++;
+				return cleanup;
+			});
+
+			return { count };
+		});
+
+		const OuterModel = createModel(() => {
+			const inner = untracked(() => new InnerModel());
+			return { inner };
+		});
+
+		const outer = new OuterModel();
+		expect(runs).to.equal(1);
+
+		outer[Symbol.dispose]();
+		expect(cleanup).not.toHaveBeenCalled();
+
+		outer.inner.count.value++;
+		expect(runs).to.equal(2);
+		expect(cleanup).toHaveBeenCalledTimes(1);
+
+		outer.inner[Symbol.dispose]();
+		expect(cleanup).toHaveBeenCalledTimes(2);
 	});
 
 	describe("model composition", () => {
