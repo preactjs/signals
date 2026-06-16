@@ -2750,11 +2750,67 @@ describe("createModel", () => {
 	});
 
 	it("lets nested models created inside untracked capture their own effects without promoting them to the outer model", () => {
-		let runs = 0;
-		const cleanup = vi.fn();
+		let outerRuns = 0;
+		let innerRuns = 0;
+		const outerCleanup = vi.fn();
+		const innerCleanup = vi.fn();
 
 		const InnerModel = createModel(() => {
 			const count = signal(0);
+
+			effect(() => {
+				count.value;
+				innerRuns++;
+				return innerCleanup;
+			});
+
+			return { count };
+		});
+
+		const OuterModel = createModel(() => {
+			const outerCount = signal(0);
+
+			effect(() => {
+				outerCount.value;
+				outerRuns++;
+				return outerCleanup;
+			});
+
+			const inner = untracked(() => new InnerModel());
+			return { outerCount, inner };
+		});
+
+		const outer = new OuterModel();
+		expect(outerRuns).to.equal(1);
+		expect(innerRuns).to.equal(1);
+
+		outer[Symbol.dispose]();
+		expect(outerCleanup).toHaveBeenCalledTimes(1);
+		expect(innerCleanup).not.toHaveBeenCalled();
+
+		outer.outerCount.value++;
+		expect(outerRuns).to.equal(1);
+
+		outer.inner.count.value++;
+		expect(innerRuns).to.equal(2);
+		expect(innerCleanup).toHaveBeenCalledTimes(1);
+
+		outer.inner[Symbol.dispose]();
+		expect(innerCleanup).toHaveBeenCalledTimes(2);
+	});
+
+	it("restores model effect capture when untracked callbacks throw inside model factories", () => {
+		let runs = 0;
+		const cleanup = vi.fn();
+
+		const TestModel = createModel(() => {
+			const count = signal(0);
+
+			try {
+				untracked(() => {
+					throw new Error("transient");
+				});
+			} catch {}
 
 			effect(() => {
 				count.value;
@@ -2765,23 +2821,15 @@ describe("createModel", () => {
 			return { count };
 		});
 
-		const OuterModel = createModel(() => {
-			const inner = untracked(() => new InnerModel());
-			return { inner };
-		});
-
-		const outer = new OuterModel();
+		const model = new TestModel();
 		expect(runs).to.equal(1);
 
-		outer[Symbol.dispose]();
-		expect(cleanup).not.toHaveBeenCalled();
-
-		outer.inner.count.value++;
-		expect(runs).to.equal(2);
+		model[Symbol.dispose]();
 		expect(cleanup).toHaveBeenCalledTimes(1);
 
-		outer.inner[Symbol.dispose]();
-		expect(cleanup).toHaveBeenCalledTimes(2);
+		model.count.value++;
+		expect(runs).to.equal(1);
+		expect(cleanup).toHaveBeenCalledTimes(1);
 	});
 
 	describe("model composition", () => {
