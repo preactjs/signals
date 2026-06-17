@@ -1,5 +1,13 @@
 # @preact/signals-core
 
+## 1.14.4
+
+### Patch Changes
+
+- [#945](https://github.com/preactjs/signals/pull/945) [`d40746b`](https://github.com/preactjs/signals/commit/d40746be3c7575209d6325ff250c91dd72d6ef18) Thanks [@andrewiggins](https://github.com/andrewiggins)! - Prevent model effect capture while creating effects inside `untracked()` and `action()` callbacks.
+
+  If you create an `effect()` inside an `untracked()` callback within a `createModel()` factory, that effect is no longer disposed when the model is disposed. Use the disposer returned by `effect()` to clean it up manually.
+
 ## 1.14.3
 
 ### Patch Changes
