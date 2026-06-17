@@ -108,20 +108,35 @@ function batch<T>(fn: () => T): T {
 // Currently evaluated computed or effect.
 let evalContext: Computed | Effect | undefined = undefined;
 
+// Effects captured while constructing a model instance.
+let capturedEffects: Effect[] | undefined;
+
 /**
  * Run a callback function that can access signal values without
  * subscribing to the signal updates.
+ *
+ * When called inside a `createModel` factory, this also suppresses
+ * model-owned effect capture. Effects created inside the callback will not
+ * be owned by the surrounding model and must be disposed manually. Nested
+ * `createModel` calls inside the callback still capture their own effects.
  *
  * @param fn The callback function.
  * @returns The value returned by the callback.
  */
 function untracked<T>(fn: () => T): T {
 	const prevContext = evalContext;
+	const prevCapturedEffects = capturedEffects;
+
 	evalContext = undefined;
+	// Model effect capture is another kind of ambient tracking. Suppress it in
+	// untracked callbacks while still allowing nested createModel() calls to
+	// establish their own capture scope.
+	capturedEffects = undefined;
 	try {
 		return fn();
 	} finally {
 		evalContext = prevContext;
+		capturedEffects = prevCapturedEffects;
 	}
 }
 
@@ -859,8 +874,6 @@ export interface EffectOptions {
 	name?: string;
 }
 
-let capturedEffects: Effect[] | undefined;
-
 /** @internal */
 function Effect(this: Effect, fn: EffectFn, options?: EffectOptions) {
 	this._fn = fn;
@@ -1027,6 +1040,9 @@ interface InternalModelConstructor<
 
 function startCapturingEffects(): () => Effect[] | undefined {
 	let prevCapturedEffects = capturedEffects;
+	// Always establish a fresh capture scope, even when `untracked()` has
+	// temporarily cleared the parent scope. This lets nested models own their
+	// effects without promoting them to a suppressed outer scope.
 	capturedEffects = [];
 
 	return function stopCapturingEffects() {
