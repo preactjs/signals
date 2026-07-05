@@ -575,6 +575,25 @@ describe("@preact/signals", () => {
 			expect(scratch.firstChild).to.have.property("checked", false);
 		});
 
+		it("should dispose the updater when re-rendering without any signal props", async () => {
+			const s = signal("bound");
+			// @ts-ignore
+			render(<input value={s} />, scratch);
+			expect(scratch.firstChild).to.have.property("value", "bound");
+
+			// Re-render the same element with no signal props at all.
+			render(<input value="plain" />, scratch);
+			expect(scratch.firstChild).to.have.property("value", "plain");
+
+			// The old binding must be disposed; a write to the previously bound
+			// signal must not clobber what Preact rendered.
+			act(() => {
+				s.value = "stale write";
+			});
+			await sleep();
+			expect(scratch.firstChild).to.have.property("value", "plain");
+		});
+
 		it("should update props without re-rendering", async () => {
 			const s = signal("initial");
 			const spy = vi.fn();

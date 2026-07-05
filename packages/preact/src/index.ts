@@ -268,18 +268,24 @@ hook(OptionsTypes.DIFFED, (old, vnode) => {
 	if (typeof vnode.type === "string" && (dom = vnode.__e as Element)) {
 		let props = vnode.__np;
 		let renderedProps = vnode.props;
-		if (props) {
-			let updaters = dom._updaters;
-			if (updaters) {
-				for (let prop in updaters) {
-					let updater = updaters[prop];
-					if (updater !== undefined && !(prop in props)) {
-						updater._dispose();
-						// @todo we could just always invoke _dispose() here
-						updaters[prop] = undefined;
-					}
+		let updaters = dom._updaters;
+		if (updaters) {
+			// Dispose updaters for props that are no longer bound to a signal.
+			// This must also run when the re-render carried no signal props at
+			// all (`vnode.__np` is undefined), otherwise the stale updater stays
+			// subscribed and keeps writing the old signal's values into the DOM.
+			for (let prop in updaters) {
+				let updater = updaters[prop];
+				if (updater !== undefined && (!props || !(prop in props))) {
+					updater._dispose();
+					// @todo we could just always invoke _dispose() here
+					updaters[prop] = undefined;
 				}
-			} else {
+			}
+		}
+
+		if (props) {
+			if (!updaters) {
 				updaters = {};
 				dom._updaters = updaters;
 			}
