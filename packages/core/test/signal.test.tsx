@@ -893,6 +893,57 @@ describe("effect()", () => {
 		expect(spy).not.toHaveBeenCalled();
 	});
 
+	it("should not rerun an effect subscribed through a computed for a no-op batch assignment", () => {
+		const foo = signal(42);
+		const double = computed(() => foo.value * 2);
+		const spy = vi.fn(() => {
+			double.value;
+		});
+
+		effect(spy);
+		expect(spy).toHaveBeenCalledOnce();
+		spy.mockClear();
+
+		batch(() => {
+			foo.value = 0;
+			foo.value = 42;
+		});
+
+		expect(spy).not.toHaveBeenCalled();
+	});
+
+	it("should keep unsubscribed computeds coherent when they are read during a reverted batch", () => {
+		const foo = signal("A");
+		const double = computed(() => foo.value + "!");
+		expect(double.value).toBe("A!");
+
+		batch(() => {
+			foo.value = "B";
+			// A lazy read inside the batch observes the intermediate version.
+			expect(double.value).toBe("B!");
+			foo.value = "A";
+		});
+
+		// The next write must not collide with the version observed mid-batch.
+		foo.value = "C";
+		expect(double.value).toBe("C!");
+	});
+
+	it("should keep unsubscribed computeds coherent when they are peeked during a reverted batch", () => {
+		const foo = signal(1);
+		const double = computed(() => foo.value * 2);
+		expect(double.peek()).toBe(2);
+
+		batch(() => {
+			foo.value = 2;
+			expect(double.peek()).toBe(4);
+			foo.value = 1;
+		});
+
+		foo.value = 3;
+		expect(double.peek()).toBe(6);
+	});
+
 	it("should not rerun parent effect if a nested child effect's signal's value changes", () => {
 		const parentSignal = signal(0);
 		const childSignal = signal(0);
