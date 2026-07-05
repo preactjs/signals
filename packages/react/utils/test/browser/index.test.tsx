@@ -294,6 +294,88 @@ describe("@preact/signals-react-utils", () => {
 			expect(bobNodeAfter).to.equal(bobNodeBefore);
 		});
 
+		it("Should render duplicate primitive items as separate entries", async () => {
+			const list = signal(["A", "B", "A"]);
+			const Paragraph = (p: any) => <p>{p.children}</p>;
+			await act(() => {
+				render(
+					<For each={list}>
+						{(item, index) => (
+							<Paragraph>
+								{item}:{index}
+							</Paragraph>
+						)}
+					</For>
+				);
+			});
+			expect(scratch.innerHTML).to.eq("<p>A:0</p><p>B:1</p><p>A:2</p>");
+
+			// Removing one duplicate must keep the other occurrence intact.
+			await act(() => {
+				list.value = ["B", "A"];
+			});
+			expect(scratch.innerHTML).to.eq("<p>B:0</p><p>A:1</p>");
+		});
+
+		it("Should not reuse keys for new items after removal without getKey", async () => {
+			const list = signal(["A", "B", "C"]);
+			const Paragraph = (p: any) => <p>{p.children}</p>;
+			await act(() => {
+				render(
+					<For each={list}>
+						{(item, index) => (
+							<Paragraph>
+								{item}:{index}
+							</Paragraph>
+						)}
+					</For>
+				);
+			});
+			const aNode = scratch.querySelectorAll("p")[0];
+			const bNode = scratch.querySelectorAll("p")[1];
+			const cNode = scratch.querySelectorAll("p")[2];
+
+			// Remove A and prepend a new item. With frozen positional keys the new
+			// item would collide with A's key and inherit A's DOM node and state.
+			await act(() => {
+				list.value = ["D", "B", "C"];
+			});
+			expect(scratch.innerHTML).to.eq("<p>D:0</p><p>B:1</p><p>C:2</p>");
+			expect(scratch.querySelectorAll("p")[0]).not.to.equal(aNode);
+			expect(scratch.querySelectorAll("p")[1]).to.equal(bNode);
+			expect(scratch.querySelectorAll("p")[2]).to.equal(cNode);
+
+			// Remove the head and append: the appended item must not collide with
+			// C's creation-time key either.
+			await act(() => {
+				list.value = ["B", "C", "E"];
+			});
+			expect(scratch.innerHTML).to.eq("<p>B:0</p><p>C:1</p><p>E:2</p>");
+			expect(scratch.querySelectorAll("p")[0]).to.equal(bNode);
+			expect(scratch.querySelectorAll("p")[1]).to.equal(cNode);
+		});
+
+		it("Should re-render an item when its value changes for the same key", async () => {
+			const list = signal([{ id: "a", label: "Alice" }]);
+			const Paragraph = (p: any) => <p>{p.children}</p>;
+			await act(() => {
+				render(
+					<For each={list} getKey={item => item.id}>
+						{item => <Paragraph>{item.label}</Paragraph>}
+					</For>
+				);
+			});
+			const node = scratch.querySelector("p");
+			expect(scratch.innerHTML).to.eq("<p>Alice</p>");
+
+			await act(() => {
+				list.value = [{ id: "a", label: "Alicia" }];
+			});
+			expect(scratch.innerHTML).to.eq("<p>Alicia</p>");
+			// The stable key must preserve the DOM node.
+			expect(scratch.querySelector("p")).to.equal(node);
+		});
+
 		it("Should use getKey for stable identity on item removal", async () => {
 			const list = signal([
 				{ id: "a", label: "Alice" },
