@@ -182,8 +182,24 @@ function reconcileBatchSnapshots() {
 	batchSnapshots = undefined;
 
 	while (snapshots !== undefined) {
-		if (snapshots._source._value === snapshots._value) {
-			snapshots._source._version = snapshots._version;
+		const source = snapshots._source;
+		if (source._value === snapshots._value) {
+			// The value was reverted to its pre-batch state. Version numbers must
+			// stay monotonic: a lazy computed may have observed an intermediate
+			// version during the batch, and rolling the version back would let a
+			// future write re-mint that observed number for a different value,
+			// making the computed treat it as unchanged forever. Instead,
+			// fast-forward subscribers that last saw the pre-batch version so
+			// they skip recomputing for the no-op change.
+			for (
+				let node = source._targets;
+				node !== undefined;
+				node = node._nextTarget
+			) {
+				if (node._version === snapshots._version) {
+					node._version = source._version;
+				}
+			}
 		}
 		snapshots = snapshots._next;
 	}
