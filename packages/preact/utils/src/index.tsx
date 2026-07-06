@@ -28,11 +28,13 @@ export function Show<T = boolean>(
 
 Show.displayName = "Show";
 
+type ForEach<T> =
+	| ReadonlyArray<T>
+	| Signal<ReadonlyArray<T>>
+	| ReadonlySignal<ReadonlyArray<T>>;
+
 interface ForProps<T> {
-	each:
-		| Signal<Array<T>>
-		| ReadonlySignal<Array<T>>
-		| (() => Array<T> | Signal<Array<T>> | ReadonlySignal<Array<T>>);
+	each: ForEach<T> | (() => ForEach<T>);
 	fallback?: ComponentChildren;
 	getKey?: (item: T, index: number) => string | number;
 	children: (value: T, index: number) => ComponentChildren;
@@ -41,8 +43,8 @@ interface ForProps<T> {
 export function For<T>(props: ForProps<T>): ComponentChildren | null {
 	const cache = useMemo(() => new Map(), []);
 	const list = (typeof props.each === "function" ? props.each() : props.each) as
-		| Signal<Array<T>>
-		| Array<T>;
+		| Signal<ReadonlyArray<T>>
+		| ReadonlyArray<T>;
 
 	const listValue = list instanceof Signal ? list.value : list;
 
