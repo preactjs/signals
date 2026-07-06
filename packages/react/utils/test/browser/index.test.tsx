@@ -197,6 +197,29 @@ describe("@preact/signals-react-utils", () => {
 			);
 		});
 
+		it("Should accept readonly list types", async () => {
+			const plain: readonly string[] = ["foo", "bar"];
+			const list = signal<readonly string[]>(["baz", "qux"]);
+			const computedList = computed((): readonly string[] => list.value);
+			const Paragraph = (p: any) => <p>{p.children}</p>;
+
+			await act(() => {
+				render(
+					<div>
+						<For each={plain}>{item => <Paragraph>{item}</Paragraph>}</For>
+						<For each={list}>{item => <Paragraph>{item}</Paragraph>}</For>
+						<For each={() => computedList}>
+							{item => <Paragraph>{item}</Paragraph>}
+						</For>
+					</div>
+				);
+			});
+
+			expect(scratch.innerHTML).to.eq(
+				"<div><p>foo</p><p>bar</p><p>baz</p><p>qux</p><p>baz</p><p>qux</p></div>"
+			);
+		});
+
 		it("Should pass updated indexes to reused items after removal", async () => {
 			const alice = { id: "a", label: "Alice" };
 			const bob = { id: "b", label: "Bob" };
