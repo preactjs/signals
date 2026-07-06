@@ -1,5 +1,14 @@
 # @preact/signals-react
 
+## 3.10.3
+
+### Patch Changes
+
+- [#950](https://github.com/preactjs/signals/pull/950) [`76f9155`](https://github.com/preactjs/signals/commit/76f9155815fe9f2918f98018984f7ec959cc0aea) Thanks [@joeyTedeschi](https://github.com/joeyTedeschi)! - Allow `<For>` to accept readonly arrays and signals containing readonly arrays.
+
+- Updated dependencies [[`2910fbf`](https://github.com/preactjs/signals/commit/2910fbf302ab2d914ff055f5159a0a75a6b86c49), [`d40746b`](https://github.com/preactjs/signals/commit/d40746be3c7575209d6325ff250c91dd72d6ef18)]:
+  - @preact/signals-core@1.14.4
+
 ## 3.10.2
 
 ### Patch Changes

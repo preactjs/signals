@@ -4,6 +4,14 @@
 
 ### Patch Changes
 
+- Updated dependencies [[`2910fbf`](https://github.com/preactjs/signals/commit/2910fbf302ab2d914ff055f5159a0a75a6b86c49), [`76f9155`](https://github.com/preactjs/signals/commit/76f9155815fe9f2918f98018984f7ec959cc0aea), [`d40746b`](https://github.com/preactjs/signals/commit/d40746be3c7575209d6325ff250c91dd72d6ef18)]:
+  - @preact/signals-core@1.14.4
+  - @preact/signals-react@3.10.3
+
+## null
+
+### Patch Changes
+
 - Updated dependencies [[`e76780c`](https://github.com/preactjs/signals/commit/e76780c7800febc10f57d15cd34166c2f19c65d0), [`beb84c1`](https://github.com/preactjs/signals/commit/beb84c19d67c54d85e68ac033ac797b5792d1f8f)]:
   - @preact/signals-react@3.10.2
   - @preact/signals-core@1.14.3
