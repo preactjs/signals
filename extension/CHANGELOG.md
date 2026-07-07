@@ -1,5 +1,13 @@
 # preact-signals-devtools
 
+## 1.1.19
+
+### Patch Changes
+
+- Updated dependencies [[`89000a2`](https://github.com/preactjs/signals/commit/89000a24d02bb352e2a1a2dcb971edda413184f4)]:
+  - @preact/signals@2.9.4
+  - @preact/signals-devtools-ui@0.4.3
+
 ## 1.1.18
 
 ### Patch Changes

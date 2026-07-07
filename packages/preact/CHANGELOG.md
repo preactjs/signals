@@ -1,5 +1,11 @@
 # @preact/signals
 
+## 2.9.4
+
+### Patch Changes
+
+- [#952](https://github.com/preactjs/signals/pull/952) [`89000a2`](https://github.com/preactjs/signals/commit/89000a24d02bb352e2a1a2dcb971edda413184f4) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Stop treating `useContext` as hook state in the auto-memoization heuristic. Context updates force-update their subscribers in Preact, bypassing `shouldComponentUpdate` entirely, so context consumers can safely keep the props-based render skipping.
+
 ## 2.9.3
 
 ### Patch Changes
