@@ -1,5 +1,18 @@
 # @preact/signals
 
+## 2.9.3
+
+### Patch Changes
+
+- [#950](https://github.com/preactjs/signals/pull/950) [`76f9155`](https://github.com/preactjs/signals/commit/76f9155815fe9f2918f98018984f7ec959cc0aea) Thanks [@joeyTedeschi](https://github.com/joeyTedeschi)! - Allow `<For>` to accept readonly arrays and signals containing readonly arrays.
+
+- [#948](https://github.com/preactjs/signals/pull/948) [`6b0a76c`](https://github.com/preactjs/signals/commit/6b0a76cbc414a8e619fb00445318c2d37fc3b6d5) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Dispose signal prop updaters when an element re-renders without any signal props.
+
+  The disposal pass only ran when the new render still carried at least one signal-bound prop. When every signal prop was replaced by plain values, the old updater effect stayed subscribed and kept writing the previous signal's values straight into the DOM, overriding whatever Preact rendered.
+
+- Updated dependencies [[`2910fbf`](https://github.com/preactjs/signals/commit/2910fbf302ab2d914ff055f5159a0a75a6b86c49), [`d40746b`](https://github.com/preactjs/signals/commit/d40746be3c7575209d6325ff250c91dd72d6ef18)]:
+  - @preact/signals-core@1.14.4
+
 ## 2.9.2
 
 ### Patch Changes

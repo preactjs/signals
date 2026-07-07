@@ -18,7 +18,7 @@
     }
   },
   "dependencies": {
-    "@preact/signals-core": "workspace:^1.14.3"
+    "@preact/signals-core": "workspace:^1.14.4"
   },
   "peerDependencies": {
     "@preact/signals-react": "workspace:*",

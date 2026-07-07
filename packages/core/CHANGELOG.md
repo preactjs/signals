@@ -1,5 +1,17 @@
 # @preact/signals-core
 
+## 1.14.4
+
+### Patch Changes
+
+- [#947](https://github.com/preactjs/signals/pull/947) [`2910fbf`](https://github.com/preactjs/signals/commit/2910fbf302ab2d914ff055f5159a0a75a6b86c49) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Fix computeds returning stale values after a batch reverts a signal to its original value.
+
+  Reconciling a reverted batch write used to roll the signal's version number back, breaking version monotonicity. A lazy computed that read the signal during the batch had already observed the intermediate version, so a later write could re-mint that same version number for a different value and the computed would treat it as unchanged forever. Subscriber nodes that saw the pre-batch version are now fast-forwarded instead, keeping the no-op skip optimization without ever reusing version numbers.
+
+- [#945](https://github.com/preactjs/signals/pull/945) [`d40746b`](https://github.com/preactjs/signals/commit/d40746be3c7575209d6325ff250c91dd72d6ef18) Thanks [@andrewiggins](https://github.com/andrewiggins)! - Prevent model effect capture while creating effects inside `untracked()` and `action()` callbacks.
+
+  If you create an `effect()` inside an `untracked()` callback within a `createModel()` factory, that effect is no longer disposed when the model is disposed. Use the disposer returned by `effect()` to clean it up manually.
+
 ## 1.14.3
 
 ### Patch Changes
