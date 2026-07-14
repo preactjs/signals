@@ -202,22 +202,31 @@ describe("subscription lifecycle", () => {
 		expect(getTargets(tracked)).to.equal(undefined);
 	});
 
-	it("restores the subscribe implementation active before rendering", async () => {
+	it("restores and invokes the subscribe implementation active before rendering", async () => {
+		const tracked = signal(0);
+		let wrapperCallCount = 0;
 		function subscribeWrapper(
 			this: Signal,
 			node: Parameters<Signal["_subscribe"]>[0]
 		) {
+			wrapperCallCount++;
 			return originalSubscribe.call(this, node);
 		}
 		Signal.prototype._subscribe = subscribeWrapper;
-		const pending = new Promise<void>(() => {});
+		let resolve!: () => void;
+		let resolved = false;
+		const pending = new Promise<void>(r => {
+			resolve = r;
+		});
 		let restoredWrapper = false;
 
 		/** @noUseSignals */
 		function App(): JSX.Element {
 			const store = useSignals(1);
 			try {
-				throw pending;
+				const value = tracked.value;
+				if (!resolved) throw pending;
+				return <p>{value}</p>;
 			} finally {
 				store.f();
 			}
@@ -232,11 +241,18 @@ describe("subscription lifecycle", () => {
 				);
 			});
 			restoredWrapper = Signal.prototype._subscribe === subscribeWrapper;
+
+			resolved = true;
+			await act(async () => {
+				resolve();
+				await pending;
+			});
 		} finally {
 			Signal.prototype._subscribe = originalSubscribe;
 		}
 
 		expect(restoredWrapper).to.equal(true);
+		expect(wrapperCallCount).to.equal(1);
 	});
 
 	it("restores the prototype before rendering an error boundary", async () => {

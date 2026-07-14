@@ -121,6 +121,8 @@ function startComponentEffect(
 		this: Signal,
 		node: SubscriptionNode
 	) {
+		// Only defer this effect's direct dependencies. Computed dependencies are
+		// subscribed recursively when their direct node is committed.
 		if ((node as { _target: Effect })._target === nextStore.effect) {
 			nextStore._subscribers.push({ signal: this, node });
 		}
@@ -331,7 +333,6 @@ function createEffectStore(
 		},
 		[symDispose]() {
 			this.f();
-			this._subscribers = [];
 		},
 	};
 
@@ -408,10 +409,12 @@ export function _useSignalsImplementation(
 	if (_usage === UNMANAGED) useIsomorphicLayoutEffect(cleanupTrailingStore);
 
 	useIsomorphicLayoutEffect(() => {
+		// Detach first because subscribing can synchronously invoke user callbacks.
 		const subscribers = store._subscribers;
 		store._subscribers = [];
 
 		subscribers.forEach(({ signal, node }) => {
+			// Nodes omitted from the committed render are marked with version -1.
 			if (
 				(node as { _target: Effect })._target === store.effect &&
 				(node as { _version: number })._version !== -1
