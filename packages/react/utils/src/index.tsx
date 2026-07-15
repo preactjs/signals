@@ -12,7 +12,7 @@ import {
 
 interface ShowProps<T = boolean> {
 	when: Signal<T> | ReadonlySignal<T> | (() => T);
-	fallback?: ReactNode;
+	fallback?: ReactNode | (() => ReactNode);
 	children: ReactNode | ((value: NonNullable<T>) => ReactNode);
 }
 
@@ -29,7 +29,12 @@ export function Show<T = boolean>(props: ShowProps<T>): JSX.Element | null {
 	useSignals();
 	const value =
 		typeof props.when === "function" ? props.when() : props.when.value;
-	if (!value) return (props.fallback as JSX.Element) || null;
+	if (!value) {
+		const fallback = props.fallback;
+		return (
+			typeof fallback === "function" ? fallback() : fallback
+		) as JSX.Element | null;
+	}
 	return <Item v={value} children={props.children} />;
 }
 

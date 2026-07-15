@@ -61,6 +61,63 @@ describe("@preact/signals-utils", () => {
 			expect(scratch.innerHTML).to.eq("<p>Showing 2</p>");
 		});
 
+		it("Should call function fallback lazily", () => {
+			const toggle = signal(true)!;
+			let fallbackCalled = false;
+
+			act(() => {
+				render(
+					<Show
+						when={toggle}
+						fallback={() => {
+							fallbackCalled = true;
+							return <p>Hidden</p>;
+						}}
+					>
+						<p>Shown</p>
+					</Show>,
+					scratch
+				);
+			});
+
+			// When condition is true, fallback should NOT have been called
+			expect(fallbackCalled).to.eq(false);
+			expect(scratch.innerHTML).to.eq("<p>Shown</p>");
+
+			act(() => {
+				toggle.value = false;
+			});
+
+			// Now fallback should have been called
+			expect(fallbackCalled).to.eq(true);
+			expect(scratch.innerHTML).to.eq("<p>Hidden</p>");
+		});
+
+		it("Should reactively show with lazy function fallback", () => {
+			const toggle = signal(false)!;
+			const Paragraph = (props: any) => <p>{props.children}</p>;
+
+			act(() => {
+				render(
+					<Show when={toggle} fallback={() => <Paragraph>Hiding</Paragraph>}>
+						<Paragraph>Showing</Paragraph>
+					</Show>,
+					scratch
+				);
+			});
+			expect(scratch.innerHTML).to.eq("<p>Hiding</p>");
+
+			act(() => {
+				toggle.value = true;
+			});
+			expect(scratch.innerHTML).to.eq("<p>Showing</p>");
+
+			act(() => {
+				toggle.value = false;
+			});
+			expect(scratch.innerHTML).to.eq("<p>Hiding</p>");
+		});
+
 		it("Should preserve signal props after unmount/remount cycle", () => {
 			const counter = signal(0);
 			const visible = computed(() => counter.value >= 1 && counter.value <= 2);
