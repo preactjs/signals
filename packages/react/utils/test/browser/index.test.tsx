@@ -118,6 +118,61 @@ describe("@preact/signals-react-utils", () => {
 			expect(scratch.innerHTML).to.eq("<p>Showing</p>");
 		});
 
+		it("Should call function fallback lazily", async () => {
+			const toggle = signal(true)!;
+			let fallbackCalled = false;
+
+			await act(() => {
+				render(
+					<Show
+						when={toggle}
+						fallback={() => {
+							fallbackCalled = true;
+							return <p>Hidden</p>;
+						}}
+					>
+						<p>Shown</p>
+					</Show>
+				);
+			});
+
+			// When condition is true, fallback should NOT have been called
+			expect(fallbackCalled).to.eq(false);
+			expect(scratch.innerHTML).to.eq("<p>Shown</p>");
+
+			await act(() => {
+				toggle.value = false;
+			});
+
+			// Now fallback should have been called
+			expect(fallbackCalled).to.eq(true);
+			expect(scratch.innerHTML).to.eq("<p>Hidden</p>");
+		});
+
+		it("Should reactively show with lazy function fallback", async () => {
+			const toggle = signal(false)!;
+			const Paragraph = (p: any) => <p>{p.children}</p>;
+
+			await act(() => {
+				render(
+					<Show when={toggle} fallback={() => <Paragraph>Hiding</Paragraph>}>
+						<Paragraph>Showing</Paragraph>
+					</Show>
+				);
+			});
+			expect(scratch.innerHTML).to.eq("<p>Hiding</p>");
+
+			await act(() => {
+				toggle.value = true;
+			});
+			expect(scratch.innerHTML).to.eq("<p>Showing</p>");
+
+			await act(() => {
+				toggle.value = false;
+			});
+			expect(scratch.innerHTML).to.eq("<p>Hiding</p>");
+		});
+
 		it("Should reactively show an inline element w/ nested reactivity", async () => {
 			const count = signal(0);
 			const visible = computed(() => count.value > 0)!;

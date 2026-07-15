@@ -5,7 +5,7 @@ import { useMemo } from "preact/hooks";
 
 interface ShowProps<T = boolean> {
 	when: Signal<T> | ReadonlySignal<T> | (() => T);
-	fallback?: ComponentChildren;
+	fallback?: ComponentChildren | (() => ComponentChildren);
 	children: ComponentChildren | ((value: NonNullable<T>) => ComponentChildren);
 }
 
@@ -22,7 +22,10 @@ export function Show<T = boolean>(
 ): ComponentChildren | null {
 	const value =
 		typeof props.when === "function" ? props.when() : props.when.value;
-	if (!value) return props.fallback || null;
+	if (!value) {
+		const fallback = props.fallback;
+		return typeof fallback === "function" ? fallback() : fallback || null;
+	}
 	return <Item v={value} children={props.children} />;
 }
 
