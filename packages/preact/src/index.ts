@@ -249,6 +249,14 @@ hook(OptionsTypes.RENDER, (old, vnode) => {
 	}
 });
 
+/** Flush pending signal-effect re-runs after every commit, so no later
+ * render can observe state from before a pending effect, while keeping
+ * the after-commit guarantee for the effect's own triggering render. */
+hook(OptionsTypes.COMMIT, (old, vnode, commitQueue) => {
+	old(vnode, commitQueue);
+	if (effectsQueue.length) flushEffects();
+});
+
 /** Finish current updater if a component errors */
 hook(OptionsTypes.CATCH_ERROR, (old, error, vnode, oldVNode) => {
 	setCurrentUpdater();

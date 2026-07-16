@@ -49,6 +49,7 @@ export const enum OptionsTypes {
 	DIFF = "__b",
 	DIFFED = "diffed",
 	RENDER = "__r",
+	COMMIT = "__c",
 	CATCH_ERROR = "__e",
 	UNMOUNT = "unmount",
 }
@@ -58,6 +59,7 @@ export interface OptionsType {
 	[OptionsTypes.DIFF](vnode: VNode): void;
 	[OptionsTypes.DIFFED](vnode: VNode): void;
 	[OptionsTypes.RENDER](vnode: VNode): void;
+	[OptionsTypes.COMMIT](vnode: VNode, commitQueue: any[]): void;
 	[OptionsTypes.CATCH_ERROR](error: any, vnode: VNode, oldVNode: VNode): void;
 	[OptionsTypes.UNMOUNT](vnode: VNode): void;
 }
