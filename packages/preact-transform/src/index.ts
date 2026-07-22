@@ -16,17 +16,19 @@ function basename(filename: string | undefined): string | undefined {
 	return filename?.split(/[\\/]/).pop();
 }
 
-function isSignalCall(path: NodePath<BabelTypes.CallExpression>): boolean {
+function isDebuggableCall(path: NodePath<BabelTypes.CallExpression>): boolean {
 	const callee = path.get("callee");
 
-	// Check direct function calls like signal(), computed(), useSignal(), useComputed()
+	// Check direct function calls like signal(), computed(), useSignal(),
+	// useComputed(), and createModel().
 	if (callee.isIdentifier()) {
 		const name = callee.node.name;
 		return (
 			name === "signal" ||
 			name === "computed" ||
 			name === "useSignal" ||
-			name === "useComputed"
+			name === "useComputed" ||
+			name === "createModel"
 		);
 	}
 
@@ -45,6 +47,8 @@ function getVariableNameFromDeclarator(
 		) {
 			return currentPath.node.id.name;
 		}
+		// Do not name a call after a variable outside its factory/callback scope.
+		if (currentPath !== path && currentPath.isFunction()) return null;
 		currentPath = currentPath.parentPath;
 	}
 	return null;
@@ -138,8 +142,8 @@ export default function signalsTransform(
 		name: "@preact/signals-transform",
 		visitor: {
 			CallExpression(path, state) {
-				// Handle signal naming
-				if (isEnabled && isSignalCall(path)) {
+				// Handle signal and model naming
+				if (isEnabled && isDebuggableCall(path)) {
 					const args = path.get("arguments");
 
 					// Only inject name if it doesn't already have one

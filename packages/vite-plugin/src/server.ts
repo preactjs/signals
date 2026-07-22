@@ -272,6 +272,10 @@ function normalizeIncomingEvent(rawEvent: any): SignalsAgentEvent | null {
 				DEFAULT_REDACTION_PATTERNS
 			),
 			subscribedTo: toStringValue(rawEvent?.subscribedTo),
+			models: sanitizeForTransport(
+				rawEvent?.models,
+				DEFAULT_REDACTION_PATTERNS
+			),
 			allDependencies: sanitizeForTransport(
 				rawEvent?.allDependencies,
 				DEFAULT_REDACTION_PATTERNS

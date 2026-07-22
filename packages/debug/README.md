@@ -20,6 +20,7 @@ pnpm add @preact/signals-debug
 - Track signal value changes and updates
 - Monitor effect executions
 - Debug computed value recalculations
+- Identify signals, computed values, and effects owned by `createModel` instances
 - Get real-time debugging statistics
 - Configurable debugging options
 
@@ -43,8 +44,9 @@ The package automatically enhances signals with debugging capabilities:
 1. **Value Changes**: Tracks and logs all signal value changes
 2. **Effect Tracking**: Monitors effect executions and their dependencies
 3. **Computed Values**: Tracks computed value recalculations and dependencies
-4. **Update Grouping**: Groups related updates for better visualization
-5. **Performance Stats**: Provides active trackers and subscriptions count
+4. **Model Ownership**: Includes model identity and property paths in console output and DevTools events
+5. **Update Grouping**: Groups related updates for better visualization
+6. **Performance Stats**: Provides active trackers and subscriptions count
 
 ## API Reference
 

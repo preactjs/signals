@@ -30,6 +30,15 @@ export function UpdateItem({ update, count, firstUpdate }: UpdateItemProps) {
 			x{count}
 		</span>
 	);
+	const modelBadges = update.models?.map(model => (
+		<span
+			key={`${model.id}:${model.path || ""}`}
+			className="model-badge"
+			title={`${model.path ? `${model.name}.${model.path}` : model.name} · ${model.id}`}
+		>
+			{model.name}
+		</span>
+	));
 
 	if (update.type === "effect" || update.type === "component") {
 		const icon = update.type === "component" ? "🔄" : "↪️";
@@ -40,6 +49,7 @@ export function UpdateItem({ update, count, firstUpdate }: UpdateItemProps) {
 					<span className="signal-name">
 						{icon} {update.signalName}
 						{countLabel}
+						{modelBadges}
 					</span>
 					<span className="update-type-badge">{label}</span>
 					<span className="update-time">{time}</span>
@@ -59,6 +69,7 @@ export function UpdateItem({ update, count, firstUpdate }: UpdateItemProps) {
 				<span class="signal-name">
 					{update.depth === 0 ? "🎯" : "↪️"} {update.signalName}
 					{countLabel}
+					{modelBadges}
 				</span>
 				<span class="update-time">{time}</span>
 			</div>

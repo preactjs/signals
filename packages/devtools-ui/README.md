@@ -1,6 +1,6 @@
 # @preact/signals-devtools-ui
 
-DevTools UI components for Preact Signals. This package provides a reusable UI that can be embedded in various contexts - browser extensions, iframes, overlays, blog posts, etc.
+DevTools UI components for Preact Signals. This package provides a reusable UI that can be embedded in various contexts - browser extensions, iframes, overlays, blog posts, etc. Updates from `createModel` instances include model badges, and the dependency graph draws labeled boundaries around model members.
 
 > [!NOTE]
 > It's important that `@preact/signals-debug` is imported in an entry point to get signals registered into the devtools as soon as possible.

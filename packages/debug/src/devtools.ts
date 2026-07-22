@@ -1,7 +1,8 @@
-import { UpdateInfo, DependencyInfo } from "./internal";
+import { UpdateInfo, DependencyInfo, ModelInfo } from "./internal";
 import {
 	getSignalId,
 	getSignalName,
+	getModelInfo,
 	isReactOrPreactElement,
 	formatReactElement,
 } from "./utils";
@@ -17,6 +18,8 @@ export interface FormattedSignalUpdate {
 	timestamp: number;
 	depth: number;
 	subscribedTo?: string;
+	/** Model instances that contain this reactive value. */
+	models?: ModelInfo[];
 	/** All dependencies this computed/effect currently depends on (with rich info) */
 	allDependencies?: DependencyInfo[];
 }
@@ -28,6 +31,8 @@ export interface FormattedSignalDisposed {
 	signalName: string;
 	signalId: string;
 	timestamp: number;
+	/** Model instances that contain this reactive value. */
+	models?: ModelInfo[];
 }
 
 // Communication layer for Chrome DevTools Extension
@@ -73,7 +78,6 @@ class DevToolsCommunicator {
 	public isExtensionConnected = false;
 	public messageQueue: DevToolsMessage[] = [];
 	public readonly maxQueueSize = 100;
-	public signalOwnership = new WeakMap<any, Set<string>>();
 
 	constructor() {
 		this.setupCommunication();
@@ -154,9 +158,11 @@ class DevToolsCommunicator {
 		}
 
 		const formattedUpdates = updateInfoList.map(({ signal, ...info }) => {
+			const models = getModelInfo(signal);
 			if (info.type === "value") {
 				return {
 					...info,
+					...(models ? { models } : {}),
 					type: "update" as const,
 					newValue: deeplyRemoveFunctions(info.newValue),
 					prevValue: deeplyRemoveFunctions(info.prevValue),
@@ -169,6 +175,7 @@ class DevToolsCommunicator {
 			} else if (info.type === "component") {
 				return {
 					...info,
+					...(models ? { models } : {}),
 					type: "component" as const,
 					signalType: "component" as const,
 					signalName: this.getSignalName(signal, "component"),
@@ -177,6 +184,7 @@ class DevToolsCommunicator {
 			} else {
 				return {
 					...info,
+					...(models ? { models } : {}),
 					type: "effect" as const,
 					signalType: "effect" as const,
 					signalName: this.getSignalName(signal, "effect"),
@@ -257,6 +265,7 @@ class DevToolsCommunicator {
 			),
 			signalId: this.getSignalId(signal),
 			timestamp: Date.now(),
+			models: getModelInfo(signal),
 		};
 
 		// Emit for direct listeners (e.g., DirectAdapter)

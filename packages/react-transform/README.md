@@ -131,6 +131,19 @@ module.exports = {
 };
 ```
 
+### `experimental.debug`
+
+Enable debug naming for `signal`, `computed`, `useSignal`, `useComputed`, and `createModel` calls. Model names let Signals DevTools group reactive values by their owning state container.
+
+```js
+// babel.config.js
+module.exports = {
+	plugins: [
+		["@preact/signals-react-transform", { experimental: { debug: true } }],
+	],
+};
+```
+
 ### `detectTransformedJSX`
 
 When enabled, alternative methods like `React.createElement` and `jsx-runtime` will also trigger transformation.

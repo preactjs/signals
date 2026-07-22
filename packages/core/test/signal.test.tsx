@@ -2366,6 +2366,49 @@ describe("createModel", () => {
 		expect(counter.quadruple.value).to.equal(4);
 	});
 
+	it("notifies debug hooks when a model is constructed", () => {
+		const hooksSymbol = Symbol.for("preact-signals-model-hooks");
+		const existingHooks = (globalThis as any)[hooksSymbol];
+		const hook = vi.fn();
+		const hooks =
+			existingHooks instanceof Set
+				? existingHooks
+				: new Set<(...args: any[]) => void>();
+		const installedHooks = hooks !== existingHooks;
+		if (installedHooks) {
+			Object.defineProperty(globalThis, hooksSymbol, {
+				value: hooks,
+				configurable: true,
+			});
+		}
+		hooks.add(hook);
+
+		try {
+			const CounterModel = createModel(
+				() => {
+					const count = signal(0);
+					effect(() => {
+						count.value;
+					});
+					return { count };
+				},
+				{ name: "CounterModel" }
+			);
+			const counter = new CounterModel();
+
+			expect(hook).toHaveBeenCalledOnce();
+			expect(hook).toHaveBeenCalledWith(
+				counter,
+				expect.arrayContaining([expect.anything()]),
+				"CounterModel"
+			);
+			counter[Symbol.dispose]();
+		} finally {
+			hooks.delete(hook);
+			if (installedHooks) delete (globalThis as any)[hooksSymbol];
+		}
+	});
+
 	it("should accept factory arguments", () => {
 		const CounterModel = createModel((initialCount: number) => {
 			const count = signal(initialCount);

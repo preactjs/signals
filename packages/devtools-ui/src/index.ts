@@ -44,4 +44,5 @@ export type {
 	Settings,
 	ConnectionStatus,
 	ConnectionStatusType,
+	ModelInfo,
 } from "@preact/signals-devtools-adapter";

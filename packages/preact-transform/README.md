@@ -1,6 +1,6 @@
 # Signals Preact Transform
 
-A Babel plugin to provide names to all your `useComputed` and `useSignal` invocations.
+A Babel plugin that provides debug names to `signal`, `computed`, `useSignal`, `useComputed`, and `createModel` invocations.
 
 ## Installation:
 

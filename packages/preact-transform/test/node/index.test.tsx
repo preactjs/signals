@@ -72,6 +72,30 @@ describe("Preact Signals Babel Transform", () => {
 			await runDebugTest(inputCode, expectedOutput, "Component.js");
 		});
 
+		it("injects names for createModel calls", async () => {
+			const inputCode = `
+				const CounterModel = createModel(() => {
+					const count = signal(0);
+					return { count };
+				});
+			`;
+
+			const expectedOutput = `
+				const CounterModel = createModel(() => {
+					const count = signal(0, {
+						name: "count (CounterModel.js:3)",
+					});
+					return {
+						count,
+					};
+				}, {
+					name: "CounterModel (CounterModel.js:2)",
+				});
+			`;
+
+			await runDebugTest(inputCode, expectedOutput, "CounterModel.js");
+		});
+
 		it("injects names for useSignal calls", async () => {
 			const inputCode = `
 				function MyComponent() {

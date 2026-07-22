@@ -239,6 +239,7 @@ export function installSignalsAgentClient() {
 						prevValue: sanitize(update.prevValue),
 						newValue: sanitize(update.newValue),
 						subscribedTo: update.subscribedTo,
+						models: sanitize(update.models),
 						allDependencies: sanitize(update.allDependencies),
 						timestamp: update.timestamp,
 					})));
@@ -252,6 +253,7 @@ export function installSignalsAgentClient() {
 						type: 'disposed',
 						signalType: disposal.signalType,
 						signalName: disposal.signalName,
+						models: sanitize(disposal.models),
 						timestamp: disposal.timestamp,
 					})));
 				});

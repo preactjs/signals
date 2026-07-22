@@ -266,6 +266,28 @@ describe("@preact/signals-agent-vite", () => {
 		).to.have.length(1);
 	});
 
+	it("filters signal events by model metadata", () => {
+		const events: SignalsAgentEvent[] = [
+			{
+				source: "signals",
+				type: "update",
+				timestamp: 1,
+				id: 1,
+				page,
+				signalName: "count",
+				signalType: "signal",
+				models: [{ id: "model-1", name: "CounterModel", path: "count" }],
+			},
+		];
+
+		expect(
+			queryEvents(events, {
+				filterPatterns: ["CounterModel"],
+				sources: ["signals"],
+			})
+		).to.have.length(1);
+	});
+
 	it("streams only matching session events", () => {
 		const store = createSignalsAgentStore({ maxEvents: 10 });
 		const session = store.createSession({ filterPatterns: ["AuthForm"] });

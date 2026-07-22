@@ -2,6 +2,10 @@
 // created using the same signals library version.
 const BRAND_SYMBOL = Symbol.for("preact-signals");
 
+// Debug packages can register model construction hooks without core depending
+// on a particular debug package version.
+const MODEL_HOOKS_SYMBOL = Symbol.for("preact-signals-model-hooks");
+
 // Flags for Computed and Effect.
 const RUNNING = 1 << 0;
 const NOTIFIED = 1 << 1;
@@ -1010,6 +1014,11 @@ type ValidateModel<TModel> = {
 
 export type Model<TModel> = ValidateModel<TModel> & DisposableLike;
 
+export interface ModelOptions {
+	/** A name used to identify model instances in debug tooling. */
+	name?: string;
+}
+
 export type ModelFactory<TModel, TFactoryArgs extends any[] = []> = (
 	...args: TFactoryArgs
 ) => ValidateModel<TModel>;
@@ -1086,8 +1095,38 @@ const wrapInAction = (value: Record<string, unknown>) => {
 	}
 };
 
+type ModelHook = (
+	model: object,
+	effects: Effect[] | undefined,
+	name: string
+) => void;
+
+function notifyModelHooks(
+	model: object,
+	effects: Effect[] | undefined,
+	name: string
+) {
+	const scope =
+		typeof globalThis !== "undefined"
+			? globalThis
+			: typeof self !== "undefined"
+				? self
+				: undefined;
+	const hooks = scope && (scope as any)[MODEL_HOOKS_SYMBOL];
+	if (!(hooks instanceof Set)) return;
+
+	for (const hook of hooks as Set<ModelHook>) {
+		try {
+			hook(model, effects, name);
+		} catch {
+			// Debug instrumentation must not affect model initialization.
+		}
+	}
+}
+
 function createModel<TModel, TFactoryArgs extends any[] = []>(
-	modelFactory: ModelFactory<TModel, TFactoryArgs>
+	modelFactory: ModelFactory<TModel, TFactoryArgs>,
+	options?: ModelOptions
 ): ModelConstructor<TModel, TFactoryArgs> {
 	return function SignalModel(...args: TFactoryArgs): Model<TModel> {
 		let modelEffects: Effect[] | undefined;
@@ -1107,6 +1146,11 @@ function createModel<TModel, TFactoryArgs extends any[] = []>(
 		}
 
 		wrapInAction(model);
+		notifyModelHooks(
+			model,
+			modelEffects,
+			options?.name || modelFactory.name || "Model"
+		);
 
 		model[Symbol.dispose] = action(function disposeModel() {
 			if (modelEffects) {

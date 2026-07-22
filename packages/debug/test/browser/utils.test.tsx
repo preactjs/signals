@@ -1,6 +1,60 @@
 import { describe, it, expect } from "vitest";
-import { formatValue, getSignalName } from "../../src/utils";
-import { signal, computed } from "@preact/signals-core";
+import {
+	formatValue,
+	getModelInfo,
+	getSignalLabel,
+	getSignalName,
+	getSignalSearchText,
+} from "../../src/utils";
+import { signal, computed, createModel } from "@preact/signals-core";
+
+describe("model reflection", () => {
+	it("returns model identity and property paths", () => {
+		const CounterModel = createModel(
+			() => {
+				const count = signal(0);
+				return { count, doubled: computed(() => count.value * 2) };
+			},
+			{ name: "CounterModel" }
+		);
+		const first = new CounterModel();
+		const second = new CounterModel();
+
+		const countModel = getModelInfo(first.count)![0];
+		const computedModel = getModelInfo(first.doubled)![0];
+		const secondModel = getModelInfo(second.count)![0];
+
+		expect(countModel).toMatchObject({ name: "CounterModel", path: "count" });
+		expect(computedModel).toMatchObject({
+			id: countModel.id,
+			name: "CounterModel",
+			path: "doubled",
+		});
+		expect(secondModel.id).not.toBe(countModel.id);
+		expect(getSignalName(first.count, "value")).toBe("count");
+		expect(getSignalLabel(first.count, "value")).toBe("CounterModel.count");
+	});
+
+	it("reports every model that shares a reactive value", () => {
+		const shared = signal(0);
+		const FirstModel = createModel(() => ({ shared }), { name: "FirstModel" });
+		const SecondModel = createModel(() => ({ shared, state: { shared } }), {
+			name: "SecondModel",
+		});
+
+		new FirstModel();
+		new SecondModel();
+
+		expect(getModelInfo(shared)).toMatchObject([
+			{ name: "FirstModel", path: "shared" },
+			{ name: "SecondModel", path: "shared" },
+			{ name: "SecondModel", path: "state.shared" },
+		]);
+		expect(getSignalSearchText(shared, "value")).toContain(
+			"SecondModel.state.shared"
+		);
+	});
+});
 
 describe("formatValue", () => {
 	it("should handle null and undefined", () => {

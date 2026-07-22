@@ -3,6 +3,7 @@ import type {
 	DevToolsAdapter,
 	SignalDisposed,
 	DependencyInfo,
+	ModelInfo,
 } from "@preact/signals-devtools-adapter";
 import type { SettingsModel } from "./SettingsModel";
 
@@ -17,6 +18,7 @@ export interface SignalUpdate {
 	receivedAt: number;
 	depth?: number;
 	subscribedTo?: string;
+	models?: ModelInfo[];
 	/** All dependencies this computed/effect currently depends on (with rich info) */
 	allDependencies?: DependencyInfo[];
 }

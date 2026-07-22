@@ -44,8 +44,8 @@ export default defineConfig({
 Transform behavior when `framework` is set:
 
 - React projects get `@preact/signals-react-transform` in both dev and build
-- React development also enables the transform's debug metadata so component and signal names show up in `@preact/signals-debug`
-- Preact projects get `@preact/signals-preact-transform` during development so signal names are injected automatically
+- React development also enables the transform's debug metadata so component, signal, and model names show up in `@preact/signals-debug`
+- Preact projects get `@preact/signals-preact-transform` during development so signal and model names are injected automatically
 
 If you only want the transform wiring and not the local debug API, use:
 
@@ -72,7 +72,7 @@ Query params for event reads:
 
 - `after=<event-id>` - only return events after a known cursor
 - `limit=<count>` - return only the most recent matching events
-- `filterPatterns=AuthForm,login` or repeated `filterPatterns` params - match events by summary, signal name, page info, and related metadata
+- `filterPatterns=AuthForm,login` or repeated `filterPatterns` params - match events by summary, signal/model name, page info, and related metadata
 - `filter=...` - alias for `filterPatterns`
 - `source=signals|network|page` - restrict results to selected sources
 

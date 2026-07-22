@@ -1,7 +1,15 @@
 /* eslint-disable no-console */
 import { Signal, Effect, Computed, effect } from "@preact/signals-core";
-import { formatValue, getSignalId, getSignalName } from "./utils";
+import {
+	formatValue,
+	getModelInfo,
+	getSignalId,
+	getSignalLabel,
+	getSignalName,
+	getSignalSearchText,
+} from "./utils";
 import { UpdateInfo, Node, Computed as ComputedType } from "./internal";
+
 import { getExtensionBridge } from "./extension-bridge";
 import "./devtools"; // Initialize DevTools integration
 
@@ -198,10 +206,17 @@ function hasUpdateEntry(signal: Signal) {
 	return false;
 }
 
+export interface ModelInfo {
+	id: string;
+	name: string;
+	path?: string;
+}
+
 export interface DependencyInfo {
 	id: string;
 	name: string;
 	type: "signal" | "computed";
+	models?: ModelInfo[];
 }
 
 /**
@@ -230,6 +245,7 @@ function getAllCurrentDependencies(
 				id,
 				name: getSignalName(source, "value"),
 				type: "_fn" in source ? "computed" : "signal",
+				models: getModelInfo(source),
 			});
 		}
 		sourceNode = sourceNode._nextSource;
@@ -359,10 +375,11 @@ function flushUpdates() {
 		// Send updates to Chrome DevTools extension with filtering and throttling
 		if (typeof window !== "undefined" && !bridge.shouldThrottleUpdate()) {
 			// Filter updates based on signal names
-			const filteredUpdates = updateInfoList.filter(updateInfo => {
-				const signalName = getSignalName(updateInfo.signal, updateInfo.type);
-				return bridge.matchesFilter(signalName);
-			});
+			const filteredUpdates = updateInfoList.filter(updateInfo =>
+				bridge.matchesFilter(
+					getSignalSearchText(updateInfo.signal, updateInfo.type)
+				)
+			);
 
 			if (
 				filteredUpdates.length > 0 &&
@@ -399,7 +416,7 @@ function logUpdate(
 	if (!debugEnabled || !consoleLoggingEnabled) return false;
 
 	const { signal, type, depth } = info;
-	const name = getSignalName(signal, type);
+	const name = getSignalLabel(signal, type);
 
 	// Effects can't have descendants, so we use a normal log instead of a group
 	if (type === "effect" || type === "component") {

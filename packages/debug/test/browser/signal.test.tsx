@@ -7,6 +7,7 @@ import {
 	effect,
 	batch,
 	ReadonlySignal,
+	createModel,
 } from "@preact/signals-core";
 import { setDebugOptions } from "@preact/signals-debug";
 
@@ -67,6 +68,87 @@ describe("Signal Debug", () => {
 			expect(groupSpy).toHaveBeenCalledWith("🎯 Signal Update: nullable");
 			expect(consoleSpy).toHaveBeenCalledWith("From:", "null");
 			expect(consoleSpy).toHaveBeenCalledWith("To:", "test");
+		});
+	});
+
+	describe("Model Updates", () => {
+		it("includes model identity and member paths in devtools updates", async () => {
+			const CounterModel = createModel(
+				() => {
+					const count = signal(0);
+					return { count, doubled: computed(() => count.value * 2) };
+				},
+				{ name: "CounterModel" }
+			);
+			const counter = new CounterModel();
+			const updates: any[] = [];
+			const stopListening = window.__PREACT_SIGNALS_DEVTOOLS__.onUpdate(batch =>
+				updates.push(...batch)
+			);
+			const unsubscribe = counter.doubled.subscribe(() => {});
+
+			counter.count.value = 2;
+			await new Promise(resolve => setTimeout(resolve, 0));
+
+			const countUpdate = updates.find(update => update.signalName === "count");
+			const doubledUpdate = updates.find(
+				update => update.signalName === "doubled"
+			);
+			expect(countUpdate.models[0]).toMatchObject({
+				name: "CounterModel",
+				path: "count",
+			});
+			expect(doubledUpdate.models[0]).toMatchObject({
+				id: countUpdate.models[0].id,
+				name: "CounterModel",
+				path: "doubled",
+			});
+			expect(doubledUpdate.allDependencies[0].models[0]).toMatchObject({
+				id: countUpdate.models[0].id,
+				path: "count",
+			});
+			expect(groupSpy).toHaveBeenCalledWith(
+				"🎯 Signal Update: CounterModel.count"
+			);
+			expect(groupCollapsedSpy).toHaveBeenCalledWith(
+				"  ↪️ Triggered update: CounterModel.doubled"
+			);
+
+			unsubscribe();
+			stopListening();
+			counter[Symbol.dispose]();
+		});
+
+		it("preserves model identity when owned effects are disposed", () => {
+			const CounterModel = createModel(
+				() => {
+					const count = signal(0);
+					effect(() => {
+						count.value;
+					});
+					return { count };
+				},
+				{ name: "CounterModel" }
+			);
+			const counter = new CounterModel();
+			const disposals: any[] = [];
+			const stopListening = window.__PREACT_SIGNALS_DEVTOOLS__.onDisposal(
+				batch => disposals.push(...batch)
+			);
+
+			counter[Symbol.dispose]();
+
+			expect(
+				disposals.find(
+					disposal =>
+						disposal.signalType === "effect" && disposal.models?.length > 0
+				)
+			).toMatchObject({
+				type: "disposed",
+				signalType: "effect",
+				models: [{ name: "CounterModel" }],
+			});
+			stopListening();
 		});
 	});
 

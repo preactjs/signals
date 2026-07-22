@@ -16,10 +16,17 @@ export type Node = {
 	_rollbackNode?: Node;
 };
 
+export interface ModelInfo {
+	id: string;
+	name: string;
+	path?: string;
+}
+
 export interface DependencyInfo {
 	id: string;
 	name: string;
 	type: "signal" | "computed";
+	models?: ModelInfo[];
 }
 
 export type UpdateInfo = ValueUpdate | EffectUpdate | ComponentUpdate;
