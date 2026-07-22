@@ -12,6 +12,12 @@ const DEFAULT_VIEWPORT_SIZE = { width: 800, height: 600 };
 const FIT_PADDING = 80;
 const MIN_ZOOM = 0.001;
 const MAX_ZOOM = 5;
+const MIN_NODES_PER_COLUMN = 12;
+const TARGET_GRAPH_ASPECT_RATIO = 1.6;
+const NODE_COLUMN_SPACING = 160;
+const NODE_ROW_SPACING = 120;
+const LAYER_SPACING = 250;
+const GRAPH_PADDING = 100;
 
 interface Point {
 	x: number;
@@ -436,28 +442,55 @@ export function GraphVisualization() {
 		// Minimize edge crossings
 		minimizeCrossings(nodesByLayer, allLinks);
 
-		// Layout nodes with proper spacing. Keep every layer within positive graph
-		// coordinates so tall layers are pannable instead of being clipped above 0.
-		const nodeSpacing = 120;
-		const layerSpacing = 250;
-		const graphPadding = 100;
-		const maxLayerNodeCount = Math.max(
+		// Dense layers used to form a single, extremely tall column. Fitting a large
+		// application graph then reduced every node to an indistinguishable vertical
+		// line. Wrap dense layers into columns sized to avoid pathological graph
+		// aspect ratios while preserving left-to-right depth order.
+		const nodesPerColumn = Math.max(
+			MIN_NODES_PER_COLUMN,
+			Math.ceil(
+				Math.sqrt(
+					(nodes.size * NODE_COLUMN_SPACING) /
+						(TARGET_GRAPH_ASPECT_RATIO * NODE_ROW_SPACING)
+				)
+			)
+		);
+		const maxColumnNodeCount = Math.max(
 			1,
-			...Array.from(nodesByLayer.values()).map(layerNodes => layerNodes.length)
+			...Array.from(nodesByLayer.values()).map(layerNodes =>
+				Math.min(layerNodes.length, nodesPerColumn)
+			)
 		);
 		const graphHeight =
-			graphPadding * 2 + Math.max(0, maxLayerNodeCount - 1) * nodeSpacing;
+			GRAPH_PADDING * 2 +
+			Math.max(0, maxColumnNodeCount - 1) * NODE_ROW_SPACING;
+		const graphInnerHeight = graphHeight - GRAPH_PADDING * 2;
+		const orderedLayers = Array.from(nodesByLayer.keys()).sort((a, b) => a - b);
+		let layerStartX = GRAPH_PADDING;
 
-		nodesByLayer.forEach((layerNodes, layer) => {
-			const layerHeight = (layerNodes.length - 1) * nodeSpacing;
-			const layerStartY =
-				graphPadding + (graphHeight - graphPadding * 2 - layerHeight) / 2;
+		for (const layer of orderedLayers) {
+			const layerNodes = nodesByLayer.get(layer)!;
+			const columnCount = Math.ceil(layerNodes.length / nodesPerColumn);
 
 			layerNodes.forEach((node, index) => {
-				node.x = graphPadding + layer * layerSpacing;
-				node.y = layerStartY + index * nodeSpacing;
+				const column = Math.floor(index / nodesPerColumn);
+				const row = index % nodesPerColumn;
+				const columnNodeCount = Math.min(
+					nodesPerColumn,
+					layerNodes.length - column * nodesPerColumn
+				);
+				const columnHeight = (columnNodeCount - 1) * NODE_ROW_SPACING;
+
+				node.x = layerStartX + column * NODE_COLUMN_SPACING;
+				node.y =
+					GRAPH_PADDING +
+					(graphInnerHeight - columnHeight) / 2 +
+					row * NODE_ROW_SPACING;
 			});
-		});
+
+			layerStartX +=
+				Math.max(0, columnCount - 1) * NODE_COLUMN_SPACING + LAYER_SPACING;
+		}
 
 		const graphNodes = Array.from(nodes.values());
 		const nodeLookup = new Map(graphNodes.map(node => [node.id, node]));

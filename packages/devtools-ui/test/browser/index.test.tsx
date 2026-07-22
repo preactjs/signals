@@ -1125,6 +1125,76 @@ describe("@preact/signals-devtools-ui", () => {
 			expect(links.length).to.equal(2);
 		});
 
+		it("should wrap dense layers instead of shrinking them into a line", () => {
+			initDevTools(mockAdapter);
+
+			const denseLayerUpdates = Array.from({ length: 1000 }, (_, index) => ({
+				type: "update" as const,
+				signalType: "signal" as const,
+				signalName: `signal-${index}`,
+				signalId: `signal-${index}`,
+				prevValue: index,
+				newValue: index + 1,
+				receivedAt: Date.now(),
+			}));
+
+			mockAdapter._emit("signalUpdate", denseLayerUpdates);
+			render(<GraphVisualization />, scratch);
+
+			const nodes = Array.from(
+				scratch.querySelectorAll<SVGCircleElement>(".graph-node")
+			);
+			const xPositions = new Set(nodes.map(node => node.getAttribute("cx")));
+			const yPositions = new Set(nodes.map(node => node.getAttribute("cy")));
+			const zoomPercent = parseInt(
+				scratch.querySelector(".graph-zoom-indicator")!.textContent!,
+				10
+			);
+
+			expect(nodes).to.have.length(1000);
+			expect(xPositions.size).to.be.greaterThan(10);
+			expect(yPositions.size).to.be.lessThan(50);
+			expect(zoomPercent).to.be.greaterThan(5);
+		});
+
+		it("should keep a wrapped dependency layer before its dependent layer", () => {
+			initDevTools(mockAdapter);
+
+			const dependencies = Array.from({ length: 80 }, (_, index) => ({
+				id: `signal-${index}`,
+				name: `signal-${index}`,
+				type: "signal" as const,
+			}));
+			mockAdapter._emit("signalUpdate", [
+				{
+					type: "update",
+					signalType: "computed",
+					signalName: "total",
+					signalId: "computed-total",
+					prevValue: 0,
+					newValue: 1,
+					receivedAt: Date.now(),
+					allDependencies: dependencies,
+				},
+			]);
+			render(<GraphVisualization />, scratch);
+
+			const signals = Array.from(
+				scratch.querySelectorAll<SVGCircleElement>(".graph-node.signal")
+			);
+			const computed = scratch.querySelector<SVGCircleElement>(
+				".graph-node.computed"
+			)!;
+			const signalXPositions = signals.map(node =>
+				Number(node.getAttribute("cx"))
+			);
+
+			expect(new Set(signalXPositions).size).to.be.greaterThan(1);
+			expect(Math.max(...signalXPositions)).to.be.lessThan(
+				Number(computed.getAttribute("cx"))
+			);
+		});
+
 		it("should export only graph nodes and links as JSON", async () => {
 			initDevTools(mockAdapter);
 
