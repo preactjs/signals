@@ -580,6 +580,46 @@ describe("@preact/signals-devtools-ui", () => {
 		});
 	});
 
+	describe("SettingsPanel", () => {
+		beforeEach(() => {
+			initDevTools(mockAdapter);
+		});
+
+		it("should close when Cancel is clicked", () => {
+			render(<SettingsPanel />, scratch);
+
+			const popover = scratch.querySelector<HTMLDivElement>(
+				"#settings-panel-popover"
+			)!;
+			popover.showPopover();
+			expect(popover.matches(":popover-open")).to.be.true;
+
+			const cancelButton = Array.from(scratch.querySelectorAll("button")).find(
+				button => button.textContent === "Cancel"
+			)!;
+			cancelButton.click();
+
+			expect(popover.matches(":popover-open")).to.be.false;
+		});
+
+		it("should apply settings and close when Apply is clicked", () => {
+			render(<SettingsPanel />, scratch);
+
+			const popover = scratch.querySelector<HTMLDivElement>(
+				"#settings-panel-popover"
+			)!;
+			popover.showPopover();
+
+			const applyButton = Array.from(scratch.querySelectorAll("button")).find(
+				button => button.textContent === "Apply"
+			)!;
+			applyButton.click();
+
+			expect(mockAdapter.sendConfig).toHaveBeenCalledOnce();
+			expect(popover.matches(":popover-open")).to.be.false;
+		});
+	});
+
 	describe("UpdatesContainer", () => {
 		beforeEach(() => {
 			initDevTools(mockAdapter);
