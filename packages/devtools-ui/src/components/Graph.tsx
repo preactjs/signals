@@ -18,6 +18,8 @@ const NODE_COLUMN_SPACING = 160;
 const NODE_ROW_SPACING = 120;
 const LAYER_SPACING = 250;
 const GRAPH_PADDING = 100;
+export const LARGE_GRAPH_THRESHOLD = 200;
+const MAX_SEARCH_RESULTS = 20;
 
 interface Point {
 	x: number;
@@ -104,6 +106,39 @@ export const calculateFitTransform = (
 	};
 };
 
+export const filterGraphToNeighborhood = (
+	graph: GraphData,
+	focalNodeId: string,
+	hops = 1
+): GraphData => {
+	const visibleNodeIds = new Set([focalNodeId]);
+	let frontier = new Set([focalNodeId]);
+
+	for (let hop = 0; hop < hops && frontier.size > 0; hop++) {
+		const nextFrontier = new Set<string>();
+
+		for (const link of graph.links) {
+			if (frontier.has(link.source) && !visibleNodeIds.has(link.target)) {
+				visibleNodeIds.add(link.target);
+				nextFrontier.add(link.target);
+			}
+			if (frontier.has(link.target) && !visibleNodeIds.has(link.source)) {
+				visibleNodeIds.add(link.source);
+				nextFrontier.add(link.source);
+			}
+		}
+
+		frontier = nextFrontier;
+	}
+
+	return {
+		nodes: graph.nodes.filter(node => visibleNodeIds.has(node.id)),
+		links: graph.links.filter(
+			link => visibleNodeIds.has(link.source) && visibleNodeIds.has(link.target)
+		),
+	};
+};
+
 const copyToClipboard = (text: string) => {
 	const copyEl = document.createElement("textarea");
 	try {
@@ -129,6 +164,9 @@ export function GraphVisualization() {
 	const isPanning = useSignal(false);
 	const startPan = useSignal({ x: 0, y: 0 });
 	const showExportMenu = useSignal(false);
+	const selectedNodeId = useSignal<string>();
+	const showLargeFullGraph = useSignal(false);
+	const searchTerm = useSignal("");
 	const toastText = useSignal<string>();
 	const hoveredNode = useSignal<GraphNode | null>(null);
 	const tooltipPos = useSignal({ x: 0, y: 0 });
@@ -343,7 +381,7 @@ export function GraphVisualization() {
 		}
 	};
 
-	const graphData = useComputed<GraphRenderData>(() => {
+	const topologyData = useComputed<GraphData>(() => {
 		const rawUpdates = updates.value;
 		const disposed = disposedSignalIds.value;
 		const showDisposed = settingsStore.showDisposedSignals.value;
@@ -420,7 +458,53 @@ export function GraphVisualization() {
 			}
 		}
 
-		const allLinks = Array.from(links.values());
+		return {
+			nodes: Array.from(nodes.values()),
+			links: Array.from(links.values()),
+		};
+	});
+
+	const selectedNode = useComputed(() =>
+		topologyData.value.nodes.find(node => node.id === selectedNodeId.value)
+	);
+	const isLargeGraphHidden = useComputed(
+		() =>
+			topologyData.value.nodes.length > LARGE_GRAPH_THRESHOLD &&
+			!selectedNode.value &&
+			!showLargeFullGraph.value
+	);
+	const searchResults = useComputed(() => {
+		const query = searchTerm.value.trim().toLowerCase();
+		if (!query) return [];
+
+		return topologyData.value.nodes
+			.filter(node => node.name.toLowerCase().includes(query))
+			.sort((a, b) => {
+				const aStartsWithQuery = a.name.toLowerCase().startsWith(query);
+				const bStartsWithQuery = b.name.toLowerCase().startsWith(query);
+				if (aStartsWithQuery !== bStartsWithQuery) {
+					return aStartsWithQuery ? -1 : 1;
+				}
+				return a.name.localeCompare(b.name) || a.id.localeCompare(b.id);
+			})
+			.slice(0, MAX_SEARCH_RESULTS);
+	});
+	const visibleTopologyData = useComputed<GraphData>(() => {
+		if (selectedNode.value) {
+			return filterGraphToNeighborhood(
+				topologyData.value,
+				selectedNode.value.id
+			);
+		}
+		if (isLargeGraphHidden.value) return { nodes: [], links: [] };
+		return topologyData.value;
+	});
+
+	const graphData = useComputed<GraphRenderData>(() => {
+		const nodes = new Map(
+			visibleTopologyData.value.nodes.map(node => [node.id, { ...node }])
+		);
+		const allLinks = visibleTopologyData.value.links;
 
 		// Compute proper layers using topological sort
 		const nodeLayers = computeNodeLayers(nodes, allLinks);
@@ -635,6 +719,28 @@ export function GraphVisualization() {
 		fitView();
 	};
 
+	const focusNode = (nodeId: string) => {
+		selectedNodeId.value = nodeId;
+		showLargeFullGraph.value = false;
+		searchTerm.value = "";
+		hoveredNode.value = null;
+		hasUserAdjustedView.value = false;
+	};
+
+	const clearFocus = () => {
+		selectedNodeId.value = undefined;
+		showLargeFullGraph.value = false;
+		hoveredNode.value = null;
+		hasUserAdjustedView.value = false;
+	};
+
+	const showFullGraph = () => {
+		selectedNodeId.value = undefined;
+		showLargeFullGraph.value = true;
+		hoveredNode.value = null;
+		hasUserAdjustedView.value = false;
+	};
+
 	const toggleExportMenu = () => {
 		showExportMenu.value = !showExportMenu.value;
 	};
@@ -722,7 +828,7 @@ export function GraphVisualization() {
 		showToast("Copied to clipboard!");
 	};
 
-	if (graphData.value.nodes.length === 0) {
+	if (topologyData.value.nodes.length === 0) {
 		return (
 			<div className="graph-empty">
 				<div>
@@ -751,6 +857,19 @@ export function GraphVisualization() {
 				onWheel={handleWheel}
 				style={{ cursor: isPanning.value ? "grabbing" : "grab" }}
 			>
+				{isLargeGraphHidden.value && (
+					<div className="graph-large-state">
+						<div>
+							<h3>{topologyData.value.nodes.length} reactive nodes</h3>
+							<p>
+								Search for a node to inspect its direct dependencies and
+								dependents.
+							</p>
+							<button onClick={showFullGraph}>Show full graph</button>
+						</div>
+					</div>
+				)}
+
 				<svg
 					ref={svgRef}
 					className="graph-svg"
@@ -813,11 +932,13 @@ export function GraphVisualization() {
 										? node.name.slice(0, maxChars - 1) + "…"
 										: node.name;
 								const isHovered = hoveredNode.value?.id === node.id;
+								const isSelected = selectedNode.value?.id === node.id;
 
 								return (
 									<g
 										key={node.id}
-										className={`graph-node-group ${isHovered ? "hovered" : ""}`}
+										className={`graph-node-group ${isHovered ? "hovered" : ""} ${isSelected ? "selected" : ""}`}
+										onClick={() => focusNode(node.id)}
 										onMouseEnter={(e: MouseEvent) =>
 											handleNodeMouseEnter(node, e)
 										}
@@ -846,45 +967,102 @@ export function GraphVisualization() {
 					</g>
 				</svg>
 
-				<div className="graph-controls">
-					<button
-						className="graph-reset-button"
-						onClick={resetView}
-						title="Fit graph to viewport"
-					>
-						⟲ Fit View
-					</button>
-
-					<div ref={exportMenuRef} className="graph-export-container">
-						<button
-							className="graph-export-button"
-							onClick={toggleExportMenu}
-							title="Export graph"
-						>
-							↓ Export
-						</button>
-						{showExportMenu.value && (
-							<div className="graph-export-menu">
-								<button
-									className="graph-export-menu-item"
-									onClick={handleExportMermaid}
-								>
-									Mermaid
-								</button>
-								<button
-									className="graph-export-menu-item"
-									onClick={handleExportJSON}
-								>
-									JSON
-								</button>
+				<div
+					className="graph-controls"
+					onMouseDown={(event: MouseEvent) => event.stopPropagation()}
+				>
+					<div className="graph-search-container">
+						<input
+							type="search"
+							className="graph-search-input"
+							placeholder="Find a reactive node…"
+							aria-label="Find a reactive node"
+							value={searchTerm.value}
+							onInput={(event: Event) => {
+								searchTerm.value = (
+									event.currentTarget as HTMLInputElement
+								).value;
+							}}
+						/>
+						{searchTerm.value.trim() && (
+							<div className="graph-search-results">
+								{searchResults.value.length > 0 ? (
+									searchResults.value.map(node => (
+										<button
+											key={node.id}
+											className="graph-search-result"
+											onClick={() => focusNode(node.id)}
+										>
+											<span>{node.name}</span>
+											<small>
+												{node.type} · {node.id.slice(-7)}
+											</small>
+										</button>
+									))
+								) : (
+									<div className="graph-search-empty">No matching nodes</div>
+								)}
 							</div>
 						)}
 					</div>
 
-					<div className="graph-zoom-indicator" title="Zoom level">
-						{Math.round(zoom.value * 100)}%
-					</div>
+					{selectedNode.value && (
+						<button className="graph-focus-button" onClick={clearFocus}>
+							Clear focus
+						</button>
+					)}
+
+					{!isLargeGraphHidden.value && (
+						<>
+							<button
+								className="graph-reset-button"
+								onClick={resetView}
+								title="Fit graph to viewport"
+							>
+								⟲ Fit View
+							</button>
+
+							<div ref={exportMenuRef} className="graph-export-container">
+								<button
+									className="graph-export-button"
+									onClick={toggleExportMenu}
+									title="Export graph"
+								>
+									↓ Export
+								</button>
+								{showExportMenu.value && (
+									<div className="graph-export-menu">
+										<button
+											className="graph-export-menu-item"
+											onClick={handleExportMermaid}
+										>
+											Mermaid
+										</button>
+										<button
+											className="graph-export-menu-item"
+											onClick={handleExportJSON}
+										>
+											JSON
+										</button>
+									</div>
+								)}
+							</div>
+
+							<div className="graph-zoom-indicator" title="Zoom level">
+								{Math.round(zoom.value * 100)}%
+							</div>
+						</>
+					)}
 				</div>
+
+				{selectedNode.value && (
+					<div className="graph-focus-summary">
+						Showing {graphData.value.nodes.length} of{" "}
+						{topologyData.value.nodes.length} nodes around{" "}
+						<strong>{selectedNode.value.name}</strong>
+						<button onClick={showFullGraph}>Show all</button>
+					</div>
+				)}
 
 				{toastText.value && (
 					<div className="graph-toast">{toastText.value}</div>
