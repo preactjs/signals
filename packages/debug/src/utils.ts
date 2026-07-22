@@ -1,4 +1,7 @@
 import { Effect, Signal } from "@preact/signals-core";
+import { getModelInfo } from "./model";
+
+export { getModelInfo };
 
 export function getSignalName(
 	signal: any,
@@ -6,11 +9,16 @@ export function getSignalName(
 ): string {
 	// Try to get a meaningful name for the signal
 	if (signal.displayName) return signal.displayName;
-	if (signal.name)
-		return signal.name === "sub"
-			? `${(signal as Effect)._sources?._source.name}-subscribe`
-			: signal.name;
+	if (signal.name) {
+		if (signal.name !== "sub") return signal.name;
+		const subscribedSignal = (signal as Effect)._sources?._source;
+		return subscribedSignal
+			? `${getSignalName(subscribedSignal, "value")}-subscribe`
+			: "signal-subscribe";
+	}
 	if (signal._fn && signal._fn.name) return signal._fn.name;
+	const modelPath = getModelInfo(signal)?.[0]?.path;
+	if (modelPath) return modelPath;
 	if (type === "effect" || type === "component") return type;
 	const signalType = "_fn" in signal ? "computed" : "signal";
 	return `(anonymous ${signalType})`;
@@ -180,6 +188,34 @@ function fastStringify(
 		parts.push(`"...":"${keys.length - MAX_FORMAT_KEYS} more keys"`);
 	}
 	return "{" + parts.join(",") + "}";
+}
+
+export function getSignalLabel(
+	signal: Signal | Effect,
+	type: "component" | "effect" | "value"
+): string {
+	const signalName = getSignalName(signal, type);
+	const model = getModelInfo(signal)?.[0];
+	if (!model) return signalName;
+
+	return `${model.name}.${model.path || signalName}`;
+}
+
+export function getSignalSearchText(
+	signal: Signal | Effect,
+	type: "component" | "effect" | "value"
+): string {
+	const signalName = getSignalName(signal, type);
+	const candidates = [signalName];
+
+	for (const model of getModelInfo(signal) || []) {
+		candidates.push(model.id, model.name);
+		if (model.path) {
+			candidates.push(model.path, `${model.name}.${model.path}`);
+		}
+	}
+
+	return candidates.join(" ");
 }
 
 export function getSignalId(signal: Signal | Effect): string {

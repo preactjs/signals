@@ -1,3 +1,5 @@
+import type { ModelInfo } from "@preact/signals-devtools-adapter";
+
 /**
  * Re-export types from the adapter package for convenience
  */
@@ -5,6 +7,7 @@ export type {
 	SignalUpdate,
 	SignalDisposed,
 	DependencyInfo,
+	ModelInfo,
 	Settings,
 	ConnectionStatus,
 	ConnectionStatusType,
@@ -21,6 +24,7 @@ export interface GraphNode {
 	x: number;
 	y: number;
 	depth: number;
+	models?: ModelInfo[];
 }
 
 export interface GraphLink {

@@ -315,6 +315,26 @@ describe("@preact/signals-devtools-ui", () => {
 			expect(signalName!.textContent).to.contain("count");
 		});
 
+		it("should render model membership", () => {
+			const update = {
+				type: "update" as const,
+				signalType: "signal" as const,
+				signalName: "count",
+				prevValue: 0,
+				newValue: 1,
+				receivedAt: Date.now(),
+				models: [{ id: "counter-1", name: "CounterModel", path: "count" }],
+			};
+
+			render(<UpdateItem update={update} />, scratch);
+
+			const badge = scratch.querySelector(".model-badge");
+			expect(badge!.textContent).to.equal("CounterModel");
+			expect(badge!.getAttribute("title")).to.equal(
+				"CounterModel.count · counter-1"
+			);
+		});
+
 		it("should render effect signal name with effect type", () => {
 			const update = {
 				type: "effect" as const,
@@ -1123,6 +1143,45 @@ describe("@preact/signals-devtools-ui", () => {
 			// Should have links from both dependencies to the computed
 			const links = scratch.querySelectorAll(".graph-link");
 			expect(links.length).to.equal(2);
+		});
+
+		it("should group model members in a labeled boundary", () => {
+			initDevTools(mockAdapter);
+			const model = {
+				id: "counter-model-1",
+				name: "CounterModel",
+			};
+			mockAdapter._emit("signalUpdate", [
+				{
+					type: "update",
+					signalType: "computed",
+					signalName: "doubled",
+					signalId: "computed-doubled",
+					prevValue: 0,
+					newValue: 2,
+					receivedAt: Date.now(),
+					models: [{ ...model, path: "doubled" }],
+					allDependencies: [
+						{
+							id: "signal-count",
+							name: "count",
+							type: "signal",
+							models: [{ ...model, path: "count" }],
+						},
+					],
+				},
+			]);
+
+			render(<GraphVisualization />, scratch);
+
+			expect(scratch.querySelectorAll(".graph-node")).to.have.length(2);
+			expect(scratch.querySelectorAll(".model-boundary")).to.have.length(1);
+			expect(
+				scratch.querySelector(".model-boundary-label")!.textContent
+			).to.equal("CounterModel");
+			expect(
+				scratch.querySelector(".model-boundary-group title")!.textContent
+			).to.equal("CounterModel · counter-model-1");
 		});
 
 		it("should wrap dense layers instead of shrinking them into a line", () => {

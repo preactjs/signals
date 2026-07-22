@@ -47,6 +47,10 @@
   --graph-zoom-bg: rgba(255, 255, 255, 0.9);
   --graph-node-stroke: #fff;
   --graph-export-bg: white;
+  --model-boundary: #7c3aed;
+  --model-boundary-fill: rgba(124, 58, 237, 0.06);
+  --model-badge-bg: #ede9fe;
+  --model-badge-text: #5b21b6;
 
   /* Tooltip */
   --tooltip-bg: #1e293b;
@@ -125,6 +129,10 @@
   --graph-zoom-bg: rgba(22, 33, 62, 0.9);
   --graph-node-stroke: #16213e;
   --graph-export-bg: #16213e;
+  --model-boundary: #a78bfa;
+  --model-boundary-fill: rgba(167, 139, 250, 0.08);
+  --model-badge-bg: #3b2763;
+  --model-badge-text: #ddd6fe;
 
   /* Tooltip */
   --tooltip-bg: #0f1629;
@@ -204,6 +212,10 @@
     --graph-zoom-bg: rgba(22, 33, 62, 0.9);
     --graph-node-stroke: #16213e;
     --graph-export-bg: #16213e;
+    --model-boundary: #a78bfa;
+    --model-boundary-fill: rgba(167, 139, 250, 0.08);
+    --model-badge-bg: #3b2763;
+    --model-badge-text: #ddd6fe;
 
     /* Tooltip */
     --tooltip-bg: #0f1629;
@@ -667,6 +679,18 @@ body {
   color: var(--brand-purple);
 }
 
+.model-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background: var(--model-badge-bg);
+  color: var(--model-badge-text);
+  font-size: 10px;
+  font-weight: 600;
+  vertical-align: middle;
+}
+
 .component-name {
   font-weight: 500;
   color: var(--brand-blue-deep);
@@ -867,6 +891,21 @@ body {
   filter: drop-shadow(0 3px 6px var(--shadow-color));
 }
 
+.model-boundary {
+  fill: var(--model-boundary-fill);
+  stroke: var(--model-boundary);
+  stroke-width: 2;
+  stroke-dasharray: 8 5;
+  pointer-events: none;
+}
+
+.model-boundary-label {
+  fill: var(--model-boundary);
+  font-size: 13px;
+  font-weight: 700;
+  pointer-events: none;
+}
+
 .graph-node-group.hovered .graph-node {
   filter: brightness(1.15) drop-shadow(0 4px 12px rgba(0, 0, 0, 0.25));
   stroke-width: 3;
@@ -979,6 +1018,12 @@ body {
   word-break: break-word;
 }
 
+.tooltip-model {
+  color: var(--tooltip-text);
+  font-size: 11px;
+  margin-bottom: 3px;
+}
+
 .tooltip-id {
   color: var(--tooltip-id);
   font-size: 11px;
@@ -1031,6 +1076,14 @@ body {
 
 .legend-color.component {
   background-color: #9c27b0;
+}
+
+.legend-model-boundary {
+  width: 16px;
+  height: 12px;
+  border: 2px dashed var(--model-boundary);
+  border-radius: 3px;
+  background: var(--model-boundary-fill);
 }
 
 .component-boundary {

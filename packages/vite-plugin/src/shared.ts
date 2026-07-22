@@ -17,10 +17,17 @@ export interface SignalsAgentEventBase {
 	summary?: string;
 }
 
+export interface SignalsAgentModel {
+	id: string;
+	name: string;
+	path?: string;
+}
+
 export interface SignalsAgentDependency {
 	id: string;
 	name: string;
 	type: "signal" | "computed";
+	models?: SignalsAgentModel[];
 }
 
 export interface SignalsAgentSignalEvent extends SignalsAgentEventBase {
@@ -31,6 +38,7 @@ export interface SignalsAgentSignalEvent extends SignalsAgentEventBase {
 	prevValue?: any;
 	newValue?: any;
 	subscribedTo?: string;
+	models?: SignalsAgentModel[];
 	allDependencies?: SignalsAgentDependency[];
 }
 
@@ -185,6 +193,7 @@ export function summarizeEvent(event: SignalsAgentEvent): string {
 		case "signals":
 			return [
 				event.signalName,
+				...(event.models ?? []).map(model => model.name),
 				event.signalType,
 				event.type,
 				event.page.pathname,
@@ -262,8 +271,14 @@ function getEventCandidates(event: SignalsAgentEvent): string[] {
 
 	if (event.source === "signals") {
 		candidates.push(event.signalName, event.signalType);
+		for (const model of event.models ?? []) {
+			candidates.push(model.name, model.id, model.path);
+		}
 		for (const dependency of event.allDependencies ?? []) {
 			candidates.push(dependency.name, dependency.id, dependency.type);
+			for (const model of dependency.models ?? []) {
+				candidates.push(model.name, model.id, model.path);
+			}
 		}
 	} else if (event.source === "network") {
 		candidates.push(event.method, event.requestUrl, String(event.status ?? ""));

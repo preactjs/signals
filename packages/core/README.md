@@ -256,7 +256,7 @@ effect(() => {
 
 ### `createModel(fn)`
 
-Use `createModel` to define disposable model instances that group signals, computed values, and actions together.
+Use `createModel` to define disposable model instances that group signals, computed values, and actions together. The Preact and React Babel transforms automatically provide a debug name; without a transform, pass `{ name: "CounterModel" }` when using Signals DevTools.
 
 ```js
 import { computed, createModel, effect, signal } from "@preact/signals-core";

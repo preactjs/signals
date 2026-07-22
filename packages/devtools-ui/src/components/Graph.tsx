@@ -4,8 +4,18 @@ import type { GraphData, GraphLink, GraphNode } from "../types";
 import type { SignalUpdate } from "../context";
 import { getContext } from "../context";
 
+interface ModelBoundary {
+	id: string;
+	name: string;
+	x: number;
+	y: number;
+	width: number;
+	height: number;
+}
+
 interface GraphRenderData extends GraphData {
 	nodeLookup: Map<string, GraphNode>;
+	modelBoundaries: ModelBoundary[];
 }
 
 const DEFAULT_VIEWPORT_SIZE = { width: 800, height: 600 };
@@ -37,6 +47,22 @@ interface GraphBounds {
 	width: number;
 	height: number;
 }
+
+const mergeModels = (
+	current: GraphNode["models"],
+	incoming: GraphNode["models"]
+): GraphNode["models"] => {
+	if (!incoming?.length) return current;
+	if (!current?.length) return incoming;
+
+	const models = new Map(
+		current.map(model => [`${model.id}:${model.path || ""}`, model])
+	);
+	for (const model of incoming) {
+		models.set(`${model.id}:${model.path || ""}`, model);
+	}
+	return Array.from(models.values());
+};
 
 const getNodeRadius = (node: GraphNode) => {
 	const baseRadius = 30;
@@ -353,6 +379,7 @@ export function GraphVisualization() {
 				nodes: [],
 				links: [],
 				nodeLookup: new Map(),
+				modelBoundaries: [],
 			};
 		}
 
@@ -378,7 +405,11 @@ export function GraphVisualization() {
 					x: 0,
 					y: 0,
 					depth: 0, // Will be recalculated
+					models: update.models,
 				});
+			} else {
+				const node = nodes.get(update.signalId)!;
+				node.models = mergeModels(node.models, update.models);
 			}
 
 			if (update.allDependencies && update.allDependencies.length > 0) {
@@ -394,7 +425,11 @@ export function GraphVisualization() {
 							x: 0,
 							y: 0,
 							depth: 0,
+							models: dep.models,
 						});
+					} else {
+						const node = nodes.get(dep.id)!;
+						node.models = mergeModels(node.models, dep.models);
 					}
 
 					const linkKey = `${dep.id}->${update.signalId}`;
@@ -494,16 +529,73 @@ export function GraphVisualization() {
 
 		const graphNodes = Array.from(nodes.values());
 		const nodeLookup = new Map(graphNodes.map(node => [node.id, node]));
+		const modelNodes = new Map<string, { name: string; nodes: GraphNode[] }>();
+
+		for (const node of graphNodes) {
+			for (const model of node.models || []) {
+				let group = modelNodes.get(model.id);
+				if (!group) {
+					group = { name: model.name, nodes: [] };
+					modelNodes.set(model.id, group);
+				}
+				group.nodes.push(node);
+			}
+		}
+
+		const modelBoundaries = Array.from(modelNodes, ([id, group]) => {
+			const padding = 42;
+			const minX = Math.min(
+				...group.nodes.map(node => node.x - getNodeRadius(node))
+			);
+			const maxX = Math.max(
+				...group.nodes.map(node => node.x + getNodeRadius(node))
+			);
+			const minY = Math.min(
+				...group.nodes.map(node => node.y - getNodeRadius(node))
+			);
+			const maxY = Math.max(
+				...group.nodes.map(node => node.y + getNodeRadius(node))
+			);
+
+			return {
+				id,
+				name: group.name,
+				x: minX - padding,
+				y: minY - padding,
+				width: maxX - minX + padding * 2,
+				height: maxY - minY + padding * 2,
+			};
+		});
+
 		return {
 			nodes: graphNodes,
 			links: allLinks,
 			nodeLookup,
+			modelBoundaries,
 		};
 	});
 
-	const graphBounds = useComputed(() =>
-		calculateGraphBounds(graphData.value.nodes)
-	);
+	const graphBounds = useComputed(() => {
+		const bounds = calculateGraphBounds(graphData.value.nodes);
+		if (!bounds) return null;
+
+		let { minX, minY, maxX, maxY } = bounds;
+		for (const boundary of graphData.value.modelBoundaries) {
+			minX = Math.min(minX, boundary.x);
+			minY = Math.min(minY, boundary.y);
+			maxX = Math.max(maxX, boundary.x + boundary.width);
+			maxY = Math.max(maxY, boundary.y + boundary.height);
+		}
+
+		return {
+			minX,
+			minY,
+			maxX,
+			maxY,
+			width: Math.max(1, maxX - minX),
+			height: Math.max(1, maxY - minY),
+		};
+	});
 	const layoutSignature = graphBounds.value
 		? [
 				graphData.value.nodes.length,
@@ -775,6 +867,29 @@ export function GraphVisualization() {
 					<g
 						transform={`translate(${panOffset.value.x}, ${panOffset.value.y}) scale(${zoom.value})`}
 					>
+						<g className="model-boundaries">
+							{graphData.value.modelBoundaries.map(model => (
+								<g key={model.id} className="model-boundary-group">
+									<title>{`${model.name} · ${model.id}`}</title>
+									<rect
+										className="model-boundary"
+										x={model.x}
+										y={model.y}
+										width={model.width}
+										height={model.height}
+										rx={18}
+									/>
+									<text
+										className="model-boundary-label"
+										x={model.x + 16}
+										y={model.y + 22}
+									>
+										{model.name}
+									</text>
+								</g>
+							))}
+						</g>
+
 						<g className="links">
 							{graphData.value.links.map((link, index) => {
 								const sourceNode = graphData.value.nodeLookup.get(link.source);
@@ -904,6 +1019,15 @@ export function GraphVisualization() {
 							</span>
 						</div>
 						<div className="tooltip-name">{hoveredNode.value.name}</div>
+						{hoveredNode.value.models?.map(model => (
+							<div
+								key={`${model.id}:${model.path || ""}`}
+								className="tooltip-model"
+							>
+								Model: {model.name}
+								{model.path ? ` · ${model.path}` : ""} · {model.id}
+							</div>
+						))}
 						<div className="tooltip-id">ID: {hoveredNode.value.id}</div>
 					</div>
 				)}
@@ -924,6 +1048,10 @@ export function GraphVisualization() {
 					<div className="legend-item">
 						<div className="legend-color component"></div>
 						<span>Component</span>
+					</div>
+					<div className="legend-item">
+						<div className="legend-model-boundary"></div>
+						<span>Model</span>
 					</div>
 				</div>
 			</div>

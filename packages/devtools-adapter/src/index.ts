@@ -6,6 +6,7 @@ export type {
 	Unsubscribe,
 	SignalUpdate,
 	DependencyInfo,
+	ModelInfo,
 	Settings,
 	ConnectionStatus,
 	ConnectionStatusType,

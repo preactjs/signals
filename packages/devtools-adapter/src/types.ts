@@ -1,10 +1,21 @@
 /**
+ * A model instance that contains a reactive value.
+ */
+export interface ModelInfo {
+	id: string;
+	name: string;
+	/** Dot-separated property path within the model, when the value is exposed. */
+	path?: string;
+}
+
+/**
  * Rich dependency information for a signal/computed
  */
 export interface DependencyInfo {
 	id: string;
 	name: string;
 	type: "signal" | "computed";
+	models?: ModelInfo[];
 }
 
 /**
@@ -21,6 +32,8 @@ export interface SignalUpdate {
 	receivedAt: number;
 	depth?: number;
 	subscribedTo?: string;
+	/** Model instances that contain this reactive value. */
+	models?: ModelInfo[];
 	/** All dependencies this computed/effect currently depends on (with rich info) */
 	allDependencies?: DependencyInfo[];
 }
@@ -34,6 +47,7 @@ export interface SignalDisposed {
 	signalName: string;
 	signalId: string;
 	timestamp: number;
+	models?: ModelInfo[];
 }
 
 /**
