@@ -1394,6 +1394,7 @@ body {
 }
 
 .timeline-value-change {
+  grid-column: 4;
   display: flex;
   min-width: 0;
   gap: 6px;
@@ -1418,6 +1419,7 @@ body {
 }
 
 .timeline-signal-id {
+  grid-column: 5;
   overflow: hidden;
   color: var(--text-faint);
   font-size: 10px;
