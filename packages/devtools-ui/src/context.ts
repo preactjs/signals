@@ -23,6 +23,8 @@ export type {
 export type {
 	PerformanceInsightsData,
 	PerformanceInstanceSummary,
+	NoOutputChangeOccurrence,
+	HotspotTier,
 } from "./models/PerformanceInsightsModel";
 export type { ThemeMode } from "./models/ThemeModel";
 

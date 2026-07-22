@@ -23,7 +23,10 @@ import {
 	calculateGraphBounds,
 	filterGraphToNeighborhood,
 } from "../../src/components/Graph";
-import { derivePerformanceInsights } from "../../src/models/PerformanceInsightsModel";
+import {
+	derivePerformanceInsights,
+	MAX_RECENT_OCCURRENCES,
+} from "../../src/models/PerformanceInsightsModel";
 import type { PerformanceObservation } from "../../src/models/UpdatesModel";
 import type {
 	DevToolsAdapter,
@@ -983,7 +986,10 @@ describe("@preact/signals-devtools-ui", () => {
 			];
 
 			const insights = derivePerformanceInsights(observations);
-			expect(insights.hotspots).to.have.length(2);
+			// Two instances with one observation each cannot be disproportionate to
+			// the median baseline (median 1, threshold 2), so neither is a hotspot.
+			expect(insights.hotspots).to.have.length(0);
+			expect(insights.hotspotPopulation).to.equal(2);
 			expect(insights.redundantWork).to.have.length(1);
 			expect(insights.redundantWork[0].signalId).to.equal("computed-total-a");
 			expect(insights.redundantWork[0].noOutputChangeCount).to.equal(1);
@@ -1094,6 +1100,266 @@ describe("@preact/signals-devtools-ui", () => {
 				"does not compare serialized values"
 			);
 			expect(scratch.textContent).to.contain("parity");
+		});
+
+		it("filters hotspots against the median baseline with >=2x and >=4x tiers", () => {
+			// Three quiet instances (1 update each) establish a median of 1.
+			// One instance with 2 updates is exactly 2x (elevated), one with 4
+			// updates is 4x (severe), and one with 1 update is below threshold.
+			const observations: PerformanceObservation[] = [
+				...["a", "b", "c"].map((id, i) => ({
+					type: "update" as const,
+					signalType: "signal" as const,
+					signalName: id,
+					signalId: `signal-${id}`,
+					receivedAt: i,
+				})),
+				...Array.from({ length: 2 }, (_, i) => ({
+					type: "update" as const,
+					signalType: "signal" as const,
+					signalName: "elevated",
+					signalId: "signal-elevated",
+					receivedAt: 10 + i,
+				})),
+				...Array.from({ length: 4 }, (_, i) => ({
+					type: "update" as const,
+					signalType: "signal" as const,
+					signalName: "severe",
+					signalId: "signal-severe",
+					receivedAt: 20 + i,
+				})),
+			];
+
+			const insights = derivePerformanceInsights(observations);
+			expect(insights.hotspotBaseline).to.equal(1);
+			expect(insights.hotspotPopulation).to.equal(5);
+			expect(insights.hotspots).to.have.length(2);
+			const elevated = insights.hotspots.find(
+				h => h.signalId === "signal-elevated"
+			)!;
+			const severe = insights.hotspots.find(
+				h => h.signalId === "signal-severe"
+			)!;
+			expect(elevated.hotspotTier).to.equal("elevated");
+			expect(severe.hotspotTier).to.equal("severe");
+			// Severe (4 updates) ranks above elevated (2 updates).
+			expect(insights.hotspots[0].signalId).to.equal("signal-severe");
+		});
+
+		it("reports no hotspots when no instance reaches 2x the median", () => {
+			const observations: PerformanceObservation[] = [
+				...Array.from({ length: 3 }, (_, i) => ({
+					type: "update" as const,
+					signalType: "signal" as const,
+					signalName: "even",
+					signalId: `signal-${i}`,
+					receivedAt: i,
+				})),
+			];
+
+			const insights = derivePerformanceInsights(observations);
+			expect(insights.hotspotPopulation).to.equal(3);
+			expect(insights.hotspotBaseline).to.equal(1);
+			expect(insights.hotspots).to.have.length(0);
+		});
+
+		it("does not compute a baseline for a single identified instance", () => {
+			const observations: PerformanceObservation[] = [
+				{
+					type: "update",
+					signalType: "signal",
+					signalName: "lonely",
+					signalId: "signal-lonely",
+					receivedAt: 1,
+				},
+			];
+
+			const insights = derivePerformanceInsights(observations);
+			expect(insights.hotspotPopulation).to.equal(1);
+			expect(insights.hotspotBaseline).to.equal(0);
+			expect(insights.hotspots).to.have.length(0);
+		});
+
+		it("renders the baseline explanation and honest empty-hotspots message", () => {
+			initDevTools(mockAdapter);
+			mockAdapter._emit("signalUpdate", [
+				{
+					type: "update",
+					signalType: "signal",
+					signalName: "solo",
+					signalId: "signal-solo",
+					receivedAt: Date.now(),
+				},
+			]);
+
+			render(<PerformanceInsights />, scratch);
+
+			expect(scratch.textContent).to.contain(
+				"disproportionate to the median per-instance activity"
+			);
+			expect(scratch.textContent).to.contain("≥2×");
+			expect(scratch.textContent).to.contain("≥4×");
+			expect(scratch.textContent).to.contain(
+				"Not enough identified instances to compute a defensible median baseline"
+			);
+		});
+
+		it("retains verbatim trigger and dependency metadata in recent occurrences", () => {
+			const observations: PerformanceObservation[] = [
+				{
+					type: "update",
+					signalType: "computed",
+					signalName: "parity",
+					signalId: "computed-parity",
+					prevValue: 0,
+					newValue: 0,
+					receivedAt: 100,
+					timestamp: 9001,
+					recomputed: true,
+					outputChanged: false,
+					subscribedTo: "signal-count",
+					allDependencies: [
+						{
+							id: "signal-count",
+							name: "count",
+							type: "signal" as const,
+						},
+					],
+				},
+			];
+
+			const insights = derivePerformanceInsights(observations);
+			expect(insights.redundantWork).to.have.length(1);
+			const entry = insights.redundantWork[0];
+			expect(entry.recentOccurrences).to.have.length(1);
+			const occurrence = entry.recentOccurrences![0];
+			expect(occurrence.signalId).to.equal("computed-parity");
+			expect(occurrence.subscribedTo).to.equal("signal-count");
+			expect(occurrence.timestamp).to.equal(9001);
+			expect(occurrence.receivedAt).to.equal(100);
+			expect(occurrence.allDependencies).to.have.length(1);
+			expect(occurrence.allDependencies![0]).to.deep.equal({
+				id: "signal-count",
+				name: "count",
+				type: "signal",
+			});
+		});
+
+		it("does not infer no-output-change from serialized value equality", () => {
+			// Both observations have identical prev/new values, but only the
+			// runtime's `outputChanged` flag determines the count — serialized
+			// equality is never consulted.
+			const observations: PerformanceObservation[] = [
+				{
+					type: "update",
+					signalType: "computed",
+					signalName: "same",
+					signalId: "computed-same-false",
+					prevValue: { v: 1 },
+					newValue: { v: 1 },
+					receivedAt: 1,
+					recomputed: true,
+					outputChanged: false,
+				},
+				{
+					type: "update",
+					signalType: "computed",
+					signalName: "same",
+					signalId: "computed-same-true",
+					prevValue: { v: 1 },
+					newValue: { v: 1 },
+					receivedAt: 2,
+					recomputed: true,
+					outputChanged: true,
+				},
+			];
+
+			const insights = derivePerformanceInsights(observations);
+			const flagged = insights.redundantWork.find(
+				e => e.signalId === "computed-same-false"
+			)!;
+			const notFlagged = insights.redundantWork.find(
+				e => e.signalId === "computed-same-true"
+			);
+			expect(flagged.noOutputChangeCount).to.equal(1);
+			expect(notFlagged).to.be.undefined;
+		});
+
+		it("bounds recent occurrences to the most recent window", () => {
+			const observations: PerformanceObservation[] = Array.from(
+				{ length: MAX_RECENT_OCCURRENCES + 5 },
+				(_, i) => ({
+					type: "update" as const,
+					signalType: "computed" as const,
+					signalName: "parity",
+					signalId: "computed-parity",
+					prevValue: 0,
+					newValue: 0,
+					receivedAt: i,
+					timestamp: i,
+					recomputed: true as const,
+					outputChanged: false,
+				})
+			);
+
+			const insights = derivePerformanceInsights(observations);
+			const entry = insights.redundantWork[0];
+			expect(entry.noOutputChangeCount).to.equal(MAX_RECENT_OCCURRENCES + 5);
+			expect(entry.recentOccurrences).to.have.length(MAX_RECENT_OCCURRENCES);
+			// Most recent first.
+			expect(entry.recentOccurrences![0].receivedAt).to.equal(
+				MAX_RECENT_OCCURRENCES + 4
+			);
+		});
+
+		it("expands a redundant-work row to show trigger source and dependencies", () => {
+			initDevTools(mockAdapter);
+			mockAdapter._emit("signalUpdate", [
+				{
+					type: "update",
+					signalType: "computed",
+					signalName: "parity",
+					signalId: "computed-parity",
+					prevValue: 0,
+					newValue: 0,
+					receivedAt: Date.now(),
+					timestamp: 12345,
+					recomputed: true,
+					outputChanged: false,
+					subscribedTo: "signal-count",
+					allDependencies: [
+						{
+							id: "signal-count",
+							name: "count",
+							type: "signal" as const,
+						},
+					],
+				},
+			]);
+
+			render(<PerformanceInsights />, scratch);
+
+			const inspectButton = scratch.querySelector<HTMLButtonElement>(
+				".performance-expand-toggle"
+			);
+			expect(inspectButton).to.not.be.null;
+			expect(inspectButton!.getAttribute("aria-expanded")).to.equal("false");
+
+			// Before expanding, occurrence details are not rendered.
+			expect(scratch.querySelector(".performance-occurrence-detail")).to.be
+				.null;
+
+			act(() => {
+				inspectButton!.click();
+			});
+			expect(inspectButton!.getAttribute("aria-expanded")).to.equal("true");
+
+			const detail = scratch.querySelector(".performance-occurrence-detail");
+			expect(detail).to.not.be.null;
+			expect(detail!.textContent).to.contain("signal-count");
+			expect(detail!.textContent).to.contain("count");
+			expect(detail!.textContent).to.contain("Triggered by");
+			expect(detail!.textContent).to.contain("Current dependencies");
 		});
 	});
 

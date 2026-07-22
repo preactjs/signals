@@ -24,6 +24,8 @@ export {
 	type PerformanceObservation,
 	type PerformanceInsightsData,
 	type PerformanceInstanceSummary,
+	type NoOutputChangeOccurrence,
+	type HotspotTier,
 } from "./context";
 
 // Types

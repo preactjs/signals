@@ -14,6 +14,10 @@ export {
 export {
 	PerformanceInsightsModel,
 	derivePerformanceInsights,
+	MAX_RECENT_OCCURRENCES,
+	MIN_BASELINE_POPULATION,
 	type PerformanceInsightsData,
 	type PerformanceInstanceSummary,
+	type NoOutputChangeOccurrence,
+	type HotspotTier,
 } from "./PerformanceInsightsModel";
