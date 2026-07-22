@@ -12,6 +12,7 @@ import {
 import { Button } from "../../src/components/Button";
 import { EmptyState } from "../../src/components/EmptyState";
 import { Header } from "../../src/components/Header";
+import { PerformanceInsights } from "../../src/components/PerformanceInsights";
 import { SettingsPanel } from "../../src/components/SettingsPanel";
 import { StatusIndicator } from "../../src/components/StatusIndicator";
 import { UpdateItem } from "../../src/components/UpdateItem";
@@ -22,6 +23,8 @@ import {
 	calculateGraphBounds,
 	filterGraphToNeighborhood,
 } from "../../src/components/Graph";
+import { derivePerformanceInsights } from "../../src/models/PerformanceInsightsModel";
+import type { PerformanceObservation } from "../../src/models/UpdatesModel";
 import type {
 	DevToolsAdapter,
 	Settings,
@@ -451,9 +454,10 @@ describe("@preact/signals-devtools-ui", () => {
 			render(<DevToolsPanel />, scratch);
 
 			const tabs = scratch.querySelectorAll(".tab");
-			expect(tabs.length).to.equal(2);
+			expect(tabs.length).to.equal(3);
 			expect(tabs[0].textContent).to.equal("Updates");
-			expect(tabs[1].textContent).to.equal("Dependency Graph");
+			expect(tabs[1].textContent).to.equal("Performance");
+			expect(tabs[2].textContent).to.equal("Dependency Graph");
 		});
 
 		it("should show updates tab as active by default", () => {
@@ -470,10 +474,17 @@ describe("@preact/signals-devtools-ui", () => {
 			expect(activeTab!.textContent).to.equal("Dependency Graph");
 		});
 
+		it("should show performance tab as active when initialTab is performance", () => {
+			render(<DevToolsPanel initialTab="performance" />, scratch);
+
+			const activeTab = scratch.querySelector(".tab.active");
+			expect(activeTab!.textContent).to.equal("Performance");
+		});
+
 		it("should switch tabs when clicked", () => {
 			render(<DevToolsPanel />, scratch);
 
-			const graphTab = scratch.querySelectorAll(".tab")[1] as HTMLButtonElement;
+			const graphTab = scratch.querySelectorAll(".tab")[2] as HTMLButtonElement;
 			act(() => {
 				graphTab.click();
 			});
@@ -941,6 +952,148 @@ describe("@preact/signals-devtools-ui", () => {
 
 			expect(context.updatesStore.disposedSignalIds.value.has("signal-123")).to
 				.be.true;
+		});
+	});
+
+	describe("PerformanceInsights", () => {
+		it("keeps same-named runtime instances separate and uses explicit recomputation metadata", () => {
+			const observations: PerformanceObservation[] = [
+				{
+					type: "update",
+					signalType: "computed",
+					signalName: "total",
+					signalId: "computed-total-a",
+					prevValue: { total: 1 },
+					newValue: { total: 1 },
+					receivedAt: 1,
+					recomputed: true,
+					outputChanged: false,
+				},
+				{
+					type: "update",
+					signalType: "computed",
+					signalName: "total",
+					signalId: "computed-total-b",
+					prevValue: { total: 1 },
+					newValue: { total: 1 },
+					receivedAt: 2,
+					recomputed: true,
+					outputChanged: true,
+				},
+			];
+
+			const insights = derivePerformanceInsights(observations);
+			expect(insights.hotspots).to.have.length(2);
+			expect(insights.redundantWork).to.have.length(1);
+			expect(insights.redundantWork[0].signalId).to.equal("computed-total-a");
+			expect(insights.redundantWork[0].noOutputChangeCount).to.equal(1);
+		});
+
+		it("bounds observations and clears performance insights with updates", () => {
+			initDevTools(mockAdapter);
+			const context = getContext();
+			const updates = Array.from({ length: 1001 }, (_, index) => ({
+				type: "update" as const,
+				signalType: "signal" as const,
+				signalName: `signal-${index}`,
+				signalId: `signal-${index}`,
+				receivedAt: index,
+			}));
+
+			mockAdapter._emit("signalUpdate", updates);
+
+			expect(context.updatesStore.performanceObservations.value).to.have.length(
+				1000
+			);
+			expect(context.performanceStore.insights.value.observationCount).to.equal(
+				1000
+			);
+
+			context.updatesStore.clearUpdates();
+			expect(context.performanceStore.insights.value.observationCount).to.equal(
+				0
+			);
+		});
+
+		it("does not collect performance observations when paused", () => {
+			initDevTools(mockAdapter);
+			const context = getContext();
+
+			context.updatesStore.isPaused.value = true;
+
+			mockAdapter._emit("signalUpdate", [
+				{
+					type: "update",
+					signalType: "computed",
+					signalName: "parity",
+					signalId: "computed-parity",
+					prevValue: 0,
+					newValue: 0,
+					receivedAt: Date.now(),
+					recomputed: true,
+					outputChanged: false,
+				},
+			]);
+
+			expect(context.updatesStore.performanceObservations.value).to.have.length(
+				0
+			);
+			expect(context.performanceStore.insights.value.observationCount).to.equal(
+				0
+			);
+		});
+
+		it("excludes no-output-change recomputations from the visible Updates view", () => {
+			initDevTools(mockAdapter);
+			const context = getContext();
+
+			mockAdapter._emit("signalUpdate", [
+				{
+					type: "update",
+					signalType: "computed",
+					signalName: "parity",
+					signalId: "computed-parity",
+					prevValue: 0,
+					newValue: 0,
+					receivedAt: Date.now(),
+					recomputed: true,
+					outputChanged: false,
+				},
+			]);
+
+			// The performance observation is still collected...
+			expect(context.updatesStore.performanceObservations.value).to.have.length(
+				1
+			);
+			// ...but the visible Updates list stays empty.
+			expect(context.updatesStore.hasUpdates.value).to.be.false;
+		});
+
+		it("renders metric definitions and no-output-change recomputations", () => {
+			initDevTools(mockAdapter);
+			mockAdapter._emit("signalUpdate", [
+				{
+					type: "update",
+					signalType: "computed",
+					signalName: "parity",
+					signalId: "computed-parity",
+					prevValue: 0,
+					newValue: 0,
+					receivedAt: Date.now(),
+					recomputed: true,
+					outputChanged: false,
+				},
+			]);
+
+			render(<PerformanceInsights />, scratch);
+
+			expect(scratch.textContent).to.contain(
+				"not by display name. This measures activity, not elapsed time."
+			);
+			expect(scratch.textContent).to.contain(
+				"does not compare serialized values"
+			);
+			expect(scratch.textContent).to.contain("parity");
 		});
 	});
 

@@ -732,6 +732,159 @@ body {
   background: var(--scrollbar-thumb-hover);
 }
 
+/* Performance Insights */
+.performance-insights {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.performance-insights-header,
+.performance-section-heading {
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.performance-insights-header {
+  padding: 12px;
+}
+
+.performance-insights-header h2,
+.performance-section-heading h3 {
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.performance-insights-header h2 {
+  font-size: 15px;
+}
+
+.performance-insights-header p,
+.performance-section-heading p,
+.performance-note,
+.performance-empty,
+.performance-truncation {
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.performance-insights-header p,
+.performance-section-heading p {
+  margin: 4px 0 0;
+}
+
+.performance-insights-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+.performance-section {
+  border: 1px solid var(--border-primary);
+  border-radius: 6px;
+  background: var(--bg-secondary);
+  overflow: hidden;
+}
+
+.performance-section + .performance-section {
+  margin-top: 12px;
+}
+
+.performance-section-heading {
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  align-items: start;
+  padding: 10px 12px;
+}
+
+.performance-section-heading h3 {
+  font-size: 14px;
+}
+
+.performance-section-heading code {
+  font-family: monospace;
+  font-size: 11px;
+}
+
+.performance-section-count {
+  color: var(--text-faint);
+  flex-shrink: 0;
+  font-size: 11px;
+}
+
+.performance-table-scroll {
+  overflow-x: auto;
+}
+
+.performance-table {
+  border-collapse: collapse;
+  min-width: 620px;
+  width: 100%;
+  font-size: 12px;
+}
+
+.performance-table th,
+.performance-table td {
+  border-bottom: 1px solid var(--border-primary);
+  padding: 8px 12px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.performance-table th {
+  color: var(--text-secondary);
+  background: var(--bg-tertiary);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.performance-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.performance-instance {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 180px;
+}
+
+.performance-instance strong {
+  color: var(--brand-purple);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.performance-instance-id {
+  color: var(--text-faint);
+  font-family: monospace;
+  font-size: 10px;
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.performance-empty,
+.performance-note {
+  margin: 0;
+  padding: 12px;
+}
+
+.performance-note {
+  border-top: 1px solid var(--border-primary);
+}
+
+.performance-truncation td {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
 /* Graph Visualization */
 .graph-container {
   height: 100%;

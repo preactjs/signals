@@ -3,21 +3,34 @@ import { ConnectionModel } from "./models/ConnectionModel";
 import { SettingsModel } from "./models/SettingsModel";
 import { ThemeModel } from "./models/ThemeModel";
 import { UpdatesModel } from "./models/UpdatesModel";
+import { PerformanceInsightsModel } from "./models/PerformanceInsightsModel";
 
-export { ConnectionModel, SettingsModel, ThemeModel, UpdatesModel };
+export {
+	ConnectionModel,
+	SettingsModel,
+	ThemeModel,
+	UpdatesModel,
+	PerformanceInsightsModel,
+};
 export type {
 	SignalUpdate,
 	Divider,
 	UpdateTreeNode,
 	UpdateTreeNodeSingle,
 	UpdateTreeNodeGroup,
+	PerformanceObservation,
 } from "./models/UpdatesModel";
+export type {
+	PerformanceInsightsData,
+	PerformanceInstanceSummary,
+} from "./models/PerformanceInsightsModel";
 export type { ThemeMode } from "./models/ThemeModel";
 
 export interface DevToolsContext {
 	adapter: DevToolsAdapter;
 	connectionStore: InstanceType<typeof ConnectionModel>;
 	updatesStore: InstanceType<typeof UpdatesModel>;
+	performanceStore: InstanceType<typeof PerformanceInsightsModel>;
 	settingsStore: InstanceType<typeof SettingsModel>;
 	themeStore: InstanceType<typeof ThemeModel>;
 }
@@ -26,10 +39,12 @@ let currentContext: DevToolsContext | null = null;
 
 function createContextStores(adapter: DevToolsAdapter): DevToolsContext {
 	const settingsStore = new SettingsModel(adapter);
+	const updatesStore = new UpdatesModel(adapter, settingsStore);
 	return {
 		adapter,
 		connectionStore: new ConnectionModel(adapter),
-		updatesStore: new UpdatesModel(adapter, settingsStore),
+		updatesStore,
+		performanceStore: new PerformanceInsightsModel(updatesStore),
 		settingsStore,
 		themeStore: new ThemeModel(),
 	};
@@ -65,6 +80,7 @@ export function setCurrentDevToolsContext(
 
 export function destroyDevToolsContext(context: DevToolsContext): void {
 	context.connectionStore[Symbol.dispose]();
+	context.performanceStore[Symbol.dispose]();
 	context.updatesStore[Symbol.dispose]();
 	context.settingsStore[Symbol.dispose]();
 	context.themeStore[Symbol.dispose]();

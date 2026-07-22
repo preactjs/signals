@@ -13,6 +13,7 @@ export {
 	getContext,
 	ConnectionModel,
 	UpdatesModel,
+	PerformanceInsightsModel,
 	SettingsModel,
 	type DevToolsContext,
 	type SignalUpdate,
@@ -20,6 +21,9 @@ export {
 	type UpdateTreeNodeSingle,
 	type UpdateTreeNodeGroup,
 	type Divider,
+	type PerformanceObservation,
+	type PerformanceInsightsData,
+	type PerformanceInstanceSummary,
 } from "./context";
 
 // Types
@@ -31,6 +35,7 @@ export {
 	EmptyState,
 	GraphVisualization,
 	Header,
+	PerformanceInsights,
 	SettingsPanel,
 	StatusIndicator,
 	UpdateItem,
