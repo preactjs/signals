@@ -931,14 +931,16 @@ describe("React Signals Babel Transform", () => {
 	});
 
 	describe("signal naming", () => {
-		const DEBUG_OPTIONS = { mode: "auto", experimental: { debug: true } };
+		const DEBUG_OPTIONS: PluginOptions = {
+			mode: "auto",
+			experimental: { debug: true },
+		};
 
 		const runDebugTest = async (
 			inputCode: string,
 			expectedOutput: string,
 			fileName: string
 		) => {
-			// @ts-expect-error
 			await runTest(inputCode, expectedOutput, DEBUG_OPTIONS, fileName);
 		};
 
@@ -1007,6 +1009,7 @@ describe("React Signals Babel Transform", () => {
 				function MyComponent() {
 					const count = signal(0, { name: "myCounter" });
 					const data = useSignal(null, { name: "userData", watched: () => {} });
+					const total = computed(() => 1, { ["name"]: "total" });
 					return <div>{count.value}</div>;
 				}
 			`;
@@ -1022,6 +1025,9 @@ describe("React Signals Babel Transform", () => {
 						const data = useSignal(null, {
 							name: "userData",
 							watched: () => {},
+						});
+						const total = computed(() => 1, {
+							["name"]: "total",
 						});
 						return <div>{count.value}</div>;
 					} finally {
@@ -1057,6 +1063,63 @@ describe("React Signals Babel Transform", () => {
 			`;
 
 			await runDebugTest(inputCode, expectedOutput, "Component.js");
+		});
+
+		it("derives names from surrounding syntax", () => {
+			const inputCode = [
+				"class Store {",
+				"  count = signal(0);",
+				"  #selected = signal(false);",
+				"  constructor() {",
+				'    this.status = signal("idle");',
+				'    this["message"] = computed(() => "");',
+				"  }",
+				"  load() {",
+				"    return computed(() => this.status.value);",
+				"  }",
+				"}",
+				"const model = {",
+				"  enabled: signal(true),",
+				'  "label": computed(() => "label"),',
+				'  0: signal("zero"),',
+				"};",
+				"function createVisible() {",
+				"  return signal(true);",
+				"}",
+				"consume(signal(false));",
+				"const createSelected = () => signal(true);",
+				"const rows = values.map(() => signal(0));",
+				'const key = "dynamic";',
+				"const dynamic = {[key]: computed(() => key)};",
+				"const options = getOptions();",
+				"const preserved = signal(0, options);",
+				"const spread = signal(0, {...options});",
+				"[first] = [signal(0)];",
+			].join("\n");
+
+			const output = transformCode(inputCode, DEBUG_OPTIONS, "Models.js");
+
+			for (const expectedName of [
+				"count (Models.js:2)",
+				"#selected (Models.js:3)",
+				"status (Models.js:5)",
+				"message (Models.js:6)",
+				"load (Models.js:9)",
+				"enabled (Models.js:13)",
+				"label (Models.js:14)",
+				"0 (Models.js:15)",
+				"createVisible (Models.js:18)",
+				"signal (Models.js:20)",
+				"createSelected (Models.js:21)",
+				"signal (Models.js:22)",
+				"computed (Models.js:24)",
+				"signal (Models.js:28)",
+			]) {
+				expect(output).toContain(`name: "${expectedName}"`);
+			}
+			expect(output).toContain("const preserved = signal(0, options);");
+			expect(output).not.toContain("preserved (Models.js:26)");
+			expect(output).not.toContain("spread (Models.js:27)");
 		});
 	});
 
