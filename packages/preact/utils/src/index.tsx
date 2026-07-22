@@ -86,6 +86,7 @@ For.displayName = "For";
 
 export function useLiveSignal<T>(value: T): Signal<T> {
 	const s = useSignal(value);
+	s.name = "useLiveSignal";
 	if (s.peek() !== value) s.value = value;
 	return s;
 }
