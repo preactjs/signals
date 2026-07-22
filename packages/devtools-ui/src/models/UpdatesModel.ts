@@ -2,18 +2,13 @@ import { effect, signal, computed, createModel } from "@preact/signals";
 import type {
 	DevToolsAdapter,
 	SignalDisposed,
+	SignalUpdate as AdapterSignalUpdate,
 	DependencyInfo,
 } from "@preact/signals-devtools-adapter";
 import type { SettingsModel } from "./SettingsModel";
 
-export interface SignalUpdate {
-	type: "update" | "effect" | "component";
-	signalType: "signal" | "computed" | "effect" | "component";
-	signalName: string;
-	signalId?: string;
-	prevValue?: any;
-	newValue?: any;
-	timestamp?: number;
+export interface SignalUpdate extends AdapterSignalUpdate {
+	/** When this update reached the DevTools UI. */
 	receivedAt: number;
 	depth?: number;
 	subscribedTo?: string;
@@ -23,6 +18,29 @@ export interface SignalUpdate {
 	recomputed?: true;
 	/** Whether that computed evaluation changed its output using the runtime's `!==` check. */
 	outputChanged?: boolean;
+	/** Stable identity for this occurrence in the DevTools session. */
+	timelineId?: string;
+	/** The runtime callback/cascade that delivered this update. */
+	cascadeId?: string;
+	/** Monotonically increasing order in which the UI received this update. */
+	sequence?: number;
+}
+
+/** Upper bound on retained cascade batches so memory stays bounded while the
+ * Timeline still keeps enough history for filtering/focus to be useful. */
+export const MAX_TIMELINE_BATCHES = 500;
+
+export interface TimelineUpdate extends SignalUpdate {
+	timelineId: string;
+	cascadeId: string;
+	sequence: number;
+}
+
+/** A runtime callback is a cascade: its updates are kept together and ordered. */
+export interface TimelineBatch {
+	id: string;
+	receivedAt: number;
+	updates: TimelineUpdate[];
 }
 
 export type Divider = { type: "divider" };
@@ -98,8 +116,11 @@ export const UpdatesModel = createModel(
 	) => {
 		const updates = signal<(SignalUpdate | Divider)[]>([]);
 		const performanceObservations = signal<PerformanceObservation[]>([]);
+		const timelineBatches = signal<TimelineBatch[]>([]);
 		const isPaused = signal<boolean>(false);
 		const disposedSignalIds = signal<Set<string>>(new Set());
+		let nextTimelineId = 0;
+		let nextCascadeId = 0;
 
 		const addUpdate = (
 			update: SignalUpdate | Divider | Array<SignalUpdate | Divider>
@@ -112,6 +133,41 @@ export const UpdatesModel = createModel(
 					item.type === "divider" ? item : { ...item, receivedAt }
 				),
 			];
+		};
+
+		const addTimelineBatch = (signalUpdates: AdapterSignalUpdate[]) => {
+			if (signalUpdates.length === 0) return;
+
+			const receivedAt = Date.now();
+			const id = `cascade-${++nextCascadeId}`;
+			const batch: TimelineBatch = {
+				id,
+				receivedAt,
+				updates: signalUpdates.map(update => ({
+					...update,
+					receivedAt,
+					timelineId: `update-${++nextTimelineId}`,
+					cascadeId: id,
+					sequence: nextTimelineId,
+				})),
+			};
+
+			const nextBatches = [...timelineBatches.value, batch];
+			timelineBatches.value = nextBatches.slice(-MAX_TIMELINE_BATCHES);
+			// Keep the existing Updates tree newest-first without mutating adapter data.
+			// No-output-change recomputations are performance observations, not
+			// visible value updates, so keep the Updates and Graph views focused on
+			// externally observable output changes.
+			const visibleUpdates = batch.updates.filter(
+				update => !update.recomputed || update.outputChanged !== false
+			);
+			if (visibleUpdates.length > 0) {
+				const treeUpdates: Array<SignalUpdate | Divider> = [
+					...visibleUpdates,
+				].reverse();
+				treeUpdates.push({ type: "divider" });
+				addUpdate(treeUpdates);
+			}
 		};
 
 		const addPerformanceBatch = (signalUpdates: SignalUpdate[]) => {
@@ -204,31 +260,18 @@ export const UpdatesModel = createModel(
 		const clearUpdates = () => {
 			updates.value = [];
 			performanceObservations.value = [];
+			timelineBatches.value = [];
 			disposedSignalIds.value = new Set();
 		};
 
 		effect(() => {
 			const unsubscribeSignalUpdate = adapter.on(
 				"signalUpdate",
-				(signalUpdates: SignalUpdate[]) => {
+				(signalUpdates: AdapterSignalUpdate[]) => {
 					if (isPaused.value) return;
 
 					addPerformanceBatch(signalUpdates);
-
-					// No-output-change recomputations are performance observations, not
-					// visible value updates. Keep the existing Updates and Graph views
-					// focused on externally observable output changes.
-					const visibleUpdates = signalUpdates.filter(
-						update => !update.recomputed || update.outputChanged !== false
-					);
-					if (visibleUpdates.length > 0) {
-						const updatesArray: Array<SignalUpdate | Divider> = [
-							...visibleUpdates,
-						].reverse();
-						updatesArray.push({ type: "divider" });
-
-						addUpdate(updatesArray);
-					}
+					addTimelineBatch(signalUpdates);
 				}
 			);
 
@@ -257,6 +300,7 @@ export const UpdatesModel = createModel(
 		return {
 			updates,
 			performanceObservations,
+			timelineBatches,
 			updateTree,
 			collapsedUpdateTree,
 			totalUpdates: computed(() => Object.keys(updateTree.value).length),

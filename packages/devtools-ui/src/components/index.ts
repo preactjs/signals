@@ -5,6 +5,7 @@ export { Header } from "./Header";
 export { PerformanceInsights } from "./PerformanceInsights";
 export { SettingsPanel } from "./SettingsPanel";
 export { StatusIndicator } from "./StatusIndicator";
+export { Timeline, MAX_VISIBLE_BATCHES } from "./Timeline";
 export { UpdateItem } from "./UpdateItem";
 export { UpdateTreeNodeComponent } from "./UpdateTreeNode";
 export { UpdatesContainer } from "./UpdatesContainer";

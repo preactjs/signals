@@ -14,7 +14,12 @@ export {
 };
 export type {
 	SignalUpdate,
+	TimelineUpdate,
+	TimelineBatch,
 	Divider,
+} from "./models/UpdatesModel";
+export { MAX_TIMELINE_BATCHES } from "./models/UpdatesModel";
+export type {
 	UpdateTreeNode,
 	UpdateTreeNodeSingle,
 	UpdateTreeNodeGroup,

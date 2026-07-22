@@ -6,25 +6,25 @@ interface UpdateItemProps {
 	count?: number;
 }
 
+export function formatUpdateValue(value: unknown): string {
+	if (value === null) return "null";
+	if (value === undefined) return "undefined";
+	if (typeof value === "string") return `"${value}"`;
+	if (typeof value === "function") return "function()";
+	if (typeof value === "object") {
+		try {
+			return JSON.stringify(value, null, 0);
+		} catch {
+			return "[Object]";
+		}
+	}
+	return String(value);
+}
+
 export function UpdateItem({ update, count, firstUpdate }: UpdateItemProps) {
 	const time = new Date(
 		update.timestamp || update.receivedAt
 	).toLocaleTimeString();
-
-	const formatValue = (value: any): string => {
-		if (value === null) return "null";
-		if (value === undefined) return "undefined";
-		if (typeof value === "string") return `"${value}"`;
-		if (typeof value === "function") return "function()";
-		if (typeof value === "object") {
-			try {
-				return JSON.stringify(value, null, 0);
-			} catch {
-				return "[Object]";
-			}
-		}
-		return String(value);
-	};
 	const countLabel = count && (
 		<span class="update-count" title="Number of grouped identical updates">
 			x{count}
@@ -48,10 +48,12 @@ export function UpdateItem({ update, count, firstUpdate }: UpdateItemProps) {
 		);
 	}
 
-	const prevValue = formatValue(update.prevValue);
-	const newValue = formatValue(update.newValue);
+	const prevValue = formatUpdateValue(update.prevValue);
+	const newValue = formatUpdateValue(update.newValue);
 	const firstValue =
-		firstUpdate !== undefined ? formatValue(firstUpdate.prevValue) : undefined;
+		firstUpdate !== undefined
+			? formatUpdateValue(firstUpdate.prevValue)
+			: undefined;
 
 	return (
 		<div class={`update-item ${update.type}`}>
