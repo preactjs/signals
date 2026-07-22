@@ -418,24 +418,119 @@ function isSignalCall(path: NodePath<BabelTypes.CallExpression>): boolean {
 	return false;
 }
 
-function getVariableNameFromDeclarator(
+function getStaticName(node: BabelTypes.Node, computed = false): string | null {
+	if (!computed && node.type === "Identifier") {
+		return node.name;
+	} else if (!computed && node.type === "PrivateName") {
+		return `#${node.id.name}`;
+	} else if (node.type === "StringLiteral" || node.type === "NumericLiteral") {
+		return String(node.value);
+	}
+
+	return null;
+}
+
+function hasComputedKey(node: BabelTypes.Node): boolean {
+	return "computed" in node && node.computed === true;
+}
+
+function getAssignmentName(
+	node: BabelTypes.AssignmentExpression["left"]
+): string | null {
+	if (node.type === "Identifier") {
+		return node.name;
+	} else if (node.type === "MemberExpression") {
+		return getStaticName(node.property, node.computed);
+	}
+
+	return null;
+}
+
+function getFunctionExpressionName(path: NodePath): string | null {
+	const parentPath = path.parentPath;
+	if (!parentPath) return null;
+
+	if (parentPath.isVariableDeclarator()) {
+		return parentPath.node.id.type === "Identifier"
+			? parentPath.node.id.name
+			: null;
+	} else if (parentPath.isAssignmentExpression()) {
+		return getAssignmentName(parentPath.node.left);
+	} else if (
+		parentPath.isObjectProperty() ||
+		parentPath.isClassProperty() ||
+		parentPath.isClassPrivateProperty()
+	) {
+		return getStaticName(parentPath.node.key, hasComputedKey(parentPath.node));
+	}
+
+	return null;
+}
+
+function getSignalNameFromContext(
 	path: NodePath<BabelTypes.CallExpression>
 ): string | null {
-	// Walk up the AST to find a variable declarator
-	let currentPath: NodePath | null = path;
+	let currentPath: NodePath | null = path.parentPath;
 	while (currentPath) {
 		if (
+			currentPath.isArrowFunctionExpression() ||
+			(currentPath.isFunctionExpression() && !currentPath.node.id)
+		) {
+			const name = getFunctionExpressionName(currentPath);
+			if (name) return name;
+			break;
+		} else if (
 			currentPath.isVariableDeclarator() &&
 			currentPath.node.id.type === "Identifier"
 		) {
 			return currentPath.node.id.name;
+		} else if (currentPath.isAssignmentExpression()) {
+			const name = getAssignmentName(currentPath.node.left);
+			if (name) return name;
+			break;
+		} else if (currentPath.isObjectProperty()) {
+			const name = getStaticName(
+				currentPath.node.key,
+				hasComputedKey(currentPath.node)
+			);
+			if (name) return name;
+			break;
+		} else if (
+			currentPath.isClassProperty() ||
+			currentPath.isClassPrivateProperty()
+		) {
+			const name = getStaticName(
+				currentPath.node.key,
+				hasComputedKey(currentPath.node)
+			);
+			if (name) return name;
+			break;
+		} else if (
+			(currentPath.isFunctionDeclaration() ||
+				currentPath.isFunctionExpression()) &&
+			currentPath.node.id
+		) {
+			return currentPath.node.id.name;
+		} else if (
+			currentPath.isObjectMethod() ||
+			currentPath.isClassMethod() ||
+			currentPath.isClassPrivateMethod()
+		) {
+			const name = getStaticName(
+				currentPath.node.key,
+				hasComputedKey(currentPath.node)
+			);
+			if (name) return name;
+			break;
 		}
 		currentPath = currentPath.parentPath;
 	}
-	return null;
+
+	const callee = path.get("callee");
+	return callee.isIdentifier() ? callee.node.name : null;
 }
 
-function hasNameInOptions(
+function shouldSkipNameInjection(
 	t: typeof BabelTypes,
 	args: NodePath<
 		| BabelTypes.Expression
@@ -444,24 +539,21 @@ function hasNameInOptions(
 		| BabelTypes.ArgumentPlaceholder
 	>[]
 ): boolean {
-	// Check if there's a second argument with a name property
-	if (args.length >= 2) {
-		const optionsArg = args[1];
-		if (optionsArg.isObjectExpression()) {
-			return optionsArg.node.properties.some(prop => {
-				if (t.isObjectProperty(prop) && !prop.computed) {
-					if (t.isIdentifier(prop.key, { name: "name" })) {
-						return true;
-					}
-					if (t.isStringLiteral(prop.key) && prop.key.value === "name") {
-						return true;
-					}
-				}
-				return false;
-			});
-		}
+	if (args.length < 2) return false;
+
+	const optionsArg = args[1];
+	if (!optionsArg.isObjectExpression()) {
+		// Non-literal options cannot be safely extended without changing semantics.
+		return true;
 	}
-	return false;
+
+	return optionsArg.node.properties.some(prop => {
+		if (t.isSpreadElement(prop)) return true;
+		if (!t.isObjectProperty(prop)) return false;
+
+		const key = getStaticName(prop.key, prop.computed);
+		return key === "name" || (key === null && prop.computed);
+	});
 }
 
 function injectSignalName(
@@ -497,19 +589,12 @@ function injectSignalName(
 		]);
 		path.node.arguments.push(nameOption);
 	} else if (args.length >= 2) {
-		// Two or more arguments, modify existing options object
+		// Two or more arguments, modify existing literal options
 		const optionsArg = args[1];
 		if (optionsArg.isObjectExpression()) {
-			// Add name property to existing options object
 			optionsArg.node.properties.push(
 				t.objectProperty(t.identifier("name"), name)
 			);
-		} else {
-			// Replace second argument with options object containing name
-			const nameOption = t.objectExpression([
-				t.objectProperty(t.identifier("name"), name),
-			]);
-			args[1].replaceWith(nameOption);
 		}
 	}
 }
@@ -908,10 +993,10 @@ export default function signalsTransform(
 					const args = path.get("arguments");
 
 					// Only inject name if it doesn't already have one
-					if (!hasNameInOptions(t, args)) {
-						const variableName = getVariableNameFromDeclarator(path);
-						if (variableName) {
-							injectSignalName(t, path, variableName, this.filename);
+					if (!shouldSkipNameInjection(t, args)) {
+						const signalName = getSignalNameFromContext(path);
+						if (signalName) {
+							injectSignalName(t, path, signalName, this.filename);
 						}
 					}
 				}
