@@ -87,6 +87,35 @@ function DependencyList({
 	);
 }
 
+function TriggerSource({
+	occurrence,
+}: {
+	occurrence: NoOutputChangeOccurrence;
+}) {
+	if (!occurrence.subscribedTo) {
+		return <span className="performance-muted">Unknown source</span>;
+	}
+
+	const dependency = occurrence.allDependencies?.find(
+		candidate => candidate.id === occurrence.subscribedTo
+	);
+	if (!dependency) {
+		return (
+			<code className="performance-trigger-id">{occurrence.subscribedTo}</code>
+		);
+	}
+
+	return (
+		<span className="performance-trigger-source">
+			<span className={`performance-dependency-type ${dependency.type}`}>
+				{dependency.type}
+			</span>
+			<strong>{dependency.name || "(anonymous)"}</strong>
+			<code className="performance-trigger-id">{dependency.id}</code>
+		</span>
+	);
+}
+
 function OccurrenceRow({
 	occurrence,
 }: {
@@ -96,11 +125,8 @@ function OccurrenceRow({
 		<li className="performance-occurrence">
 			<div className="performance-occurrence-row">
 				<span className="performance-occurrence-label">Triggered by</span>
-				<span
-					className="performance-occurrence-value"
-					title={occurrence.subscribedTo}
-				>
-					{occurrence.subscribedTo || "Unknown source"}
+				<span className="performance-occurrence-value">
+					<TriggerSource occurrence={occurrence} />
 				</span>
 			</div>
 			<div className="performance-occurrence-row">
@@ -293,9 +319,8 @@ export function PerformanceInsights() {
 																	aria-label={`${isOpen ? "Hide" : "Inspect"} recent causes for ${summary.signalName || "anonymous computed"}`}
 																>
 																	<span aria-hidden="true">
-																		{isOpen ? "▾" : "▸"}
+																		{isOpen ? "▼" : "▶"}
 																	</span>
-																	{isOpen ? "Hide causes" : "Inspect causes"}
 																</button>
 															</div>
 														</td>

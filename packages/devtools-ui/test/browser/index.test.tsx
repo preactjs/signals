@@ -1344,6 +1344,7 @@ describe("@preact/signals-devtools-ui", () => {
 			);
 			expect(inspectButton).to.not.be.null;
 			expect(inspectButton!.getAttribute("aria-expanded")).to.equal("false");
+			expect(inspectButton!.textContent).to.equal("▶");
 
 			// Before expanding, occurrence details are not rendered.
 			expect(scratch.querySelector(".performance-occurrence-detail")).to.be
@@ -1353,11 +1354,15 @@ describe("@preact/signals-devtools-ui", () => {
 				inspectButton!.click();
 			});
 			expect(inspectButton!.getAttribute("aria-expanded")).to.equal("true");
+			expect(inspectButton!.textContent).to.equal("▼");
 
 			const detail = scratch.querySelector(".performance-occurrence-detail");
 			expect(detail).to.not.be.null;
-			expect(detail!.textContent).to.contain("signal-count");
-			expect(detail!.textContent).to.contain("count");
+			const trigger = detail!.querySelector(".performance-trigger-source");
+			expect(trigger).to.not.be.null;
+			expect(trigger!.textContent).to.contain("signal");
+			expect(trigger!.textContent).to.contain("count");
+			expect(trigger!.textContent).to.contain("signal-count");
 			expect(detail!.textContent).to.contain("Triggered by");
 			expect(detail!.textContent).to.contain("Current dependencies");
 		});
