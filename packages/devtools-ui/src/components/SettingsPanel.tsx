@@ -16,13 +16,13 @@ export function SettingsPanel() {
 		localSettings.value = settingsStore.settings.value;
 	});
 
-	const handleApply = () => {
-		onApply(localSettings.value);
+	const closePopover = () => {
+		popover.current?.hidePopover();
 	};
 
-	const onCancel = () => {
-		// @ts-expect-error
-		popover.current?.hide();
+	const handleApply = () => {
+		onApply(localSettings.value);
+		closePopover();
 	};
 
 	return (
@@ -146,7 +146,7 @@ export function SettingsPanel() {
 					<Button onClick={handleApply} variant="primary">
 						Apply
 					</Button>
-					<Button onClick={onCancel}>Cancel</Button>
+					<Button onClick={closePopover}>Cancel</Button>
 				</div>
 			</div>
 		</div>
