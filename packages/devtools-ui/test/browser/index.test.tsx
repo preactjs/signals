@@ -8,6 +8,7 @@ import {
 	initDevTools,
 	destroyDevTools,
 	getContext,
+	MAX_TIMELINE_BATCHES,
 } from "../../src/index";
 import { Button } from "../../src/components/Button";
 import { EmptyState } from "../../src/components/EmptyState";
@@ -17,6 +18,7 @@ import { SettingsPanel } from "../../src/components/SettingsPanel";
 import { StatusIndicator } from "../../src/components/StatusIndicator";
 import { UpdateItem } from "../../src/components/UpdateItem";
 import { UpdatesContainer } from "../../src/components/UpdatesContainer";
+import { Timeline, MAX_VISIBLE_BATCHES } from "../../src/components/Timeline";
 import {
 	GraphVisualization,
 	calculateFitTransform,
@@ -457,10 +459,11 @@ describe("@preact/signals-devtools-ui", () => {
 			render(<DevToolsPanel />, scratch);
 
 			const tabs = scratch.querySelectorAll(".tab");
-			expect(tabs.length).to.equal(3);
+			expect(tabs.length).to.equal(4);
 			expect(tabs[0].textContent).to.equal("Updates");
 			expect(tabs[1].textContent).to.equal("Performance");
-			expect(tabs[2].textContent).to.equal("Dependency Graph");
+			expect(tabs[2].textContent).to.equal("Timeline");
+			expect(tabs[3].textContent).to.equal("Dependency Graph");
 		});
 
 		it("should show updates tab as active by default", () => {
@@ -484,10 +487,17 @@ describe("@preact/signals-devtools-ui", () => {
 			expect(activeTab!.textContent).to.equal("Performance");
 		});
 
+		it("should show timeline tab as active when initialTab is timeline", () => {
+			render(<DevToolsPanel initialTab="timeline" />, scratch);
+
+			const activeTab = scratch.querySelector(".tab.active");
+			expect(activeTab!.textContent).to.equal("Timeline");
+		});
+
 		it("should switch tabs when clicked", () => {
 			render(<DevToolsPanel />, scratch);
 
-			const graphTab = scratch.querySelectorAll(".tab")[2] as HTMLButtonElement;
+			const graphTab = scratch.querySelectorAll(".tab")[3] as HTMLButtonElement;
 			act(() => {
 				graphTab.click();
 			});
@@ -666,6 +676,163 @@ describe("@preact/signals-devtools-ui", () => {
 
 			const updatesList = scratch.querySelector(".updates-list");
 			expect(updatesList).to.not.be.null;
+		});
+	});
+
+	describe("Timeline", () => {
+		beforeEach(() => {
+			initDevTools(mockAdapter);
+		});
+
+		it("keeps each runtime callback as an ordered, inspectable cascade", () => {
+			const update = {
+				type: "update" as const,
+				signalType: "signal" as const,
+				signalName: "count",
+				signalId: "signal-count-1",
+				prevValue: 0,
+				newValue: 1,
+				timestamp: 123,
+				receivedAt: 0,
+				depth: 0,
+			};
+			const dependent = {
+				type: "update" as const,
+				signalType: "computed" as const,
+				signalName: "doubled",
+				signalId: "computed-doubled-1",
+				prevValue: 0,
+				newValue: 2,
+				timestamp: 124,
+				receivedAt: 0,
+				depth: 1,
+			};
+
+			mockAdapter._emit("signalUpdate", [update, dependent]);
+			const { timelineBatches } = getContext().updatesStore;
+			expect(timelineBatches.value).to.have.length(1);
+			expect(
+				timelineBatches.value[0].updates.map(item => item.signalId)
+			).to.deep.equal(["signal-count-1", "computed-doubled-1"]);
+			expect(
+				timelineBatches.value[0].updates.map(item => item.sequence)
+			).to.deep.equal([1, 2]);
+			expect(timelineBatches.value[0].updates[0].timestamp).to.equal(123);
+
+			render(<Timeline />, scratch);
+
+			expect(scratch.querySelectorAll(".timeline-batch")).to.have.length(1);
+			expect(scratch.querySelectorAll(".timeline-event")).to.have.length(2);
+			expect(
+				scratch.querySelector(".timeline-event")?.getAttribute("data-signal-id")
+			).to.equal("signal-count-1");
+			expect(scratch.textContent).to.contain("Cascade 1");
+		});
+
+		it("focuses signals by runtime ID instead of merging same-named signals", () => {
+			const makeUpdate = (signalId: string, newValue: number) => ({
+				type: "update" as const,
+				signalType: "signal" as const,
+				signalName: "count",
+				signalId,
+				prevValue: newValue - 1,
+				newValue,
+				receivedAt: 0,
+				depth: 0,
+			});
+			mockAdapter._emit("signalUpdate", [makeUpdate("count-a", 1)]);
+			mockAdapter._emit("signalUpdate", [makeUpdate("count-b", 2)]);
+			render(<Timeline />, scratch);
+
+			const focus = scratch.querySelector(
+				'[aria-label="Focus a signal"]'
+			) as HTMLSelectElement;
+			act(() => {
+				focus.value = "count-a";
+				focus.dispatchEvent(new Event("change", { bubbles: true }));
+			});
+
+			expect(scratch.querySelectorAll(".timeline-batch")).to.have.length(1);
+			expect(scratch.textContent).to.contain("1 of 2 cascades");
+			expect(
+				scratch.querySelector(".timeline-event")?.getAttribute("data-signal-id")
+			).to.equal("count-a");
+		});
+
+		it("filters cascades by signal name or runtime ID", () => {
+			mockAdapter._emit("signalUpdate", [
+				{
+					type: "effect" as const,
+					signalType: "effect" as const,
+					signalName: "saveToStorage",
+					signalId: "effect-save-1",
+					receivedAt: 0,
+					depth: 0,
+				},
+			]);
+			render(<Timeline />, scratch);
+
+			const search = scratch.querySelector(
+				'[aria-label="Find cascades by signal name or ID"]'
+			) as HTMLInputElement;
+			act(() => {
+				search.value = "effect-save-1";
+				search.dispatchEvent(new Event("input", { bubbles: true }));
+			});
+
+			expect(scratch.querySelectorAll(".timeline-batch")).to.have.length(1);
+			expect(scratch.querySelector(".timeline-event.is-match")).to.not.be.null;
+		});
+
+		it("bounds retained cascade history so memory does not grow unbounded", () => {
+			const makeUpdate = (i: number) => ({
+				type: "update" as const,
+				signalType: "signal" as const,
+				signalName: `sig-${i}`,
+				signalId: `sig-${i}`,
+				prevValue: i - 1,
+				newValue: i,
+				receivedAt: 0,
+				depth: 0,
+			});
+			const overflow = 10;
+			for (let i = 0; i < MAX_TIMELINE_BATCHES + overflow; i++) {
+				mockAdapter._emit("signalUpdate", [makeUpdate(i)]);
+			}
+			const { timelineBatches } = getContext().updatesStore;
+			expect(timelineBatches.value).to.have.length(MAX_TIMELINE_BATCHES);
+			// Oldest cascades are dropped, newest retained.
+			expect(timelineBatches.value[0].updates[0].signalName).to.equal(
+				`sig-${overflow}`
+			);
+
+			render(<Timeline />, scratch);
+			// Rendering is bounded independently of the memory cap.
+			expect(scratch.querySelectorAll(".timeline-batch")).to.have.length(
+				MAX_VISIBLE_BATCHES
+			);
+			expect(scratch.textContent).to.contain("latest 100 shown");
+		});
+
+		it("clears timeline cascades alongside the Updates tree", () => {
+			mockAdapter._emit("signalUpdate", [
+				{
+					type: "update" as const,
+					signalType: "signal" as const,
+					signalName: "count",
+					signalId: "count-1",
+					prevValue: 0,
+					newValue: 1,
+					receivedAt: 0,
+					depth: 0,
+				},
+			]);
+			const { updatesStore } = getContext();
+			expect(updatesStore.timelineBatches.value).to.have.length(1);
+
+			updatesStore.clearUpdates();
+			expect(updatesStore.timelineBatches.value).to.have.length(0);
+			expect(updatesStore.hasUpdates.value).to.be.false;
 		});
 	});
 

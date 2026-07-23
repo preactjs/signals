@@ -7,6 +7,7 @@ import { PerformanceInsights } from "./components/PerformanceInsights";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { GraphVisualization } from "./components/Graph";
 import { UpdatesContainer } from "./components/UpdatesContainer";
+import { Timeline } from "./components/Timeline";
 import {
 	createDevToolsContext,
 	destroyDevToolsContext,
@@ -14,11 +15,12 @@ import {
 	setCurrentDevToolsContext,
 } from "./context";
 
-type PanelTab = "updates" | "performance" | "graph";
+type PanelTab = "updates" | "performance" | "timeline" | "graph";
 
 const PANEL_TABS: Array<{ id: PanelTab; label: string }> = [
 	{ id: "updates", label: "Updates" },
 	{ id: "performance", label: "Performance" },
+	{ id: "timeline", label: "Timeline" },
 	{ id: "graph", label: "Dependency Graph" },
 ];
 
@@ -71,6 +73,7 @@ export function DevToolsPanel({
 						<>
 							{activeTab.value === "updates" && <UpdatesContainer />}
 							{activeTab.value === "performance" && <PerformanceInsights />}
+							{activeTab.value === "timeline" && <Timeline />}
 							{activeTab.value === "graph" && <GraphVisualization />}
 						</>
 					)}
