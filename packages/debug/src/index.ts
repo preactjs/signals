@@ -16,6 +16,8 @@ const signalValues = new WeakMap<Signal | Effect, any>();
 const subscriptions = new WeakMap<Signal | Effect, () => void>();
 const internalEffects = new WeakSet<Effect>();
 const signalDependencies = new WeakMap<Signal | Effect, Set<string>>(); // Track what each signal depends on
+const instrumentedComputeds = new WeakSet<Computed>();
+const computedWasEvaluated = new WeakMap<Computed, boolean>();
 
 export function setDebugOptions(options: {
 	grouped?: boolean;
@@ -103,13 +105,30 @@ Signal.prototype._subscribe = function (node: Node) {
 	return originalSubscribe.call(this, node);
 };
 
+type DebugComputed = Computed & { _fn: () => unknown };
+
+function instrumentComputed(computed: DebugComputed) {
+	if (instrumentedComputeds.has(computed)) return;
+
+	const originalFn = computed._fn;
+	computed._fn = function () {
+		computedWasEvaluated.set(computed, true);
+		return originalFn.call(this);
+	};
+	instrumentedComputeds.add(computed);
+}
+
 const originalRefresh = Computed.prototype._refresh;
 Computed.prototype._refresh = function () {
+	const computed = this as DebugComputed;
+	instrumentComputed(computed);
+	computedWasEvaluated.set(computed, false);
+
 	const prevValue = this._value;
 	const result = originalRefresh.call(this);
 	const newValue = this._value;
 	const baseSignal = bubbleUpToBaseSignal(this as any);
-	if (baseSignal && prevValue !== newValue) {
+	if (baseSignal && computedWasEvaluated.get(computed)) {
 		// Track dependency
 		trackDependency(this, baseSignal.signal);
 
@@ -123,6 +142,8 @@ Computed.prototype._refresh = function () {
 			type: "value",
 			subscribedTo: getSignalId(baseSignal.signal),
 			allDependencies: getAllCurrentDependencies(this as any),
+			recomputed: true,
+			outputChanged: prevValue !== newValue,
 		});
 		updateInfoMap.set(baseSignal.signal, updateInfoList);
 	}
@@ -397,6 +418,12 @@ function logUpdate(
 	prevOpenedGroup: boolean
 ): boolean {
 	if (!debugEnabled || !consoleLoggingEnabled) return false;
+
+	// Performance Insights needs to observe no-output-change evaluations, but
+	// preserve the existing console surface by only logging visible output changes.
+	if (info.type === "value" && info.recomputed && !info.outputChanged) {
+		return false;
+	}
 
 	const { signal, type, depth } = info;
 	const name = getSignalName(signal, type);

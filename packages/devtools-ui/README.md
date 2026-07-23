@@ -77,6 +77,7 @@ import {
 	initDevTools,
 	Header,
 	UpdatesContainer,
+	PerformanceInsights,
 	GraphVisualization,
 } from "@preact/signals-devtools-ui";
 import { createDirectAdapter } from "@preact/signals-devtools-adapter";
@@ -91,6 +92,7 @@ function MyCustomDevTools() {
 			<Header />
 			<div className="my-layout">
 				<UpdatesContainer />
+				<PerformanceInsights />
 				<GraphVisualization />
 			</div>
 		</div>
@@ -102,19 +104,19 @@ function MyCustomDevTools() {
 
 ### `mount(options)`
 
-| Option       | Type                   | Required | Description                      |
-| ------------ | ---------------------- | -------- | -------------------------------- |
-| `adapter`    | `DevToolsAdapter`      | Yes      | The communication adapter to use |
-| `container`  | `HTMLElement`          | Yes      | The DOM element to render into   |
-| `hideHeader` | `boolean`              | No       | Hide the header bar              |
-| `initialTab` | `"updates" \| "graph"` | No       | Which tab to show initially      |
+| Option       | Type                                    | Required | Description                      |
+| ------------ | --------------------------------------- | -------- | -------------------------------- |
+| `adapter`    | `DevToolsAdapter`                       | Yes      | The communication adapter to use |
+| `container`  | `HTMLElement`                           | Yes      | The DOM element to render into   |
+| `hideHeader` | `boolean`                               | No       | Hide the header bar              |
+| `initialTab` | `"updates" \| "performance" \| "graph"` | No       | Which tab to show initially      |
 
 ### `DevToolsPanel`
 
-| Prop         | Type                   | Default     | Description            |
-| ------------ | ---------------------- | ----------- | ---------------------- |
-| `hideHeader` | `boolean`              | `false`     | Hide the header bar    |
-| `initialTab` | `"updates" \| "graph"` | `"updates"` | Initial tab to display |
+| Prop         | Type                                    | Default     | Description            |
+| ------------ | --------------------------------------- | ----------- | ---------------------- |
+| `hideHeader` | `boolean`                               | `false`     | Hide the header bar    |
+| `initialTab` | `"updates" \| "performance" \| "graph"` | `"updates"` | Initial tab to display |
 
 ## Styling
 
@@ -132,6 +134,7 @@ Or include the CSS file from the dist folder manually.
 - `Header` - Header with status and controls
 - `SettingsPanel` - Debug settings configuration
 - `UpdatesContainer` - Signal updates list
+- `PerformanceInsights` - Instance-level update hotspots and no-output-change computed recomputations
 - `GraphVisualization` - Dependency graph
 - `EmptyState` - Empty state placeholder
 - `StatusIndicator` - Connection status indicator

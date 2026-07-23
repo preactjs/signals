@@ -1,8 +1,9 @@
 import { useRef, useEffect } from "preact/hooks";
 import { useComputed, useSignal } from "@preact/signals";
-import type { GraphData, GraphLink, GraphNode } from "../types";
+import { copyToClipboard } from "../clipboard";
 import type { SignalUpdate } from "../context";
 import { getContext } from "../context";
+import type { GraphData, GraphLink, GraphNode } from "../types";
 
 interface GraphRenderData extends GraphData {
 	nodeLookup: Map<string, GraphNode>;
@@ -137,18 +138,6 @@ export const filterGraphToNeighborhood = (
 			link => visibleNodeIds.has(link.source) && visibleNodeIds.has(link.target)
 		),
 	};
-};
-
-const copyToClipboard = (text: string) => {
-	const copyEl = document.createElement("textarea");
-	try {
-		copyEl.value = text;
-		document.body.append(copyEl);
-		copyEl.select();
-		document.execCommand("copy");
-	} finally {
-		copyEl.remove();
-	}
 };
 
 export function GraphVisualization() {

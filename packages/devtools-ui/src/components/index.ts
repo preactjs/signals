@@ -2,6 +2,7 @@ export { Button } from "./Button";
 export { EmptyState } from "./EmptyState";
 export { GraphVisualization } from "./Graph";
 export { Header } from "./Header";
+export { PerformanceInsights } from "./PerformanceInsights";
 export { SettingsPanel } from "./SettingsPanel";
 export { StatusIndicator } from "./StatusIndicator";
 export { UpdateItem } from "./UpdateItem";

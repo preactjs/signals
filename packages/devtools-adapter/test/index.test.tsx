@@ -125,6 +125,35 @@ describe("@preact/signals-devtools-adapter", () => {
 				message: "Connected",
 			});
 		});
+
+		it("relays computed recomputation metadata without deriving it from values", async () => {
+			const fakeWindow = new FakeWindow();
+			const adapter = createPostMessageAdapter({
+				sourceWindow: fakeWindow as unknown as Window,
+				sourceOrigin: fakeWindow.location.origin,
+			});
+			const onUpdate = vi.fn();
+			adapter.on("signalUpdate", onUpdate);
+			await adapter.connect();
+
+			const update: SignalUpdate = {
+				type: "update",
+				signalType: "computed",
+				signalName: "parity",
+				signalId: "computed-parity",
+				prevValue: { parity: 0 },
+				newValue: { parity: 0 },
+				receivedAt: Date.now(),
+				recomputed: true,
+				outputChanged: false,
+			};
+			fakeWindow.emitMessage({
+				type: "SIGNALS_UPDATE",
+				payload: { updates: [update] },
+			});
+
+			expect(onUpdate).toHaveBeenCalledWith([update]);
+		});
 	});
 
 	describe("BrowserExtensionAdapter", () => {
