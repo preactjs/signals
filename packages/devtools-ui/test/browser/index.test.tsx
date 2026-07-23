@@ -20,6 +20,7 @@ import {
 	GraphVisualization,
 	calculateFitTransform,
 	calculateGraphBounds,
+	filterGraphToNeighborhood,
 } from "../../src/components/Graph";
 import type {
 	DevToolsAdapter,
@@ -1002,6 +1003,37 @@ describe("@preact/signals-devtools-ui", () => {
 			expect(3000 * transform.zoom).to.be.at.most(400);
 			expect(transform.offset.x).to.be.greaterThan(0);
 		});
+
+		it("should extract the direct neighborhood around a node", () => {
+			const createNode = (id: string) => ({
+				id,
+				name: id,
+				type: "signal" as const,
+				x: 0,
+				y: 0,
+				depth: 0,
+			});
+			const neighborhood = filterGraphToNeighborhood(
+				{
+					nodes: ["upstream", "selected", "downstream", "second-hop"].map(
+						createNode
+					),
+					links: [
+						{ source: "upstream", target: "selected" },
+						{ source: "selected", target: "downstream" },
+						{ source: "downstream", target: "second-hop" },
+					],
+				},
+				"selected"
+			);
+
+			expect(neighborhood.nodes.map(node => node.id)).to.deep.equal([
+				"upstream",
+				"selected",
+				"downstream",
+			]);
+			expect(neighborhood.links).to.have.length(2);
+		});
 	});
 
 	describe("GraphVisualization - Dependency Node Creation", () => {
@@ -1125,7 +1157,7 @@ describe("@preact/signals-devtools-ui", () => {
 			expect(links.length).to.equal(2);
 		});
 
-		it("should wrap dense layers instead of shrinking them into a line", () => {
+		it("should wrap a dense full graph instead of shrinking it into a line", async () => {
 			initDevTools(mockAdapter);
 
 			const denseLayerUpdates = Array.from({ length: 1000 }, (_, index) => ({
@@ -1140,6 +1172,13 @@ describe("@preact/signals-devtools-ui", () => {
 
 			mockAdapter._emit("signalUpdate", denseLayerUpdates);
 			render(<GraphVisualization />, scratch);
+			await act(async () => {
+				(
+					scratch.querySelector(
+						".graph-large-state button"
+					) as HTMLButtonElement
+				).click();
+			});
 
 			const nodes = Array.from(
 				scratch.querySelectorAll<SVGCircleElement>(".graph-node")
@@ -1154,7 +1193,100 @@ describe("@preact/signals-devtools-ui", () => {
 			expect(nodes).to.have.length(1000);
 			expect(xPositions.size).to.be.greaterThan(10);
 			expect(yPositions.size).to.be.lessThan(50);
-			expect(zoomPercent).to.be.greaterThan(5);
+			expect(zoomPercent).to.be.at.least(5);
+		});
+
+		it("should ask users to choose a node before rendering a large graph", async () => {
+			const updates = Array.from({ length: 201 }, (_, index) => ({
+				type: "update" as const,
+				signalType: "signal" as const,
+				signalName: `signal-${index}`,
+				signalId: `signal-${index}`,
+				prevValue: index,
+				newValue: index + 1,
+				receivedAt: Date.now(),
+			}));
+
+			mockAdapter._emit("signalUpdate", updates);
+			render(<GraphVisualization />, scratch);
+
+			expect(scratch.querySelector(".graph-large-state")).to.not.be.null;
+			expect(scratch.querySelectorAll(".graph-node")).to.have.length(0);
+
+			await act(async () => {
+				(
+					scratch.querySelector(
+						".graph-large-state button"
+					) as HTMLButtonElement
+				).click();
+			});
+
+			expect(scratch.querySelectorAll(".graph-node")).to.have.length(201);
+		});
+
+		it("should search a large graph and render the selected neighborhood", async () => {
+			const isolatedUpdates = Array.from({ length: 198 }, (_, index) => ({
+				type: "update" as const,
+				signalType: "signal" as const,
+				signalName: `isolated-${index}`,
+				signalId: `isolated-${index}`,
+				prevValue: index,
+				newValue: index + 1,
+				receivedAt: Date.now(),
+			}));
+			mockAdapter._emit("signalUpdate", [
+				...isolatedUpdates,
+				{
+					type: "update",
+					signalType: "computed",
+					signalName: "selected-total",
+					signalId: "selected-total",
+					prevValue: 0,
+					newValue: 1,
+					receivedAt: Date.now(),
+					allDependencies: [
+						{ id: "upstream", name: "upstream", type: "signal" },
+					],
+				},
+				{
+					type: "update",
+					signalType: "computed",
+					signalName: "downstream",
+					signalId: "downstream",
+					prevValue: 0,
+					newValue: 1,
+					receivedAt: Date.now(),
+					allDependencies: [
+						{ id: "selected-total", name: "selected-total", type: "computed" },
+					],
+				},
+			]);
+			render(<GraphVisualization />, scratch);
+
+			const searchInput = scratch.querySelector(
+				".graph-search-input"
+			) as HTMLInputElement;
+			await act(async () => {
+				searchInput.value = "selected-total";
+				searchInput.dispatchEvent(new InputEvent("input", { bubbles: true }));
+			});
+			await act(async () => {
+				(
+					scratch.querySelector(".graph-search-result") as HTMLButtonElement
+				).click();
+			});
+
+			const names = Array.from(scratch.querySelectorAll(".graph-text")).map(
+				node => node.textContent
+			);
+			expect(names).to.have.members([
+				"upstream",
+				"selected-total",
+				"downstream",
+			]);
+			expect(
+				scratch.querySelector(".graph-focus-summary")!.textContent
+			).to.contain("Showing 3 of 201 nodes");
 		});
 
 		it("should keep a wrapped dependency layer before its dependent layer", () => {
