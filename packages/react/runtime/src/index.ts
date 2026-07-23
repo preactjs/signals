@@ -59,6 +59,8 @@ interface Effect {
 	_dispose(): void;
 }
 
+type SubscriptionNode = Parameters<Signal["_subscribe"]>[0];
+
 /**
  * Use this flag to represent a bare `useSignals` call that doesn't manually
  * close its effect store and relies on auto-closing when the next useSignals is
@@ -102,6 +104,7 @@ export interface EffectStore {
 	getSnapshot(): number;
 	/** startEffect - begin tracking signals used in this component */
 	_start(): void;
+	_subscribers: Array<{ signal: Signal; node: SubscriptionNode }>;
 	/** finishEffect - stop tracking the signals used in this component */
 	f(): void;
 	[symDispose](): void;
@@ -113,19 +116,47 @@ function startComponentEffect(
 	prevStore: EffectStore | undefined,
 	nextStore: EffectStore
 ) {
-	const endEffect = nextStore.effect._start();
+	const previousSubscribe = Signal.prototype._subscribe;
+	Signal.prototype._subscribe = function (
+		this: Signal,
+		node: SubscriptionNode
+	) {
+		// Only defer this effect's direct dependencies. Computed dependencies are
+		// subscribed recursively when their direct node is committed.
+		if ((node as { _target: Effect })._target === nextStore.effect) {
+			nextStore._subscribers.push({ signal: this, node });
+		}
+	};
+
+	let endEffect: () => void;
+	try {
+		endEffect = nextStore.effect._start();
+	} catch (error) {
+		Signal.prototype._subscribe = previousSubscribe;
+		throw error;
+	}
 	currentStore = nextStore;
 
-	return finishComponentEffect.bind(nextStore, prevStore, endEffect);
+	return finishComponentEffect.bind(
+		nextStore,
+		prevStore,
+		endEffect,
+		previousSubscribe
+	);
 }
 
 function finishComponentEffect(
 	this: EffectStore,
 	prevStore: EffectStore | undefined,
-	endEffect: () => void
+	endEffect: () => void,
+	previousSubscribe: typeof Signal.prototype._subscribe
 ) {
-	endEffect();
-	currentStore = prevStore;
+	Signal.prototype._subscribe = previousSubscribe;
+	try {
+		endEffect();
+	} finally {
+		currentStore = prevStore;
+	}
 }
 
 /**
@@ -172,13 +203,15 @@ function createEffectStore(
 		if (onChangeNotifyReact) onChangeNotifyReact();
 	};
 
-	return {
+	const store: EffectStore = {
 		_usage,
+		_subscribers: [],
 		effect: effectInstance,
 		subscribe(onStoreChange) {
 			onChangeNotifyReact = onStoreChange;
 
 			return function () {
+				store._subscribers = [];
 				/**
 				 * Rotate to next version when unsubscribing to ensure that components are re-run
 				 * when subscribing again.
@@ -302,12 +335,15 @@ function createEffectStore(
 			this.f();
 		},
 	};
+
+	return store;
 }
 
 const noop = () => {};
 
 function createEmptyEffectStore(): EffectStore {
 	return {
+		_subscribers: [],
 		_usage: UNMANAGED,
 		effect: {
 			_sources: undefined,
@@ -371,6 +407,22 @@ export function _useSignalsImplementation(
 	store._start();
 	// note: _usage is a constant here, so conditional is okay
 	if (_usage === UNMANAGED) useIsomorphicLayoutEffect(cleanupTrailingStore);
+
+	useIsomorphicLayoutEffect(() => {
+		// Detach first because subscribing can synchronously invoke user callbacks.
+		const subscribers = store._subscribers;
+		store._subscribers = [];
+
+		subscribers.forEach(({ signal, node }) => {
+			// Nodes omitted from the committed render are marked with version -1.
+			if (
+				(node as { _target: Effect })._target === store.effect &&
+				(node as { _version: number })._version !== -1
+			) {
+				signal._subscribe(node);
+			}
+		});
+	});
 
 	return store;
 }
