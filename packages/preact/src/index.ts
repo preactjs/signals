@@ -108,6 +108,7 @@ function SignalValue(this: AugmentedComponent, { data }: { data: Signal }) {
 	// Store the props.data signal in another signal so that
 	// passing a new signal reference re-runs the text computed:
 	const currentSignal = useSignal(data);
+	currentSignal.name = "ReactiveDom";
 	currentSignal.value = data;
 
 	const [isText, s] = useMemo(() => {
