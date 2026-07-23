@@ -19,14 +19,16 @@ function basename(filename: string | undefined): string | undefined {
 function isSignalCall(path: NodePath<BabelTypes.CallExpression>): boolean {
 	const callee = path.get("callee");
 
-	// Check direct function calls like signal(), computed(), useSignal(), useComputed()
+	// Check direct calls to APIs that accept debug names.
 	if (callee.isIdentifier()) {
 		const name = callee.node.name;
 		return (
 			name === "signal" ||
 			name === "computed" ||
+			name === "effect" ||
 			name === "useSignal" ||
-			name === "useComputed"
+			name === "useComputed" ||
+			name === "useSignalEffect"
 		);
 	}
 
@@ -141,8 +143,24 @@ function getSignalNameFromContext(
 		currentPath = currentPath.parentPath;
 	}
 
-	const callee = path.get("callee");
-	return callee.isIdentifier() ? callee.node.name : null;
+	return null;
+}
+
+function getSignalName(
+	path: NodePath<BabelTypes.CallExpression>,
+	filename: string | undefined
+): string | null {
+	const contextName = getSignalNameFromContext(path);
+	const baseName = basename(filename);
+	const lineNumber = path.node.loc?.start.line;
+
+	if (baseName && lineNumber) {
+		return contextName
+			? `${contextName} (${baseName}:${lineNumber})`
+			: `${baseName}:${lineNumber}`;
+	}
+
+	return contextName;
 }
 
 function shouldSkipNameInjection(
@@ -174,21 +192,9 @@ function shouldSkipNameInjection(
 function injectSignalName(
 	t: typeof BabelTypes,
 	path: NodePath<BabelTypes.CallExpression>,
-	variableName: string,
-	filename: string | undefined
+	nameValue: string
 ): void {
 	const args = path.get("arguments");
-
-	// Create enhanced name with filename and line number
-	let nameValue = variableName;
-	if (filename) {
-		const baseName = basename(filename);
-		const lineNumber = path.node.loc?.start.line;
-		if (baseName && lineNumber) {
-			nameValue = `${variableName} (${baseName}:${lineNumber})`;
-		}
-	}
-
 	const name = t.stringLiteral(nameValue);
 
 	if (args.length === 0) {
@@ -229,10 +235,8 @@ export default function signalsTransform(
 
 					// Only inject name if it doesn't already have one
 					if (!shouldSkipNameInjection(t, args)) {
-						const signalName = getSignalNameFromContext(path);
-						if (signalName) {
-							injectSignalName(t, path, signalName, this.filename);
-						}
+						const signalName = getSignalName(path, this.filename);
+						if (signalName) injectSignalName(t, path, signalName);
 					}
 				}
 			},

@@ -1095,6 +1095,9 @@ describe("React Signals Babel Transform", () => {
 				"const preserved = signal(0, options);",
 				"const spread = signal(0, {...options});",
 				"[first] = [signal(0)];",
+				"effect(() => {});",
+				"useSignalEffect(() => {});",
+				'effect(() => {}, {name: "manual"});',
 			].join("\n");
 
 			const output = transformCode(inputCode, DEBUG_OPTIONS, "Models.js");
@@ -1109,17 +1112,20 @@ describe("React Signals Babel Transform", () => {
 				"label (Models.js:14)",
 				"0 (Models.js:15)",
 				"createVisible (Models.js:18)",
-				"signal (Models.js:20)",
+				"Models.js:20",
 				"createSelected (Models.js:21)",
-				"signal (Models.js:22)",
-				"computed (Models.js:24)",
-				"signal (Models.js:28)",
+				"Models.js:22",
+				"Models.js:24",
+				"Models.js:28",
+				"Models.js:29",
+				"Models.js:30",
 			]) {
 				expect(output).toContain(`name: "${expectedName}"`);
 			}
 			expect(output).toContain("const preserved = signal(0, options);");
 			expect(output).not.toContain("preserved (Models.js:26)");
 			expect(output).not.toContain("spread (Models.js:27)");
+			expect(output).toContain('name: "manual"');
 		});
 	});
 
