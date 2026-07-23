@@ -182,9 +182,17 @@ export function derivePerformanceInsights(
 		const severeThreshold = baseline * HOTSPOT_SEVERE_MULTIPLIER;
 		for (const summary of instances.values()) {
 			if (summary.updateCount >= severeThreshold) {
-				hotspots.push({ ...summary, hotspotTier: "severe" });
+				hotspots.push({
+					...summary,
+					recentOccurrences: undefined,
+					hotspotTier: "severe",
+				});
 			} else if (summary.updateCount >= elevatedThreshold) {
-				hotspots.push({ ...summary, hotspotTier: "elevated" });
+				hotspots.push({
+					...summary,
+					recentOccurrences: undefined,
+					hotspotTier: "elevated",
+				});
 			}
 		}
 		hotspots.sort(byMostRecentActivity);

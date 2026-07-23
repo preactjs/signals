@@ -747,7 +747,51 @@ body {
 }
 
 .performance-insights-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
   padding: 12px;
+}
+
+.performance-insights-header > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.performance-export {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.performance-export-button {
+  border: 1px solid var(--border-secondary);
+  border-radius: 4px;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 6px 10px;
+}
+
+.performance-export-button:hover {
+  background: var(--bg-hover);
+}
+
+.performance-export-button:focus-visible {
+  outline: 2px solid var(--brand-purple);
+  outline-offset: 1px;
+}
+
+.performance-export-status {
+  min-height: 14px;
+  color: var(--text-muted);
+  font-size: 10px;
 }
 
 .performance-insights-header h2,

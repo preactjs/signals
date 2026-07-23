@@ -1102,6 +1102,103 @@ describe("@preact/signals-devtools-ui", () => {
 			expect(scratch.textContent).to.contain("parity");
 		});
 
+		it("exports the derived performance insights as JSON", async () => {
+			initDevTools(mockAdapter);
+			mockAdapter._emit("signalUpdate", [
+				...Array.from({ length: 4 }, (_, index) => ({
+					type: "update" as const,
+					signalType: "computed" as const,
+					signalName: "hot",
+					signalId: "signal-hot",
+					prevValue: index,
+					newValue: index,
+					receivedAt: index,
+					recomputed: true as const,
+					outputChanged: false,
+				})),
+				...[
+					["signal-a", "a"],
+					["signal-b", "b"],
+					["signal-c", "c"],
+				].map(([signalId, signalName], index) => ({
+					type: "update" as const,
+					signalType: "signal" as const,
+					signalId,
+					signalName,
+					receivedAt: 10 + index,
+				})),
+				{
+					type: "update",
+					signalType: "computed",
+					signalName: "parity",
+					signalId: "computed-parity",
+					prevValue: 0,
+					newValue: 0,
+					receivedAt: 20,
+					recomputed: true,
+					outputChanged: false,
+					subscribedTo: "signal-hot",
+				},
+				{
+					type: "update",
+					signalType: "signal",
+					signalName: "anonymous",
+					receivedAt: 21,
+				},
+			]);
+
+			let copiedText = "";
+			const originalExecCommand = document.execCommand;
+			document.execCommand = vi.fn(command => {
+				copiedText =
+					(
+						document.body.querySelector(
+							"textarea"
+						) as HTMLTextAreaElement | null
+					)?.value ?? "";
+				return command === "copy";
+			});
+
+			try {
+				render(<PerformanceInsights />, scratch);
+				await act(async () => {
+					(
+						scratch.querySelector(
+							".performance-export-button"
+						) as HTMLButtonElement
+					).click();
+				});
+			} finally {
+				document.execCommand = originalExecCommand;
+			}
+
+			const exported = JSON.parse(copiedText);
+			expect(Object.keys(exported).sort()).to.deep.equal([
+				"hotspotBaseline",
+				"hotspotPopulation",
+				"hotspots",
+				"observationCount",
+				"redundantWork",
+				"unidentifiedObservationCount",
+			]);
+			expect(exported.observationCount).to.equal(9);
+			expect(exported.unidentifiedObservationCount).to.equal(1);
+			expect(exported.hotspotBaseline).to.equal(1);
+			expect(exported.hotspotPopulation).to.equal(5);
+			expect(exported.hotspots).to.have.length(1);
+			expect(exported.hotspots[0].signalId).to.equal("signal-hot");
+			expect(exported.hotspots[0]).to.not.have.property("recentOccurrences");
+			expect(exported.redundantWork).to.have.length(2);
+			const parity = exported.redundantWork.find(
+				(summary: { signalId: string }) =>
+					summary.signalId === "computed-parity"
+			)!;
+			expect(parity.recentOccurrences[0].subscribedTo).to.equal("signal-hot");
+			expect(copiedText).to.not.contain("prevValue");
+			expect(copiedText).to.not.contain("newValue");
+			expect(scratch.textContent).to.contain("Copied to clipboard!");
+		});
+
 		it("filters hotspots against the median baseline with >=2x and >=4x tiers", () => {
 			// Three quiet instances (1 update each) establish a median of 1.
 			// One instance with 2 updates is exactly 2x (elevated), one with 4

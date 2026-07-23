@@ -1,5 +1,6 @@
 import { Fragment, type ComponentChildren } from "preact";
 import { useSignal } from "@preact/signals";
+import { copyToClipboard } from "../clipboard";
 import { getContext } from "../context";
 import type {
 	NoOutputChangeOccurrence,
@@ -155,6 +156,7 @@ export function PerformanceInsights() {
 	const { performanceStore } = getContext();
 	const insights = performanceStore.insights.value;
 	const expanded = useSignal<Set<string>>(new Set());
+	const exportStatus = useSignal<string>();
 
 	const toggleRow = (signalId: string) => {
 		const next = new Set(expanded.value);
@@ -166,6 +168,14 @@ export function PerformanceInsights() {
 		expanded.value = next;
 	};
 
+	const exportInsights = () => {
+		copyToClipboard(JSON.stringify(insights, null, 2));
+		exportStatus.value = "Copied to clipboard!";
+		setTimeout(() => {
+			exportStatus.value = undefined;
+		}, 2000);
+	};
+
 	const baselineIsDefensible =
 		insights.hotspotPopulation >= MIN_BASELINE_POPULATION;
 	const noHotspotsMessage = baselineIsDefensible
@@ -175,12 +185,30 @@ export function PerformanceInsights() {
 	return (
 		<div className="performance-insights">
 			<header className="performance-insights-header">
-				<h2>Performance Insights</h2>
-				<p>
-					Metrics use a rolling window of the last{" "}
-					{PERFORMANCE_OBSERVATION_LIMIT} observed update events. Clear resets
-					the window.
-				</p>
+				<div>
+					<h2>Performance Insights</h2>
+					<p>
+						Metrics use a rolling window of the last{" "}
+						{PERFORMANCE_OBSERVATION_LIMIT} observed update events. Clear resets
+						the window.
+					</p>
+				</div>
+				<div className="performance-export">
+					<button
+						className="performance-export-button"
+						onClick={exportInsights}
+						title="Copy performance insights as JSON"
+					>
+						↓ Export JSON
+					</button>
+					<span
+						className="performance-export-status"
+						role="status"
+						aria-live="polite"
+					>
+						{exportStatus.value}
+					</span>
+				</div>
 			</header>
 
 			<div className="performance-insights-content">
