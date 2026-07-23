@@ -19,6 +19,10 @@ export interface FormattedSignalUpdate {
 	subscribedTo?: string;
 	/** All dependencies this computed/effect currently depends on (with rich info) */
 	allDependencies?: DependencyInfo[];
+	/** Present when this entry was produced by a computed evaluation. */
+	recomputed?: true;
+	/** Whether that computed evaluation changed its output using the runtime's `!==` check. */
+	outputChanged?: boolean;
 }
 
 /** Formatted signal disposal event for external consumers */

@@ -33,6 +33,10 @@ export interface ValueUpdate {
 	depth: number;
 	subscribedTo?: string; // signalId of the signal this effect is subscribed to
 	allDependencies?: DependencyInfo[]; // All dependencies this computed depends on
+	/** Present when this entry was produced by a computed evaluation. */
+	recomputed?: true;
+	/** Whether this evaluation changed its output using the runtime's `!==` check. */
+	outputChanged?: boolean;
 }
 
 interface EffectUpdate {

@@ -19,9 +19,18 @@ export interface SignalUpdate {
 	subscribedTo?: string;
 	/** All dependencies this computed/effect currently depends on (with rich info) */
 	allDependencies?: DependencyInfo[];
+	/** Present when this entry was produced by a computed evaluation. */
+	recomputed?: true;
+	/** Whether that computed evaluation changed its output using the runtime's `!==` check. */
+	outputChanged?: boolean;
 }
 
 export type Divider = { type: "divider" };
+
+/** A single event retained for the bounded Performance Insights observation window. */
+export type PerformanceObservation = SignalUpdate;
+
+export const PERFORMANCE_OBSERVATION_LIMIT = 1000;
 
 export interface UpdateTreeNodeBase {
 	id: string;
@@ -88,23 +97,34 @@ export const UpdatesModel = createModel(
 		settingsStore: InstanceType<typeof SettingsModel>
 	) => {
 		const updates = signal<(SignalUpdate | Divider)[]>([]);
+		const performanceObservations = signal<PerformanceObservation[]>([]);
 		const isPaused = signal<boolean>(false);
 		const disposedSignalIds = signal<Set<string>>(new Set());
 
 		const addUpdate = (
 			update: SignalUpdate | Divider | Array<SignalUpdate | Divider>
 		) => {
-			if (Array.isArray(update)) {
-				update.forEach(item => {
-					if (item.type !== "divider") item.receivedAt = Date.now();
-				});
-			} else if (update.type === "update") {
-				update.receivedAt = Date.now();
-			}
+			const receivedAt = Date.now();
+			const items = Array.isArray(update) ? update : [update];
 			updates.value = [
 				...updates.value,
-				...(Array.isArray(update) ? update : [update]),
+				...items.map(item =>
+					item.type === "divider" ? item : { ...item, receivedAt }
+				),
 			];
+		};
+
+		const addPerformanceBatch = (signalUpdates: SignalUpdate[]) => {
+			const receivedAt = Date.now();
+			const observations = signalUpdates.map(update => ({
+				...update,
+				receivedAt,
+			}));
+
+			performanceObservations.value = [
+				...performanceObservations.value,
+				...observations,
+			].slice(-PERFORMANCE_OBSERVATION_LIMIT);
 		};
 
 		const addDisposal = (disposal: SignalDisposed | SignalDisposed[]) => {
@@ -183,6 +203,7 @@ export const UpdatesModel = createModel(
 
 		const clearUpdates = () => {
 			updates.value = [];
+			performanceObservations.value = [];
 			disposedSignalIds.value = new Set();
 		};
 
@@ -192,12 +213,22 @@ export const UpdatesModel = createModel(
 				(signalUpdates: SignalUpdate[]) => {
 					if (isPaused.value) return;
 
-					const updatesArray: Array<SignalUpdate | Divider> = [
-						...signalUpdates,
-					].reverse();
-					updatesArray.push({ type: "divider" });
+					addPerformanceBatch(signalUpdates);
 
-					addUpdate(updatesArray);
+					// No-output-change recomputations are performance observations, not
+					// visible value updates. Keep the existing Updates and Graph views
+					// focused on externally observable output changes.
+					const visibleUpdates = signalUpdates.filter(
+						update => !update.recomputed || update.outputChanged !== false
+					);
+					if (visibleUpdates.length > 0) {
+						const updatesArray: Array<SignalUpdate | Divider> = [
+							...visibleUpdates,
+						].reverse();
+						updatesArray.push({ type: "divider" });
+
+						addUpdate(updatesArray);
+					}
 				}
 			);
 
@@ -225,6 +256,7 @@ export const UpdatesModel = createModel(
 
 		return {
 			updates,
+			performanceObservations,
 			updateTree,
 			collapsedUpdateTree,
 			totalUpdates: computed(() => Object.keys(updateTree.value).length),

@@ -87,6 +87,71 @@ describe("Signal Debug", () => {
 			expect(consoleSpy).toHaveBeenCalledWith("  Type: Computed");
 		});
 
+		it("reports computed recomputations even when their output does not change", async () => {
+			const count = signal(0, { name: "count" });
+			const parity = computed(() => count.value % 2, { name: "parity" });
+			const unsubscribeComputed = parity.subscribe(() => {});
+			const updates: any[] = [];
+			const unsubscribeDevTools = window.__PREACT_SIGNALS_DEVTOOLS__.onUpdate(
+				newUpdates => updates.push(...newUpdates)
+			);
+
+			count.value = 2;
+			await new Promise(resolve => setTimeout(resolve, 0));
+			count.value = 3;
+			await new Promise(resolve => setTimeout(resolve, 0));
+
+			unsubscribeDevTools();
+			unsubscribeComputed();
+
+			const parityUpdates = updates.filter(
+				update => update.signalName === "parity"
+			);
+			expect(parityUpdates).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						recomputed: true,
+						outputChanged: false,
+						prevValue: 0,
+						newValue: 0,
+					}),
+					expect.objectContaining({
+						recomputed: true,
+						outputChanged: true,
+						prevValue: 0,
+						newValue: 1,
+					}),
+				])
+			);
+		});
+
+		it("does not count a computed refresh fast path as a recomputation", async () => {
+			const count = signal(0, { name: "count" });
+			const evaluateParity = vi.fn(() => count.value % 2);
+			const parity = computed(evaluateParity, { name: "shared-parity" });
+			const left = computed(() => parity.value, { name: "left" });
+			const right = computed(() => parity.value, { name: "right" });
+			const unsubscribeLeft = left.subscribe(() => {});
+			const unsubscribeRight = right.subscribe(() => {});
+			const updates: any[] = [];
+			const unsubscribeDevTools = window.__PREACT_SIGNALS_DEVTOOLS__.onUpdate(
+				newUpdates => updates.push(...newUpdates)
+			);
+
+			evaluateParity.mockClear();
+			count.value = 2;
+			await new Promise(resolve => setTimeout(resolve, 0));
+
+			unsubscribeDevTools();
+			unsubscribeLeft();
+			unsubscribeRight();
+
+			expect(evaluateParity).toHaveBeenCalledOnce();
+			expect(
+				updates.filter(update => update.signalName === "shared-parity")
+			).toHaveLength(1);
+		});
+
 		it("should handle nested computed signals", async () => {
 			const count = signal(0, { name: "count" });
 			const doubled = computed(() => count.value * 2, { name: "doubled" });
