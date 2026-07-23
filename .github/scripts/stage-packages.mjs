@@ -9,6 +9,8 @@ const config = JSON.parse(
 );
 const ignored = new Set(config.ignore || []);
 const access = config.access || "public";
+const maxStageAttempts = 4;
+const stageRetryDelay = 10_000;
 
 function readJson(path) {
 	return JSON.parse(readFileSync(path, "utf8"));
@@ -78,6 +80,37 @@ function distTag(version) {
 	return prerelease ? prerelease[1] : "latest";
 }
 
+function isTransientRegistryError(result) {
+	const output = `${result.stdout}\n${result.stderr}`;
+	return /\bE5\d{2}\b/.test(output);
+}
+
+function wait(ms) {
+	return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function stagePackage(name, args) {
+	for (let attempt = 1; attempt <= maxStageAttempts; attempt++) {
+		const result = spawnSync("pnpm", args, {
+			cwd: root,
+			encoding: "utf8",
+			stdio: ["ignore", "pipe", "pipe"],
+		});
+		process.stdout.write(result.stdout);
+		process.stderr.write(result.stderr);
+
+		if (result.status === 0) return result;
+		if (attempt === maxStageAttempts || !isTransientRegistryError(result))
+			return result;
+
+		const delay = stageRetryDelay * 2 ** (attempt - 1);
+		console.log(
+			`npm returned a transient server error while staging ${name}. Retrying in ${delay / 1000}s...`
+		);
+		await wait(delay);
+	}
+}
+
 function runGit(args) {
 	const result = spawnSync("git", args, {
 		cwd: root,
@@ -137,13 +170,7 @@ for (const packageJsonPath of packageJsonPaths()) {
 	];
 
 	console.log(`Staging ${pkg.name}@${pkg.version} with dist-tag ${tag}...`);
-	const result = spawnSync("pnpm", args, {
-		cwd: root,
-		encoding: "utf8",
-		stdio: ["ignore", "pipe", "pipe"],
-	});
-	process.stdout.write(result.stdout);
-	process.stderr.write(result.stderr);
+	const result = await stagePackage(`${pkg.name}@${pkg.version}`, args);
 	if (result.status !== 0) process.exit(result.status || 1);
 
 	const stageId = result.stdout.match(/"stageId"\s*:\s*"([^"]+)"/)?.[1];
