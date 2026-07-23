@@ -1,5 +1,24 @@
 # @preact/signals-devtools-ui
 
+## 0.5.0
+
+### Minor Changes
+
+- [#961](https://github.com/preactjs/signals/pull/961) [`9d03b7e`](https://github.com/preactjs/signals/commit/9d03b7ee93d7ed0ffbd553cdff6df728125767ea) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Focus large dependency graphs on a searched or selected node and its direct dependencies and dependents, while keeping the full graph available on demand.
+
+- [#964](https://github.com/preactjs/signals/pull/964) [`8d5adb1`](https://github.com/preactjs/signals/commit/8d5adb1a1f1b679f4aa02e6bc384974535705d90) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Add Performance Insights for instance-level update hotspots and explicitly instrumented no-output-change computed recomputations.
+
+### Patch Changes
+
+- [#956](https://github.com/preactjs/signals/pull/956) [`75e8a8b`](https://github.com/preactjs/signals/commit/75e8a8b94593b149364137bcebaaf33c30214776) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Wrap dense dependency graph layers into columns so large application graphs remain visible when fitted to the viewport.
+
+- [#963](https://github.com/preactjs/signals/pull/963) [`a4ced54`](https://github.com/preactjs/signals/commit/a4ced54d9d8cc2186038cd8466cc4ab8c97adaed) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Add a chronological Timeline tab that groups runtime updates into inspectable cascades, preserves signal IDs, and supports signal focus and filtering.
+
+- [#962](https://github.com/preactjs/signals/pull/962) [`ee06f32`](https://github.com/preactjs/signals/commit/ee06f32ca40602733a2def3ed3e169c12ef785f6) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Close the settings popover when changes are applied or cancelled.
+
+- Updated dependencies [[`8d5adb1`](https://github.com/preactjs/signals/commit/8d5adb1a1f1b679f4aa02e6bc384974535705d90)]:
+  - @preact/signals-devtools-adapter@0.5.0
+
 ## 0.4.3
 
 ### Patch Changes

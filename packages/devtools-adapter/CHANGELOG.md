@@ -1,5 +1,11 @@
 # @preact/signals-devtools-adapter
 
+## 0.5.0
+
+### Minor Changes
+
+- [#964](https://github.com/preactjs/signals/pull/964) [`8d5adb1`](https://github.com/preactjs/signals/commit/8d5adb1a1f1b679f4aa02e6bc384974535705d90) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Add Performance Insights for instance-level update hotspots and explicitly instrumented no-output-change computed recomputations.
+
 ## 0.4.1
 
 ### Patch Changes

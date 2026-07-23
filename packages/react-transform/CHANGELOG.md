@@ -1,5 +1,16 @@
 # @preact/signals-react-transform
 
+## 0.8.2
+
+### Patch Changes
+
+- [#957](https://github.com/preactjs/signals/pull/957) [`3cac6eb`](https://github.com/preactjs/signals/commit/3cac6eb1e58bee72c0a6c38fd2d0d04d6df9d46c) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Improve generated debug names for signals created outside variable declarations.
+
+- [#960](https://github.com/preactjs/signals/pull/960) [`3d0f647`](https://github.com/preactjs/signals/commit/3d0f647e92d0c1a1e12410417cfb01d1e61d227b) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Name effects and signal effects during debug transforms, and use their source location when no contextual name can be derived.
+
+- Updated dependencies [[`6b051b5`](https://github.com/preactjs/signals/commit/6b051b538622951a9bb10ba9655cb4ae12872f9a)]:
+  - @preact/signals-react@3.11.0
+
 ## 0.8.1
 
 ### Patch Changes

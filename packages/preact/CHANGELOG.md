@@ -1,5 +1,23 @@
 # @preact/signals
 
+## 2.10.0
+
+### Minor Changes
+
+- [#954](https://github.com/preactjs/signals/pull/954) [`6b051b5`](https://github.com/preactjs/signals/commit/6b051b538622951a9bb10ba9655cb4ae12872f9a) Thanks [@marvinhagemeister](https://github.com/marvinhagemeister)! - Add support for passing functions as fallback to `<Show>` for lazy instantiation.
+
+  ```tsx
+  <Show when={toggle} fallback={() => <p>I'm lazy</p>}>
+  	<p>foo</p>
+  </Show>
+  ```
+
+  This avoids eager evaluation of whatever is passed to fallback which matters when you're dealing with signals.
+
+### Patch Changes
+
+- [#959](https://github.com/preactjs/signals/pull/959) [`b38cacf`](https://github.com/preactjs/signals/commit/b38cacf6045a65f1869ca5a154ce95d6a4209fa2) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Name signals created internally by the Preact adapter and `useLiveSignal` so debugging tools can identify them.
+
 ## 2.9.4
 
 ### Patch Changes
