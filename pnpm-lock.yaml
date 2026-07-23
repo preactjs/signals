@@ -396,7 +396,7 @@ importers:
         specifier: ^7.27.1
         version: 7.27.1
       '@preact/signals-react':
-        specifier: workspace:^3.10.3
+        specifier: workspace:^3.11.0
         version: link:../react
       debug:
         specifier: ^4.3.4

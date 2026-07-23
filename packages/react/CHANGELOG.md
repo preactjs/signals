@@ -1,5 +1,19 @@
 # @preact/signals-react
 
+## 3.11.0
+
+### Minor Changes
+
+- [#954](https://github.com/preactjs/signals/pull/954) [`6b051b5`](https://github.com/preactjs/signals/commit/6b051b538622951a9bb10ba9655cb4ae12872f9a) Thanks [@marvinhagemeister](https://github.com/marvinhagemeister)! - Add support for passing functions as fallback to `<Show>` for lazy instantiation.
+
+  ```tsx
+  <Show when={toggle} fallback={() => <p>I'm lazy</p>}>
+  	<p>foo</p>
+  </Show>
+  ```
+
+  This avoids eager evaluation of whatever is passed to fallback which matters when you're dealing with signals.
+
 ## 3.10.3
 
 ### Patch Changes
