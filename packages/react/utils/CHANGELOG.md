@@ -4,6 +4,13 @@
 
 ### Patch Changes
 
+- Updated dependencies [[`950b2b8`](https://github.com/preactjs/signals/commit/950b2b81cec0a30af6260a56ec7cc2f55def900e)]:
+  - @preact/signals-react@3.11.1
+
+## null
+
+### Patch Changes
+
 - Updated dependencies [[`6b051b5`](https://github.com/preactjs/signals/commit/6b051b538622951a9bb10ba9655cb4ae12872f9a)]:
   - @preact/signals-react@3.11.0
 
