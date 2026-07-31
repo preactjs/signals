@@ -1,5 +1,11 @@
 # @preact/signals
 
+## 2.10.1
+
+### Patch Changes
+
+- [#966](https://github.com/preactjs/signals/pull/966) [`950b2b8`](https://github.com/preactjs/signals/commit/950b2b81cec0a30af6260a56ec7cc2f55def900e) Thanks [@BPScott](https://github.com/BPScott)! - Export the `ModelFactory` type from the Preact and React adapters.
+
 ## 2.10.0
 
 ### Minor Changes
