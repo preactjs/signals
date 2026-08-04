@@ -47,7 +47,7 @@ type ForEach<T> =
 
 interface ForProps<T> {
 	each: ForEach<T> | (() => ForEach<T>);
-	fallback?: ReactNode;
+	fallback?: ReactNode | (() => ReactNode);
 	getKey?: (item: T, index: number) => string | number;
 	children: (value: T, index: number) => ReactNode;
 }
@@ -61,7 +61,12 @@ export function For<T>(props: ForProps<T>): JSX.Element | null {
 
 	const listValue = list instanceof Signal ? list.value : list;
 
-	if (!listValue.length) return (props.fallback as JSX.Element) || null;
+	if (!listValue.length) {
+		const fallback = props.fallback;
+		return (
+			typeof fallback === "function" ? fallback() : fallback
+		) as JSX.Element | null;
+	}
 
 	const removed = new Set(cache.keys());
 

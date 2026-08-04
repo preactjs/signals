@@ -38,7 +38,7 @@ type ForEach<T> =
 
 interface ForProps<T> {
 	each: ForEach<T> | (() => ForEach<T>);
-	fallback?: ComponentChildren;
+	fallback?: ComponentChildren | (() => ComponentChildren);
 	getKey?: (item: T, index: number) => string | number;
 	children: (value: T, index: number) => ComponentChildren;
 }
@@ -51,7 +51,10 @@ export function For<T>(props: ForProps<T>): ComponentChildren | null {
 
 	const listValue = list instanceof Signal ? list.value : list;
 
-	if (!listValue.length) return props.fallback || null;
+	if (!listValue.length) {
+		const fallback = props.fallback;
+		return typeof fallback === "function" ? fallback() : fallback || null;
+	}
 
 	const removed = new Set(cache.keys());
 
