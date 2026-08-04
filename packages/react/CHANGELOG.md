@@ -1,5 +1,19 @@
 # @preact/signals-react
 
+## 3.12.0
+
+### Minor Changes
+
+- [#968](https://github.com/preactjs/signals/pull/968) [`e83a981`](https://github.com/preactjs/signals/commit/e83a9815de29d661ebf843c2d34361f3ad4f9ed1) Thanks [@marvinhagemeister](https://github.com/marvinhagemeister)! - Add support for passing functions as fallback to `<For>` for lazy instantiation.
+
+  ```tsx
+  <For each={list} fallback={() => <p>No items</p>}>
+  	{item => <p>{item}</p>}
+  </For>
+  ```
+
+  This avoids eager evaluation of the fallback when the collection has items, which matters when you're dealing with signals.
+
 ## 3.11.1
 
 ### Patch Changes
