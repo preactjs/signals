@@ -185,6 +185,64 @@ describe("@preact/signals-utils", () => {
 			expect(scratch.innerHTML).to.eq("<p>foo</p><p>bar</p>");
 		});
 
+		it("Should call function fallback lazily", () => {
+			const list = signal<Array<string>>(["foo", "bar"])!;
+			let fallbackCalled = false;
+			const Paragraph = (p: any) => <p>{p.children}</p>;
+
+			act(() => {
+				render(
+					<For
+						each={list}
+						fallback={() => {
+							fallbackCalled = true;
+							return <Paragraph>No items</Paragraph>;
+						}}
+					>
+						{item => <Paragraph key={item}>{item}</Paragraph>}
+					</For>,
+					scratch
+				);
+			});
+
+			// When list has items, fallback should NOT have been called
+			expect(fallbackCalled).to.eq(false);
+			expect(scratch.innerHTML).to.eq("<p>foo</p><p>bar</p>");
+
+			act(() => {
+				list.value = [];
+			});
+
+			// Now fallback should have been called
+			expect(fallbackCalled).to.eq(true);
+			expect(scratch.innerHTML).to.eq("<p>No items</p>");
+		});
+
+		it("Should reactively show items with lazy function fallback", () => {
+			const list = signal<Array<string>>([])!;
+			const Paragraph = (p: any) => <p>{p.children}</p>;
+
+			act(() => {
+				render(
+					<For each={list} fallback={() => <Paragraph>No items</Paragraph>}>
+						{item => <Paragraph key={item}>{item}</Paragraph>}
+					</For>,
+					scratch
+				);
+			});
+			expect(scratch.innerHTML).to.eq("<p>No items</p>");
+
+			act(() => {
+				list.value = ["foo", "bar"];
+			});
+			expect(scratch.innerHTML).to.eq("<p>foo</p><p>bar</p>");
+
+			act(() => {
+				list.value = [];
+			});
+			expect(scratch.innerHTML).to.eq("<p>No items</p>");
+		});
+
 		it("Should iterate over a list of signals w/ nested reactivity", () => {
 			const list = signal<Array<string>>([])!;
 			const test = signal("foo");
