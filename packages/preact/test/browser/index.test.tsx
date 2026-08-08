@@ -1210,8 +1210,9 @@ describe("@preact/signals", () => {
 			function App() {
 				useSignalEffect(() => {
 					const value = sig.value;
-					spy(value, ref.current);
-					return () => cleanup(value, ref.current);
+					const el = ref.current;
+					spy(value, el);
+					return () => cleanup(value, el);
 				});
 				return <p ref={ref}>{sig.value}</p>;
 			}
