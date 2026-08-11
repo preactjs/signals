@@ -146,8 +146,8 @@ let batchDepth = 0;
 let batchIteration = 0;
 
 type BatchSnapshot = {
-	_source: Signal;
-	_value: unknown;
+	_source?: Signal;
+	_value?: unknown;
 	_version: number;
 	_next?: BatchSnapshot;
 };
@@ -155,25 +155,37 @@ type BatchSnapshot = {
 let batchSnapshotVersion = 0;
 let currentBatchSnapshotVersion = 0;
 let batchSnapshots: BatchSnapshot | undefined = undefined;
+let freeBatchSnapshots: BatchSnapshot | undefined = undefined;
 
 // A global version number for signals, used for fast-pathing repeated
 // computed.peek()/computed.value calls when nothing has changed globally.
 let globalVersion = 0;
 
 function recordBatchSnapshot(source: Signal) {
-	// Only capture writes during the user-visible batch callback, not during effect flush.
-	if (batchDepth === 0 || batchIteration !== 0) {
+	// Only capture writes during the user-visible batch callback, not during
+	// effect flush. Signals without subscribers have no target nodes to
+	// fast-forward, so reconciling them would be a no-op anyway.
+	if (
+		batchDepth === 0 ||
+		batchIteration !== 0 ||
+		source._targets === undefined
+	) {
 		return;
 	}
 
 	if (source._batchSnapshotVersion !== currentBatchSnapshotVersion) {
 		source._batchSnapshotVersion = currentBatchSnapshotVersion;
-		batchSnapshots = {
-			_source: source,
-			_value: source._value,
-			_version: source._version,
-			_next: batchSnapshots,
-		};
+		let snapshot = freeBatchSnapshots;
+		if (snapshot === undefined) {
+			snapshot = { _version: 0 };
+		} else {
+			freeBatchSnapshots = snapshot._next;
+		}
+		snapshot._source = source;
+		snapshot._value = source._value;
+		snapshot._version = source._version;
+		snapshot._next = batchSnapshots;
+		batchSnapshots = snapshot;
 	}
 }
 
@@ -182,7 +194,7 @@ function reconcileBatchSnapshots() {
 	batchSnapshots = undefined;
 
 	while (snapshots !== undefined) {
-		const source = snapshots._source;
+		const source = snapshots._source!;
 		if (source._value === snapshots._value) {
 			// The value was reverted to its pre-batch state. Version numbers must
 			// stay monotonic: a lazy computed may have observed an intermediate
@@ -201,7 +213,13 @@ function reconcileBatchSnapshots() {
 				}
 			}
 		}
-		snapshots = snapshots._next;
+
+		const next = snapshots._next;
+		snapshots._source = undefined;
+		snapshots._value = undefined;
+		snapshots._next = freeBatchSnapshots;
+		freeBatchSnapshots = snapshots;
+		snapshots = next;
 	}
 }
 

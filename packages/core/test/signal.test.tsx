@@ -893,6 +893,45 @@ describe("effect()", () => {
 		expect(spy).not.toHaveBeenCalled();
 	});
 
+	it("should notify an effect added after an unobserved batch write", () => {
+		const foo = signal(0);
+		let observed = 0;
+		const spy = vi.fn(() => {
+			observed = foo.value;
+		});
+		let dispose: () => void;
+
+		batch(() => {
+			foo.value = 1;
+			dispose = effect(spy);
+			foo.value = 2;
+		});
+
+		expect(spy).toHaveBeenCalledTimes(2);
+		expect(observed).toBe(2);
+		dispose!();
+	});
+
+	it("should not notify a new effect when later batch writes revert", () => {
+		const foo = signal(0);
+		let observed = 0;
+		const spy = vi.fn(() => {
+			observed = foo.value;
+		});
+		let dispose: () => void;
+
+		batch(() => {
+			foo.value = 1;
+			dispose = effect(spy);
+			foo.value = 2;
+			foo.value = 1;
+		});
+
+		expect(spy).toHaveBeenCalledOnce();
+		expect(observed).toBe(1);
+		dispose!();
+	});
+
 	it("should not rerun an effect subscribed through a computed for a no-op batch assignment", () => {
 		const foo = signal(42);
 		const double = computed(() => foo.value * 2);
