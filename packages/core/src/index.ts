@@ -247,7 +247,9 @@ function cleanupBatchTrackedComputeds() {
 // A computed graph read repeatedly within a batch is cheaper to invalidate from
 // the changed source than to poll every dependency after every write. Keep a
 // separate notification graph so watched/unwatched subscription semantics stay
-// unchanged, then discard the graph at the end of the batch.
+// unchanged, then discard the graph at the end of the batch. Removed dynamic
+// dependencies can stay in this temporary graph: at worst they cause an extra
+// refresh before the whole graph is discarded.
 function trackComputedInBatch(computed: Computed) {
 	if (computed._flags & (TRACKING | BATCH_TRACKING)) {
 		return;
@@ -280,10 +282,6 @@ function registerBatchDependency(node: Node) {
 	if (computed._flags !== undefined && !(computed._flags & TRACKING)) {
 		trackComputedInBatch(computed);
 	}
-}
-
-function unregisterBatchDependency(node: Node) {
-	batchTargets?.get(node._source)?.delete(node);
 }
 
 function notifyBatchTargets(source: Signal) {
@@ -683,9 +681,6 @@ function cleanupSources(target: Computed | Effect) {
 		 *    { A <-> C }
 		 */
 		if (node._version === -1) {
-			if (target._flags & BATCH_TRACKING) {
-				unregisterBatchDependency(node);
-			}
 			node._source._unsubscribe(node);
 
 			if (prev !== undefined) {
