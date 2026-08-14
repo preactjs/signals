@@ -238,7 +238,7 @@ hook(OptionsTypes.RENDER, (old, vnode) => {
 					createComponentUpdateCallback(component),
 					typeof vnode.type === "function"
 						? vnode.type.displayName || vnode.type.name
-						: "",
+						: ""
 				);
 			}
 		}
@@ -248,9 +248,9 @@ hook(OptionsTypes.RENDER, (old, vnode) => {
 	}
 });
 
-function createComponentUpdateCallback(component: Component) {
-	return function(this: Effect) {
-		if (DEVTOOLS_ENABLED) this!._debugCallback?.call(this);
+function createComponentUpdateCallback(component: AugmentedComponent) {
+	return function (this: Effect) {
+		if (DEVTOOLS_ENABLED) this._debugCallback?.call(this);
 		component._updateFlags |= HAS_PENDING_UPDATE;
 		component.setState({});
 	};
