@@ -893,6 +893,45 @@ describe("effect()", () => {
 		expect(spy).not.toHaveBeenCalled();
 	});
 
+	it("should notify an effect added after an unobserved batch write", () => {
+		const foo = signal(0);
+		let observed = 0;
+		const spy = vi.fn(() => {
+			observed = foo.value;
+		});
+		let dispose: () => void;
+
+		batch(() => {
+			foo.value = 1;
+			dispose = effect(spy);
+			foo.value = 2;
+		});
+
+		expect(spy).toHaveBeenCalledTimes(2);
+		expect(observed).toBe(2);
+		dispose!();
+	});
+
+	it("should not notify a new effect when later batch writes revert", () => {
+		const foo = signal(0);
+		let observed = 0;
+		const spy = vi.fn(() => {
+			observed = foo.value;
+		});
+		let dispose: () => void;
+
+		batch(() => {
+			foo.value = 1;
+			dispose = effect(spy);
+			foo.value = 2;
+			foo.value = 1;
+		});
+
+		expect(spy).toHaveBeenCalledOnce();
+		expect(observed).toBe(1);
+		dispose!();
+	});
+
 	it("should not rerun an effect subscribed through a computed for a no-op batch assignment", () => {
 		const foo = signal(42);
 		const double = computed(() => foo.value * 2);
@@ -2119,6 +2158,85 @@ describe("batch/transaction", () => {
 		expect(spyC).toHaveBeenCalledOnce();
 		expect(spyD).toHaveBeenCalledOnce();
 		expect(spyE).toHaveBeenCalledOnce();
+	});
+
+	it("should track new nested dependencies read during a batch", () => {
+		const useA = signal(true);
+		const a = signal(0);
+		const b = signal(0);
+		const first = computed(() => a.value);
+		const second = computed(() => b.value);
+		const spy = vi.fn(() => (useA.value ? first.value : second.value));
+		const result = computed(spy);
+
+		batch(() => {
+			a.value = 1;
+			expect(result.value).to.equal(1);
+
+			useA.value = false;
+			expect(result.value).to.equal(0);
+
+			b.value = 2;
+			expect(result.value).to.equal(2);
+			spy.mockClear();
+
+			a.value = 3;
+			expect(result.value).to.equal(2);
+			expect(spy).not.toHaveBeenCalled();
+		});
+	});
+
+	it("should track dependencies added while a computed is running", () => {
+		const trigger = signal(0);
+		const source = signal(0);
+		let updateSource = true;
+		const result = computed(() => {
+			const value = source.value;
+			if (updateSource) {
+				updateSource = false;
+				source.value = 1;
+			}
+			return value;
+		});
+
+		batch(() => {
+			trigger.value = 1;
+			expect(result.value).to.equal(0);
+			expect(result.value).to.equal(1);
+		});
+	});
+
+	it("should not affect watched callbacks while tracking batch reads", () => {
+		const watched = vi.fn();
+		const unwatched = vi.fn();
+		const source = signal(0, { watched, unwatched });
+		const result = computed(() => source.value, { watched, unwatched });
+
+		batch(() => {
+			source.value = 1;
+			expect(result.value).to.equal(1);
+			source.value = 2;
+			expect(result.value).to.equal(2);
+		});
+
+		expect(watched).not.toHaveBeenCalled();
+		expect(unwatched).not.toHaveBeenCalled();
+	});
+
+	it("should clean up tracked batch reads when the callback throws", () => {
+		const source = signal(0);
+		const result = computed(() => source.value);
+
+		expect(() =>
+			batch(() => {
+				source.value = 1;
+				expect(result.value).to.equal(1);
+				throw new Error("hello");
+			})
+		).to.throw("hello");
+
+		source.value = 2;
+		expect(result.value).to.equal(2);
 	});
 
 	it("should not block writes after batching completed", () => {

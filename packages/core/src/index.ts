@@ -9,6 +9,9 @@ const OUTDATED = 1 << 2;
 const DISPOSED = 1 << 3;
 const HAS_ERROR = 1 << 4;
 const TRACKING = 1 << 5;
+// Track lazy computed dependencies until the current batch finishes without
+// exposing them as user-visible subscriptions.
+const BATCH_TRACKING = 1 << 6;
 
 // A linked list node used to track dependencies (sources) and dependents (targets).
 // Also used to remember the source's last version number that the target saw.
@@ -73,6 +76,7 @@ function endBatch() {
 		}
 	}
 	batchIteration = 0;
+	cleanupBatchTrackedComputeds();
 	batchDepth--;
 
 	if (hasError) {
@@ -96,6 +100,7 @@ function batch<T>(fn: () => T): T {
 	if (batchDepth > 0) {
 		return fn();
 	}
+	batchStartGlobalVersion = globalVersion;
 	currentBatchSnapshotVersion = ++batchSnapshotVersion;
 	/*@__INLINE__**/ startBatch();
 	try {
@@ -144,36 +149,51 @@ function untracked<T>(fn: () => T): T {
 let batchedEffect: Effect | undefined = undefined;
 let batchDepth = 0;
 let batchIteration = 0;
+let batchTrackedComputeds: Computed[] | undefined = undefined;
+let batchTargets: Map<Signal, Set<Node>> | undefined = undefined;
 
 type BatchSnapshot = {
-	_source: Signal;
-	_value: unknown;
+	_source?: Signal;
+	_value?: unknown;
 	_version: number;
 	_next?: BatchSnapshot;
 };
 
 let batchSnapshotVersion = 0;
 let currentBatchSnapshotVersion = 0;
+let batchStartGlobalVersion = 0;
 let batchSnapshots: BatchSnapshot | undefined = undefined;
+let freeBatchSnapshots: BatchSnapshot | undefined = undefined;
 
 // A global version number for signals, used for fast-pathing repeated
 // computed.peek()/computed.value calls when nothing has changed globally.
 let globalVersion = 0;
 
 function recordBatchSnapshot(source: Signal) {
-	// Only capture writes during the user-visible batch callback, not during effect flush.
-	if (batchDepth === 0 || batchIteration !== 0) {
+	// Only capture writes during the user-visible batch callback, not during
+	// effect flush. Signals without subscribers have no target nodes to
+	// fast-forward, so reconciling them would be a no-op anyway.
+	if (
+		batchDepth === 0 ||
+		batchIteration !== 0 ||
+		source._targets === undefined
+	) {
 		return;
 	}
 
 	if (source._batchSnapshotVersion !== currentBatchSnapshotVersion) {
 		source._batchSnapshotVersion = currentBatchSnapshotVersion;
-		batchSnapshots = {
-			_source: source,
-			_value: source._value,
-			_version: source._version,
-			_next: batchSnapshots,
-		};
+		let snapshot = freeBatchSnapshots;
+		if (snapshot === undefined) {
+			snapshot = { _version: 0 };
+		} else {
+			freeBatchSnapshots = snapshot._next;
+		}
+		snapshot._source = source;
+		snapshot._value = source._value;
+		snapshot._version = source._version;
+		snapshot._next = batchSnapshots;
+		batchSnapshots = snapshot;
 	}
 }
 
@@ -182,7 +202,7 @@ function reconcileBatchSnapshots() {
 	batchSnapshots = undefined;
 
 	while (snapshots !== undefined) {
-		const source = snapshots._source;
+		const source = snapshots._source!;
 		if (source._value === snapshots._value) {
 			// The value was reverted to its pre-batch state. Version numbers must
 			// stay monotonic: a lazy computed may have observed an intermediate
@@ -201,7 +221,81 @@ function reconcileBatchSnapshots() {
 				}
 			}
 		}
-		snapshots = snapshots._next;
+
+		const next = snapshots._next;
+		snapshots._source = undefined;
+		snapshots._value = undefined;
+		snapshots._next = freeBatchSnapshots;
+		freeBatchSnapshots = snapshots;
+		snapshots = next;
+	}
+}
+
+function cleanupBatchTrackedComputeds() {
+	const computeds = batchTrackedComputeds;
+	batchTrackedComputeds = undefined;
+	batchTargets = undefined;
+	if (computeds === undefined) {
+		return;
+	}
+
+	for (let i = 0; i < computeds.length; i++) {
+		computeds[i]._flags &= ~BATCH_TRACKING;
+	}
+}
+
+// A computed graph read repeatedly within a batch is cheaper to invalidate from
+// the changed source than to poll every dependency after every write. Keep a
+// separate notification graph so watched/unwatched subscription semantics stay
+// unchanged, then discard the graph at the end of the batch. Removed dynamic
+// dependencies can stay in this temporary graph: at worst they cause an extra
+// refresh before the whole graph is discarded.
+function trackComputedInBatch(computed: Computed) {
+	if (computed._flags & (TRACKING | BATCH_TRACKING)) {
+		return;
+	}
+
+	// The notification graph wasn't present for earlier writes in this batch, so
+	// force one refresh before its clean state can be trusted.
+	computed._flags |= BATCH_TRACKING | OUTDATED;
+	(batchTrackedComputeds ??= []).push(computed);
+	for (
+		let node: Node | undefined = computed._sources;
+		node !== undefined;
+		node = node._nextSource
+	) {
+		registerBatchDependency(node);
+	}
+}
+
+function registerBatchDependency(node: Node) {
+	let targets = batchTargets?.get(node._source);
+	if (targets === undefined) {
+		if (batchTargets === undefined) {
+			batchTargets = new Map();
+		}
+		batchTargets.set(node._source, (targets = new Set()));
+	}
+	targets.add(node);
+
+	const computed = node._source as Computed;
+	if (computed._flags !== undefined && !(computed._flags & TRACKING)) {
+		trackComputedInBatch(computed);
+	}
+}
+
+function notifyBatchTargets(source: Signal) {
+	const targets = batchTargets?.get(source);
+	if (targets !== undefined) {
+		targets.forEach(notifyBatchTarget);
+	}
+}
+
+function notifyBatchTarget(node: Node) {
+	const target = node._target as Computed;
+	if (!(target._flags & NOTIFIED)) {
+		target._flags |= OUTDATED | NOTIFIED;
+		notifyBatchTargets(target);
 	}
 }
 
@@ -245,6 +339,9 @@ function addDependency(signal: Signal): Node | undefined {
 		// OR evaluating a computed signal that in turn has subscribers.
 		if (evalContext._flags & TRACKING) {
 			signal._subscribe(node);
+		}
+		if (evalContext._flags & BATCH_TRACKING) {
+			registerBatchDependency(node);
 		}
 		return node;
 	} else if (node._version === -1) {
@@ -478,6 +575,7 @@ Object.defineProperty(Signal.prototype, "value", {
 				) {
 					node._target._notify();
 				}
+				notifyBatchTargets(this);
 			} finally {
 				endBatch();
 			}
@@ -653,7 +751,7 @@ Computed.prototype._refresh = function () {
 	// If this computed signal has subscribed to updates from its dependencies
 	// (TRACKING flag set) and none of them have notified about changes (OUTDATED
 	// flag not set), then the computed value can't have changed.
-	if ((this._flags & (OUTDATED | TRACKING)) === TRACKING) {
+	if (!(this._flags & OUTDATED) && this._flags & (TRACKING | BATCH_TRACKING)) {
 		return true;
 	}
 	this._flags &= ~OUTDATED;
@@ -745,6 +843,7 @@ Computed.prototype._notify = function () {
 		) {
 			node._target._notify();
 		}
+		notifyBatchTargets(this);
 	}
 };
 
@@ -753,7 +852,16 @@ Object.defineProperty(Computed.prototype, "value", {
 		if (this._flags & RUNNING) {
 			throw new Error("Cycle detected");
 		}
+		const trackInBatch =
+			batchDepth > 0 &&
+			batchIteration === 0 &&
+			globalVersion !== batchStartGlobalVersion &&
+			(evalContext === undefined ||
+				(evalContext._flags & BATCH_TRACKING) !== 0);
 		const node = addDependency(this);
+		if (trackInBatch) {
+			trackComputedInBatch(this);
+		}
 		this._refresh();
 		if (node !== undefined) {
 			node._version = this._version;
