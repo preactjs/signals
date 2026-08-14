@@ -20,8 +20,12 @@ Item.displayName = "Item";
 export function Show<T = boolean>(
 	props: ShowProps<T>
 ): ComponentChildren | null {
-	const value =
+	const raw =
 		typeof props.when === "function" ? props.when() : props.when.value;
+	// Unwrap a signal returned by a `when` callback so `when={() => someSignal}`
+	// checks the signal's value, not the signal object (which is always truthy).
+	const value =
+		raw instanceof Signal ? (raw as unknown as Signal<T>).value : raw;
 	if (!value) {
 		const fallback = props.fallback;
 		return typeof fallback === "function" ? fallback() : fallback || null;

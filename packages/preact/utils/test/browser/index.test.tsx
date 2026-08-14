@@ -163,6 +163,31 @@ describe("@preact/signals-utils", () => {
 			// counter=2, class should update after remount
 			expect(scratch.innerHTML).to.eq('<div class="val-2">content</div>');
 		});
+
+		it("Should unwrap a signal returned from a when callback", () => {
+			const toggle = signal(false);
+			const Paragraph = (props: any) => <p>{props.children}</p>;
+			act(() => {
+				render(
+					<Show when={() => toggle} fallback={<Paragraph>Hiding</Paragraph>}>
+						<Paragraph>Showing</Paragraph>
+					</Show>,
+					scratch
+				);
+			});
+			// Signal object is always truthy, but Show should unwrap and check .value
+			expect(scratch.innerHTML).to.eq("<p>Hiding</p>");
+
+			act(() => {
+				toggle.value = true;
+			});
+			expect(scratch.innerHTML).to.eq("<p>Showing</p>");
+
+			act(() => {
+				toggle.value = false;
+			});
+			expect(scratch.innerHTML).to.eq("<p>Hiding</p>");
+		});
 	});
 
 	describe("<For />", () => {

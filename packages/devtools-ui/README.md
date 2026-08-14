@@ -106,18 +106,18 @@ function MyCustomDevTools() {
 
 ### `mount(options)`
 
-| Option       | Type                                              | Required | Description                      |
-| ------------ | ------------------------------------------------- | -------- | -------------------------------- |
-| `adapter`    | `DevToolsAdapter`                                 | Yes      | The communication adapter to use |
-| `container`  | `HTMLElement`                                     | Yes      | The DOM element to render into   |
-| `hideHeader` | `boolean`                                         | No       | Hide the header bar              |
+| Option       | Type                                                  | Required | Description                      |
+| ------------ | ----------------------------------------------------- | -------- | -------------------------------- |
+| `adapter`    | `DevToolsAdapter`                                     | Yes      | The communication adapter to use |
+| `container`  | `HTMLElement`                                         | Yes      | The DOM element to render into   |
+| `hideHeader` | `boolean`                                             | No       | Hide the header bar              |
 | `initialTab` | `"updates" \| "performance" \| "timeline" \| "graph"` | No       | Which tab to show initially      |
 
 ### `DevToolsPanel`
 
-| Prop         | Type                                              | Default     | Description            |
-| ------------ | ------------------------------------------------- | ----------- | ---------------------- |
-| `hideHeader` | `boolean`                                         | `false`     | Hide the header bar    |
+| Prop         | Type                                                  | Default     | Description            |
+| ------------ | ----------------------------------------------------- | ----------- | ---------------------- |
+| `hideHeader` | `boolean`                                             | `false`     | Hide the header bar    |
 | `initialTab` | `"updates" \| "performance" \| "timeline" \| "graph"` | `"updates"` | Initial tab to display |
 
 ## Styling
