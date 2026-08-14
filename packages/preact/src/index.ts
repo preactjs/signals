@@ -235,11 +235,7 @@ hook(OptionsTypes.RENDER, (old, vnode) => {
 			updater = component._updater;
 			if (updater === undefined) {
 				component._updater = updater = createUpdater(
-					() => {
-						if (DEVTOOLS_ENABLED) updater!._debugCallback?.call(updater);
-						component._updateFlags |= HAS_PENDING_UPDATE;
-						component.setState({});
-					},
+					createComponentUpdateCallback(component),
 					typeof vnode.type === "function"
 						? vnode.type.displayName || vnode.type.name
 						: ""
@@ -251,6 +247,14 @@ hook(OptionsTypes.RENDER, (old, vnode) => {
 		setCurrentUpdater(updater);
 	}
 });
+
+function createComponentUpdateCallback(component: AugmentedComponent) {
+	return function (this: Effect) {
+		if (DEVTOOLS_ENABLED) this._debugCallback?.call(this);
+		component._updateFlags |= HAS_PENDING_UPDATE;
+		component.setState({});
+	};
+}
 
 /** Finish current updater if a component errors */
 hook(OptionsTypes.CATCH_ERROR, (old, error, vnode, oldVNode) => {
