@@ -1,5 +1,11 @@
 # @preact/signals
 
+## 2.11.1
+
+### Patch Changes
+
+- [#973](https://github.com/preactjs/signals/pull/973) [`bb9cd0a`](https://github.com/preactjs/signals/commit/bb9cd0a1e58534d8c7cb5975ea0829c9dbc14268) Thanks [@developit](https://github.com/developit)! - Avoid closing over VNodes in component updater callbacks.
+
 ## 2.11.0
 
 ### Minor Changes
