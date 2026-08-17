@@ -16,6 +16,7 @@ const MANAGED_HOOK = 2;
 describe("useSignals", () => {
 	let scratch: HTMLDivElement;
 	let root: Root;
+	let originalSubscribe: typeof Signal.prototype._subscribe;
 
 	async function render(element: Parameters<Root["render"]>[0]) {
 		await act(() => root.render(element));
@@ -54,6 +55,7 @@ describe("useSignals", () => {
 		document.body.appendChild(scratch);
 		root = await createRoot(scratch);
 		getConsoleErrorSpy().mockClear();
+		originalSubscribe = Signal.prototype._subscribe;
 	});
 
 	afterEach(async () => {
@@ -65,6 +67,7 @@ describe("useSignals", () => {
 		//
 		// checkConsoleErrorLogs();
 		checkHangingAct();
+		expect(Signal.prototype._subscribe).to.equal(originalSubscribe);
 	});
 
 	it("should rerender components when signals they use change", async () => {
