@@ -11,6 +11,7 @@ import {
 	type ModelConstructor,
 	type ModelFactory,
 	Signal,
+	Effect as CoreEffect,
 	type ReadonlySignal,
 	untracked,
 	SignalOptions,
@@ -312,47 +313,83 @@ hook(OptionsTypes.DIFFED, (old, vnode) => {
 	old(vnode);
 });
 
+interface PropUpdater extends CoreEffect, PropertyUpdater {
+	_dom: Element;
+	_prop: string;
+	_propSignal: Signal<Signal>;
+	_props: Record<string, any>;
+	_setAsProperty: boolean;
+}
+
+function updateProp(this: PropUpdater) {
+	this._notify = notifyDomUpdates;
+	const value = this._propSignal.value.value;
+	// If Preact just rendered this value, don't render it again:
+	if (this._props[this._prop] === value) return;
+	// Write the value back into the rendered props so that Preact's next
+	// diff compares against what is actually in the DOM. The Signal
+	// reference itself lives in vnode.__np and is restored into props by
+	// the UNMOUNT hook, so this never clobbers it.
+	this._props[this._prop] = value;
+	if (this._setAsProperty) {
+		// @ts-ignore-next-line silly
+		this._dom[this._prop] = value;
+		// Match Preact's attribute handling: data-* and aria-* attributes
+		// https://github.com/preactjs/preact/blob/main/src/diff/props.js#L132
+	} else if (value != null && (value !== false || this._prop[4] === "-")) {
+		this._dom.setAttribute(this._prop, value);
+	} else {
+		this._dom.removeAttribute(this._prop);
+	}
+}
+
+const PropUpdater = function (
+	this: PropUpdater,
+	dom: Element,
+	prop: string,
+	propSignal: Signal,
+	props: Record<string, any>
+) {
+	CoreEffect.call(this, updateProp);
+	this._dom = dom;
+	this._prop = prop;
+	this._propSignal = signal(propSignal);
+	this._props = props;
+	this._setAsProperty =
+		prop in dom &&
+		// SVG elements need to go through `setAttribute` because they
+		// expect things like SVGAnimatedTransformList instead of strings.
+		// @ts-ignore
+		dom.ownerSVGElement === undefined;
+	try {
+		this._callback();
+	} catch (err) {
+		this._dispose();
+		throw err;
+	}
+} as unknown as {
+	new (
+		dom: Element,
+		prop: string,
+		propSignal: Signal,
+		props: Record<string, any>
+	): PropUpdater;
+	prototype: PropUpdater;
+};
+
+PropUpdater.prototype = new CoreEffect(updateProp) as PropUpdater;
+PropUpdater.prototype._update = function (newSignal, newProps) {
+	this._propSignal.value = newSignal;
+	this._props = newProps;
+};
+
 function createPropUpdater(
 	dom: Element,
 	prop: string,
 	propSignal: Signal,
 	props: Record<string, any>
 ): PropertyUpdater {
-	const setAsProperty =
-		prop in dom &&
-		// SVG elements need to go through `setAttribute` because they
-		// expect things like SVGAnimatedTransformList instead of strings.
-		// @ts-ignore
-		dom.ownerSVGElement === undefined;
-
-	const changeSignal = signal(propSignal);
-	return {
-		_update: (newSignal: Signal, newProps: typeof props) => {
-			changeSignal.value = newSignal;
-			props = newProps;
-		},
-		_dispose: effect(function (this: Effect) {
-			this._notify = notifyDomUpdates;
-			const value = changeSignal.value.value;
-			// If Preact just rendered this value, don't render it again:
-			if (props[prop] === value) return;
-			// Write the value back into the rendered props so that Preact's next
-			// diff compares against what is actually in the DOM. The Signal
-			// reference itself lives in vnode.__np and is restored into props by
-			// the UNMOUNT hook, so this never clobbers it.
-			props[prop] = value;
-			if (setAsProperty) {
-				// @ts-ignore-next-line silly
-				dom[prop] = value;
-				// Match Preact's attribute handling: data-* and aria-* attributes
-				// https://github.com/preactjs/preact/blob/main/src/diff/props.js#L132
-			} else if (value != null && (value !== false || prop[4] === "-")) {
-				dom.setAttribute(prop, value);
-			} else {
-				dom.removeAttribute(prop);
-			}
-		}),
-	};
+	return new PropUpdater(dom, prop, propSignal, props);
 }
 
 /** Unsubscribe from Signals when unmounting components/vnodes */

@@ -69,7 +69,13 @@
       "$_signal": "s",
       "$_updater": "__$u",
       "$_updateFlags": "__$f",
-      "$_updaters": "U"
+      "$_updaters": "U",
+      "preact: PropUpdater": "",
+      "$_dom": "D",
+      "$_prop": "R",
+      "$_propSignal": "P",
+      "$_props": "O",
+      "$_setAsProperty": "A"
     }
   }
 }
