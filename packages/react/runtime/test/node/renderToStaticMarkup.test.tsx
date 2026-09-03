@@ -1,4 +1,8 @@
-import { signal, useSignalEffect } from "@preact/signals-react";
+import {
+	signal,
+	useAsyncComputed,
+	useSignalEffect,
+} from "@preact/signals-react";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { mountSignalsTests } from "../../../test/shared/mounting";
@@ -7,6 +11,17 @@ import { describe, it, expect, vi } from "vitest";
 describe("@preact/signals-react/runtime", () => {
 	describe("renderToStaticMarkup", () => {
 		mountSignalsTests(el => Promise.resolve(renderToStaticMarkup(el)));
+
+		it("should not start async computed callbacks", () => {
+			const compute = vi.fn(() => Promise.resolve("loaded"));
+			function App() {
+				const result = useAsyncComputed(compute);
+				return <p>{result.value ?? "none"}</p>;
+			}
+
+			expect(renderToStaticMarkup(<App />)).to.equal("<p>none</p>");
+			expect(compute).not.toHaveBeenCalled();
+		});
 
 		it("should not invoke useSignalEffect", async () => {
 			const spy = vi.fn();
