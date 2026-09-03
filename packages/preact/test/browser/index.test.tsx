@@ -382,6 +382,41 @@ describe("@preact/signals", () => {
 			expect(spy).toHaveBeenCalledOnce();
 		});
 
+		it("should not subscribe to signals read by DOM property getters", () => {
+			const tag = `x-signal-value-${Math.random().toString(36).slice(2)}`;
+
+			class SignalValueElement extends HTMLElement {
+				internalValue = signal("initial");
+
+				get value() {
+					return this.internalValue.value;
+				}
+
+				set value(value: string) {
+					this.internalValue.value = value;
+				}
+			}
+
+			customElements.define(tag, SignalValueElement);
+
+			const renderSpy = vi.fn();
+			function App() {
+				renderSpy();
+				return createElement(tag, { value: "initial render" });
+			}
+
+			render(<App />, scratch);
+			const element = scratch.firstElementChild as SignalValueElement;
+			expect(element.value).to.equal("initial render");
+			renderSpy.mockClear();
+
+			element.internalValue.value = "user edit";
+			rerender();
+
+			expect(renderSpy).not.toHaveBeenCalled();
+			expect(element.value).to.equal("user edit");
+		});
+
 		it("should minimize rerenders when passing signals through context", () => {
 			function spyOn<P = { children?: ComponentChildren }>(
 				c: FunctionComponent<P>

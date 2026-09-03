@@ -200,6 +200,12 @@ Object.defineProperties(Signal.prototype, {
 
 /** Inject low-level property/attribute bindings for Signals into Preact's diff */
 hook(OptionsTypes.DIFF, (old, vnode) => {
+	// A component's tracking scope ends when its render function returns. The
+	// next VNode's DIFF hook is the first opportunity to stop tracking before
+	// Preact begins reconciling the returned VNode.
+	setCurrentUpdater();
+	currentComponent = undefined;
+
 	if (typeof vnode.type === "string") {
 		let signalProps: Record<string, any> | undefined;
 
