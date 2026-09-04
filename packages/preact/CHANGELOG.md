@@ -1,5 +1,11 @@
 # @preact/signals
 
+## 2.11.2
+
+### Patch Changes
+
+- [#979](https://github.com/preactjs/signals/pull/979) [`7526ad0`](https://github.com/preactjs/signals/commit/7526ad0687e2c94c710fbd405d529c137594f043) Thanks [@andrewiggins](https://github.com/andrewiggins)! - Stop component tracking before Preact reconciles the returned VNode so Signals read by DOM property getters do not subscribe the parent component.
+
 ## 2.11.1
 
 ### Patch Changes
