@@ -98,6 +98,8 @@ export interface EffectStore {
 	 */
 	readonly _usage: EffectStoreUsage;
 	readonly effect: Effect;
+	/** @internal */
+	_endEffect?: () => void;
 	subscribe(onStoreChange: () => void): () => void;
 	getSnapshot(): number;
 	/** startEffect - begin tracking signals used in this component */
@@ -106,6 +108,10 @@ export interface EffectStore {
 	f(): void;
 	[symDispose](): void;
 }
+
+type MutableEffectStore = {
+	-readonly [K in keyof EffectStore]: EffectStore[K];
+};
 
 let currentStore: EffectStore | undefined;
 
@@ -149,14 +155,16 @@ function finishComponentEffect(
  * invoked in a component's body or hook body. See the comment on
  * `EffectStoreUsage` for more details.
  */
-function createEffectStore(
+const EffectStore = function (
+	this: MutableEffectStore,
 	_usage: EffectStoreUsage,
 	componentName?: string
-): EffectStore {
+) {
 	let effectInstance!: Effect;
-	let endEffect: (() => void) | undefined;
 	let version = 0;
 	let onChangeNotifyReact: (() => void) | undefined;
+	this._usage = _usage;
+	this._endEffect = undefined;
 
 	let unsubscribe = effect(
 		function (this: Effect) {
@@ -172,137 +180,140 @@ function createEffectStore(
 		if (onChangeNotifyReact) onChangeNotifyReact();
 	};
 
-	return {
-		_usage,
-		effect: effectInstance,
-		subscribe(onStoreChange) {
-			onChangeNotifyReact = onStoreChange;
+	this.effect = effectInstance;
+	this.subscribe = function (onStoreChange) {
+		onChangeNotifyReact = onStoreChange;
 
-			return function () {
-				/**
-				 * Rotate to next version when unsubscribing to ensure that components are re-run
-				 * when subscribing again.
-				 *
-				 * In StrictMode, 'memo'-ed components seem to keep a stale snapshot version, so
-				 * don't re-run after subscribing again if the version is the same as last time.
-				 *
-				 * Because we unsubscribe from the effect, the version may not change. We simply
-				 * set a new initial version in case of stale snapshots here.
-				 */
-				version = (version + 1) | 0;
-				onChangeNotifyReact = undefined;
-				unsubscribe();
-			};
-		},
-		getSnapshot() {
-			return version;
-		},
-		_start() {
-			// In general, we want to support two kinds of usages of useSignals:
-			//
-			// A) Managed: calling useSignals in a component or hook body wrapped in a
-			//    try/finally (like what the react-transform plugin does)
-			//
-			// B) Unmanaged: Calling useSignals directly without wrapping in a
-			//    try/finally
-			//
-			// For managed, we finish the effect in the finally block of the component
-			// or hook body. For unmanaged, we finish the effect in the next
-			// useSignals call or after a microtask.
-			//
-			// There are different tradeoffs which each approach. With managed, using
-			// a try/finally ensures that only signals used in the component or hook
-			// body are tracked. However, signals accessed in render props are missed
-			// because the render prop is invoked in another component that may or may
-			// not realize it is rendering signals accessed in the render prop it is
-			// given.
-			//
-			// The other approach is "unmanaged": to call useSignals directly without
-			// wrapping in a try/finally. This approach is easier to manually write in
-			// situations where a build step isn't available but does open up the
-			// possibility of catching signals accessed in other code before the
-			// effect is closed (e.g. in a layout effect). Most situations where this
-			// could happen are generally consider bad patterns or bugs. For example,
-			// using a signal in a component and not having a call to `useSignals`
-			// would be an bug. Or using a signal in `useLayoutEffect` is generally
-			// not recommended since that layout effect won't update when the signals'
-			// value change.
-			//
-			// To support both approaches, we need to track how each invocation of
-			// useSignals is used, so we can properly transition between different
-			// kinds of usages.
-			//
-			// The following table shows the different scenarios and how we should
-			// handle them.
-			//
-			// Key:
-			// 0 = UNMANAGED
-			// 1 = MANAGED_COMPONENT
-			// 2 = MANAGED_HOOK
-			//
-			// Pattern:
-			// prev store usage -> this store usage: action to take
-			//
-			// - 0 -> 0: finish previous effect (unknown to unknown)
-			//
-			//   We don't know how the previous effect was used, so we need to finish
-			//   it before starting the next effect.
-			//
-			// - 0 -> 1: finish previous effect
-			//
-			//   Assume previous invocation was another component or hook from another
-			//   component. Nested component renders (renderToStaticMarkup within a
-			//   component's render) won't be supported with bare useSignals calls.
-			//
-			// - 0 -> 2: capture & restore
-			//
-			//   Previous invocation could be a component or a hook. Either way,
-			//   restore it after our invocation so that it can continue to capture
-			//   any signals after we exit.
-			//
-			// - 1 -> 0: Do nothing. Signals already captured by current effect store
-			// - 1 -> 1: capture & restore (e.g. component calls renderToStaticMarkup)
-			// - 1 -> 2: capture & restore (e.g. hook)
-			//
-			// - 2 -> 0: Do nothing. Signals already captured by current effect store
-			// - 2 -> 1: capture & restore (e.g. hook calls renderToStaticMarkup)
-			// - 2 -> 2: capture & restore (e.g. nested hook calls)
-
-			if (currentStore == undefined) {
-				endEffect = startComponentEffect(undefined, this);
-				return;
-			}
-
-			const prevUsage = currentStore._usage;
-			const thisUsage = this._usage;
-
-			if (
-				(prevUsage == UNMANAGED && thisUsage == UNMANAGED) || // 0 -> 0
-				(prevUsage == UNMANAGED && thisUsage == MANAGED_COMPONENT) // 0 -> 1
-			) {
-				// finish previous effect
-				currentStore.f();
-				endEffect = startComponentEffect(undefined, this);
-			} else if (
-				(prevUsage == MANAGED_COMPONENT && thisUsage == UNMANAGED) || // 1 -> 0
-				(prevUsage == MANAGED_HOOK && thisUsage == UNMANAGED) // 2 -> 0
-			) {
-				// Do nothing since it'll be captured by current effect store
-			} else {
-				// nested scenarios, so capture and restore the previous effect store
-				endEffect = startComponentEffect(currentStore, this);
-			}
-		},
-		f() {
-			const end = endEffect;
-			endEffect = undefined;
-			end?.();
-		},
-		[symDispose]() {
-			this.f();
-		},
+		return function () {
+			/**
+			 * Rotate to next version when unsubscribing to ensure that components are re-run
+			 * when subscribing again.
+			 *
+			 * In StrictMode, 'memo'-ed components seem to keep a stale snapshot version, so
+			 * don't re-run after subscribing again if the version is the same as last time.
+			 *
+			 * Because we unsubscribe from the effect, the version may not change. We simply
+			 * set a new initial version in case of stale snapshots here.
+			 */
+			version = (version + 1) | 0;
+			onChangeNotifyReact = undefined;
+			unsubscribe();
+		};
 	};
-}
+	this.getSnapshot = function () {
+		return version;
+	};
+} as unknown as {
+	new (_usage: EffectStoreUsage, componentName?: string): EffectStore;
+	prototype: EffectStore;
+};
+
+EffectStore.prototype._start = function () {
+	// In general, we want to support two kinds of usages of useSignals:
+	//
+	// A) Managed: calling useSignals in a component or hook body wrapped in a
+	//    try/finally (like what the react-transform plugin does)
+	//
+	// B) Unmanaged: Calling useSignals directly without wrapping in a
+	//    try/finally
+	//
+	// For managed, we finish the effect in the finally block of the component
+	// or hook body. For unmanaged, we finish the effect in the next
+	// useSignals call or after a microtask.
+	//
+	// There are different tradeoffs which each approach. With managed, using
+	// a try/finally ensures that only signals used in the component or hook
+	// body are tracked. However, signals accessed in render props are missed
+	// because the render prop is invoked in another component that may or may
+	// not realize it is rendering signals accessed in the render prop it is
+	// given.
+	//
+	// The other approach is "unmanaged": to call useSignals directly without
+	// wrapping in a try/finally. This approach is easier to manually write in
+	// situations where a build step isn't available but does open up the
+	// possibility of catching signals accessed in other code before the
+	// effect is closed (e.g. in a layout effect). Most situations where this
+	// could happen are generally consider bad patterns or bugs. For example,
+	// using a signal in a component and not having a call to `useSignals`
+	// would be an bug. Or using a signal in `useLayoutEffect` is generally
+	// not recommended since that layout effect won't update when the signals'
+	// value change.
+	//
+	// To support both approaches, we need to track how each invocation of
+	// useSignals is used, so we can properly transition between different
+	// kinds of usages.
+	//
+	// The following table shows the different scenarios and how we should
+	// handle them.
+	//
+	// Key:
+	// 0 = UNMANAGED
+	// 1 = MANAGED_COMPONENT
+	// 2 = MANAGED_HOOK
+	//
+	// Pattern:
+	// prev store usage -> this store usage: action to take
+	//
+	// - 0 -> 0: finish previous effect (unknown to unknown)
+	//
+	//   We don't know how the previous effect was used, so we need to finish
+	//   it before starting the next effect.
+	//
+	// - 0 -> 1: finish previous effect
+	//
+	//   Assume previous invocation was another component or hook from another
+	//   component. Nested component renders (renderToStaticMarkup within a
+	//   component's render) won't be supported with bare useSignals calls.
+	//
+	// - 0 -> 2: capture & restore
+	//
+	//   Previous invocation could be a component or a hook. Either way,
+	//   restore it after our invocation so that it can continue to capture
+	//   any signals after we exit.
+	//
+	// - 1 -> 0: Do nothing. Signals already captured by current effect store
+	// - 1 -> 1: capture & restore (e.g. component calls renderToStaticMarkup)
+	// - 1 -> 2: capture & restore (e.g. hook)
+	//
+	// - 2 -> 0: Do nothing. Signals already captured by current effect store
+	// - 2 -> 1: capture & restore (e.g. hook calls renderToStaticMarkup)
+	// - 2 -> 2: capture & restore (e.g. nested hook calls)
+
+	if (currentStore == undefined) {
+		this._endEffect = startComponentEffect(undefined, this);
+		return;
+	}
+
+	const prevUsage = currentStore._usage;
+	const thisUsage = this._usage;
+
+	if (
+		(prevUsage == UNMANAGED && thisUsage == UNMANAGED) || // 0 -> 0
+		(prevUsage == UNMANAGED && thisUsage == MANAGED_COMPONENT) // 0 -> 1
+	) {
+		// finish previous effect
+		currentStore.f();
+		this._endEffect = startComponentEffect(undefined, this);
+	} else if (
+		(prevUsage == MANAGED_COMPONENT && thisUsage == UNMANAGED) || // 1 -> 0
+		(prevUsage == MANAGED_HOOK && thisUsage == UNMANAGED) // 2 -> 0
+	) {
+		// Do nothing since it'll be captured by current effect store
+	} else {
+		// nested scenarios, so capture and restore the previous effect store
+		this._endEffect = startComponentEffect(currentStore, this);
+	}
+};
+
+EffectStore.prototype.f = function () {
+	const end = this._endEffect;
+	this._endEffect = undefined;
+	end?.();
+};
+
+EffectStore.prototype[symDispose] = function () {
+	this.f();
+};
 
 const noop = () => {};
 
@@ -362,7 +373,7 @@ export function _useSignalsImplementation(
 		if (typeof window === "undefined") {
 			storeRef.current = emptyEffectStore;
 		} else {
-			storeRef.current = createEffectStore(_usage, componentName);
+			storeRef.current = new EffectStore(_usage, componentName);
 		}
 	}
 
