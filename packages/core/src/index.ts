@@ -1124,6 +1124,133 @@ function createModel<TModel, TFactoryArgs extends any[] = []>(
 
 //#endregion createModel
 
+//#region AsyncComputed (experimental)
+
+/**
+ * A function used by {@link asyncComputed}. Signal reads are tracked until the
+ * function returns, which means an async function must read its dependencies
+ * before its first `await`.
+ */
+export type AsyncComputedFn<T> = () => PromiseLike<T> | T;
+
+/** The reactive state of an asynchronous computation. */
+export interface AsyncComputedSignal<T> extends ReadonlySignal<T | undefined> {
+	/** True while the latest run is waiting for a promise to settle. */
+	readonly pending: ReadonlySignal<boolean>;
+	/** True after at least one run has settled, including with `undefined`. */
+	readonly settled: ReadonlySignal<boolean>;
+	/** Whether the latest settled run failed, even if it rejected with `undefined`. */
+	readonly failed: ReadonlySignal<boolean>;
+	/** The error from the latest failed run, or undefined after a successful run. */
+	readonly error: ReadonlySignal<unknown>;
+	/** The current run's stable settlement promise, when it is pending. */
+	readonly settlement: Promise<void> | undefined;
+	/** Stop tracking dependencies and ignore any result still in flight. */
+	dispose(): void;
+}
+
+/**
+ * Create a signal whose value is produced by a synchronous or asynchronous
+ * function. Dependencies read synchronously are tracked and restart the
+ * computation when they change. The last successful value is retained while
+ * a newer run is pending or if it fails.
+ */
+export function asyncComputed<T>(
+	fn: AsyncComputedFn<T>,
+	options?: SignalOptions<T | undefined>
+): AsyncComputedSignal<T> {
+	const out = new Signal<T | undefined>(undefined, options);
+	const pending = new Signal(false);
+	const settled = new Signal(false);
+	const failed = new Signal(false);
+	const error = new Signal<unknown>(undefined);
+	const facade = out as unknown as AsyncComputedSignal<T> & {
+		pending: Signal<boolean>;
+		settled: Signal<boolean>;
+		failed: Signal<boolean>;
+		error: Signal<unknown>;
+		settlement: Promise<void> | undefined;
+	};
+	facade.pending = pending;
+	facade.settled = settled;
+	facade.failed = failed;
+	facade.error = error;
+	facade.settlement = undefined;
+
+	let runId = 0;
+	let resolveSettlement: (() => void) | undefined;
+
+	function finishSettlement() {
+		facade.settlement = undefined;
+		resolveSettlement?.();
+		resolveSettlement = undefined;
+	}
+
+	function settle(id: number, failed: boolean, result: unknown) {
+		if (id !== runId) return;
+
+		batch(() => {
+			if (failed) {
+				error.value = result;
+			} else {
+				error.value = undefined;
+				out.value = result as T;
+			}
+			facade.failed.value = failed;
+			settled.value = true;
+			pending.value = false;
+		});
+		finishSettlement();
+	}
+
+	const dispose = effect(
+		() => {
+			const id = ++runId;
+			let result: PromiseLike<T> | T;
+			let isThenable: boolean;
+
+			try {
+				result = fn();
+				isThenable =
+					result != null &&
+					typeof (result as PromiseLike<T>).then === "function";
+			} catch (err) {
+				settle(id, true, err);
+				return () => {
+					if (id === runId) runId++;
+				};
+			}
+
+			if (isThenable) {
+				facade.settlement = new Promise<void>(resolve => {
+					resolveSettlement = resolve;
+				});
+				pending.value = true;
+				Promise.resolve(result).then(
+					value => settle(id, false, value),
+					err => settle(id, true, err)
+				);
+			} else {
+				settle(id, false, result);
+			}
+
+			return () => {
+				if (id === runId) {
+					runId++;
+					pending.value = false;
+					finishSettlement();
+				}
+			};
+		},
+		{ name: options?.name }
+	);
+
+	facade.dispose = dispose;
+	return facade;
+}
+
+//#endregion AsyncComputed
+
 export {
 	computed,
 	effect,

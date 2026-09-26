@@ -12,6 +12,7 @@ Read the [announcement post](https://preactjs.com/blog/introducing-signals/) to 
   - [`signal(initialValue)`](#signalinitialvalue)
     - [`signal.peek()`](#signalpeek)
   - [`computed(fn)`](#computedfn)
+  - [`asyncComputed(fn)`](#asynccomputedfn)
   - [`effect(fn)`](#effectfn)
   - [`batch(fn)`](#batchfn)
   - [`untracked(fn)`](#untrackedfn)
@@ -106,6 +107,42 @@ console.log(fullName.value);
 ```
 
 Any signal that is accessed inside the `computed`'s callback function will be automatically subscribed to and tracked as a dependency of the computed signal.
+
+### `asyncComputed(fn)`
+
+The experimental `asyncComputed` function creates a read-only signal from a synchronous or asynchronous callback. It also exposes `pending` and `error` signals. When a dependency changes, the callback starts again while retaining the last successful value, and stale promise results are ignored.
+
+```js
+import { asyncComputed, signal } from "@preact/signals-core";
+
+const userId = signal("1");
+const user = asyncComputed(async () => {
+	// Read dependencies before awaiting so they remain reactive.
+	const id = userId.value;
+	const response = await fetch(`/api/users/${id}`);
+	return response.json();
+});
+
+console.log(user.value); // undefined until the first result settles
+console.log(user.pending.value); // true while the latest run is pending
+console.log(user.settled.value); // true after the first run finishes
+console.log(user.failed.value); // true if the latest run failed
+console.log(user.error.value); // the latest error, if any
+```
+
+Signal dependency tracking is synchronous. Reads after the first `await` are not tracked, so capture every reactive input before awaiting. While a run is pending, `user.settlement` is a stable promise that resolves when that run settles or is replaced. Call `user.dispose()` to stop tracking and ignore in-flight results.
+
+Async computeds created inside `createModel` are automatically disposed with the model, just like effects:
+
+```js
+const UserModel = createModel(userId => ({
+	user: asyncComputed(async () => {
+		const id = userId.value;
+		const response = await fetch(`/api/users/${id}`);
+		return response.json();
+	}),
+}));
+```
 
 ### `effect(fn)`
 

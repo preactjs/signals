@@ -2,6 +2,9 @@ import {
 	signal,
 	computed,
 	effect,
+	asyncComputed,
+	type AsyncComputedFn,
+	type AsyncComputedSignal,
 	Signal,
 	ReadonlySignal,
 	SignalOptions,
@@ -430,6 +433,96 @@ export function useComputed<T>(
 	const $compute = useRef(compute);
 	$compute.current = compute;
 	return useMemo(() => computed<T>(() => $compute.current(), options), Empty);
+}
+
+export interface UseAsyncComputedOptions<T> extends SignalOptions<
+	T | undefined
+> {
+	/** Rethrow the current error during render. Defaults to true. */
+	throwOnError?: boolean;
+	/**
+	 * Suspend while an externally owned instance has no value. Hook-created
+	 * instances cannot suspend on initial mount because hook state is discarded
+	 * when the component suspends. Defaults to false.
+	 */
+	suspend?: boolean;
+}
+
+type OwnedAsyncComputedOptions<T> = Omit<
+	UseAsyncComputedOptions<T>,
+	"suspend"
+> & { suspend?: false };
+
+/** Create and own an async computed for the lifetime of this component. */
+export function useAsyncComputed<T>(
+	compute: AsyncComputedFn<T>,
+	options?: OwnedAsyncComputedOptions<T>
+): AsyncComputedSignal<T>;
+/** Observe a model- or otherwise externally-owned async computed. */
+export function useAsyncComputed<T>(
+	instance: AsyncComputedSignal<T>,
+	options?: UseAsyncComputedOptions<T>
+): AsyncComputedSignal<T>;
+export function useAsyncComputed<T>(
+	source: AsyncComputedFn<T> | AsyncComputedSignal<T>,
+	options?: UseAsyncComputedOptions<T>
+): AsyncComputedSignal<T> {
+	const $compute = useRef(typeof source === "function" ? source : undefined);
+	if (typeof source === "function") $compute.current = source;
+
+	// Keep callback work out of render. An abandoned or server render only owns
+	// this local activation signal and never subscribes to application state.
+	const activation = useMemo(
+		() => (typeof source === "function" ? signal(false) : undefined),
+		Empty
+	);
+	const idle = useMemo(
+		() => (activation ? new Promise<never>(() => {}) : undefined),
+		Empty
+	);
+	const owned = useMemo(
+		() =>
+			activation
+				? asyncComputed<T>(
+						() =>
+							activation.value
+								? ($compute.current as AsyncComputedFn<T>)()
+								: (idle as Promise<never>),
+						options
+					)
+				: undefined,
+		Empty
+	);
+	const instance = (owned || source) as AsyncComputedSignal<T>;
+	useEffect(() => {
+		if (!owned || !activation) return;
+
+		activation.value = true;
+		return () => {
+			activation.value = false;
+			// Strict effects can clean up and restart the same hook state. Defer
+			// final disposal so a same-turn restart can reactivate it.
+			queueMicrotask(() => {
+				if (!activation.peek()) instance.dispose();
+			});
+		};
+	}, [instance]);
+
+	if (options?.throwOnError !== false && instance.failed.value) {
+		const error = instance.error.value;
+		throw error === undefined
+			? new Error("Async computed failed without an error")
+			: error;
+	}
+	if (
+		owned === undefined &&
+		options?.suspend &&
+		!instance.settled.value &&
+		instance.settlement
+	) {
+		throw instance.settlement;
+	}
+	return instance;
 }
 
 export function useSignalEffect(

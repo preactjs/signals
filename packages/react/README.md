@@ -11,6 +11,7 @@ Read the [announcement post](https://preactjs.com/blog/introducing-signals/) to 
   - [`signal(initialValue)`](../core/README.md#signalinitialvalue)
     - [`signal.peek()`](../core/README.md#signalpeek)
   - [`computed(fn)`](../core/README.md#computedfn)
+  - [`asyncComputed(fn)`](../core/README.md#asynccomputedfn)
   - [`effect(fn)`](../core/README.md#effectfn)
   - [`batch(fn)`](../core/README.md#batchfn)
   - [`untracked(fn)`](../core/README.md#untrackedfn)
@@ -18,6 +19,7 @@ Read the [announcement post](https://preactjs.com/blog/introducing-signals/) to 
   - [Babel Transform](#babel-transform)
   - [`useSignals` hook](#usesignals-hook)
   - [Hooks](#hooks)
+    - [`useAsyncComputed`](#useasynccomputed)
   - [Using signals with React's SSR APIs](#using-signals-with-reacts-ssr-apis)
   - [Rendering optimizations](#rendering-optimizations)
   - [Utility Components and Hooks](#utility-components-and-hooks)
@@ -125,6 +127,62 @@ function Counter() {
 ```
 
 If your model needs constructor arguments, pass a factory function to `useModel` that creates the instance.
+
+#### `useAsyncComputed`
+
+`useAsyncComputed` creates an async computed for the component and disposes it on unmount. Read reactive inputs before the first `await`; signal reads after an `await` are not tracked.
+
+```js
+import { signal, useAsyncComputed } from "@preact/signals-react";
+
+const userId = signal("1");
+
+function User() {
+	const user = useAsyncComputed(async () => {
+		const id = userId.value;
+		const response = await fetch(`/api/users/${id}`);
+		return response.json();
+	});
+
+	if (user.pending.value) return <p>Loading…</p>;
+	return <p>{user.value?.name}</p>;
+}
+```
+
+By default errors are thrown during render for an error boundary. Pass `{ throwOnError: false }` to read `user.error` yourself.
+
+Async computeds also fit directly in models and are disposed with their model. Pass a model-owned instance to the hook when a child should use Suspense; the instance must be created above the boundary so it survives a suspended render.
+
+```js
+import {
+	asyncComputed,
+	createModel,
+	useAsyncComputed,
+	useModel,
+} from "@preact/signals-react";
+import { Suspense } from "react";
+
+const UserModel = createModel(id => ({
+	user: asyncComputed(async () => {
+		const response = await fetch(`/api/users/${id.value}`);
+		return response.json();
+	}),
+}));
+
+function UserPage({ id }) {
+	const model = useModel(() => new UserModel(id));
+	return (
+		<Suspense fallback={<p>Loading…</p>}>
+			<UserDetails model={model} />
+		</Suspense>
+	);
+}
+
+function UserDetails({ model }) {
+	const user = useAsyncComputed(model.user, { suspend: true });
+	return <p>{user.value.name}</p>;
+}
+```
 
 ### Using signals with React's SSR APIs
 
