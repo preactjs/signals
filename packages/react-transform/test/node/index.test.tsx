@@ -1,4 +1,4 @@
-import { transform, traverse } from "@babel/core";
+import { transformSync, traverse } from "@babel/core";
 import type { Visitor } from "@babel/core";
 import type { Scope } from "@babel/traverse";
 import debug from "debug";
@@ -47,9 +47,10 @@ function transformCode(
 		signalsPluginConfig.push(options);
 	}
 
-	const result = transform(code, {
+	const result = transformSync(code, {
 		filename,
-		plugins: [signalsPluginConfig, "@babel/plugin-syntax-jsx"],
+		plugins: [signalsPluginConfig],
+		parserOpts: { plugins: ["jsx"] },
 		sourceType: cjs ? "script" : undefined,
 	});
 
@@ -896,9 +897,10 @@ describe("React Signals Babel Transform", () => {
 
 		function getRootScope(code: string) {
 			const signalsPluginConfig: any[] = [signalsTransform];
-			const result = transform(code, {
+			const result = transformSync(code, {
 				ast: true,
-				plugins: [signalsPluginConfig, "@babel/plugin-syntax-jsx"],
+				plugins: [signalsPluginConfig],
+				parserOpts: { plugins: ["jsx"] },
 			});
 			if (!result) {
 				throw new Error("Could not transform code");
