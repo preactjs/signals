@@ -1,5 +1,13 @@
 # @preact/signals-react-transform
 
+## 0.8.3
+
+### Patch Changes
+
+- [#990](https://github.com/preactjs/signals/pull/990) [`1c086ba`](https://github.com/preactjs/signals/commit/1c086ba9b8401a1694b94d72a12d8fe4ea5ee2b0) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Support Babel 8 by widening the `@babel/core` peer dependency to `^7.0.0 || ^8.0.0`
+
+- [#982](https://github.com/preactjs/signals/pull/982) [`21b481d`](https://github.com/preactjs/signals/commit/21b481df45929b7df69ca2179fe1cd80b23ea863) Thanks [@SisyphusZheng](https://github.com/SisyphusZheng)! - Fix `typeof process` check in the debug logger
+
 ## 0.8.2
 
 ### Patch Changes
