@@ -19,6 +19,7 @@
     "preact": "^10.26.9"
   },
   "devDependencies": {
+    "@babel/core": "^7.28.5",
     "@preact/preset-vite": "^2.3.0",
     "@types/chrome": "^0.0.270",
     "typescript": "^5.8.3",
