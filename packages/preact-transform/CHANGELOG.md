@@ -1,5 +1,11 @@
 # @preact/signals-preact-transform
 
+## 0.1.2
+
+### Patch Changes
+
+- [#990](https://github.com/preactjs/signals/pull/990) [`1c086ba`](https://github.com/preactjs/signals/commit/1c086ba9b8401a1694b94d72a12d8fe4ea5ee2b0) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Support Babel 8 by widening the `@babel/core` peer dependency to `^7.0.0 || ^8.0.0`
+
 ## 0.1.1
 
 ### Patch Changes
