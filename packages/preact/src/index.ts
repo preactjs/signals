@@ -47,6 +47,7 @@ const DEVTOOLS_ENABLED =
 const HAS_PENDING_UPDATE = 1 << 0;
 const HAS_HOOK_STATE = 1 << 1;
 const HAS_COMPUTEDS = 1 << 2;
+const IS_UNMOUNTED = 1 << 3;
 
 let oldNotify: (this: Effect) => void,
 	effectsQueue: Array<Effect> = [],
@@ -390,6 +391,10 @@ hook(OptionsTypes.UNMOUNT, (old, vnode: VNode) => {
 	} else {
 		let component = vnode.__c;
 		if (component) {
+			// Preact 11 defers passive (useEffect) cleanups of unmounted components
+			// until after paint, so useSignalEffect's effect() stays subscribed for
+			// a frame. Flag the owner so queued re-runs become no-ops.
+			component._updateFlags |= IS_UNMOUNTED;
 			const updater = component._updater;
 			if (updater) {
 				component._updater = undefined;
@@ -527,10 +532,12 @@ export function useSignalEffect(
 ) {
 	const callback = useRef(cb);
 	callback.current = cb;
+	const owner = currentComponent;
 
 	useEffect(() => {
 		return effect(function (this: Effect) {
 			this._notify = notifyEffects;
+			if (owner && owner._updateFlags & IS_UNMOUNTED) return;
 			return callback.current();
 		}, options);
 	}, []);
