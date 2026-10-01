@@ -3290,4 +3290,101 @@ describe("createModel", () => {
 			expect(userModel.userId.value).to.equal("user_2");
 		});
 	});
+
+	it("should wrap class prototype methods as actions", () => {
+		let effectRunCount = 0;
+		class Counter {
+			first = signal(0);
+			second = signal(0);
+			incrementBoth() {
+				this.first.value += 1;
+				this.second.value += 1;
+			}
+		}
+
+		const CounterModel = createModel(() => new Counter());
+		const counter = new CounterModel();
+
+		const dispose = effect(() => {
+			effectRunCount++;
+			counter.first.value;
+			counter.second.value;
+		});
+		expect(effectRunCount).to.equal(1);
+
+		counter.incrementBoth();
+		expect(effectRunCount).to.equal(2);
+		dispose();
+	});
+
+	it("should wrap methods inherited from a base class", () => {
+		let effectRunCount = 0;
+		class Base {
+			first = signal(0);
+			setFirst() {
+				this.first.value += 1;
+			}
+		}
+		class Counter extends Base {
+			second = signal(0);
+			incrementBoth() {
+				this.setFirst();
+				this.second.value += 1;
+			}
+		}
+
+		const CounterModel = createModel(() => new Counter());
+		const counter = new CounterModel();
+
+		const dispose = effect(() => {
+			effectRunCount++;
+			counter.first.value;
+			counter.second.value;
+		});
+		expect(effectRunCount).to.equal(1);
+
+		counter.incrementBoth();
+		expect(effectRunCount).to.equal(2);
+		dispose();
+	});
+
+	it("should not track class model actions called inside effects", () => {
+		class Store {
+			input = signal("a");
+			log = signal<string[]>([]);
+			record() {
+				this.log.value = [...this.log.value, this.input.value];
+			}
+		}
+
+		const StoreModel = createModel(() => new Store());
+		const store = new StoreModel();
+
+		let effectRunCount = 0;
+		const dispose = effect(() => {
+			effectRunCount++;
+			store.record();
+		});
+		expect(effectRunCount).to.equal(1);
+
+		// The action's reads are untracked, so the effect does not subscribe to
+		// the signals the action reads/writes and must not self-notify.
+		store.input.value = "b";
+		expect(effectRunCount).to.equal(1);
+		dispose();
+	});
+
+	it("should skip accessor properties instead of crashing on them", () => {
+		const CounterModel = createModel(() => ({
+			count: signal(1),
+			get incrementByTen() {
+				return () => (this.count.value += 10);
+			},
+		}));
+
+		const counter = new CounterModel();
+
+		expect(typeof counter.incrementByTen).to.equal("function");
+		expect(counter.incrementByTen()).to.equal(11);
+	});
 });

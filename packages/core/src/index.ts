@@ -1074,14 +1074,28 @@ function startCapturingEffects(): () => Effect[] | undefined {
 }
 
 const wrapInAction = (value: Record<string, unknown>) => {
-	for (const key in value) {
-		const val = value[key];
-		if (typeof val === "function") {
-			value[key] = action(val as (...args: unknown[]) => unknown);
-		} else if (typeof val === "object" && val !== null && !("brand" in val)) {
-			// Recursively wrap nested object properties in actions. This allows users to write
-			// nested models without worrying about wrapping their functions in `action`.
-			wrapInAction(val as Record<string, unknown>);
+	for (
+		let obj = value;
+		obj && obj !== Object.prototype;
+		obj =
+			Object.prototype.toString.call(value) === "[object Object]" &&
+			Object.getPrototypeOf(obj)
+	) {
+		const descs = Object.getOwnPropertyDescriptors(obj);
+		for (const key in descs) {
+			const val = descs[key].value;
+			if (typeof val === "function") {
+				if (key !== "constructor" && value[key] === val) {
+					value[key] = action(val as (...args: unknown[]) => unknown);
+				}
+			} else if (
+				obj === value &&
+				typeof val === "object" &&
+				val !== null &&
+				!("brand" in val)
+			) {
+				wrapInAction(val as Record<string, unknown>);
+			}
 		}
 	}
 };
