@@ -649,6 +649,29 @@ describe("effect()", () => {
 		expect(spy).toHaveBeenCalledOnce();
 	});
 
+	it("keeps unrelated effects reactive when self-disposal cleanup throws", () => {
+		const source = signal(0);
+		let observed = -1;
+		const stop = effect(() => {
+			observed = source.value;
+		});
+
+		expect(() =>
+			effect(function () {
+				this.dispose();
+				return () => {
+					throw new Error("Cleanup failed");
+				};
+			})
+		).toThrow("Cleanup failed");
+
+		source.value = 1;
+		stop();
+
+		expect(source.value).toBe(1);
+		expect(observed).toBe(1);
+	});
+
 	it("should not run the effect if the cleanup function disposes it", () => {
 		const a = signal(0);
 		const spy = vi.fn();
