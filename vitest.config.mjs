@@ -177,6 +177,17 @@ export default defineConfig({
 				},
 			},
 			{
+				// Re-run the Babel transform tests against Babel 8
+				extends: true,
+				resolve: {
+					alias: [{ find: /^@babel\/core$/, replacement: "@babel/core-8" }],
+				},
+				test: {
+					name: "babel-8",
+					include: ["./packages/*-transform/test/node/**/*.test.tsx"],
+				},
+			},
+			{
 				extends: true,
 				test: {
 					include: ["./packages/**/test/browser/**/*.test.tsx"],

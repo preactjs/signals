@@ -1,5 +1,11 @@
 # @preact/signals
 
+## 2.11.3
+
+### Patch Changes
+
+- [#991](https://github.com/preactjs/signals/pull/991) [`04445ba`](https://github.com/preactjs/signals/commit/04445ba15a095b7f11d5095ad83254bc180b05bc) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Don't re-run a `useSignalEffect` for a component that was unmounted by the same update. Preact 11 disposes it after paint, so the effect could otherwise run once more against an unmounted component.
+
 ## 2.11.2
 
 ### Patch Changes

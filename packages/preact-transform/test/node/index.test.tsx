@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { transform } from "@babel/core";
+import { transformSync } from "@babel/core";
 import prettier from "prettier";
 import signalsTransform, { PluginOptions } from "../../src/index";
 
@@ -16,9 +16,10 @@ function transformCode(
 		signalsPluginConfig.push(options);
 	}
 
-	const result = transform(code, {
+	const result = transformSync(code, {
 		filename,
-		plugins: [signalsPluginConfig, "@babel/plugin-syntax-jsx"],
+		plugins: [signalsPluginConfig],
+		parserOpts: { plugins: ["jsx"] },
 		sourceType: cjs ? "script" : undefined,
 	});
 
