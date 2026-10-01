@@ -317,6 +317,9 @@ declare class Signal<T = any> {
 	/** @internal */
 	_batchSnapshotVersion: number;
 
+	/** @internal */
+	_options?: SignalOptions<T>;
+
 	constructor(value?: T, options?: SignalOptions<T>);
 
 	/** @internal */
@@ -371,12 +374,24 @@ function Signal(this: Signal, value?: unknown, options?: SignalOptions) {
 	this._node = undefined;
 	this._targets = undefined;
 	this._batchSnapshotVersion = 0;
-	this._watched = options?.watched;
-	this._unwatched = options?.unwatched;
-	this.name = options?.name;
+	this._options = options;
+	if (options) this.name = options.name;
 }
 
 Signal.prototype.brand = BRAND_SYMBOL;
+
+Object.defineProperties(Signal.prototype, {
+	_watched: {
+		get(this: Signal) {
+			return this._options?.watched;
+		},
+	},
+	_unwatched: {
+		get(this: Signal) {
+			return this._options?.unwatched;
+		},
+	},
+});
 
 Signal.prototype._refresh = function () {
 	return true;
@@ -897,7 +912,7 @@ function Effect(this: Effect, fn: EffectFn, options?: EffectOptions) {
 	this._sources = undefined;
 	this._nextBatchedEffect = undefined;
 	this._flags = TRACKING;
-	this.name = options?.name;
+	if (options) this.name = options.name;
 
 	if (capturedEffects) {
 		capturedEffects.push(this);
