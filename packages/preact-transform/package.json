@@ -1,6 +1,6 @@
 {
   "name": "@preact/signals-preact-transform",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "license": "MIT",
   "description": "Manage state with style in Preact",
   "keywords": [
@@ -50,10 +50,11 @@
     "debug": "^4.3.4"
   },
   "peerDependencies": {
-    "@babel/core": "^7.0.0"
+    "@babel/core": "^7.0.0 || ^8.0.0"
   },
   "devDependencies": {
     "@babel/core": "^7.28.4",
+    "@babel/core-8": "npm:@babel/core@^8.0.6",
     "@types/babel__core": "^7.20.5",
     "@types/babel__helper-module-imports": "^7.18.3",
     "@types/babel__helper-plugin-utils": "^7.10.3",

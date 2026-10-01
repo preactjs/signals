@@ -1271,6 +1271,35 @@ describe("@preact/signals", () => {
 			expect(cleanup).toHaveBeenCalledOnce();
 			expect(cleanup).toHaveBeenCalledWith("foo", child);
 		});
+		it("should not re-run for a component the same update unmounted", async () => {
+			const sig = signal<{ name: string } | null>({ name: "foo" });
+			const spy = vi.fn();
+
+			function Child() {
+				useSignalEffect(() => {
+					spy(sig.value && sig.value.name);
+				});
+				return <p>{sig.value!.name}</p>;
+			}
+			function App() {
+				return <div>{sig.value ? <Child /> : "none"}</div>;
+			}
+
+			render(<App />, scratch);
+			await sleep(100);
+			expect(spy).toHaveBeenCalledOnce();
+			spy.mockClear();
+
+			// Unmounts Child and notifies its effect. Preact 11 runs the passive
+			// cleanup that disposes the effect after paint, so the queued re-run
+			// must not reach the unmounted component.
+			sig.value = null;
+			rerender();
+			await sleep(150);
+
+			expect(scratch.innerHTML).to.equal("<div>none</div>");
+			expect(spy).not.toHaveBeenCalled();
+		});
 	});
 
 	// TODO: add test when we upgrade lockfile and Preact to latest
