@@ -1097,10 +1097,20 @@ function createModel<TModel, TFactoryArgs extends any[] = []>(
 		try {
 			model = modelFactory(...args) as Model<TModel>;
 		} catch (err) {
-			// Drop any captured effects on error. Errors from nested models will bubble
-			// up here and recursively reset `capturedEffects` to `undefined` preventing
-			// any captured effects from leaking
+			const effects = capturedEffects;
 			capturedEffects = undefined;
+			// Clean up every effect without replacing the factory error.
+			if (effects) {
+				try {
+					batch(() => {
+						for (let i = 0; i < effects.length; i++) {
+							try {
+								effects[i].dispose();
+							} catch {}
+						}
+					});
+				} catch {}
+			}
 			throw err;
 		} finally {
 			modelEffects = stopCapturingEffects();

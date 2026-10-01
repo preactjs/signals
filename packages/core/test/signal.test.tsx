@@ -2732,6 +2732,48 @@ describe("createModel", () => {
 		expect(effectRan).to.equal(true); // Effect runs before error is thrown
 	});
 
+	it("should dispose captured effects when model factory throws", () => {
+		const source = signal(0);
+		const cleanup = vi.fn();
+		const callback = vi.fn(() => {
+			source.value;
+			return cleanup;
+		});
+		const BrokenModel = createModel(() => {
+			effect(callback);
+			throw new Error("Factory error");
+		});
+
+		expect(() => new BrokenModel()).to.throw("Factory error");
+		expect(cleanup).toHaveBeenCalledOnce();
+		source.value++;
+		expect(callback).toHaveBeenCalledOnce();
+	});
+
+	it("should dispose all captured effects even if a cleanup throws", () => {
+		const source = signal(0);
+		const factoryError = new Error("Factory error");
+		const cleanup = vi.fn();
+		const callback = vi.fn(() => {
+			source.value;
+			return cleanup;
+		});
+		const BrokenModel = createModel(() => {
+			effect(() => () => {
+				source.value++;
+				throw new Error("Cleanup error");
+			});
+			effect(callback);
+			throw factoryError;
+		});
+
+		expect(() => new BrokenModel()).to.throw(factoryError);
+		expect(source.value).to.equal(1);
+		expect(cleanup).toHaveBeenCalledOnce();
+		source.value++;
+		expect(callback).toHaveBeenCalledOnce();
+	});
+
 	it("does not capture effects created inside untracked callbacks", () => {
 		let runs = 0;
 		const cleanup = vi.fn();
