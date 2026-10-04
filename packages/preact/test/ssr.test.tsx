@@ -1,7 +1,12 @@
-import { signal, useSignal, useComputed } from "@preact/signals";
+import {
+	signal,
+	useSignal,
+	useComputed,
+	useAsyncComputed,
+} from "@preact/signals";
 import { createElement } from "preact";
 import { renderToString } from "preact-render-to-string";
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 
 const sleep = (ms?: number) => new Promise(r => setTimeout(r, ms));
 
@@ -93,6 +98,17 @@ describe("@preact/signals", () => {
 
 			// @ts-ignore-next-line
 			expect(renderToString(<p id={b}>{a}</p>)).to.equal(`<p id="bye">1</p>`);
+		});
+
+		it("should not start async computed callbacks", () => {
+			const compute = vi.fn(() => Promise.resolve("loaded"));
+			function App() {
+				const result = useAsyncComputed(compute);
+				return <p>{result.value ?? "none"}</p>;
+			}
+
+			expect(renderToString(<App />)).to.equal("<p>none</p>");
+			expect(compute).not.toHaveBeenCalled();
 		});
 
 		it("should render computed signals", () => {
