@@ -3448,4 +3448,205 @@ describe("createModel", () => {
 			expect(userModel.userId.value).to.equal("user_2");
 		});
 	});
+
+	it("should wrap class prototype methods as actions", () => {
+		let effectRunCount = 0;
+		class Counter {
+			first = signal(0);
+			second = signal(0);
+			incrementBoth() {
+				this.first.value += 1;
+				this.second.value += 1;
+			}
+		}
+
+		const CounterModel = createModel(() => new Counter());
+		const counter = new CounterModel();
+
+		const dispose = effect(() => {
+			effectRunCount++;
+			counter.first.value;
+			counter.second.value;
+		});
+		expect(effectRunCount).to.equal(1);
+
+		counter.incrementBoth();
+		expect(effectRunCount).to.equal(2);
+		dispose();
+	});
+
+	it("should wrap methods inherited from a base class", () => {
+		let effectRunCount = 0;
+		class Base {
+			first = signal(0);
+			setFirst() {
+				this.first.value += 1;
+			}
+		}
+		class Counter extends Base {
+			second = signal(0);
+			incrementBoth() {
+				this.setFirst();
+				this.second.value += 1;
+			}
+		}
+
+		const CounterModel = createModel(() => new Counter());
+		const counter = new CounterModel();
+
+		const dispose = effect(() => {
+			effectRunCount++;
+			counter.first.value;
+			counter.second.value;
+		});
+		expect(effectRunCount).to.equal(1);
+
+		counter.incrementBoth();
+		expect(effectRunCount).to.equal(2);
+		dispose();
+	});
+
+	it("should not track class model actions called inside effects", () => {
+		class Store {
+			input = signal("a");
+			log = signal<string[]>([]);
+			record() {
+				this.log.value = [...this.log.value, this.input.value];
+			}
+		}
+
+		const StoreModel = createModel(() => new Store());
+		const store = new StoreModel();
+
+		let effectRunCount = 0;
+		const dispose = effect(() => {
+			effectRunCount++;
+			store.record();
+		});
+		expect(effectRunCount).to.equal(1);
+
+		// The action's reads are untracked, so the effect does not subscribe to
+		// the signals the action reads/writes and must not self-notify.
+		store.input.value = "b";
+		expect(effectRunCount).to.equal(1);
+		dispose();
+	});
+
+	it("should skip accessor properties instead of crashing on them", () => {
+		const CounterModel = createModel(() => ({
+			count: signal(1),
+			get incrementByTen() {
+				return () => (this.count.value += 10);
+			},
+		}));
+
+		const counter = new CounterModel();
+
+		expect(typeof counter.incrementByTen).to.equal("function");
+		expect(counter.incrementByTen()).to.equal(11);
+	});
+
+	it("should leave nested built-ins and signals untouched", () => {
+		const count = signal(0);
+		const doubled = computed(() => count.value * 2);
+		const map = new Map<string, number>();
+		const date = new Date(0);
+		const list = [1, 2];
+		const Model = createModel(() => ({
+			count,
+			doubled,
+			nested: { map, date, list } as any,
+		}));
+
+		const model = new Model();
+
+		expect(model.count).to.equal(count);
+		expect(model.doubled).to.equal(doubled);
+		expect(Object.getOwnPropertyNames(count)).not.to.include("peek");
+		expect(Object.getOwnPropertyNames(doubled)).not.to.include("peek");
+		expect(Object.getOwnPropertyNames(map)).to.deep.equal([]);
+		expect(Object.getOwnPropertyNames(date)).to.deep.equal([]);
+		expect(Object.getOwnPropertyNames(list)).to.deep.equal([
+			"0",
+			"1",
+			"length",
+		]);
+		map.set("a", 1);
+		expect(map.get("a")).to.equal(1);
+	});
+
+	it("should neither invoke nor wrap prototype getters", () => {
+		const getter = vi.fn(() => () => "getter");
+		const method = vi.fn(() => "method");
+		class Base {
+			count = signal(0);
+			read() {
+				return method();
+			}
+		}
+		class Counter extends Base {
+			// @ts-expect-error
+			get read() {
+				return getter();
+			}
+		}
+
+		const CounterModel = createModel(() => new Counter());
+		const counter = new CounterModel();
+
+		expect(getter).not.toHaveBeenCalled();
+		expect(Object.prototype.hasOwnProperty.call(counter, "read")).to.equal(
+			false
+		);
+		expect(counter.read()).to.equal("getter");
+		expect(method).not.toHaveBeenCalled();
+	});
+
+	it("should not replace an own field with a shadowed prototype method", () => {
+		const own = vi.fn();
+		const inherited = vi.fn();
+		const Model = createModel(() =>
+			Object.assign(
+				Object.create({ increment: inherited }) as { increment(): void },
+				{
+					count: signal(0),
+					increment: own,
+				}
+			)
+		);
+
+		const model = new Model();
+		model.increment();
+
+		expect(own).toHaveBeenCalledOnce();
+		expect(inherited).not.toHaveBeenCalled();
+	});
+
+	it("should handle class models with circular references", () => {
+		let effectRunCount = 0;
+		class Child {
+			value = signal(0);
+			constructor(public parent: Parent) {}
+			bump() {
+				this.value.value++;
+				this.parent.total.value++;
+			}
+		}
+		class Parent {
+			total = signal(0);
+			child: Child = new Child(this);
+		}
+
+		const ParentModel = createModel(() => new Parent());
+		const parent = new ParentModel();
+
+		const dispose = effect(() => {
+			effectRunCount++;
+			parent.total.value;
+			parent.child.value.value;
+		});
+		parent.child.bump();
+		expect(effectRunCount).to.equal(2);
+		dispose();
+	});
 });

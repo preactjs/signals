@@ -1076,15 +1076,36 @@ function startCapturingEffects(): () => Effect[] | undefined {
 	};
 }
 
-const wrapInAction = (value: Record<string, unknown>) => {
-	for (const key in value) {
-		const val = value[key];
-		if (typeof val === "function") {
-			value[key] = action(val as (...args: unknown[]) => unknown);
-		} else if (typeof val === "object" && val !== null && !("brand" in val)) {
-			// Recursively wrap nested object properties in actions. This allows users to write
-			// nested models without worrying about wrapping their functions in `action`.
-			wrapInAction(val as Record<string, unknown>);
+const wrapInAction = (value: Record<string, unknown>, visited: object[]) => {
+	visited.push(value);
+	// Leaves built-ins like Map, Date and Array alone.
+	const walkPrototypes =
+		Object.prototype.toString.call(value) === "[object Object]";
+	// Avoids reading `value[key]`, which could run a shadowing getter.
+	const seen: Record<string, boolean> = Object.create(null);
+	for (
+		let obj = value;
+		obj && obj !== Object.prototype;
+		obj = walkPrototypes && Object.getPrototypeOf(obj)
+	) {
+		const descs = Object.getOwnPropertyDescriptors(obj);
+		for (const key in descs) {
+			if (seen[key]) continue;
+			seen[key] = true;
+			const val = descs[key].value;
+			if (typeof val === "function") {
+				if (key !== "constructor") {
+					value[key] = action(val as (...args: unknown[]) => unknown);
+				}
+			} else if (
+				obj === value &&
+				typeof val === "object" &&
+				val !== null &&
+				!("brand" in val) &&
+				visited.indexOf(val) < 0
+			) {
+				wrapInAction(val as Record<string, unknown>, visited);
+			}
 		}
 	}
 };
@@ -1120,7 +1141,7 @@ function createModel<TModel, TFactoryArgs extends any[] = []>(
 			modelEffects = stopCapturingEffects();
 		}
 
-		wrapInAction(model);
+		wrapInAction(model, []);
 
 		model[Symbol.dispose] = action(function disposeModel() {
 			if (modelEffects) {
