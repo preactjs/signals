@@ -3463,4 +3463,32 @@ describe("createModel", () => {
 		expect(own).toHaveBeenCalledOnce();
 		expect(inherited).not.toHaveBeenCalled();
 	});
+
+	it("should handle class models with circular references", () => {
+		let effectRunCount = 0;
+		class Child {
+			value = signal(0);
+			constructor(public parent: Parent) {}
+			bump() {
+				this.value.value++;
+				this.parent.total.value++;
+			}
+		}
+		class Parent {
+			total = signal(0);
+			child: Child = new Child(this);
+		}
+
+		const ParentModel = createModel(() => new Parent());
+		const parent = new ParentModel();
+
+		const dispose = effect(() => {
+			effectRunCount++;
+			parent.total.value;
+			parent.child.value.value;
+		});
+		parent.child.bump();
+		expect(effectRunCount).to.equal(2);
+		dispose();
+	});
 });

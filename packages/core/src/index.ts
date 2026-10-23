@@ -1073,7 +1073,8 @@ function startCapturingEffects(): () => Effect[] | undefined {
 	};
 }
 
-const wrapInAction = (value: Record<string, unknown>) => {
+const wrapInAction = (value: Record<string, unknown>, visited: object[]) => {
+	visited.push(value);
 	// Walk prototypes only for plain objects and class instances, so built-ins
 	// (Map, Date, Array) and classes with a Symbol.toStringTag stay untouched.
 	const walkPrototypes =
@@ -1099,9 +1100,10 @@ const wrapInAction = (value: Record<string, unknown>) => {
 				obj === value &&
 				typeof val === "object" &&
 				val !== null &&
-				!("brand" in val)
+				!("brand" in val) &&
+				visited.indexOf(val) < 0
 			) {
-				wrapInAction(val as Record<string, unknown>);
+				wrapInAction(val as Record<string, unknown>, visited);
 			}
 		}
 	}
@@ -1127,7 +1129,7 @@ function createModel<TModel, TFactoryArgs extends any[] = []>(
 			modelEffects = stopCapturingEffects();
 		}
 
-		wrapInAction(model);
+		wrapInAction(model, []);
 
 		model[Symbol.dispose] = action(function disposeModel() {
 			if (modelEffects) {
