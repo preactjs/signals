@@ -2829,7 +2829,6 @@ describe("createModel", () => {
 			expect(outerEffect.run).toHaveBeenCalledTimes(2);
 			expect(innerEffect.run).toHaveBeenCalledOnce();
 
-			// The failed inner effect was not promoted into the outer model.
 			outer[Symbol.dispose]();
 			expect(outerEffect.dispose()).toHaveBeenCalledOnce();
 			expect(innerEffect.dispose()).toHaveBeenCalledOnce();
