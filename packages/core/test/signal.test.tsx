@@ -3450,7 +3450,7 @@ describe("createModel", () => {
 			}
 		}
 		class Counter extends Base {
-			// @ts-expect-error An accessor shadowing a base class method
+			// @ts-expect-error
 			get read() {
 				return getter();
 			}

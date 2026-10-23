@@ -286,7 +286,7 @@ console.log(counter.doubled.value);
 counter[Symbol.dispose]();
 ```
 
-The factory can accept constructor arguments, and every method returned from it is automatically wrapped as an action so updates stay batched and untracked. Effects created while constructing the model are captured and disposed when you call `model[Symbol.dispose]()`. Models can also contain nested objects as long as they only expose signals and methods. The factory may also return a class instance: every method on its prototype chain (including `toString` or `toJSON`) is wrapped as an action too, so a getter-style method such as `total()` called inside a `computed` does not subscribe to the signals it reads. Wrapped methods are not auto-bound, so call them as `model.method()` rather than passing them around detached.
+The factory can accept constructor arguments, and every method returned from it is automatically wrapped as an action so updates stay batched and untracked. Effects created while constructing the model are captured and disposed when you call `model[Symbol.dispose]()`. Models can also contain nested objects as long as they only expose signals and methods. Class instances work too: their prototype methods (including `toString`/`toJSON`) are wrapped as actions, and are not auto-bound.
 
 ## License
 
