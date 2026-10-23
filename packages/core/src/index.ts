@@ -845,10 +845,13 @@ function endEffect(this: Effect, prevContext?: Computed | Effect) {
 	evalContext = prevContext;
 
 	this._flags &= ~RUNNING;
-	if (this._flags & DISPOSED) {
-		disposeEffect(this);
+	try {
+		if (this._flags & DISPOSED) {
+			disposeEffect(this);
+		}
+	} finally {
+		endBatch();
 	}
-	endBatch();
 }
 
 type EffectFn =
