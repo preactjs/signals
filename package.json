@@ -28,7 +28,7 @@
     "postbuild:vite-plugin": "node ./tools/postbuild-vite-plugin.mjs",
     "postbuild:devtools-ui": "shx mv -f packages/devtools-ui/dist/devtools-ui/src/index.d.ts packages/devtools-ui/dist/devtools-ui.d.ts && shx cp packages/devtools-ui/src/styles.css packages/devtools-ui/dist/styles.css && shx rm -rf packages/devtools-ui/dist/devtools-ui",
     "lint": "pnpm lint:oxlint && pnpm lint:tsc",
-    "lint:oxlint": "oxlint 'packages/**/*.{ts,tsx,js,jsx}'",
+    "lint:oxlint": "oxlint packages",
     "lint:tsc": "tsc -p tsconfig.json --noEmit",
     "nano-staged": "nano-staged",
     "test": "pnpm test:vitest",

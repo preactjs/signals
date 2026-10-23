@@ -32,7 +32,6 @@ import {
 import type { PerformanceObservation } from "../../src/models/UpdatesModel";
 import type {
 	DevToolsAdapter,
-	Settings,
 	ConnectionStatus,
 	DependencyInfo,
 } from "@preact/signals-devtools-adapter";
@@ -1411,15 +1410,16 @@ describe("@preact/signals-devtools-ui", () => {
 		});
 
 		it("reports no hotspots when no instance reaches 2x the median", () => {
-			const observations: PerformanceObservation[] = [
-				...Array.from({ length: 3 }, (_, i) => ({
+			const observations: PerformanceObservation[] = Array.from(
+				{ length: 3 },
+				(_, i) => ({
 					type: "update" as const,
 					signalType: "signal" as const,
 					signalName: "even",
 					signalId: `signal-${i}`,
 					receivedAt: i,
-				})),
-			];
+				})
+			);
 
 			const insights = derivePerformanceInsights(observations);
 			expect(insights.hotspotPopulation).to.equal(3);
@@ -1779,7 +1779,6 @@ describe("@preact/signals-devtools-ui", () => {
 
 		it("should create nodes from allDependencies even if dependency never updated", () => {
 			initDevTools(mockAdapter);
-			const context = getContext();
 
 			// Simulate an update where a computed depends on signals that never sent updates themselves
 			// This tests the key feature: allDependencies with rich info allows graph to show
@@ -1823,7 +1822,6 @@ describe("@preact/signals-devtools-ui", () => {
 
 		it("should create nodes with correct types from allDependencies", () => {
 			initDevTools(mockAdapter);
-			const context = getContext();
 
 			// Test with mixed dependency types (signal and computed)
 			const updateWithMixedDeps = {

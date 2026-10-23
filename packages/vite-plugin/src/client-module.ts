@@ -87,7 +87,7 @@ function describeTarget(target) {
 	const parts = [target.tagName.toLowerCase()];
 	if (target.id) parts.push('#' + target.id);
 	if (typeof target.className === 'string' && target.className.trim()) {
-		parts.push('.' + target.className.trim().split(/\s+/).slice(0, 3).join('.'));
+		parts.push('.' + target.className.trim().split(/\\s+/).slice(0, 3).join('.'));
 	}
 	const name = target.getAttribute('name');
 	if (name) parts.push('[name="' + name + '"]');

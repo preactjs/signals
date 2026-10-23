@@ -64,7 +64,7 @@ export function formatReactElement(obj: any): string {
 	return hasProps ? `<${typeName} {...} />` : `<${typeName} />`;
 }
 
-export function formatValue(value: any, depth = 0): string {
+export function formatValue(value: any, _depth = 0): string {
 	// Fast path for primitives - most common case
 	if (value === null) return "null";
 	if (value === undefined) return "undefined";

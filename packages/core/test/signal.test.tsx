@@ -2718,7 +2718,7 @@ describe("createModel", () => {
 			async incrementAsync(): Promise<void> {
 				this.count.value += 1;
 			},
-			log(message: string): void {},
+			log(_message: string): void {},
 		}));
 
 		const model = new MultiActionModel();

@@ -1,0 +1,21 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "rules": {
+    "no-unused-expressions": "off",
+    "typescript/no-this-alias": "off",
+    "unicorn/no-new-array": "off",
+    "no-unused-vars": [
+      "warn",
+      {
+        "varsIgnorePattern": "^_|^(createElement|Fragment)$",
+        "argsIgnorePattern": "^_"
+      }
+    ]
+  },
+  "overrides": [
+    {
+      "files": ["**/test/**"],
+      "rules": { "unicorn/no-thenable": "off" }
+    }
+  ]
+}
