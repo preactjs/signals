@@ -3387,4 +3387,80 @@ describe("createModel", () => {
 		expect(typeof counter.incrementByTen).to.equal("function");
 		expect(counter.incrementByTen()).to.equal(11);
 	});
+
+	it("should leave nested built-ins and signals untouched", () => {
+		const count = signal(0);
+		const doubled = computed(() => count.value * 2);
+		const map = new Map<string, number>();
+		const date = new Date(0);
+		const list = [1, 2];
+		const Model = createModel(() => ({
+			count,
+			doubled,
+			nested: { map, date, list } as any,
+		}));
+
+		const model = new Model();
+
+		expect(model.count).to.equal(count);
+		expect(model.doubled).to.equal(doubled);
+		expect(Object.getOwnPropertyNames(count)).not.to.include("peek");
+		expect(Object.getOwnPropertyNames(doubled)).not.to.include("peek");
+		expect(Object.getOwnPropertyNames(map)).to.deep.equal([]);
+		expect(Object.getOwnPropertyNames(date)).to.deep.equal([]);
+		expect(Object.getOwnPropertyNames(list)).to.deep.equal([
+			"0",
+			"1",
+			"length",
+		]);
+		map.set("a", 1);
+		expect(map.get("a")).to.equal(1);
+	});
+
+	it("should neither invoke nor wrap prototype getters", () => {
+		const getter = vi.fn(() => () => "getter");
+		const method = vi.fn(() => "method");
+		class Base {
+			count = signal(0);
+			read() {
+				return method();
+			}
+		}
+		class Counter extends Base {
+			// @ts-expect-error An accessor shadowing a base class method
+			get read() {
+				return getter();
+			}
+		}
+
+		const CounterModel = createModel(() => new Counter());
+		const counter = new CounterModel();
+
+		expect(getter).not.toHaveBeenCalled();
+		expect(Object.prototype.hasOwnProperty.call(counter, "read")).to.equal(
+			false
+		);
+		expect(counter.read()).to.equal("getter");
+		expect(method).not.toHaveBeenCalled();
+	});
+
+	it("should not replace an own field with a shadowed prototype method", () => {
+		const own = vi.fn();
+		const inherited = vi.fn();
+		const Model = createModel(() =>
+			Object.assign(
+				Object.create({ increment: inherited }) as { increment(): void },
+				{
+					count: signal(0),
+					increment: own,
+				}
+			)
+		);
+
+		const model = new Model();
+		model.increment();
+
+		expect(own).toHaveBeenCalledOnce();
+		expect(inherited).not.toHaveBeenCalled();
+	});
 });

@@ -1074,18 +1074,25 @@ function startCapturingEffects(): () => Effect[] | undefined {
 }
 
 const wrapInAction = (value: Record<string, unknown>) => {
+	// Walk prototypes only for plain objects and class instances, so built-ins
+	// (Map, Date, Array) and classes with a Symbol.toStringTag stay untouched.
+	const walkPrototypes =
+		Object.prototype.toString.call(value) === "[object Object]";
+	// Skip keys already seen at a shallower level instead of reading
+	// `value[key]`, so a shadowing getter is never invoked.
+	const seen: Record<string, boolean> = Object.create(null);
 	for (
 		let obj = value;
 		obj && obj !== Object.prototype;
-		obj =
-			Object.prototype.toString.call(value) === "[object Object]" &&
-			Object.getPrototypeOf(obj)
+		obj = walkPrototypes && Object.getPrototypeOf(obj)
 	) {
 		const descs = Object.getOwnPropertyDescriptors(obj);
 		for (const key in descs) {
+			if (seen[key]) continue;
+			seen[key] = true;
 			const val = descs[key].value;
 			if (typeof val === "function") {
-				if (key !== "constructor" && value[key] === val) {
+				if (key !== "constructor") {
 					value[key] = action(val as (...args: unknown[]) => unknown);
 				}
 			} else if (
