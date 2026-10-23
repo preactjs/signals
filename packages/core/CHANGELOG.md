@@ -1,5 +1,15 @@
 # @preact/signals-core
 
+## 1.14.5
+
+### Patch Changes
+
+- [#987](https://github.com/preactjs/signals/pull/987) [`7528bce`](https://github.com/preactjs/signals/commit/7528bce29fe457ae5bcff740cece8b703a651681) Thanks [@SisyphusZheng](https://github.com/SisyphusZheng)! - Dispose captured effects when a `createModel` factory throws.
+
+- [#988](https://github.com/preactjs/signals/pull/988) [`500b790`](https://github.com/preactjs/signals/commit/500b7904ebd409471beba7e5ca923a0548ead9ba) Thanks [@SisyphusZheng](https://github.com/SisyphusZheng)! - End the batch when a self-disposing effect's cleanup throws.
+
+- [#984](https://github.com/preactjs/signals/pull/984) [`19e6e73`](https://github.com/preactjs/signals/commit/19e6e73a673484f3347e36bc1f569cec8baecd97) Thanks [@SisyphusZheng](https://github.com/SisyphusZheng)! - Fix `createModel` to also wrap class prototype methods as actions. This includes `toString`/`toJSON`, and the actions are not auto-bound.
+
 ## 1.14.4
 
 ### Patch Changes
