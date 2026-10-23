@@ -1098,8 +1098,13 @@ function createModel<TModel, TFactoryArgs extends any[] = []>(
 			model = modelFactory(...args) as Model<TModel>;
 		} catch (err) {
 			const effects = capturedEffects;
+			// Clearing the scope keeps stopCapturingEffects() from concatenating
+			// these (now disposed) effects into a parent model's capture scope.
 			capturedEffects = undefined;
-			// Clean up every effect without replacing the factory error.
+			// Dispose every effect and keep the factory error as the one thrown.
+			// The outer catch drops errors from effects outside this model that
+			// re-run when the batch flushes (because a cleanup wrote a signal),
+			// as endBatch() itself only rethrows the first of several errors.
 			if (effects) {
 				try {
 					batch(() => {

@@ -2774,6 +2774,100 @@ describe("createModel", () => {
 		expect(callback).toHaveBeenCalledOnce();
 	});
 
+	it("should keep the factory error when an effect re-run by disposal throws", () => {
+		const source = signal(0);
+		const factoryError = new Error("Factory error");
+		const dispose = effect(() => {
+			if (source.value > 0) throw new Error("Unrelated effect error");
+		});
+		const BrokenModel = createModel(() => {
+			effect(() => () => {
+				source.value++;
+			});
+			throw factoryError;
+		});
+
+		expect(() => new BrokenModel()).to.throw(factoryError);
+		expect(source.value).to.equal(1);
+		dispose();
+	});
+
+	describe("nested model factory errors", () => {
+		function spiedEffect(source: Signal<number>) {
+			const run = vi.fn();
+			let disposeSpy: ReturnType<typeof vi.fn> | undefined;
+			effect(function (this: { dispose: () => void }) {
+				disposeSpy ??= vi.spyOn(this, "dispose") as any;
+				source.value;
+				run();
+			});
+			return { run, dispose: () => disposeSpy! };
+		}
+
+		it("keeps the outer model's effects alive when it catches the inner error", () => {
+			const source = signal(0);
+			let outerEffect!: ReturnType<typeof spiedEffect>;
+			let innerEffect!: ReturnType<typeof spiedEffect>;
+
+			const InnerModel = createModel(() => {
+				innerEffect = spiedEffect(source);
+				throw new Error("Inner error");
+			});
+			const OuterModel = createModel(() => {
+				outerEffect = spiedEffect(source);
+				try {
+					new InnerModel();
+				} catch {}
+				return {};
+			});
+
+			const outer = new OuterModel();
+			expect(innerEffect.dispose()).toHaveBeenCalledOnce();
+			expect(outerEffect.dispose()).not.toHaveBeenCalled();
+
+			source.value++;
+			expect(outerEffect.run).toHaveBeenCalledTimes(2);
+			expect(innerEffect.run).toHaveBeenCalledOnce();
+
+			// The failed inner effect was not promoted into the outer model.
+			outer[Symbol.dispose]();
+			expect(outerEffect.dispose()).toHaveBeenCalledOnce();
+			expect(innerEffect.dispose()).toHaveBeenCalledOnce();
+		});
+
+		it("disposes every effect exactly once when the outer model rethrows", () => {
+			const source = signal(0);
+			let outerEffect!: ReturnType<typeof spiedEffect>;
+			let siblingEffect!: ReturnType<typeof spiedEffect>;
+			let innerEffect!: ReturnType<typeof spiedEffect>;
+
+			const SiblingModel = createModel(() => {
+				siblingEffect = spiedEffect(source);
+				return {};
+			});
+			const InnerModel = createModel(() => {
+				innerEffect = spiedEffect(source);
+				throw new Error("Inner error");
+			});
+			const OuterModel = createModel(() => {
+				outerEffect = spiedEffect(source);
+				new SiblingModel();
+				new InnerModel();
+				return {};
+			});
+
+			expect(() => new OuterModel()).to.throw("Inner error");
+			expect(outerEffect.dispose()).toHaveBeenCalledOnce();
+			expect(siblingEffect.dispose()).toHaveBeenCalledOnce();
+			expect(innerEffect.dispose()).toHaveBeenCalledOnce();
+
+			source.value++;
+			expect(outerEffect.run).toHaveBeenCalledOnce();
+			expect(siblingEffect.run).toHaveBeenCalledOnce();
+			expect(innerEffect.run).toHaveBeenCalledOnce();
+		});
+	});
+
 	it("does not capture effects created inside untracked callbacks", () => {
 		let runs = 0;
 		const cleanup = vi.fn();
