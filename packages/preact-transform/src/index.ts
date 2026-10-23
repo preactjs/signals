@@ -228,7 +228,7 @@ export default function signalsTransform(
 	return {
 		name: "@preact/signals-transform",
 		visitor: {
-			CallExpression(path, state) {
+			CallExpression(path) {
 				// Handle signal naming
 				if (isEnabled && isSignalCall(path)) {
 					const args = path.get("arguments");

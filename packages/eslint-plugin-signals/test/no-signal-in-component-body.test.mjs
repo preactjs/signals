@@ -1,5 +1,4 @@
 import { describe, it } from "node:test";
-import assert from "node:assert/strict";
 import { RuleTester } from "eslint";
 import rule from "../src/rules/no-signal-in-component-body.mjs";
 
