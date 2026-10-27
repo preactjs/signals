@@ -1,4 +1,10 @@
-import { options, Component, isValidElement, Fragment } from "preact";
+import {
+	options,
+	Component,
+	createElement,
+	isValidElement,
+	Fragment,
+} from "preact";
 import { useRef, useMemo, useEffect } from "preact/hooks";
 import {
 	signal,
@@ -178,7 +184,10 @@ function SignalValue(this: AugmentedComponent, { data }: { data: Signal }) {
 SignalValue.displayName = "ReactiveTextNode";
 
 Object.defineProperties(Signal.prototype, {
-	constructor: { configurable: true, value: undefined },
+	constructor: {
+		configurable: true,
+		value: createElement(Fragment, null).constructor,
+	},
 	type: { configurable: true, value: SignalValue },
 	props: {
 		configurable: true,
