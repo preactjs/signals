@@ -9,6 +9,7 @@ import {
 import type { ReadonlySignal } from "@preact/signals";
 import {
 	createElement,
+	isValidElement,
 	createRef,
 	render,
 	createContext,
@@ -42,6 +43,29 @@ describe("@preact/signals", () => {
 		it("should have computed inherit from Signal", () => {
 			expect(computed(() => 0)).to.be.instanceof(Signal);
 		});
+	});
+
+	it("should use Preact's VNode marker for signals and computeds", () => {
+		const count = signal(2);
+		const doubled = computed(() => count.value * 2);
+		const marker = createElement("span", null).constructor;
+
+		expect(count.constructor).to.equal(marker);
+		expect(doubled.constructor).to.equal(marker);
+		expect(isValidElement(count)).to.equal(true);
+		expect(isValidElement(doubled)).to.equal(true);
+
+		render(
+			<div>
+				{count}/{doubled}
+			</div>,
+			scratch
+		);
+		expect(scratch.textContent).to.equal("2/4");
+		act(() => {
+			count.value = 3;
+		});
+		expect(scratch.textContent).to.equal("3/6");
 	});
 
 	describe("SignalValue bindings", () => {
