@@ -1,5 +1,11 @@
 # @preact/signals-agent-vite
 
+## 0.1.4
+
+### Patch Changes
+
+- [#993](https://github.com/preactjs/signals/pull/993) [`07b53ad`](https://github.com/preactjs/signals/commit/07b53ade31e7f7a0849d0614e7c182a50559b018) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Fix the injected client splitting element class names on the letter `s` instead of whitespace.
+
 ## 0.1.3
 
 ### Patch Changes
