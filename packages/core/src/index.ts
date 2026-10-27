@@ -48,32 +48,35 @@ function endBatch() {
 	let hasError = false;
 	reconcileBatchSnapshots();
 
-	while (batchedEffect !== undefined) {
-		let effect: Effect | undefined = batchedEffect;
-		batchedEffect = undefined;
+	try {
+		while (batchedEffect !== undefined) {
+			let effect: Effect | undefined = batchedEffect;
+			batchedEffect = undefined;
 
-		batchIteration++;
+			batchIteration++;
 
-		while (effect !== undefined) {
-			const next: Effect | undefined = effect._nextBatchedEffect;
-			effect._nextBatchedEffect = undefined;
-			effect._flags &= ~NOTIFIED;
+			while (effect !== undefined) {
+				const next: Effect | undefined = effect._nextBatchedEffect;
+				effect._nextBatchedEffect = undefined;
+				effect._flags &= ~NOTIFIED;
 
-			if (!(effect._flags & DISPOSED) && needsToRecompute(effect)) {
 				try {
-					effect._callback();
+					if (!(effect._flags & DISPOSED) && needsToRecompute(effect)) {
+						effect._callback();
+					}
 				} catch (err) {
 					if (!hasError) {
 						error = err;
 						hasError = true;
 					}
 				}
+				effect = next;
 			}
-			effect = next;
 		}
+	} finally {
+		batchIteration = 0;
+		batchDepth--;
 	}
-	batchIteration = 0;
-	batchDepth--;
 
 	if (hasError) {
 		throw error;
@@ -565,6 +568,8 @@ function prepareSources(target: Computed | Effect) {
 function cleanupSources(target: Computed | Effect) {
 	let node = target._sources;
 	let head: Node | undefined = undefined;
+	let error: unknown;
+	let hasError = false;
 
 	/**
 	 * At this point 'target._sources' points to the tail of the doubly-linked list.
@@ -583,7 +588,16 @@ function cleanupSources(target: Computed | Effect) {
 		 *    { A <-> C }
 		 */
 		if (node._version === -1) {
-			node._source._unsubscribe(node);
+			// An unwatched callback may throw. Finish unlinking the remaining nodes
+			// first so the dependency list stays consistent, then rethrow below.
+			try {
+				node._source._unsubscribe(node);
+			} catch (err) {
+				if (!hasError) {
+					error = err;
+					hasError = true;
+				}
+			}
 
 			if (prev !== undefined) {
 				prev._nextSource = node._nextSource;
@@ -614,6 +628,10 @@ function cleanupSources(target: Computed | Effect) {
 	}
 
 	target._sources = head;
+
+	if (hasError) {
+		throw error;
+	}
 }
 
 /**
@@ -666,34 +684,44 @@ Computed.prototype._refresh = function () {
 	// Mark this computed signal running before checking the dependencies for value
 	// changes, so that the RUNNING flag can be used to notice cyclical dependencies.
 	this._flags |= RUNNING;
-	if (this._version > 0 && !needsToRecompute(this)) {
-		this._flags &= ~RUNNING;
-		return true;
-	}
-
 	const prevContext = evalContext;
 	try {
-		prepareSources(this);
-		evalContext = this;
-		const value = this._fn();
-		if (
-			this._flags & HAS_ERROR ||
-			this._value !== value ||
-			this._version === 0
-		) {
-			this._value = value;
-			this._flags &= ~HAS_ERROR;
+		if (this._version > 0 && !needsToRecompute(this)) {
+			return true;
+		}
+
+		try {
+			prepareSources(this);
+			evalContext = this;
+			const value = this._fn();
+			if (
+				this._flags & HAS_ERROR ||
+				this._value !== value ||
+				this._version === 0
+			) {
+				this._value = value;
+				this._flags &= ~HAS_ERROR;
+				this._version++;
+			}
+		} catch (err) {
+			this._value = err;
+			this._flags |= HAS_ERROR;
 			this._version++;
 		}
+		evalContext = prevContext;
+		cleanupSources(this);
+		return true;
 	} catch (err) {
-		this._value = err;
-		this._flags |= HAS_ERROR;
-		this._version++;
+		// The refresh was interrupted outside the computation itself, e.g. by an
+		// engine error or a throwing (un)watched callback. Make the next read
+		// check the dependencies again instead of trusting the cached state.
+		this._flags |= OUTDATED;
+		this._globalVersion = globalVersion - 1;
+		throw err;
+	} finally {
+		evalContext = prevContext;
+		this._flags &= ~RUNNING;
 	}
-	evalContext = prevContext;
-	cleanupSources(this);
-	this._flags &= ~RUNNING;
-	return true;
 };
 
 Computed.prototype._subscribe = function (node) {
@@ -841,16 +869,19 @@ function endEffect(this: Effect, prevContext?: Computed | Effect) {
 	if (evalContext !== this) {
 		throw new Error("Out-of-order effect");
 	}
-	cleanupSources(this);
-	evalContext = prevContext;
-
-	this._flags &= ~RUNNING;
 	try {
-		if (this._flags & DISPOSED) {
-			disposeEffect(this);
-		}
+		cleanupSources(this);
 	} finally {
-		endBatch();
+		evalContext = prevContext;
+
+		this._flags &= ~RUNNING;
+		try {
+			if (this._flags & DISPOSED) {
+				disposeEffect(this);
+			}
+		} finally {
+			endBatch();
+		}
 	}
 }
 
