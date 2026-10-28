@@ -181,6 +181,42 @@ function App() {
 }
 ```
 
+The rendered items are cached by their value. Re-rendering the parent does not replace the render callback for an item already in the cache, so changes to ordinary props or state captured by that callback do not update existing items. For a list that should follow every parent render, use the array's `.map()` method instead.
+
+To update cached items, pass signals to an item component and read them there:
+
+```js
+import { For } from "@preact/signals/utils";
+import { useSignal } from "@preact/signals";
+
+function App() {
+	const items = useSignal(["A", "B", "C"]);
+	const showDetails = useSignal(false);
+
+	return (
+		<div>
+			<button onClick={() => (showDetails.value = !showDetails.value)}>
+				Toggle details
+			</button>
+			<For each={items}>
+				{item => <Item item={item} showDetails={showDetails} />}
+			</For>
+		</div>
+	);
+}
+
+function Item({ item, showDetails }) {
+	return (
+		<p>
+			{item}
+			{showDetails.value && " — details"}
+		</p>
+	);
+}
+```
+
+Reading `showDetails.value` inside `Item` subscribes that component to the signal, so toggling it updates existing items without replacing the list.
+
 #### Additional Hooks
 
 ##### useLiveSignal
