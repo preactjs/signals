@@ -46,6 +46,36 @@ The package automatically enhances signals with debugging capabilities:
 4. **Update Grouping**: Groups related updates for better visualization
 5. **Performance Stats**: Provides active trackers and subscriptions count
 
+## Effect initialization warnings
+
+Effects execute immediately, while computeds evaluate lazily. Creating a model
+inside a computed can therefore start an effect while that computed is still
+running. If the effect reads an enclosing computed, the read throws
+`Cycle detected`. Which value is read first can determine whether this happens,
+so the same construction pattern can appear to work until the read order changes.
+
+Debug warns when an effect's first observed execution occurs during computed
+evaluation, even if that particular execution does not cause a cycle:
+
+```text
+[signals-debug] Effect first observed during computed evaluation
+summary [computed] → items [computed] → observeItem [effect]
+```
+
+The warning includes a structured `effect-in-computed` diagnostic with the
+execution path's names, IDs, and node types, plus a stack captured at the effect's
+first observed execution. This is execution ancestry, not a complete dependency
+graph or the exact read that closes a cycle. Import debug before creating effects;
+when imported later, their first observed execution may be a rerun.
+
+`untracked()` does not hide this ancestry: it disables dependency tracking, but
+an enclosing computed is still evaluating. Consider keeping models constructed
+inside computeds passive and moving effect initialization to an explicit owner
+outside the computed, with appropriate disposal.
+
+Warnings respect `enabled` and `consoleLogging`. They do not force computed reads,
+add subscriptions, defer effects, or replace core's cycle error.
+
 ## API Reference
 
 ### `setDebugOptions(options)`
@@ -56,6 +86,7 @@ Configure debugging behavior:
 setDebugOptions({
 	grouped?: boolean;  // Enable/disable update grouping in console
 	enabled?: boolean;  // Enable/disable debugging entirely
+	consoleLogging?: boolean; // Enable/disable console updates and warnings
 	spacing?: number;   // Number of spaces for nested update indentation, this can be handy in non-browser environments
 });
 ```
