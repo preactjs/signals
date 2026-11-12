@@ -1234,8 +1234,9 @@ export function asyncComputed<T>(
 			facade.failed.value = failed;
 			settled.value = true;
 			pending.value = false;
+			// Finish before consumers can synchronously start another run.
+			finishSettlement();
 		});
-		finishSettlement();
 	}
 
 	const dispose = effect(
