@@ -420,6 +420,10 @@ hook(OptionsTypes.UNMOUNT, (old, vnode: VNode) => {
 	old(vnode);
 });
 
+// Preact can flush pending hook effects while a component is rendering,
+// those effects must not subscribe that component.
+hook(OptionsTypes.FLUSH_EFFECTS, old => untracked(old));
+
 /** Mark components that use hook state so we can skip sCU optimization. */
 hook(OptionsTypes.HOOK, (old, component, index, type) => {
 	if (type < 3)
