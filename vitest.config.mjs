@@ -193,8 +193,43 @@ export default defineConfig({
 					include: ["./packages/**/test/browser/**/*.test.tsx"],
 					exclude: [
 						"./packages/devtools-ui/test/browser/**/*.test.tsx",
+						"./packages/preact/test/browser/**/*.test.tsx",
 						"**/node_modules/**",
 					],
+					browser: {
+						provider: playwright(),
+						enabled: true,
+						screenshotFailures: false,
+						headless: true,
+						instances: [{ browser: "chromium" }],
+					},
+				},
+			},
+			{
+				extends: true,
+				test: {
+					name: "preact",
+					include: ["./packages/preact/test/browser/**/*.test.tsx"],
+					exclude: [
+						"./packages/preact/test/browser/compat/**",
+						"**/node_modules/**",
+					],
+					isolate: true,
+					browser: {
+						provider: playwright(),
+						enabled: true,
+						screenshotFailures: false,
+						headless: true,
+						instances: [{ browser: "chromium" }],
+					},
+				},
+			},
+			{
+				extends: true,
+				test: {
+					name: "preact-compat",
+					include: ["./packages/preact/test/browser/compat/**/*.test.tsx"],
+					isolate: true,
 					browser: {
 						provider: playwright(),
 						enabled: true,
