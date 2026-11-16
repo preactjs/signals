@@ -28,8 +28,6 @@ function track<T>(dependency: unknown, value: T): T {
 	return value;
 }
 
-// Compat installs global Preact hooks. Keep these tests in their own browser
-// project so ordinary Preact coverage never runs with those hooks installed.
 describe("useAsyncComputed with compat", () => {
 	let scratch: HTMLDivElement;
 

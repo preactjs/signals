@@ -215,7 +215,6 @@ export default defineConfig({
 						"**/node_modules/**",
 					],
 					isolate: true,
-					setupFiles: ["./packages/preact/test/browser/no-compat.ts"],
 					browser: {
 						provider: playwright(),
 						enabled: true,
