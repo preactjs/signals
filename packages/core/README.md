@@ -31,7 +31,7 @@ The signals library exposes a small set of primitives you can use to model every
 
 ### `signal(initialValue)`
 
-The `signal` function creates a new signal. A signal is a container for a value that can change over time. You can read a signal's value or subscribe to value updates by accessing its `.value` property.
+The `signal` function creates a new signal. A signal is a container for a value that can change over time. You read a signal's value by accessing its `.value` property. Reading `.value` inside an [effect](#effectfn), a [computed](#computedfn), or a component render also subscribes to the signal, so that code re-runs when the value changes. Anywhere else, such as in an event handler or an async callback, reading `.value` is just a plain read.
 
 ```js
 import { signal } from "@preact/signals-core";
@@ -67,7 +67,7 @@ The `name` option will be used in the `@preact/signals-debug` package to provide
 
 #### `signal.peek()`
 
-In the rare instance that you have an effect that should write to another signal based on the previous value, but you _don't_ want the effect to be subscribed to that signal, you can read a signals's previous value via `signal.peek()`.
+In the rare instance that you have an effect that should write to another signal based on its current value, but you _don't_ want the effect to be subscribed to that signal, you can read the signal's current value without subscribing via `signal.peek()`.
 
 ```js
 const counter = signal(0);
@@ -82,7 +82,7 @@ effect(() => {
 });
 ```
 
-Note that you should only use `signal.peek()` if you really need it. Reading a signal's value via `signal.value` is the preferred way in most scenarios.
+Note that you should only use `signal.peek()` if you really need it. Outside of an effect, a computed, or a component render, `.peek()` behaves the same as `.value`, since nothing is tracking the read. Reading a signal's value via `signal.value` is the preferred way in most scenarios.
 
 ### `computed(fn)`
 
@@ -276,7 +276,7 @@ batch(() => {
 
 ### `untracked(fn)`
 
-In case when you're receiving a callback that can read some signals, but you don't want to subscribe to them, you can use `untracked` to prevent any subscriptions from happening.
+When you call a function inside a tracked context (like an [effect](#effectfn) or a [computed](#computedfn)) and that function reads some signals you don't want to subscribe to, wrap the call in `untracked` to prevent any subscriptions from happening. Outside a tracked context there's nothing to prevent, so you don't need `untracked`.
 
 ```js
 const counter = signal(0);
