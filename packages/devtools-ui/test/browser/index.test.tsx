@@ -447,6 +447,25 @@ describe("@preact/signals-devtools-ui", () => {
 			expect(header).to.not.be.null;
 		});
 
+		it("should apply the stored theme on first render", () => {
+			destroyDevTools();
+			localStorage.setItem("signals-devtools-theme", "dark");
+			try {
+				initDevTools(mockAdapter);
+				render(<DevToolsPanel />, scratch);
+
+				const panel = scratch.querySelector<HTMLElement>(".signals-devtools")!;
+				expect(panel.dataset.theme).to.equal("dark");
+
+				act(() => {
+					getContext().themeStore.theme.value = "light";
+				});
+				expect(panel.dataset.theme).to.equal("light");
+			} finally {
+				localStorage.removeItem("signals-devtools-theme");
+			}
+		});
+
 		it("should hide header when hideHeader is true", () => {
 			render(<DevToolsPanel hideHeader />, scratch);
 
@@ -850,6 +869,26 @@ describe("@preact/signals-devtools-ui", () => {
 
 			unmount();
 			container.remove();
+		});
+
+		it("should apply the theme when mounted inside a shadow root", async () => {
+			destroyDevTools();
+			localStorage.setItem("signals-devtools-theme", "dark");
+			const host = document.createElement("div");
+			document.body.appendChild(host);
+			const container = document.createElement("div");
+			host.attachShadow({ mode: "open" }).appendChild(container);
+
+			try {
+				const unmount = await mount({ adapter: mockAdapter, container });
+				const panel =
+					container.querySelector<HTMLElement>(".signals-devtools")!;
+				expect(panel.dataset.theme).to.equal("dark");
+				unmount();
+			} finally {
+				localStorage.removeItem("signals-devtools-theme");
+				host.remove();
+			}
 		});
 
 		it("should call adapter.connect on mount", async () => {
