@@ -53,6 +53,38 @@ export {
 	untracked,
 };
 
+import {
+	isBindingTrackingEnabled,
+	rememberBindingSignal,
+	originalBindingSignal,
+	trackDomBinding,
+	type BindingHandle,
+} from "./dom-bindings";
+export { unstable_startDomBindingTracking } from "./dom-bindings";
+export type { DomBinding, DomBindingSource } from "./dom-bindings";
+
+const textBindings = new WeakMap<
+	AugmentedComponent,
+	{
+		effect: object;
+		getSignal: () => object | undefined;
+		handle?: BindingHandle;
+	}
+>();
+
+function syncTextBinding(component: AugmentedComponent, target?: Node) {
+	const state = textBindings.get(component);
+	if (!state) return;
+	const source = state.getSignal();
+	if (!source || !target || target.nodeType !== 3) {
+		state.handle?.dispose();
+		state.handle = undefined;
+		return;
+	}
+	if (state.handle) state.handle.set(source, target);
+	else state.handle = trackDomBinding(state.effect, source, target, "text");
+}
+
 const DEVTOOLS_ENABLED =
 	typeof window !== "undefined" && !!window.__PREACT_SIGNALS_DEVTOOLS__;
 
@@ -151,6 +183,12 @@ function SignalValue(this: AugmentedComponent, { data }: { data: Signal }) {
 		// is also text.
 		const dispose = effect(function (this: Effect) {
 			this._notify = notifyDomUpdates;
+			if (isBindingTrackingEnabled() && !textBindings.has(self)) {
+				textBindings.set(self, {
+					effect: this,
+					getSignal: () => originalBindingSignal(currentSignal.peek()),
+				});
+			}
 
 			// Subscribe to wrappedSignal updates only when its values are text...
 			if (isText.value) {
@@ -159,7 +197,9 @@ function SignalValue(this: AugmentedComponent, { data }: { data: Signal }) {
 				// the update gets handled by a full rerender.
 				const value = wrappedSignal.value;
 				if (self.__v && self.__v.__e && self.__v.__e.nodeType === 3) {
+					syncTextBinding(self, self.__v.__e);
 					(self.__v.__e as Text).data = value;
+					textBindings.get(self)?.handle?.wrote();
 				}
 			}
 		});
@@ -168,6 +208,8 @@ function SignalValue(this: AugmentedComponent, { data }: { data: Signal }) {
 		// above also gets disposed on unmount.
 		const oldDispose = this._updater!._dispose;
 		this._updater!._dispose = function () {
+			textBindings.get(self)?.handle?.dispose();
+			textBindings.delete(self);
 			dispose();
 			oldDispose.call(this);
 		};
@@ -199,13 +241,13 @@ Object.defineProperties(Signal.prototype, {
 		configurable: true,
 		get() {
 			const s: Signal = this;
-			return {
-				data: {
-					get value() {
-						return s.value;
-					},
+			const data = {
+				get value() {
+					return s.value;
 				},
 			};
+			rememberBindingSignal(data, s);
+			return { data };
 		},
 	},
 	// Setting a VNode's _depth to 1 forces Preact to clone it before modifying:
@@ -332,6 +374,9 @@ hook(OptionsTypes.DIFFED, (old, vnode) => {
 		}
 	}
 	old(vnode);
+	if (vnode.type === SignalValue && vnode.__c) {
+		syncTextBinding(vnode.__c, vnode.__e);
+	}
 });
 
 function createPropUpdater(
@@ -348,32 +393,42 @@ function createPropUpdater(
 		dom.ownerSVGElement === undefined;
 
 	const changeSignal = signal(propSignal);
+	let binding: BindingHandle | undefined;
+	const dispose = effect(function (this: Effect) {
+		this._notify = notifyDomUpdates;
+		if (!binding)
+			binding = trackDomBinding(
+				this,
+				changeSignal.peek(),
+				dom,
+				"property",
+				prop
+			);
+		const value = changeSignal.value.value;
+		if (props[prop] === value) return;
+		// Keep Preact\'s next diff aligned with the direct DOM write. The
+		// original Signal reference remains in vnode.__np until unmount.
+		props[prop] = value;
+		if (setAsProperty) {
+			// @ts-ignore DOM properties have heterogeneous types
+			dom[prop] = value;
+		} else if (value != null && (value !== false || prop[4] === "-")) {
+			dom.setAttribute(prop, value);
+		} else {
+			dom.removeAttribute(prop);
+		}
+		binding?.wrote();
+	});
 	return {
 		_update: (newSignal: Signal, newProps: typeof props) => {
+			binding?.set(newSignal, dom);
 			changeSignal.value = newSignal;
 			props = newProps;
 		},
-		_dispose: effect(function (this: Effect) {
-			this._notify = notifyDomUpdates;
-			const value = changeSignal.value.value;
-			// If Preact just rendered this value, don't render it again:
-			if (props[prop] === value) return;
-			// Write the value back into the rendered props so that Preact's next
-			// diff compares against what is actually in the DOM. The Signal
-			// reference itself lives in vnode.__np and is restored into props by
-			// the UNMOUNT hook, so this never clobbers it.
-			props[prop] = value;
-			if (setAsProperty) {
-				// @ts-ignore-next-line silly
-				dom[prop] = value;
-				// Match Preact's attribute handling: data-* and aria-* attributes
-				// https://github.com/preactjs/preact/blob/main/src/diff/props.js#L132
-			} else if (value != null && (value !== false || prop[4] === "-")) {
-				dom.setAttribute(prop, value);
-			} else {
-				dom.removeAttribute(prop);
-			}
-		}),
+		_dispose() {
+			binding?.dispose();
+			dispose();
+		},
 	};
 }
 

@@ -19,7 +19,7 @@
     "build:preact-transform": "pnpm _build --no-compress --cwd packages/preact-transform",
     "postbuild:core": "shx mv -f  packages/core/dist/index.d.ts  packages/core/dist/signals-core.d.ts",
     "postbuild:debug": "shx mv -f packages/debug/dist/debug/src/index.d.ts packages/debug/dist/signals-debug.d.ts",
-    "postbuild:preact": "shx mv -f packages/preact/dist/preact/src/index.d.ts packages/preact/dist/signals.d.ts && shx rm -rf packages/preact/dist/preact",
+    "postbuild:preact": "shx mv -f packages/preact/dist/preact/src/index.d.ts packages/preact/dist/signals.d.ts && shx cp packages/preact/dist/preact/src/dom-bindings.d.ts packages/preact/dist/dom-bindings.d.ts && shx rm -rf packages/preact/dist/preact",
     "postbuild:react": "shx mv -f packages/react/dist/react/src/index.d.ts packages/react/dist/signals.d.ts && shx rm -rf packages/react/dist/react",
     "postbuild:preact-utils": "shx mv -f packages/preact/utils/dist/preact/utils/src/index.d.ts packages/preact/utils/dist/index.d.ts && shx rm -rf packages/preact/utils/dist/preact",
     "postbuild:react-utils": "shx mv -f packages/react/utils/dist/react/utils/src/index.d.ts packages/react/utils/dist/index.d.ts && shx rm -rf packages/react/utils/dist/react",
