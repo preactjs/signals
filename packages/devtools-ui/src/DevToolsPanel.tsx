@@ -35,11 +35,14 @@ export function DevToolsPanel({
 	hideHeader = false,
 	initialTab = "updates",
 }: DevToolsPanelProps = {}) {
-	const { connectionStore } = getContext();
+	const { connectionStore, themeStore } = getContext();
 	const activeTab = useSignal<PanelTab>(initialTab);
 
 	return (
-		<div className="signals-devtools">
+		<div
+			className="signals-devtools"
+			data-theme={themeStore.resolvedTheme.value}
+		>
 			{!hideHeader && <Header />}
 
 			<SettingsPanel />
