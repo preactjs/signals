@@ -23,6 +23,12 @@
       "@preact/signals-react/runtime": [
         "./packages/react/runtime/src/index.ts"
       ],
+      "@preact/signals-react/jsx-runtime": [
+        "./packages/react/jsx-runtime/src/index.ts"
+      ],
+      "@preact/signals-react/jsx-dev-runtime": [
+        "./packages/react/jsx-dev-runtime/src/index.ts"
+      ],
       "@preact/signals-react-transform": [
         "./packages/react-transform/src/index.ts"
       ],
@@ -32,5 +38,11 @@
       ]
     }
   },
-  "exclude": ["docs", "extension", "packages/*/dist/**", "packages/devtools-ui"]
+  "exclude": [
+    "docs",
+    "extension",
+    "packages/*/dist/**",
+    "packages/devtools-ui",
+    "packages/react/jsx-runtime/test/types"
+  ]
 }

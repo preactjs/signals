@@ -1,0 +1,23 @@
+{
+  "name": "@preact/signals-react-jsx-runtime",
+  "description": "Sub package for @preact/signals-react that provides a JSX runtime supporting signals on DOM attributes",
+  "private": true,
+  "amdName": "reactSignalsJsxRuntime",
+  "main": "dist/jsx-runtime.js",
+  "module": "dist/jsx-runtime.module.js",
+  "unpkg": "dist/jsx-runtime.min.js",
+  "types": "dist/index.d.ts",
+  "source": "src/index.ts",
+  "mangle": "../../../mangle.json",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "browser": "./dist/jsx-runtime.module.js",
+      "import": "./dist/jsx-runtime.mjs",
+      "require": "./dist/jsx-runtime.js"
+    }
+  },
+  "peerDependencies": {
+    "react": "^16.14.0 || 17.x || 18.x || 19.x"
+  }
+}

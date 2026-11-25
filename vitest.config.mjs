@@ -29,6 +29,14 @@ export default defineConfig({
 						dirname,
 						"./packages/react/runtime/dist/runtime.module.js"
 					),
+					"@preact/signals-react/jsx-runtime": path.join(
+						dirname,
+						"./packages/react/jsx-runtime/dist/jsx-runtime.module.js"
+					),
+					"@preact/signals-react/jsx-dev-runtime": path.join(
+						dirname,
+						"./packages/react/jsx-dev-runtime/dist/jsx-dev-runtime.module.js"
+					),
 					"@preact/signals-react/utils": path.join(
 						dirname,
 						"./packages/react/utils/dist/utils.module.js"
@@ -74,6 +82,14 @@ export default defineConfig({
 					"@preact/signals-react/runtime": path.join(
 						dirname,
 						"./packages/react/runtime/src/index.ts"
+					),
+					"@preact/signals-react/jsx-runtime": path.join(
+						dirname,
+						"./packages/react/jsx-runtime/src/index.ts"
+					),
+					"@preact/signals-react/jsx-dev-runtime": path.join(
+						dirname,
+						"./packages/react/jsx-dev-runtime/src/index.ts"
 					),
 					"@preact/signals-react/utils": path.join(
 						dirname,

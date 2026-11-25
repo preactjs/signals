@@ -44,7 +44,21 @@
       "import": "./utils/dist/utils.mjs",
       "require": "./utils/dist/utils.js"
     },
-    "./utils/package.json": "./utils/package.json"
+    "./utils/package.json": "./utils/package.json",
+    "./jsx-runtime": {
+      "types": "./jsx-runtime/dist/index.d.ts",
+      "browser": "./jsx-runtime/dist/jsx-runtime.module.js",
+      "import": "./jsx-runtime/dist/jsx-runtime.mjs",
+      "require": "./jsx-runtime/dist/jsx-runtime.js"
+    },
+    "./jsx-runtime/package.json": "./jsx-runtime/package.json",
+    "./jsx-dev-runtime": {
+      "types": "./jsx-dev-runtime/dist/index.d.ts",
+      "browser": "./jsx-dev-runtime/dist/jsx-dev-runtime.module.js",
+      "import": "./jsx-dev-runtime/dist/jsx-dev-runtime.mjs",
+      "require": "./jsx-dev-runtime/dist/jsx-dev-runtime.js"
+    },
+    "./jsx-dev-runtime/package.json": "./jsx-dev-runtime/package.json"
   },
   "mangle": "../../mangle.json",
   "files": [
@@ -56,12 +70,18 @@
     "utils/dist",
     "utils/src",
     "utils/package.json",
+    "jsx-runtime/dist",
+    "jsx-runtime/src",
+    "jsx-runtime/package.json",
+    "jsx-dev-runtime/dist",
+    "jsx-dev-runtime/src",
+    "jsx-dev-runtime/package.json",
     "CHANGELOG.md",
     "LICENSE",
     "README.md"
   ],
   "scripts": {
-    "prepublishOnly": "cd ../.. && pnpm build:react-runtime && pnpm build:react && pnpm build:react-utils"
+    "prepublishOnly": "cd ../.. && pnpm build:react-runtime && pnpm build:react && pnpm build:react-utils && pnpm build:react-jsx-runtime && pnpm build:react-jsx-dev-runtime"
   },
   "dependencies": {
     "@preact/signals-core": "workspace:^1.14.4",

@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ES2020",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "jsx": "react-jsx",
+    "jsxImportSource": "@preact/signals-react",
+    "baseUrl": "../../../../..",
+    "paths": {
+      "@preact/signals-core": ["./packages/core/src/index.ts"],
+      "@preact/signals-react": ["./packages/react/src/index.ts"],
+      "@preact/signals-react/runtime": [
+        "./packages/react/runtime/src/index.ts"
+      ],
+      "@preact/signals-react/utils": ["./packages/react/utils/src/index.tsx"],
+      "@preact/signals-react/jsx-runtime": [
+        "./packages/react/jsx-runtime/src/index.ts"
+      ],
+      "@preact/signals-react/jsx-dev-runtime": [
+        "./packages/react/jsx-dev-runtime/src/index.ts"
+      ]
+    }
+  },
+  "include": ["./jsx-types.tsx"]
+}

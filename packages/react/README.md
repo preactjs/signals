@@ -28,6 +28,7 @@ Read the [announcement post](https://preactjs.com/blog/introducing-signals/) to 
     - [Additional Hooks](#additional-hooks)
       - [`useLiveSignal`](#uselivesignal)
       - [`useSignalRef`](#usesignalref)
+  - [Passing signals as DOM attributes](#passing-signals-as-dom-attributes)
   - [Limitations](#limitations)
 - [License](#license)
 
@@ -296,9 +297,35 @@ function Component() {
 }
 ```
 
+### Passing signals as DOM attributes
+
+To pass signals directly as props to intrinsic DOM elements (such as `<iframe height={height} />` or `<div className={className} />`) with full TypeScript support, configure your JSX import source to `@preact/signals-react`:
+
+```json
+{
+	"compilerOptions": {
+		"jsx": "react-jsx",
+		"jsxImportSource": "@preact/signals-react"
+	}
+}
+```
+
+Or opt in per file using the pragma comment:
+
+```tsx
+/** @jsxImportSource @preact/signals-react */
+import { signal } from "@preact/signals-react";
+
+const height = signal(370);
+
+function Frame() {
+	return <iframe height={height} />;
+}
+```
+
 ### Limitations
 
-This version of React integration does not support passing signals as DOM attributes. Support for this may be added at a later date.
+Passing signals directly as DOM attributes requires setting `jsxImportSource` to `@preact/signals-react` (see above). Without it, `@types/react` does not permit signal values on DOM attributes.
 
 Using signals in render props is not recommended. In this situation, the component that reads the signal is the component that calls the render prop, which may or may not be hooked up to track signals. For example:
 
