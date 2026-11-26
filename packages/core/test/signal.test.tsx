@@ -672,6 +672,63 @@ describe("effect()", () => {
 		expect(observed).toBe(1);
 	});
 
+	it("keeps unrelated effects reactive when a refresh throws during a batch", () => {
+		const toggle = signal(true);
+		const source = signal(0, {
+			unwatched() {
+				throw new Error("unwatched failed");
+			},
+		});
+		const branch = computed(() => (toggle.value ? source.value : -1));
+		effect(() => {
+			branch.value;
+		});
+
+		const other = signal(0);
+		let observed = -1;
+		const stop = effect(() => {
+			observed = other.value;
+		});
+
+		expect(() => {
+			toggle.value = false;
+		}).toThrow("unwatched failed");
+
+		other.value = 1;
+		stop();
+
+		expect(observed).toBe(1);
+	});
+
+	it("keeps effects working when an unwatched callback throws after an effect run", () => {
+		const toggle = signal(true);
+		const source = signal(0, {
+			unwatched() {
+				throw new Error("unwatched failed");
+			},
+		});
+		const spy = vi.fn(() => {
+			toggle.value ? source.value : -1;
+		});
+		effect(spy);
+
+		expect(() => {
+			toggle.value = false;
+		}).toThrow("unwatched failed");
+
+		const other = signal(0);
+		let observed = -1;
+		const stop = effect(() => {
+			observed = other.value;
+		});
+		other.value = 1;
+		stop();
+		expect(observed).toBe(1);
+
+		toggle.value = true;
+		expect(spy).toHaveBeenCalledTimes(3);
+	});
+
 	it("should not run the effect if the cleanup function disposes it", () => {
 		const a = signal(0);
 		const spy = vi.fn();
@@ -1989,6 +2046,36 @@ describe("computed()", () => {
 
 			a.value = 2;
 			expect(c.value).to.equal(2);
+		});
+
+		it("should recover when an exception escapes a refresh", () => {
+			let shouldThrow = true;
+			const toggle = signal(true);
+			const source = signal(0, {
+				unwatched() {
+					if (shouldThrow) {
+						shouldThrow = false;
+						throw new Error("unwatched failed");
+					}
+				},
+			});
+			const inner = computed(() => (toggle.value ? source.value : -1));
+			const outer = computed(() => inner.value + 1);
+			const dispose = effect(() => {
+				outer.value;
+			});
+
+			expect(() => {
+				toggle.value = false;
+			}).to.throw("unwatched failed");
+
+			expect(inner.value).to.equal(-1);
+			expect(outer.value).to.equal(0);
+
+			toggle.value = true;
+			source.value = 5;
+			expect(outer.value).to.equal(6);
+			dispose();
 		});
 
 		it("should support lazy branches", () => {
