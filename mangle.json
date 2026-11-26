@@ -69,7 +69,9 @@
       "$_signal": "s",
       "$_updater": "__$u",
       "$_updateFlags": "__$f",
-      "$_updaters": "U"
+      "$_updaters": "U",
+      "$_subscribers": "u",
+      "$_usage": "o"
     }
   }
 }
