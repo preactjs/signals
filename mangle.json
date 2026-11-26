@@ -48,6 +48,7 @@
       "$_value": "v",
       "$_node": "n",
       "$_targets": "t",
+      "$_options": "o",
       "core: Computed": "",
       "$_fn": "x",
       "$_globalVersion": "g",
