@@ -18,6 +18,13 @@ const internalEffects = new WeakSet<Effect>();
 const signalDependencies = new WeakMap<Signal | Effect, Set<string>>(); // Track what each signal depends on
 const instrumentedComputeds = new WeakSet<Computed>();
 const computedWasEvaluated = new WeakMap<Computed, boolean>();
+const observedEffects = new WeakSet<Effect>();
+// Execution ancestry is separate from dependencies: untracked() does not finish
+// an enclosing computed evaluation. Keep references only while callbacks run.
+const executionStack: {
+	node: Computed | Effect;
+	type: "computed" | "effect";
+}[] = [];
 
 export function setDebugOptions(options: {
 	grouped?: boolean;
@@ -113,7 +120,14 @@ function instrumentComputed(computed: DebugComputed) {
 	const originalFn = computed._fn;
 	computed._fn = function () {
 		computedWasEvaluated.set(computed, true);
-		return originalFn.call(this);
+		if (!debugEnabled) return originalFn.call(this);
+
+		executionStack.push({ node: computed, type: "computed" });
+		try {
+			return originalFn.call(this);
+		} finally {
+			executionStack.pop();
+		}
 	};
 	instrumentedComputeds.add(computed);
 }
@@ -261,11 +275,13 @@ function getAllCurrentDependencies(
 
 function bubbleUpToBaseSignal(
 	node: ComputedType,
-	depth = 1
+	depth = 1,
+	visited = new Set<ComputedType>()
 ): { signal: Signal; depth: number } | null {
-	if (!("_sources" in node)) {
+	if (visited.has(node) || !("_sources" in node)) {
 		return null;
 	}
+	visited.add(node);
 
 	// Get the head of the sources linked list
 	let sourceNode = node._sources;
@@ -282,7 +298,11 @@ function bubbleUpToBaseSignal(
 	// If no direct source found, recurse into all sources to find the inflight update
 	sourceNode = node._sources;
 	while (sourceNode) {
-		const result = bubbleUpToBaseSignal(sourceNode._source as any, depth + 1);
+		const result = bubbleUpToBaseSignal(
+			sourceNode._source as ComputedType,
+			depth + 1,
+			visited
+		);
 		if (result) {
 			return result;
 		}
@@ -317,8 +337,37 @@ Effect.prototype._debugCallback = function (this: Effect) {
 
 const originalEffectCallback = Effect.prototype._callback;
 Effect.prototype._callback = function (this: Effect) {
-	if (!debugEnabled || internalEffects.has(this))
+	const firstObservedExecution = !observedEffects.has(this);
+	observedEffects.add(this);
+	if (!debugEnabled || initializing || internalEffects.has(this))
 		return originalEffectCallback.call(this);
+
+	if (
+		firstObservedExecution &&
+		consoleLoggingEnabled &&
+		executionStack.some(frame => frame.type === "computed")
+	) {
+		const executionPath = [
+			...executionStack,
+			{ node: this, type: "effect" },
+		].map(({ node, type }) => ({
+			id: getSignalId(node),
+			name: getSignalName(node, type === "computed" ? "value" : "effect"),
+			type,
+		}));
+		const message =
+			"[signals-debug] Effect first observed during computed evaluation\n" +
+			executionPath.map(frame => `${frame.name} [${frame.type}]`).join(" → ") +
+			"\nEffects execute immediately. Reading an enclosing computed can cause a cycle, " +
+			"even through untracked(). Consider moving effect initialization to an explicit owner outside the computed.";
+		// Capture a stack only for suspicious initialization, before a circular read
+		// can throw. Do not retain nodes or read their values to describe the path.
+		console.warn(
+			message,
+			{ code: "effect-in-computed", executionPath },
+			new Error("Effect first observed here")
+		);
+	}
 
 	if ("_sources" in this) {
 		const baseSignal = bubbleUpToBaseSignal(this as any);
@@ -339,7 +388,12 @@ Effect.prototype._callback = function (this: Effect) {
 		}
 	}
 
-	return originalEffectCallback.call(this);
+	executionStack.push({ node: this, type: "effect" });
+	try {
+		return originalEffectCallback.call(this);
+	} finally {
+		executionStack.pop();
+	}
 };
 
 // Patch Effect.prototype._dispose to emit disposal events
