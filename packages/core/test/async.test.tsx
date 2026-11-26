@@ -55,6 +55,59 @@ describe("asyncComputed", () => {
 		expect(result.settlement).to.equal(undefined);
 	});
 
+	it.each(["resolve", "reject"] as const)(
+		"preserves the next settlement when a consumer starts a run after %s",
+		async outcome => {
+			const source = signal(0);
+			const requests = [defer<string>(), defer<string>()];
+			const result = asyncComputed(() => requests[source.value].promise);
+			const first = result.settlement;
+			let second: Promise<void> | undefined;
+			let secondResolved = false;
+			const disposeConsumer = effect(() => {
+				if (result.settled.value) source.value = 1;
+			});
+			const disposePending = effect(() => {
+				if (source.value === 1 && result.pending.value) {
+					second = result.settlement;
+					second?.then(() => {
+						secondResolved = true;
+					});
+				}
+			});
+
+			const error = new Error("boom");
+			if (outcome === "reject") requests[0].reject(error);
+			else requests[0].resolve("first");
+			await first;
+			await tick();
+
+			expect(source.value).to.equal(1);
+			expect(result.value).to.equal(outcome === "reject" ? undefined : "first");
+			expect(result.failed.value).to.equal(outcome === "reject");
+			expect(result.error.value).to.equal(
+				outcome === "reject" ? error : undefined
+			);
+			expect(result.pending.value).to.equal(true);
+			expect(second).to.be.instanceOf(Promise);
+			expect(second).not.to.equal(first);
+			expect(result.settlement).to.equal(second);
+			expect(secondResolved).to.equal(false);
+
+			requests[1].resolve("second");
+			await second;
+			expect(secondResolved).to.equal(true);
+			expect(result.value).to.equal("second");
+			expect(result.pending.value).to.equal(false);
+			expect(result.failed.value).to.equal(false);
+			expect(result.error.value).to.equal(undefined);
+			expect(result.settlement).to.equal(undefined);
+			disposePending();
+			disposeConsumer();
+			result.dispose();
+		}
+	);
+
 	it("only tracks dependencies read before the first await", async () => {
 		const before = signal(1);
 		const after = signal(10);
