@@ -51,6 +51,7 @@ export const enum OptionsTypes {
 	RENDER = "__r",
 	CATCH_ERROR = "__e",
 	UNMOUNT = "unmount",
+	FLUSH_EFFECTS = "__k",
 }
 
 export interface OptionsType {
@@ -60,6 +61,7 @@ export interface OptionsType {
 	[OptionsTypes.RENDER](vnode: VNode): void;
 	[OptionsTypes.CATCH_ERROR](error: any, vnode: VNode, oldVNode: VNode): void;
 	[OptionsTypes.UNMOUNT](vnode: VNode): void;
+	[OptionsTypes.FLUSH_EFFECTS](): void;
 }
 
 export type HookFn<T extends keyof OptionsType> = (
