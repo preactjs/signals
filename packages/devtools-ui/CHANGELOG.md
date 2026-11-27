@@ -1,5 +1,11 @@
 # @preact/signals-devtools-ui
 
+## 0.5.1
+
+### Patch Changes
+
+- [#1005](https://github.com/preactjs/signals/pull/1005) [`e7d97da`](https://github.com/preactjs/signals/commit/e7d97daf40f6a24ad2190b2c89146ba9f3280ba8) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Apply the stored theme on the panel's first render, including when the panel is mounted inside a shadow root.
+
 ## 0.5.0
 
 ### Minor Changes
