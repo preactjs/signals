@@ -1,5 +1,16 @@
 # @preact/signals-react
 
+## 3.13.0
+
+### Minor Changes
+
+- [#686](https://github.com/preactjs/signals/pull/686) [`d0dea06`](https://github.com/preactjs/signals/commit/d0dea06b14ecf029b7dec5d60df32812aea92786) Thanks [@JoviDeCroock](https://github.com/JoviDeCroock)! - Add experimental async computed signals with model ownership and Preact and React hooks.
+
+### Patch Changes
+
+- Updated dependencies [[`d0dea06`](https://github.com/preactjs/signals/commit/d0dea06b14ecf029b7dec5d60df32812aea92786)]:
+  - @preact/signals-core@1.15.0
+
 ## 3.12.0
 
 ### Minor Changes
