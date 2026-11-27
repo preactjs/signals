@@ -42,15 +42,6 @@ export const ThemeModel = createModel(() => {
 			: theme.value
 	);
 
-	// Apply data-theme attribute to the devtools container
-	effect(() => {
-		const resolved = resolvedTheme.value;
-		const el = document.querySelector(".signals-devtools");
-		if (el instanceof HTMLElement) {
-			el.dataset.theme = resolved;
-		}
-	});
-
 	const toggleTheme = () => {
 		const order: ThemeMode[] = ["auto", "light", "dark"];
 		const idx = order.indexOf(theme.value);
